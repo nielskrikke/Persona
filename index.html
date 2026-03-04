@@ -1,0 +1,78 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Persona - D&D Character Sheet & Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              dnd: {
+                red: 'rgb(var(--color-accent-secondary) / <alpha-value>)',
+                gold: 'rgb(var(--color-accent) / <alpha-value>)',
+                dark: '#1a1b1e',
+                panel: '#25262b',
+                text: '#c1c2c5',
+              }
+            },
+            fontFamily: {
+              serif: ['Georgia', 'Cambria', 'Times New Roman', 'Times', 'serif'],
+              sans: ['system-ui', 'sans-serif'],
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      :root {
+        --color-accent: 201 173 106; /* Default Gold: #c9ad6a */
+        --color-accent-secondary: 138 11 11; /* Default Red: #8a0b0b */
+      }
+      body {
+        background-color: #1a1b1e;
+        color: #c1c2c5;
+      }
+      /* Custom scrollbar for better aesthetics */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #1a1b1e; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #373a40; 
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgb(var(--color-accent)); 
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.3.1",
+    "react/": "https://esm.sh/react@18.3.1/",
+    "react-dom": "https://esm.sh/react-dom@18.3.1",
+    "react-dom/": "https://esm.sh/react-dom@18.3.1/",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@4.2.1",
+    "vite": "https://esm.sh/vite@5.2.11",
+    "path": "https://esm.sh/path@0.12.7",
+    "three": "https://esm.sh/three@0.160.0",
+    "@react-three/fiber": "https://esm.sh/@react-three/fiber@8.15.16?external=react,react-dom,three",
+    "@react-three/drei": "https://esm.sh/@react-three/drei@9.99.0?external=react,react-dom,three,@react-three/fiber",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.94.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
