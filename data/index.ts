@@ -119,10 +119,9 @@ export const fetchSubclassDetail = async (index: string): Promise<SubclassDetail
     return [...SUBCLASSES, ...custom].find(s => s.index === index) || null;
 };
 
-export const fetchEquipment = async (): Promise<APIReference[]> => {
+export const fetchEquipment = async (): Promise<EquipmentDetail[]> => {
     const custom = await loadHomebrew('custom_equipment');
-    const combined = [...ALL_ITEMS, ...custom];
-    return combined.map(i => ({ index: i.index, name: i.name, url: "", isCustom: i.isCustom }));
+    return [...ALL_ITEMS, ...custom];
 };
 
 export const fetchEquipmentDetail = async (index: string): Promise<EquipmentDetail | null> => {

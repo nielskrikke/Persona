@@ -1,7 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { APIReference, InventoryItem } from '../../types';
+import { EquipmentDetail, InventoryItem } from '../../types';
 import { fetchEquipment, fetchEquipmentDetail } from '../../data/index';
+import ItemSearchModal from './ItemSearchModal';
+import { Search } from 'lucide-react';
 
 interface EquipmentStepProps {
     onComplete: (equipment: InventoryItem[]) => void;
@@ -9,10 +11,11 @@ interface EquipmentStepProps {
 }
 
 const EquipmentStep: React.FC<EquipmentStepProps> = ({ onComplete, onBack }) => {
-    const [allEquipment, setAllEquipment] = useState<APIReference[]>([]);
+    const [allEquipment, setAllEquipment] = useState<EquipmentDetail[]>([]);
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
+    const [showSearchModal, setShowSearchModal] = useState(false);
 
     const startingPacks = [
         { name: "Explorer's Pack", items: ["Backpack", "Bedroll", "Mess Kit", "Tinderbox", "Torch", "Rations (1 day)", "Waterskin", "Rope, Hempen (50 feet)"] },
@@ -128,21 +131,27 @@ const EquipmentStep: React.FC<EquipmentStepProps> = ({ onComplete, onBack }) => 
                             </div>
                         </section>
 
-                        <section className="flex flex-col h-[300px]">
+                        <section className="flex flex-col">
                             <h4 className="text-[10px] font-black text-dnd-gold uppercase tracking-[0.2em] mb-4">Individual Gear</h4>
-                            <div className="flex-grow overflow-y-auto custom-scrollbar bg-black/30 border border-gray-800 rounded-xl p-2">
-                                 {allEquipment.map(item => (
-                                    <div 
-                                        key={item.index} 
-                                        onClick={() => toggleItem(item.name)}
-                                        className="cursor-pointer px-4 py-2.5 text-xs font-bold rounded-lg flex justify-between items-center text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
-                                    >
-                                        <span>{item.name}</span>
-                                        <span className="text-dnd-gold opacity-50">+</span>
-                                    </div>
-                                 ))}
-                            </div>
+                            <button 
+                                onClick={() => setShowSearchModal(true)}
+                                className="w-full py-4 bg-black/30 border border-dashed border-gray-700 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-500 hover:text-dnd-gold hover:border-dnd-gold hover:bg-black/50 transition-all group"
+                            >
+                                <Search size={24} className="group-hover:scale-110 transition-transform" />
+                                <span className="text-xs font-black uppercase tracking-widest">Search the Armory</span>
+                                <span className="text-[10px] font-serif italic opacity-60">Find weapons, armor, and magic items</span>
+                            </button>
                         </section>
+
+                        <ItemSearchModal 
+                            isOpen={showSearchModal}
+                            onClose={() => setShowSearchModal(false)}
+                            items={allEquipment}
+                            onSelectItem={(item) => {
+                                toggleItem(item.name);
+                                setShowSearchModal(false);
+                            }}
+                        />
                     </div>
                 </div>
 

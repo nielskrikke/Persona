@@ -1022,5 +1022,148 @@ export const CLASSES: ExtendedClassDetail[] = [
             { index: "peak-physical-condition", name: "Peak Physical Condition", level: 20, source: "Pugilist", url: "", desc: ["Str and Con increase by 2 (max 22). Recover 2 levels of exhaustion and all Hit Dice on a long rest."] }
         ]
 
+    },
+    {
+        index: "blood-hunter",
+        name: "Blood Hunter",
+        source: "Critical Role",
+        hit_die: 10,
+        proficiency_choices: [{ 
+            choose: 3, 
+            type: "proficiencies", 
+            from: { 
+                options: makeOptions(["Athletics", "Acrobatics", "Arcana", "History", "Insight", "Investigation", "Religion", "Survival"], "Skill: ") 
+            } 
+        }],
+        proficiencies: [
+            { index: "light-armor", name: "Light Armor", url: "" }, 
+            { index: "medium-armor", name: "Medium Armor", url: "" }, 
+            { index: "shields", name: "Shields", url: "" }, 
+            { index: "simple-weapons", name: "Simple Weapons", url: "" }, 
+            { index: "martial-weapons", name: "Martial Weapons", url: "" },
+            { index: "alchemists-supplies", name: "Alchemist's Supplies", url: "" }
+        ],
+        saving_throws: [{ index: "dex", name: "DEX", url: "" }, { index: "int", name: "INT", url: "" }],
+        level_table: [
+            { level: 1, prof_bonus: 2, features: ["Hunter's Bane", "Blood Maledict"], class_specific: { hemocraft_die: "d4", blood_maledicts: 1 } },
+            { level: 2, prof_bonus: 2, features: ["Fighting Style", "Crimson Rite"], class_specific: { hemocraft_die: "d4", blood_maledicts: 1 } },
+            { level: 3, prof_bonus: 2, features: ["Blood Hunter Order"], class_specific: { hemocraft_die: "d4", blood_maledicts: 1 } },
+            { level: 4, prof_bonus: 2, features: ["Ability Score Improvement"], class_specific: { hemocraft_die: "d4", blood_maledicts: 1 } },
+            { level: 5, prof_bonus: 3, features: ["Extra Attack"], class_specific: { hemocraft_die: "d6", blood_maledicts: 1 } },
+            { level: 6, prof_bonus: 3, features: ["Brand of Castigation", "Blood Maledict (2/rest)"], class_specific: { hemocraft_die: "d6", blood_maledicts: 2 } },
+            { level: 7, prof_bonus: 3, features: ["Order Feature"], class_specific: { hemocraft_die: "d6", blood_maledicts: 2 } },
+            { level: 8, prof_bonus: 3, features: ["Ability Score Improvement"], class_specific: { hemocraft_die: "d6", blood_maledicts: 2 } },
+            { level: 9, prof_bonus: 4, features: ["Grim Psychometry"], class_specific: { hemocraft_die: "d6", blood_maledicts: 2 } },
+            { level: 10, prof_bonus: 4, features: ["Dark Augmentation"], class_specific: { hemocraft_die: "d6", blood_maledicts: 2 } },
+            { level: 11, prof_bonus: 4, features: ["Order Feature"], class_specific: { hemocraft_die: "d8", blood_maledicts: 2 } },
+            { level: 12, prof_bonus: 4, features: ["Ability Score Improvement"], class_specific: { hemocraft_die: "d8", blood_maledicts: 2 } },
+            { level: 13, prof_bonus: 5, features: ["Brand of Tethering"], class_specific: { hemocraft_die: "d8", blood_maledicts: 2 } },
+            { level: 14, prof_bonus: 5, features: ["Hardened Soul"], class_specific: { hemocraft_die: "d8", blood_maledicts: 2 } },
+            { level: 15, prof_bonus: 5, features: ["Order Feature"], class_specific: { hemocraft_die: "d8", blood_maledicts: 2 } },
+            { level: 16, prof_bonus: 5, features: ["Ability Score Improvement"], class_specific: { hemocraft_die: "d8", blood_maledicts: 2 } },
+            { level: 17, prof_bonus: 6, features: ["Blood Maledict (3/rest)"], class_specific: { hemocraft_die: "d10", blood_maledicts: 3 } },
+            { level: 18, prof_bonus: 6, features: ["Order Feature"], class_specific: { hemocraft_die: "d10", blood_maledicts: 3 } },
+            { level: 19, prof_bonus: 6, features: ["Ability Score Improvement"], class_specific: { hemocraft_die: "d10", blood_maledicts: 3 } },
+            { level: 20, prof_bonus: 6, features: ["Sanguine Mastery"], class_specific: { hemocraft_die: "d10", blood_maledicts: 3 } }
+        ],
+        feature_details: [
+            { 
+                index: "hunters-bane", 
+                name: "Hunter's Bane", 
+                level: 1, 
+                source: "Blood Hunter", 
+                url: "", 
+                desc: ["You have survived the Tainted Blood ritual. You have advantage on Wisdom (Survival) checks to track fey, fiends, or undead, as well as on Intelligence checks to recall information about them. You also gain advantage on saving throws against being charmed or frightened."] 
+            },
+            { 
+                index: "blood-maledict", 
+                name: "Blood Maledict", 
+                level: 1, 
+                source: "Blood Hunter", 
+                url: "", 
+                desc: ["You can use your blood to curse your enemies. You know one Blood Curse. You can use this feature once per short or long rest. When you use it, you can choose to amplify it by taking damage equal to one roll of your hemocraft die."] 
+            },
+            { 
+                index: "fighting-style-bh", 
+                name: "Fighting Style", 
+                level: 2, 
+                source: "Blood Hunter", 
+                url: "", 
+                desc: ["You adopt a particular style of fighting as your specialty."],
+                effects: [{ type: 'feature_choice', name: 'Fighting Style', count: 1, options: FIGHTING_STYLES.filter(fs => ['Archery', 'Dueling', 'Great Weapon Fighting', 'Two-Weapon Fighting'].includes(fs.name)) }]
+            },
+            { 
+                index: "crimson-rite", 
+                name: "Crimson Rite", 
+                level: 2, 
+                source: "Blood Hunter", 
+                url: "", 
+                desc: ["You learn to invoke a rite of hemocraft that infuses your weapon with elemental energy. As a bonus action, you can imbue a weapon with a rite you know. Your max HP is reduced by an amount equal to your character level until the rite ends. Your attacks with that weapon deal extra damage equal to your hemocraft die."] 
+            },
+            { 
+                index: "blood-hunter-order", 
+                name: "Blood Hunter Order", 
+                level: 3, 
+                source: "Blood Hunter", 
+                url: "", 
+                desc: ["You commit to a specific order of blood hunters."] 
+            },
+            { 
+                index: "extra-attack-bh", 
+                name: "Extra Attack", 
+                level: 5, 
+                source: "Blood Hunter", 
+                url: "", 
+                desc: ["You can attack twice, instead of once, whenever you take the Attack action on your turn."] 
+            },
+            { 
+                index: "brand-of-castigation", 
+                name: "Brand of Castigation", 
+                level: 6, 
+                source: "Blood Hunter", 
+                url: "", 
+                desc: ["When you damage a creature with your Crimson Rite, you can brand it. The branded creature takes psychic damage equal to your Intelligence modifier (min 1) whenever it deals damage to you or a creature you can see within 5 feet of you."] 
+            },
+            { 
+                index: "grim-psychometry", 
+                name: "Grim Psychometry", 
+                level: 9, 
+                source: "Blood Hunter", 
+                url: "", 
+                desc: ["You can meditate on an object or location to perceive the lingering emotions and memories of past events. You have advantage on Intelligence (History) checks made to recall information about the history of an object you are touching or a location you are in."] 
+            },
+            { 
+                index: "dark-augmentation", 
+                name: "Dark Augmentation", 
+                level: 10, 
+                source: "Blood Hunter", 
+                url: "", 
+                desc: ["Your hemocraft has altered your body. Your speed increases by 5 feet, and you can add your Intelligence modifier (min 1) to your Strength, Dexterity, and Constitution saving throws."] 
+            },
+            { 
+                index: "brand-of-tethering", 
+                name: "Brand of Tethering", 
+                level: 13, 
+                source: "Blood Hunter", 
+                url: "", 
+                desc: ["Your Brand of Castigation now deals double the psychic damage. Additionally, the branded creature can't use the Dash action, and if it attempts to teleport or leave its current plane, it must make a Wisdom save or take 4d6 psychic damage and have the attempt fail."] 
+            },
+            { 
+                index: "hardened-soul", 
+                name: "Hardened Soul", 
+                level: 14, 
+                source: "Blood Hunter", 
+                url: "", 
+                desc: ["You have advantage on saving throws against being charmed or frightened, and you are immune to the possessed condition."] 
+            },
+            { 
+                index: "sanguine-mastery", 
+                name: "Sanguine Mastery", 
+                level: 20, 
+                source: "Blood Hunter", 
+                url: "", 
+                desc: ["When you are below half your max HP, you can reroll your hemocraft die once per turn and use either result. Additionally, when you score a critical hit with a weapon for which you have an active Crimson Rite, you regain one expended use of your Blood Maledict feature."] 
+            }
+        ]
     }
 ];

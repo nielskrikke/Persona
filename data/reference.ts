@@ -42,6 +42,7 @@ export const TRAIT_CATEGORY_MAP: Record<string, TraitBucket> = {
     'sunlight-sensitivity': 'Senses',
     'keen-senses': 'Senses',
     'blind-senses': 'Senses',
+    'heightened-senses': 'Senses',
 
     // Defenses (Resistances/Immunities/Advantages on Saves)
     'dwarven-resilience': 'Defenses',
@@ -65,6 +66,8 @@ export const TRAIT_CATEGORY_MAP: Record<string, TraitBucket> = {
     'natural-resilience': 'Defenses',
     'mechanical-nature': 'Defenses',
     'fearless': 'Defenses',
+    'hunters-bane': 'Defenses',
+    'hardened-soul': 'Defenses',
 
     // Movement
     'flight': 'Movement',
@@ -92,6 +95,9 @@ export const TRAIT_CATEGORY_MAP: Record<string, TraitBucket> = {
     'vampiric-bite': 'Actions',
     'starlight-step': 'Actions',
     'rabbit-hop': 'Actions',
+    'crimson-rite': 'Actions',
+    'blood-maledict': 'Actions',
+    'hybrid-transformation': 'Actions',
 
     // Passives / Misc
     'stonecunning': 'Passive',
@@ -105,7 +111,11 @@ export const TRAIT_CATEGORY_MAP: Record<string, TraitBucket> = {
     'hold-breath': 'Passive',
     'natural-armor': 'Passive',
     'armored-casing': 'Passive',
-    'chameleon-carapace': 'Passive'
+    'chameleon-carapace': 'Passive',
+    'dark-augmentation': 'Passive',
+    'grim-psychometry': 'Passive',
+    'brand-of-castigation': 'Passive',
+    'brand-of-tethering': 'Passive'
 };
 
 export const getTraitCategory = (index: string): TraitBucket => {

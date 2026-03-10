@@ -159,6 +159,7 @@ export interface BaseEquipment extends APIReference {
     equipment_category: APIReference;
     cost: { quantity: number; unit: string };
     weight?: number;
+    rarity?: 'Common' | 'Uncommon' | 'Rare' | 'Very Rare' | 'Legendary' | 'Artifact' | 'Varies' | 'Unknown';
     desc?: string[];
     armor_class?: {
         base: number;
@@ -177,6 +178,10 @@ export interface BaseEquipment extends APIReference {
     modifiers?: ItemModifier[];
     requires_attunement?: boolean;
     attunement_description?: string;
+    subtype?: string;
+    is_wondrous?: boolean;
+    weapon_category?: string;
+    armor_category?: string;
 }
 
 export interface InventoryItem extends Partial<BaseEquipment> {

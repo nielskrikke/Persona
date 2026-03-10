@@ -1,6 +1,7 @@
 import React from 'react';
+import { Plus } from 'lucide-react';
 import { CharacterState, InventoryItem, Currency } from '../../../types';
-import { WIDGET_BG } from '../CharacterSheet';
+import { WIDGET_BG } from '../../../data/constants';
 
 interface InventoryTabProps {
     character: CharacterState;
@@ -9,13 +10,13 @@ interface InventoryTabProps {
     updateQuantity: (id: string, newQty: number) => void;
     toggleAttunement: (id: string) => void;
     setSelectedDetail: (item: any) => void;
-    setShowCustomItemModal: (val: boolean) => void;
-    setShowInventoryManager: (val: boolean) => void;
+    setShowItemSearchModal: (val: boolean, mode?: 'search' | 'custom') => void;
+    setShowHomebrewModal: (val: boolean, tab?: 'race' | 'class' | 'subclass' | 'background' | 'spell' | 'item' | 'wildshape' | 'familiar' | 'feat') => void;
     setCharacter: React.Dispatch<React.SetStateAction<CharacterState>>;
 }
 
 const InventoryTab: React.FC<InventoryTabProps> = ({ 
-    character, currentWeight, maxWeight, updateQuantity, toggleAttunement, setSelectedDetail, setShowCustomItemModal, setShowInventoryManager, setCharacter 
+    character, currentWeight, maxWeight, updateQuantity, toggleAttunement, setSelectedDetail, setShowItemSearchModal, setShowHomebrewModal, setCharacter 
 }) => {
     const [inventorySearch, setInventorySearch] = React.useState('');
     const updateCurrency = (key: keyof Currency, value: string) => { setCharacter(prev => ({ ...prev, currency: { ...prev.currency, [key]: parseInt(value) || 0 } })); };
@@ -83,7 +84,33 @@ const InventoryTab: React.FC<InventoryTabProps> = ({
 
     return (
         <div className="max-w-5xl mx-auto space-y-6 pb-20">
-            <div className={`grid grid-cols-1 lg:grid-cols-2 gap-4 ${WIDGET_BG} p-4 rounded-xl border border-[#3e4149]/50 shadow-sm`}><div className="flex gap-2 items-center justify-between lg:justify-start overflow-x-auto pb-1">{['cp', 'sp', 'ep', 'gp', 'pp'].map(curr => (<div key={curr} className="flex flex-col items-center bg-gray-800/50 p-2 rounded border border-gray-700/50 shrink-0"><span className="text-[10px] font-bold text-gray-500 uppercase">{curr}</span><input type="number" value={character.currency[curr as keyof Currency]} onChange={(e) => updateCurrency(curr as keyof Currency, e.target.value)} className="w-12 bg-transparent text-center font-bold text-white outline-none focus:border-b border-dnd-gold" /></div>))}</div><div className="flex flex-col justify-center border-l border-gray-700/50 pl-0 lg:pl-6 pt-4 lg:pt-0"><div className="flex justify-between text-xs font-bold text-gray-400 uppercase mb-1"><span>Encumbrance</span><span>{currentWeight} / {maxWeight} lb</span></div><div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden"><div className={`h-full ${currentWeight > maxWeight ? 'bg-dnd-red' : 'bg-gray-500'}`} style={{width: `${Math.min(100, (currentWeight/maxWeight)*100)}%`}}></div></div></div></div>
+            <div className={`grid grid-cols-1 lg:grid-cols-3 gap-4 ${WIDGET_BG} p-4 rounded-xl border border-[#3e4149]/50 shadow-sm`}>
+                <div className="lg:col-span-2 flex gap-2 items-center justify-between lg:justify-start overflow-x-auto pb-1">
+                    {['cp', 'sp', 'ep', 'gp', 'pp'].map(curr => (
+                        <div key={curr} className="flex flex-col items-center bg-gray-800/50 p-2 rounded border border-gray-700/50 shrink-0">
+                            <span className="text-[10px] font-bold text-gray-500 uppercase">{curr}</span>
+                            <input 
+                                type="number" 
+                                value={character.currency[curr as keyof Currency]} 
+                                onChange={(e) => updateCurrency(curr as keyof Currency, e.target.value)} 
+                                className="w-12 bg-transparent text-center font-bold text-white outline-none focus:border-b border-dnd-gold" 
+                            />
+                        </div>
+                    ))}
+                </div>
+                <div className="flex flex-col justify-center border-l border-gray-700/50 pl-0 lg:pl-6 pt-4 lg:pt-0">
+                    <div className="flex justify-between text-[10px] font-bold text-gray-500 uppercase mb-1">
+                        <span>Encumbrance</span>
+                        <span>{currentWeight} / {maxWeight} lb</span>
+                    </div>
+                    <div className="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
+                        <div 
+                            className={`h-full ${currentWeight > maxWeight ? 'bg-dnd-red' : 'bg-gray-500'}`} 
+                            style={{width: `${Math.min(100, (currentWeight/maxWeight)*100)}%`}}
+                        ></div>
+                    </div>
+                </div>
+            </div>
 
             {/* Arrowsmith Quiver Section */}
             {isArrowsmith && (
@@ -161,7 +188,31 @@ const InventoryTab: React.FC<InventoryTabProps> = ({
                 </div>
             )}
 
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-2"><div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center w-full md:w-auto"><div className="flex items-center justify-between sm:justify-start gap-2 text-xs font-bold uppercase text-gray-400 bg-black/40 px-3 py-1.5 rounded border border-gray-700/50"><span className={character.inventory.filter(i => i.attuned).length >= 3 ? 'text-red-400' : 'text-blue-400'}>{character.inventory.filter(i => i.attuned).length} / 3</span><span>Attuned</span></div><input type="text" placeholder="Filter items..." value={inventorySearch} onChange={(e) => setInventorySearch(e.target.value)} className="bg-[#0b0c0e] border border-gray-600/50 rounded px-2 py-1.5 text-xs text-white focus:border-dnd-gold outline-none flex-grow md:w-64" /></div><div className="flex gap-2 w-full md:w-auto"><button onClick={() => setShowCustomItemModal(true)} className="flex-1 md:flex-none text-[10px] text-gray-300 font-bold uppercase border border-gray-600/50 bg-black/40 px-3 py-1.5 rounded hover:bg-gray-800 transition-colors whitespace-nowrap">+ Custom Item</button><button onClick={() => setShowInventoryManager(true)} className="flex-1 md:flex-none text-[10px] text-dnd-gold font-bold uppercase border border-dnd-gold bg-black/40 px-3 py-1.5 rounded hover:bg-dnd-gold hover:text-black transition-colors whitespace-nowrap">Manage Inventory</button></div></div>
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-2">
+                <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center w-full md:w-auto">
+                    <div className="flex items-center justify-between sm:justify-start gap-2 text-xs font-bold uppercase text-gray-400 bg-black/40 px-3 py-1.5 rounded border border-gray-700/50">
+                        <span className={character.inventory.filter(i => i.attuned).length >= 3 ? 'text-red-400' : 'text-blue-400'}>
+                            {character.inventory.filter(i => i.attuned).length} / 3
+                        </span>
+                        <span>Attuned</span>
+                    </div>
+                    <input 
+                        type="text" 
+                        placeholder="Filter items..." 
+                        value={inventorySearch} 
+                        onChange={(e) => setInventorySearch(e.target.value)} 
+                        className="text-[9px] font-bold uppercase px-3 py-1.5 rounded border bg-black/40 text-white border-gray-700 focus:border-dnd-gold outline-none w-full md:w-64 placeholder:text-gray-600" 
+                    />
+                </div>
+                <div className="flex gap-2 w-full md:w-auto">
+                    <button 
+                        onClick={() => setShowItemSearchModal(true)} 
+                        className="text-[10px] text-dnd-red font-bold uppercase border border-dnd-red bg-black/40 px-4 py-1.5 rounded hover:bg-dnd-red hover:text-white transition-colors whitespace-nowrap flex items-center justify-center gap-2"
+                    >
+                        Search Armory
+                    </button>
+                </div>
+            </div>
             {[{ title: "Equipped Items", items: character.inventory.filter(i => i.equipped && !i.id.startsWith('as-arrow-')) }, { title: "Backpack", items: character.inventory.filter(i => !i.equipped && !i.id.startsWith('as-arrow-')) }].map((section, idx) => {
                 const filteredItems = section.items.filter(i => i.name.toLowerCase().includes(inventorySearch.toLowerCase()));
                 if (section.items.length === 0 && idx === 0 && !inventorySearch) return null;

@@ -48,6 +48,7 @@ export const DEFAULT_LAYOUT: { left: string[], right: string[], mobile: string[]
 };
 
 export const ALL_WIDGETS = Object.keys(WIDGET_LABELS);
+export const WIDGET_BG = "bg-[#1b1c20]/80 backdrop-blur-md";
 
 export const STANDARD_CONDITIONS = [
     "Blinded", "Charmed", "Deafened", "Exhaustion", "Frightened", "Grappled", 

@@ -12,9 +12,10 @@ interface WildShapeModalProps {
     onTransform: (beast: BeastDetail) => void;
     onAddCustomBeast: (beast: BeastDetail) => void;
     onRemoveCustomBeast: (id: string) => void;
+    onOpenForge: () => void;
 }
 
-const WildShapeModal: React.FC<WildShapeModalProps> = ({ isOpen, onClose, character, onTransform, onAddCustomBeast, onRemoveCustomBeast }) => {
+const WildShapeModal: React.FC<WildShapeModalProps> = ({ isOpen, onClose, character, onTransform, onAddCustomBeast, onRemoveCustomBeast, onOpenForge }) => {
     const [beasts, setBeasts] = useState<BeastDetail[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedBeast, setSelectedBeast] = useState<BeastDetail | null>(null);
@@ -94,10 +95,10 @@ const WildShapeModal: React.FC<WildShapeModalProps> = ({ isOpen, onClose, charac
                     {/* Left: List */}
                     <div className="w-1/3 border-r border-gray-700 p-4 flex flex-col bg-[#16171a]">
                         <button 
-                            onClick={() => setShowCustomModal(true)}
+                            onClick={onOpenForge}
                             className="mb-4 w-full py-2 bg-gray-800 border border-gray-600 hover:border-dnd-gold text-white font-bold uppercase text-xs rounded transition-colors"
                         >
-                            + Create Custom Form
+                            + Forge Custom Form
                         </button>
                         <input 
                             type="text" 

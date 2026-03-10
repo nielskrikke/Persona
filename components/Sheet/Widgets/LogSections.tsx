@@ -37,7 +37,7 @@ export const QuestLogSection = ({
             <div className="bg-[#121316] px-6 py-4 flex justify-between items-center shrink-0 border-b border-[#3e4149]/50">
                 <div className="flex items-center gap-3">
                     {icon}
-                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest">{title}</h3>
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">{title}</h3>
                 </div>
                 <button 
                     onClick={addItem}
@@ -47,7 +47,7 @@ export const QuestLogSection = ({
                 </button>
             </div>
             
-            <div className="overflow-y-auto custom-scrollbar p-4 space-y-4 max-h-[500px]">
+            <div className="overflow-y-auto custom-scrollbar p-4 space-y-3 max-h-[500px]">
                 {items.length === 0 ? (
                     <div className="flex items-center justify-center text-gray-600 text-xs italic py-8">
                         No active quests.
@@ -135,17 +135,17 @@ export const ContactLogSection = ({
             <div className="bg-[#121316] px-6 py-4 flex justify-between items-center shrink-0 border-b border-[#3e4149]/50">
                 <div className="flex items-center gap-3">
                     {icon}
-                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest">{title}</h3>
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">{title}</h3>
                 </div>
                 <button 
                     onClick={addItem}
                     className="text-[10px] font-bold uppercase text-gray-500 border border-[#3e4149]/50 bg-transparent hover:text-gray-300 hover:border-gray-600 hover:bg-gray-800 px-3 py-1 rounded transition-colors"
                 >
-                    + Add Contact
+                    + Add Person
                 </button>
             </div>
             
-            <div className="overflow-y-auto custom-scrollbar p-4 space-y-4 max-h-[600px]">
+            <div className="overflow-y-auto custom-scrollbar p-4 space-y-3 max-h-[600px]">
                 {items.length === 0 ? (
                     <div className="flex items-center justify-center text-gray-600 text-xs italic py-8">
                         No contacts recorded.

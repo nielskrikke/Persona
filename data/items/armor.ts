@@ -8,6 +8,7 @@ export const ARMOR: EquipmentDetail[] = [
         equipment_category: { index: "armor", name: "Armor", url: "" },
         cost: { quantity: 5, unit: "gp" },
         weight: 8,
+        rarity: "Common",
         armor_class: { base: 11, dex_bonus: true, max_bonus: null },
         desc: ["Disadvantage on Stealth checks."]
     },
@@ -16,6 +17,7 @@ export const ARMOR: EquipmentDetail[] = [
         equipment_category: { index: "armor", name: "Armor", url: "" },
         cost: { quantity: 10, unit: "gp" },
         weight: 10,
+        rarity: "Common",
         armor_class: { base: 11, dex_bonus: true, max_bonus: null }
     },
     {
@@ -23,6 +25,7 @@ export const ARMOR: EquipmentDetail[] = [
         equipment_category: { index: "armor", name: "Armor", url: "" },
         cost: { quantity: 45, unit: "gp" },
         weight: 13,
+        rarity: "Common",
         armor_class: { base: 12, dex_bonus: true, max_bonus: null }
     },
 
@@ -32,6 +35,7 @@ export const ARMOR: EquipmentDetail[] = [
         equipment_category: { index: "armor", name: "Armor", url: "" },
         cost: { quantity: 10, unit: "gp" },
         weight: 12,
+        rarity: "Common",
         armor_class: { base: 12, dex_bonus: true, max_bonus: 2 }
     },
     {
@@ -39,6 +43,7 @@ export const ARMOR: EquipmentDetail[] = [
         equipment_category: { index: "armor", name: "Armor", url: "" },
         cost: { quantity: 50, unit: "gp" },
         weight: 20,
+        rarity: "Common",
         armor_class: { base: 13, dex_bonus: true, max_bonus: 2 }
     },
     {
@@ -46,6 +51,7 @@ export const ARMOR: EquipmentDetail[] = [
         equipment_category: { index: "armor", name: "Armor", url: "" },
         cost: { quantity: 50, unit: "gp" },
         weight: 45,
+        rarity: "Common",
         armor_class: { base: 14, dex_bonus: true, max_bonus: 2 },
         desc: ["Disadvantage on Stealth checks."]
     },
@@ -54,6 +60,7 @@ export const ARMOR: EquipmentDetail[] = [
         equipment_category: { index: "armor", name: "Armor", url: "" },
         cost: { quantity: 400, unit: "gp" },
         weight: 20,
+        rarity: "Common",
         armor_class: { base: 14, dex_bonus: true, max_bonus: 2 }
     },
     {
@@ -61,6 +68,7 @@ export const ARMOR: EquipmentDetail[] = [
         equipment_category: { index: "armor", name: "Armor", url: "" },
         cost: { quantity: 750, unit: "gp" },
         weight: 40,
+        rarity: "Common",
         armor_class: { base: 15, dex_bonus: true, max_bonus: 2 },
         desc: ["Disadvantage on Stealth checks."]
     },
@@ -71,6 +79,7 @@ export const ARMOR: EquipmentDetail[] = [
         equipment_category: { index: "armor", name: "Armor", url: "" },
         cost: { quantity: 30, unit: "gp" },
         weight: 40,
+        rarity: "Common",
         armor_class: { base: 14, dex_bonus: false, max_bonus: null },
         desc: ["Disadvantage on Stealth checks."]
     },
@@ -79,6 +88,7 @@ export const ARMOR: EquipmentDetail[] = [
         equipment_category: { index: "armor", name: "Armor", url: "" },
         cost: { quantity: 75, unit: "gp" },
         weight: 55,
+        rarity: "Common",
         armor_class: { base: 16, dex_bonus: false, max_bonus: null },
         desc: ["Disadvantage on Stealth checks. Strength 13 required."]
     },
@@ -87,6 +97,7 @@ export const ARMOR: EquipmentDetail[] = [
         equipment_category: { index: "armor", name: "Armor", url: "" },
         cost: { quantity: 200, unit: "gp" },
         weight: 60,
+        rarity: "Common",
         armor_class: { base: 17, dex_bonus: false, max_bonus: null },
         desc: ["Disadvantage on Stealth checks. Strength 15 required."]
     },
@@ -95,6 +106,7 @@ export const ARMOR: EquipmentDetail[] = [
         equipment_category: { index: "armor", name: "Armor", url: "" },
         cost: { quantity: 1500, unit: "gp" },
         weight: 65,
+        rarity: "Common",
         armor_class: { base: 18, dex_bonus: false, max_bonus: null },
         desc: ["Disadvantage on Stealth checks. Strength 15 required."]
     },
@@ -105,6 +117,7 @@ export const ARMOR: EquipmentDetail[] = [
         equipment_category: { index: "armor", name: "Armor", url: "" },
         cost: { quantity: 10, unit: "gp" },
         weight: 6,
+        rarity: "Common",
         armor_class: { base: 2, dex_bonus: false, max_bonus: null } // +2 AC
     }
 ];

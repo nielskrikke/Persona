@@ -1,12 +1,24 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { RollResult } from '@/types';
 
 export const RollHistory = ({ history, onClear }: { history: RollResult[], onClear: () => void }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const panelRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (isOpen && panelRef.current && !panelRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isOpen]);
 
     return (
-        <div className={`fixed right-0 top-24 z-[180] h-[calc(100vh-8rem)] flex items-start transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div ref={panelRef} className={`fixed right-0 top-24 z-[180] h-[calc(100vh-8rem)] flex items-start transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
             {/* Toggle Tab */}
             <button 
                 onClick={() => setIsOpen(!isOpen)}

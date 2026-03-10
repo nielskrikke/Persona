@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { loadCharacters, deleteCharacter, saveCharacterToDb } from '../../services/supabase';
+import { loadCharacters, deleteCharacter, saveCharacterToDb, fetchAllUsers, fetchShares, shareCharacter, unshareCharacter } from '../../services/supabase';
 import { CharacterState } from '../../types';
 import HomebrewManagerModal from './HomebrewManagerModal';
+import { Download, Share2, Copy, Trash2, X, Users, Check, Shield } from 'lucide-react';
 
 interface CharacterDashboardProps {
     onLoadCharacter: (char: CharacterState) => void;
@@ -11,12 +12,101 @@ interface CharacterDashboardProps {
     currentUser: any;
 }
 
+const ShareModal = ({ isOpen, onClose, character, currentUser }: any) => {
+    const [users, setUsers] = useState<any[]>([]);
+    const [shares, setShares] = useState<string[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (isOpen && character) {
+            const load = async () => {
+                setLoading(true);
+                try {
+                    const [allUsers, currentShares] = await Promise.all([
+                        fetchAllUsers(),
+                        fetchShares(character.id)
+                    ]);
+                    setUsers(allUsers.filter((u: any) => u.id !== currentUser.id));
+                    setShares(currentShares);
+                } catch (err) {
+                    console.error(err);
+                } finally {
+                    setLoading(false);
+                }
+            };
+            load();
+        }
+    }, [isOpen, character, currentUser.id]);
+
+    const toggleShare = async (userId: string) => {
+        try {
+            if (shares.includes(userId)) {
+                await unshareCharacter(character.id, userId);
+                setShares(prev => prev.filter(id => id !== userId));
+            } else {
+                await shareCharacter(character.id, userId);
+                setShares(prev => [...prev, userId]);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Failed to update sharing permissions.");
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/90 z-[110] flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-[#1b1c20] border border-gray-700 rounded-xl p-6 max-w-md w-full shadow-2xl flex flex-col max-h-[80vh]">
+                <div className="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 className="text-xl font-serif text-white">Share Character</h2>
+                        <p className="text-xs text-gray-500 mt-1">Grant access to {character.name}</p>
+                    </div>
+                    <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors"><X size={20} /></button>
+                </div>
+
+                <div className="flex-grow overflow-y-auto custom-scrollbar space-y-2 pr-2">
+                    {loading ? (
+                        <div className="text-center py-10 text-gray-600 animate-pulse">Consulting the registry...</div>
+                    ) : (
+                        users.map(user => (
+                            <div key={user.id} className="flex items-center justify-between p-3 bg-black/20 border border-gray-800 rounded-lg hover:border-gray-600 transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-xs font-bold text-gray-400">
+                                        {user.username.charAt(0).toUpperCase()}
+                                    </div>
+                                    <span className="text-sm text-gray-300">{user.username}</span>
+                                </div>
+                                <button 
+                                    onClick={() => toggleShare(user.id)}
+                                    className={`px-3 py-1 rounded text-[10px] font-bold uppercase transition-all ${shares.includes(user.id) ? 'bg-green-900/30 text-green-500 border border-green-900/50' : 'bg-gray-800 text-gray-500 border border-gray-700 hover:text-white hover:border-gray-500'}`}
+                                >
+                                    {shares.includes(user.id) ? 'Shared' : 'Share'}
+                                </button>
+                            </div>
+                        ))
+                    )}
+                    {!loading && users.length === 0 && (
+                        <div className="text-center py-10 text-gray-600 italic text-sm">No other users found in the archives.</div>
+                    )}
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-gray-800 text-center">
+                    <button onClick={onClose} className="text-dnd-gold hover:underline text-xs font-bold uppercase tracking-widest">Done</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const CharacterDashboard: React.FC<CharacterDashboardProps> = ({ onLoadCharacter, onNewCharacter, onCancel, onLogout, currentUser }) => {
     const [characters, setCharacters] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [showHomebrew, setShowHomebrew] = useState(false);
+    const [sharingChar, setSharingChar] = useState<any | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const previousTheme = useRef<{primary: string, secondary: string} | null>(null);
 
@@ -99,6 +189,46 @@ const CharacterDashboard: React.FC<CharacterDashboardProps> = ({ onLoadCharacter
         fileInputRef.current?.click();
     };
 
+    const handleDownload = (char: any, e: React.MouseEvent) => {
+        e.stopPropagation();
+        const data = { ...char.data, id: char.id, user_id: char.user_id };
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", `${char.name || 'character'}.json`);
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    };
+
+    const handleDownloadAll = () => {
+        const allData = characters.map(char => ({ ...char.data, id: char.id, user_id: char.user_id }));
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(allData, null, 2));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", `all_characters_${new Date().toISOString().split('T')[0]}.json`);
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    };
+
+    const handleDuplicate = async (char: any, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setLoading(true);
+        try {
+            const newCharData = { ...char.data, name: `${char.name} (Copy)` };
+            const saved = await saveCharacterToDb(newCharData, currentUser.id);
+            if (saved) {
+                setCharacters(prev => [saved, ...prev]);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Failed to duplicate character.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -161,6 +291,13 @@ const CharacterDashboard: React.FC<CharacterDashboardProps> = ({ onLoadCharacter
                 currentUser={currentUser} 
             />
 
+            <ShareModal 
+                isOpen={!!sharingChar} 
+                onClose={() => setSharingChar(null)} 
+                character={sharingChar} 
+                currentUser={currentUser} 
+            />
+
             {confirmDeleteId && (
                 <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
                     <div className="bg-[#1b1c20] border-2 border-red-600 rounded-lg p-8 max-w-md w-full shadow-2xl text-center relative">
@@ -186,6 +323,10 @@ const CharacterDashboard: React.FC<CharacterDashboardProps> = ({ onLoadCharacter
                     <div className="flex flex-wrap gap-3 sm:gap-4 items-center">
                         <button onClick={onNewCharacter} className="bg-dnd-gold hover:bg-yellow-600 text-black px-5 py-2.5 rounded font-black uppercase text-[10px] tracking-widest shadow-xl transition-all transform active:scale-95">+ New Character</button>
                         <button onClick={triggerImport} className="bg-gray-800 border border-gray-700 hover:border-dnd-gold text-gray-300 hover:text-white px-5 py-2.5 rounded font-black uppercase text-[10px] tracking-widest transition-all transform active:scale-95">Import JSON</button>
+                        <button onClick={handleDownloadAll} className="bg-gray-800 border border-gray-700 hover:border-dnd-gold text-gray-300 hover:text-white px-5 py-2.5 rounded font-black uppercase text-[10px] tracking-widest transition-all transform active:scale-95 flex items-center gap-2">
+                            <Download size={14} />
+                            Download All
+                        </button>
                         <button onClick={() => setShowHomebrew(true)} className="bg-blue-900/20 border border-blue-800 hover:border-blue-500 text-blue-400 px-5 py-2.5 rounded font-black uppercase text-[10px] tracking-widest transition-all transform active:scale-95">Homebrew</button>
                         <div className="w-px h-8 bg-gray-800 hidden sm:block"></div>
                         <button onClick={onCancel} className="text-gray-500 hover:text-white font-bold uppercase text-xs px-2 transition-colors">Close</button>
@@ -202,13 +343,32 @@ const CharacterDashboard: React.FC<CharacterDashboardProps> = ({ onLoadCharacter
 
                         return (
                             <div key={char.id} onClick={() => handleSelect(char)} className={`bg-[#1b1c20] border border-gray-700 rounded-xl p-6 cursor-pointer relative group flex flex-col min-h-[200px] transition-all ${isDeleting ? 'opacity-50 pointer-events-none' : 'hover:border-dnd-gold/50 hover:bg-[#202125]'}`}>
-                                <div className="absolute top-4 right-4 z-50" onClick={(e) => { e.stopPropagation(); }}>
-                                    <button type="button" onClick={(e) => handleRequestDelete(char.id, e)} className="text-gray-600 hover:text-red-500 p-2 rounded-full hover:bg-black/40 transition-colors" title="Delete Character" disabled={isDeleting}>
-                                        {isDeleting ? <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div> : <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>}
+                                <div className="absolute top-4 right-4 z-50 flex items-center gap-1" onClick={(e) => { e.stopPropagation(); }}>
+                                    {!char.isShared && (
+                                        <button type="button" onClick={(e) => setSharingChar(char)} className="text-gray-600 hover:text-blue-400 p-2 rounded-full hover:bg-black/40 transition-colors" title="Share Character">
+                                            <Share2 size={16} />
+                                        </button>
+                                    )}
+                                    <button type="button" onClick={(e) => handleDuplicate(char, e)} className="text-gray-600 hover:text-green-400 p-2 rounded-full hover:bg-black/40 transition-colors" title="Duplicate Character">
+                                        <Copy size={16} />
                                     </button>
+                                    <button type="button" onClick={(e) => handleDownload(char, e)} className="text-gray-600 hover:text-dnd-gold p-2 rounded-full hover:bg-black/40 transition-colors" title="Download JSON">
+                                        <Download size={16} />
+                                    </button>
+                                    {!char.isShared && (
+                                        <button type="button" onClick={(e) => handleRequestDelete(char.id, e)} className="text-gray-600 hover:text-red-500 p-2 rounded-full hover:bg-black/40 transition-colors" title="Delete Character" disabled={isDeleting}>
+                                            {isDeleting ? <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div> : <Trash2 size={16} />}
+                                        </button>
+                                    )}
                                 </div>
                                 <div className="flex justify-between items-start mb-4">
                                     <div className={`w-12 h-12 rounded-full bg-cover bg-center border border-gray-600 ${char.data.avatarUrl ? '' : 'flex items-center justify-center bg-gray-800 text-gray-500 font-serif font-bold text-xl'}`} style={char.data.avatarUrl ? {backgroundImage: `url(${char.data.avatarUrl})`} : {}}>{!char.data.avatarUrl && (char.name ? char.name.charAt(0) : '?')}</div>
+                                    {char.isShared && (
+                                        <div className="bg-blue-900/30 text-blue-400 border border-blue-900/50 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest flex items-center gap-1">
+                                            <Users size={8} />
+                                            Shared with you
+                                        </div>
+                                    )}
                                 </div>
                                 <h3 className="text-xl font-serif text-white mb-1 truncate pr-8">{char.name || 'Unnamed'}</h3>
                                 <div className="text-xs text-dnd-gold font-bold uppercase mb-4 truncate" title={classString}>{classString}</div>

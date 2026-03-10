@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
-import { CharacterState, SpellDetail } from '../../../types';
-import { WIDGET_BG } from '../CharacterSheet';
-import { STANDARD_ACTIONS } from '../../../data/constants';
+import React, { useState, useEffect, useRef } from 'react';
+import { CharacterState, SpellDetail, BeastDetail } from '../../../types';
+import { STANDARD_ACTIONS, WIDGET_BG } from '../../../data/constants';
 import { formatModifier, getSpellDamageString } from '../../../utils/rules';
 
 interface ActionsTabProps {
@@ -12,6 +11,7 @@ interface ActionsTabProps {
     getAttacks: () => any[];
     bonusActionList: any[];
     setShowCustomActionModal: (val: boolean) => void;
+    setShowHomebrewModal: (val: boolean, tab?: 'race' | 'class' | 'subclass' | 'background' | 'spell' | 'item' | 'wildshape' | 'familiar' | 'feat') => void;
     spellSave: number;
     spellMod: number;
 }
@@ -37,7 +37,7 @@ const IconFeatures = () => (
 );
 
 const ActionsTab: React.FC<ActionsTabProps> = ({ 
-    character, roll, triggerRollMenu, setSelectedDetail, getAttacks, bonusActionList, setShowCustomActionModal, spellSave, spellMod 
+    character, roll, triggerRollMenu, setSelectedDetail, getAttacks, bonusActionList, setShowCustomActionModal, setShowHomebrewModal, spellSave, spellMod 
 }) => {
     const [actionFilter, setActionFilter] = useState('ALL');
 
@@ -93,7 +93,9 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                         <button key={filter} onClick={() => setActionFilter(filter)} className={`text-[10px] font-bold uppercase px-3 py-1 rounded border transition-colors ${actionFilter === filter ? 'bg-white text-black border-white' : 'bg-black/40 text-gray-400 border-gray-600 hover:border-gray-400'}`}>{filter}</button>
                     ))}
                 </div>
-                <button onClick={() => setShowCustomActionModal(true)} className="text-[10px] text-dnd-red font-bold uppercase border border-dnd-red bg-black/40 px-2 py-0.5 rounded hover:bg-dnd-red hover:text-white transition-colors">Manage Custom</button>
+                <div className="flex gap-2">
+                    <button onClick={() => setShowCustomActionModal(true)} className="text-[10px] text-dnd-red font-bold uppercase border border-dnd-red bg-black/40 px-2 py-0.5 rounded hover:bg-dnd-red hover:text-white transition-colors">Manage Custom</button>
+                </div>
             </div>
 
             {hasFavorites && (

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CharacterState, ABILITY_NAMES, ABILITY_LABELS, RollResult, AbilityName, SpellDetail, InventoryItem, Currency, RuleEntry, BeastDetail, EldritchCannonDetail, SteelDefenderDetail } from '../../types';
+import { CharacterState, ABILITY_NAMES, ABILITY_LABELS, RollResult, AbilityName, SpellDetail, InventoryItem, Currency, RuleEntry, BeastDetail, EldritchCannonDetail, SteelDefenderDetail, EquipmentDetail } from '../../types';
 import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString } from '../../utils/rules';
 import { rollDice } from '../../utils/dice';
-import { WIDGET_LABELS, DEFAULT_LAYOUT, STANDARD_CONDITIONS, CLASS_FEATURES, STANDARD_ACTIONS, STATIC_RULES } from '../../data/constants';
-import { Library } from '../../data/index';
+import { WIDGET_LABELS, DEFAULT_LAYOUT, STANDARD_CONDITIONS, CLASS_FEATURES, STANDARD_ACTIONS, STATIC_RULES, WIDGET_BG } from '../../data/constants';
+import { Library, fetchEquipment, fetchEquipmentDetail } from '../../data/index';
 import DiceRoller3D, { QueuedRoll } from './Shared/DiceRoller3D';
 import { saveCharacterToDb } from '../../services/supabase';
 
@@ -14,7 +14,7 @@ import ManageCharacterModal from './Modals/ManageCharacterModal';
 import HealthManagerModal from './Modals/HealthManagerModal';
 import ShortRestModal from './Modals/ShortRestModal';
 import CustomActionModal from './Modals/CustomActionModal';
-import CustomItemModal from './Modals/CustomItemModal';
+import ItemSearchModal from '../Builder/ItemSearchModal';
 import LayoutManagerModal from './Modals/LayoutManagerModal';
 import CustomSpellModal from './Modals/CustomSpellModal';
 import WildShapeModal from './Modals/WildShapeModal';
@@ -25,8 +25,8 @@ import EldritchCannonModal from './Modals/EldritchCannonModal';
 import SteelDefenderModal from './Modals/SteelDefenderModal';
 import CompanionStatBlockModal from './Modals/CompanionStatBlockModal';
 import DetailSidePanel from './SidePanels/DetailSidePanel';
+import HomebrewManagerModal from '../Dashboard/HomebrewManagerModal';
 import SpellManagerSidePanel from './SidePanels/SpellManagerSidePanel';
-import InventoryManagerSidePanel from './SidePanels/InventoryManagerSidePanel';
 import RollContextMenu from './Shared/RollContextMenu';
 
 // Tab Components
@@ -37,8 +37,6 @@ import FeaturesTab from './Tabs/FeaturesTab';
 import RulesTab from './Tabs/RulesTab';
 import LogTab from './Tabs/LogTab';
 import StatsTab from './Tabs/StatsTab';
-
-export const WIDGET_BG = "bg-[#1b1c20]/80 backdrop-blur-md";
 
 const cleanProficiencyName = (name: string) => {
     return name.replace(/^(Skill|Musical Instrument|Gaming Set|Tool|Armor|Weapon|Other):\s*/i, '').trim();
@@ -244,18 +242,20 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const [visibleRules, setVisualRules] = useState<RuleEntry[]>([]);
     
     const [showSpellManager, setShowSpellManager] = useState(false);
-    const [showInventoryManager, setShowInventoryManager] = useState(false);
     const [showHealthManager, setShowHealthManager] = useState(false);
     const [showShortRestModal, setShowShortRestModal] = useState(false);
     const [showCustomActionModal, setShowCustomActionModal] = useState(false);
     const [showManageCharacterModal, setShowManageCharacterModal] = useState(false);
-    const [showCustomItemModal, setShowCustomItemModal] = useState(false);
+    const [showItemSearchModal, setShowItemSearchModal] = useState(false);
+    const [itemSearchMode, setItemSearchMode] = useState<'search' | 'custom'>('search');
     const [showLayoutManager, setShowLayoutManager] = useState(false);
     const [showCustomSpellModal, setShowCustomSpellModal] = useState(false);
     const [showWildShapeModal, setShowWildShapeModal] = useState(false);
     const [showFamiliarModal, setShowFamiliarModal] = useState(false); 
     const [showEldritchCannonModal, setShowEldritchCannonModal] = useState(false);
     const [showSteelDefenderModal, setShowSteelDefenderModal] = useState(false);
+    const [showHomebrewModal, setShowHomebrewModal] = useState(false);
+    const [homebrewInitialTab, setHomebrewInitialTab] = useState<'race' | 'class' | 'subclass' | 'background' | 'spell' | 'item' | 'wildshape' | 'familiar' | 'feat' | undefined>(undefined);
     const [viewingFamiliar, setViewingFamiliar] = useState<BeastDetail | null>(null); 
     const [viewingWildShape, setViewingWildShape] = useState<BeastDetail | null>(null);
     const [viewingCompanion, setViewingCompanion] = useState<any | null>(null);
@@ -265,6 +265,15 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const [isSidePanelPinned, setIsSidePanelPinned] = useState(false);
     const [rollMenu, setRollMenu] = useState<{x: number, y: number, formula: string, label: string} | null>(null);
     const [activeRoll, setActiveRoll] = useState<QueuedRoll | null>(null);
+    const [allEquipment, setAllEquipment] = useState<EquipmentDetail[]>([]);
+
+    useEffect(() => {
+        const loadEquipment = async () => {
+            const items = await fetchEquipment();
+            setAllEquipment(items);
+        };
+        loadEquipment();
+    }, []);
 
     const prof = calculateProficiency(character.level);
     
@@ -517,6 +526,22 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         if (newQty <= 0) { setCharacter(prev => ({ ...prev, inventory: prev.inventory.filter(i => i.id !== id) })); if (selectedDetail?.id === id) setSelectedDetail(null); return; }
         setCharacter(prev => ({ ...prev, inventory: prev.inventory.map(i => i.id === id ? { ...i, quantity: newQty } : i) }));
     };
+
+    const handleAddItem = async (item: EquipmentDetail) => {
+        const newItem: InventoryItem = {
+            ...item,
+            id: `${item.index}-${Date.now()}`,
+            quantity: 1,
+            equipped: false,
+            attuned: false
+        };
+        setCharacter(prev => ({
+            ...prev,
+            inventory: [...prev.inventory, newItem]
+        }));
+        setShowItemSearchModal(false);
+    };
+
     const toggleAttunement = (id: string) => {
         setCharacter(prev => {
             const item = prev.inventory.find(i => i.id === id);
@@ -1102,17 +1127,52 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             <HealthManagerModal isOpen={showHealthManager} character={character} onClose={() => setShowHealthManager(false)} onUpdate={(updates) => setCharacter(prev => { if (prev.activeWildShape && updates.activeWildShape) return { ...prev, activeWildShape: updates.activeWildShape }; if (prev.activeWildShape && updates.currentHp !== undefined) return { ...prev, activeWildShape: { ...prev.activeWildShape, currentHp: updates.currentHp } }; if (prev.activeEldritchCannon && updates.activeEldritchCannon) return { ...prev, activeEldritchCannon: updates.activeEldritchCannon }; if (prev.activeSteelDefender && updates.activeSteelDefender) return { ...prev, activeSteelDefender: updates.activeSteelDefender }; return {...prev, ...updates}; })} onTakeDamage={handleDamageTrigger} />
             <ShortRestModal isOpen={showShortRestModal} character={character} onUpdate={(updates) => setCharacter(prev => ({...prev, ...updates}))} onClose={() => setShowShortRestModal(false)} onRoll={roll} />
             <CustomActionModal isOpen={showCustomActionModal} onClose={() => setShowCustomActionModal(false)} onSave={(action) => setCharacter(prev => ({...prev, customActions: [...(prev.customActions || []), action]}))} />
-            <CustomItemModal isOpen={showCustomItemModal} onClose={() => setShowCustomItemModal(false)} onSave={(item) => setCharacter(prev => ({...prev, inventory: [...prev.inventory, item]}))} />
+            <ItemSearchModal 
+                isOpen={showItemSearchModal} 
+                onClose={() => setShowItemSearchModal(false)} 
+                items={allEquipment} 
+                onSelectItem={handleAddItem} 
+                initialMode={itemSearchMode}
+                currentUser={character?.user_id ? { id: character.user_id } : undefined}
+            />
             <LayoutManagerModal isOpen={showLayoutManager} onClose={() => setShowLayoutManager(false)} layout={layout} onSave={(newLayout) => { setLayout(newLayout); setCharacter(prev => ({ ...prev, layout: newLayout })); }} character={character} />
-            <CustomSpellModal isOpen={showCustomSpellModal} onClose={() => setShowCustomSpellModal(false)} onSave={(spell) => setCharacter(prev => ({...prev, spells: [...prev.spells, spell]}))} />
-            <WildShapeModal isOpen={showWildShapeModal} onClose={() => setShowWildShapeModal(false)} character={character} onTransform={handleWildShapeTransform} onAddCustomBeast={(beast) => setCharacter(prev => ({...prev, customBeasts: [...(prev.customBeasts || []), beast]}))} onRemoveCustomBeast={(id) => setCharacter(prev => ({...prev, customBeasts: (prev.customBeasts || []).filter(b => b.index !== id)}))} />
+            <CustomSpellModal 
+                isOpen={showCustomSpellModal} 
+                onClose={() => setShowCustomSpellModal(false)} 
+                onSave={(spell) => setCharacter(prev => ({...prev, spells: [...prev.spells, spell]}))} 
+                currentUser={character?.user_id ? { id: character.user_id } : undefined}
+            />
+            <WildShapeModal 
+                isOpen={showWildShapeModal} 
+                onClose={() => setShowWildShapeModal(false)} 
+                character={character} 
+                onTransform={handleWildShapeTransform} 
+                onAddCustomBeast={(beast) => setCharacter(prev => ({...prev, customBeasts: [...(prev.customBeasts || []), beast]}))} 
+                onRemoveCustomBeast={(id) => setCharacter(prev => ({...prev, customBeasts: (prev.customBeasts || []).filter(b => b.index !== id)}))} 
+                onOpenForge={() => { setHomebrewInitialTab('wildshape'); setShowHomebrewModal(true); setShowWildShapeModal(false); }}
+            />
             <ConcentrationCheckModal isOpen={!!concentrationCheck} dc={concentrationCheck?.dc || 10} spellName={concentrationCheck?.spellName || ''} onSuccess={() => setConcentrationCheck(null)} onFail={() => { setCharacter(prev => ({ ...prev, activeConcentration: null })); setConcentrationCheck(null); roll('1', 'Concentration Broken!'); }} conSaveModifier={conSaveBonus} onRoll={roll} />
-            <FamiliarManagerModal isOpen={showFamiliarModal} onClose={() => setShowFamiliarModal(false)} currentFamiliars={character.familiars || []} activeFamiliarId={character.activeFamiliar?.index} onUpdateFamiliars={(familiars) => setCharacter(prev => ({ ...prev, familiars }))} onSetActive={(familiar) => setCharacter(prev => ({ ...prev, activeFamiliar: familiar }))} />
+            <FamiliarManagerModal 
+                isOpen={showFamiliarModal} 
+                onClose={() => setShowFamiliarModal(false)} 
+                currentFamiliars={character.familiars || []} 
+                activeFamiliarId={character.activeFamiliar?.index} 
+                onUpdateFamiliars={(familiars) => setCharacter(prev => ({ ...prev, familiars }))} 
+                onSetActive={(familiar) => setCharacter(prev => ({ ...prev, activeFamiliar: familiar }))} 
+                onOpenForge={() => { setHomebrewInitialTab('familiar'); setShowHomebrewModal(true); setShowFamiliarModal(false); }}
+            />
             <FamiliarStatBlockModal beast={viewingFamiliar} onClose={() => setViewingFamiliar(null)} />
             <FamiliarStatBlockModal beast={viewingWildShape} onClose={() => setViewingWildShape(null)} variant="wildshape" />
             <CompanionStatBlockModal companion={viewingCompanion} onClose={() => setViewingCompanion(null)} />
             <EldritchCannonModal isOpen={showEldritchCannonModal} onClose={() => setShowEldritchCannonModal(false)} character={character} onSummon={handleSummonCannon} />
             <SteelDefenderModal isOpen={showSteelDefenderModal} onClose={() => setShowSteelDefenderModal(false)} character={character} onSummon={handleSummonDefender} />
+
+            <HomebrewManagerModal 
+                isOpen={showHomebrewModal}
+                onClose={() => setShowHomebrewModal(false)}
+                currentUser={{ id: character.user_id || 'anonymous' }}
+                initialTab={homebrewInitialTab}
+            />
 
             <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-[#121316] border-b border-[#3e4149] px-4 py-2 flex items-center justify-between shadow-lg h-[52px]">
                 <div className="flex items-center gap-3 overflow-hidden">
@@ -1130,7 +1190,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 {character.activeWildShape ? (<div className="w-full h-full flex items-center justify-center bg-black/60 text-3xl text-green-500 rounded-full">🐾</div>) : (!character.avatarUrl && <div className="w-full h-full flex items-center justify-center bg-black/50 text-3xl font-serif text-dnd-gold rounded-full">{character.name.charAt(0)}</div>)}
                             </div>
                             <div>
-                                <div className="flex items-center gap-3"><h1 className="text-3xl font-bold text-white font-serif tracking-tight leading-none truncate max-w-[200px] sm:max-w-md">{character.activeWildShape ? `${character.activeWildShape.beast.name} Form` : character.name}</h1><div className="flex gap-2"><button onClick={() => setShowManageCharacterModal(true)} className="text-[10px] font-bold uppercase border border-gray-600 bg-black/40 text-gray-400 hover:text-white hover:border-dnd-gold px-2 py-0.5 rounded transition-colors">Manage</button><button onClick={() => setShowLayoutManager(true)} className="text-[10px] font-bold uppercase border border-gray-600 bg-black/40 text-gray-400 hover:text-white hover:border-dnd-gold px-2 py-0.5 rounded transition-colors">Layout</button><button onClick={onOpenVault} className="text-[10px] font-bold uppercase border border-gray-600 bg-black/40 text-gray-400 hover:text-dnd-gold hover:border-dnd-gold px-2 py-0.5 rounded transition-colors flex items-center gap-1">Vault</button><button onClick={handleExport} className="text-[10px] font-bold uppercase border border-gray-600 bg-black/40 text-gray-400 hover:text-dnd-gold hover:border-dnd-gold px-2 py-0.5 rounded transition-colors flex items-center gap-1">JSON</button></div></div>
+                                <div className="flex items-center gap-3"><h1 className="text-3xl font-bold text-white font-serif tracking-tight leading-none truncate max-w-[200px] sm:max-w-md">{character.activeWildShape ? `${character.activeWildShape.beast.name} Form` : character.name}</h1><div className="flex gap-2"><button onClick={() => setShowManageCharacterModal(true)} className="text-[10px] font-bold uppercase border border-gray-600 bg-black/40 text-gray-400 hover:text-white hover:border-dnd-gold px-2 py-0.5 rounded transition-colors">Manage</button><button onClick={() => setShowLayoutManager(true)} className="text-[10px] font-bold uppercase border border-gray-600 bg-black/40 text-gray-400 hover:text-white hover:border-dnd-gold px-2 py-0.5 rounded transition-colors">Layout</button><button onClick={onOpenVault} className="text-[10px] font-bold uppercase border border-gray-600 bg-black/40 text-gray-400 hover:text-dnd-gold hover:border-dnd-gold px-2 py-0.5 rounded transition-colors flex items-center gap-1">Vault</button></div></div>
                                 <div className="flex items-center gap-3 mt-1"><div className="text-sm text-gray-400 font-medium uppercase tracking-wide">{character.activeWildShape ? <span className="text-green-500 font-bold">Wild Shape Active</span> : `${character.race?.name} | ${character.classes.map(c => `${c.definition.name} ${c.level}`).join(' / ')}`}</div>{character.activeWildShape && (<button onClick={handleWildShapeRevert} className="bg-red-900/30 hover:bg-red-800 text-red-200 text-[10px] font-bold px-3 py-0.5 rounded uppercase border border-red-800/50 transition-colors">Revert Form</button>)}{character.activeConcentration && (<div className="flex items-center gap-2 bg-blue-900/40 border border-blue-500 rounded px-2 py-0.5 text-[10px] font-bold text-blue-100 uppercase animate-in fade-in duration-500"><span className="animate-pulse">●</span> Concentrating: {character.activeConcentration.name}<button onClick={() => setCharacter(p => ({ ...p, activeConcentration: null }))} className="ml-1 text-blue-400 hover:text-white transition-colors" title="Break Concentration">&times;</button></div>)}</div>
                             </div>
                         </div>
@@ -1165,7 +1225,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             </footer>
 
             <main className="flex-grow flex flex-col md:flex-row overflow-hidden max-w-[1400px] mx-auto w-full relative font-scalable-text z-10 pt-0 pb-[64px] md:pb-0">
-                <aside className={isSidePanelPinned && (showSpellManager || showInventoryManager || !!selectedDetail) 
+                <aside className={isSidePanelPinned && (showSpellManager || !!selectedDetail) 
                     ? "hidden md:flex flex-col md:w-[340px] lg:w-[320px] bg-[#121316]/50 border-r border-[#3e4149] p-4 gap-4 overflow-y-auto custom-scrollbar shrink-0 backdrop-blur-md" 
                     : "hidden md:flex md:flex-col lg:grid lg:grid-cols-2 md:w-[340px] lg:w-[600px] bg-[#121316]/50 border-r border-[#3e4149] p-4 gap-4 overflow-y-auto custom-scrollbar shrink-0 backdrop-blur-md"
                 }>
@@ -1190,23 +1250,22 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 </aside>
 
                 <section className={`flex-grow flex flex-col ${character.backgroundImageUrl ? "bg-[#121316]/50" : "bg-transparent"} overflow-hidden backdrop-blur-md`}>
-                    <nav className="hidden md:flex items-center gap-2 px-4 py-2 bg-[#121316]/50 shrink-0 overflow-x-auto custom-scrollbar border-b border-[#3e4149]/40">{['actions', 'spells', 'inventory', 'features', 'rules', 'log'].map(tab_key => (<button key={tab_key} onClick={() => setActiveTab(tab_key as any)} className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-widest rounded-lg transition-all whitespace-nowrap shadow-sm border ${activeTab === tab_key ? 'text-white border-dnd-red bg-dnd-red/20 ring-1 ring-dnd-red/50' : 'text-gray-500 border-[#3e4149]/50 bg-black/40 hover:text-gray-300 hover:border-gray-600 hover:bg-gray-800'}`}>{tabIcons[tab_key]}<span>{tab_key === 'log' ? 'Travel Log' : tab_key}</span></button>))}</nav>
+                    <nav className="hidden md:flex items-center gap-2 px-4 py-2 bg-[#121316]/50 shrink-0 overflow-x-auto custom-scrollbar border-b border-[#3e4149]/40">{['actions', 'spells', 'inventory', 'features', 'rules', 'log'].map(tab_key => (<button key={tab_key} onClick={() => setActiveTab(tab_key as any)} className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-widest rounded-lg transition-all whitespace-nowrap shadow-sm border ${activeTab === tab_key ? 'text-white border-dnd-red bg-dnd-red/20 ring-1 ring-dnd-red/50' : 'text-gray-500 border-[#3e4149]/50 bg-black/40 hover:text-gray-300 hover:border-gray-600 hover:bg-gray-800'}`}>{tabIcons[tab_key]}<span>{tab_key === 'log' ? 'Journal' : tab_key}</span></button>))}</nav>
 
                     <div className="flex-grow overflow-y-auto custom-scrollbar p-4 bg-fixed bg-cover">
                         {activeTab === 'stats' && <StatsTab character={character} roll={roll} layout={layout} renderWidget={renderWidget} setShowLayoutManager={setShowLayoutManager} />}
-                        {activeTab === 'actions' && <ActionsTab character={character} roll={roll} triggerRollMenu={triggerRollMenu} setSelectedDetail={setSelectedDetail} getAttacks={getAttacks} bonusActionList={getBonusActions()} setShowCustomActionModal={setShowCustomActionModal} spellSave={spellSave} spellMod={spellMod} />}
-                        {activeTab === 'spells' && <SpellsTab character={character} setCharacter={setCharacter} roll={roll} triggerRollMenu={triggerRollMenu} setSelectedDetail={setSelectedDetail} spellSave={spellSave} spellAttackStr={spellAttackStr} spellMod={spellMod} setShowSpellManager={setShowSpellManager} />}
-                        {activeTab === 'inventory' && <InventoryTab character={character} currentWeight={currentWeight} maxWeight={maxWeight} updateQuantity={updateQuantity} toggleAttunement={toggleAttunement} setSelectedDetail={setSelectedDetail} setShowCustomItemModal={setShowCustomItemModal} setShowInventoryManager={setShowInventoryManager} setCharacter={setCharacter} />}
-                        {activeTab === 'features' && <FeaturesTab character={character} setCharacter={setCharacter} getAllFeatures={getAllFeaturesSorted} setSelectedDetail={setSelectedDetail} onTabChange={setActiveTab} />}
+                        {activeTab === 'actions' && <ActionsTab character={character} roll={roll} triggerRollMenu={triggerRollMenu} setSelectedDetail={setSelectedDetail} getAttacks={getAttacks} bonusActionList={getBonusActions()} setShowCustomActionModal={setShowCustomActionModal} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} spellSave={spellSave} spellMod={spellMod} />}
+                        {activeTab === 'spells' && <SpellsTab character={character} setCharacter={setCharacter} roll={roll} triggerRollMenu={triggerRollMenu} setSelectedDetail={setSelectedDetail} spellSave={spellSave} spellAttackStr={spellAttackStr} spellMod={spellMod} setShowSpellManager={setShowSpellManager} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} />}
+                        {activeTab === 'inventory' && <InventoryTab character={character} currentWeight={currentWeight} maxWeight={maxWeight} updateQuantity={updateQuantity} toggleAttunement={toggleAttunement} setSelectedDetail={setSelectedDetail} setShowItemSearchModal={(val, mode) => { setItemSearchMode(mode || 'search'); setShowItemSearchModal(val); }} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} setCharacter={setCharacter} />}
+                        {activeTab === 'features' && <FeaturesTab character={character} setCharacter={setCharacter} getAllFeatures={getAllFeaturesSorted} setSelectedDetail={setSelectedDetail} onTabChange={setActiveTab} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} />}
                         {activeTab === 'rules' && <RulesTab visibleRules={visibleRules} setSelectedDetail={setSelectedDetail} />}
                         {activeTab === 'log' && <LogTab character={character} setCharacter={setCharacter} onOpenVault={onOpenVault} setShowLayoutManager={setShowLayoutManager} handleRest={handleRest} />}
                     </div>
                 </section>
                 
-                {(showSpellManager || showInventoryManager || !!selectedDetail) && !isSidePanelPinned && (<div className="absolute inset-0 z-[150] bg-transparent" onClick={() => { setShowSpellManager(false); setShowInventoryManager(false); setSelectedDetail(null); }}></div>)}
+                {(showSpellManager || !!selectedDetail) && !isSidePanelPinned && (<div className="absolute inset-0 z-[150] bg-transparent" onClick={() => { setShowSpellManager(false); setSelectedDetail(null); }}></div>)}
                 <DetailSidePanel item={selectedDetail} character={character} onClose={() => setSelectedDetail(null)} onAction={(action, itm) => { if (action === 'toggleEquip') toggleEquipped(itm.id); if (action === 'toggleAttune') toggleAttunement(itm.id); if (action === 'remove') { if ('quantity' in itm) updateQuantity(itm.id, 0); else setCharacter(prev => ({ ...prev, spells: prev.spells.filter(s => s.index !== itm.index || s.sourceClassIndex !== itm.sourceClassIndex) })); setSelectedDetail(null); } }} isPinned={isSidePanelPinned} onTogglePin={() => setIsSidePanelPinned(!isSidePanelPinned)} isFavorite={selectedDetail ? character.favorites.includes(getEntityId(selectedDetail)) : false} onToggleFavorite={() => { if (selectedDetail) toggleFavorite(getEntityId(selectedDetail)); }} />
                 <SpellManagerSidePanel character={character} isOpen={showSpellManager} onClose={() => setShowSpellManager(false)} onUpdateSpells={(spells) => setCharacter(prev => ({...prev, spells}))} onAddCustom={() => setShowCustomSpellModal(true)} isPinned={isSidePanelPinned} onTogglePin={() => setIsSidePanelPinned(!isSidePanelPinned)} />
-                <InventoryManagerSidePanel character={character} isOpen={showInventoryManager} onClose={() => setShowInventoryManager(false)} onUpdateInventory={(inv) => setCharacter(prev => ({...prev, inventory: inv}))} isPinned={isSidePanelPinned} onTogglePin={() => setIsSidePanelPinned(!isSidePanelPinned)} />
             </main>
         </div>
     );

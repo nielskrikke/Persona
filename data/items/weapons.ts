@@ -9,6 +9,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 1, unit: "sp" },
         damage: { damage_dice: "1d4", damage_type: { index: "bludgeoning", name: "Bludgeoning" } },
         weight: 2,
+        rarity: "Common",
         properties: [{ index: "light", name: "Light", url: "" }]
     },
     {
@@ -17,6 +18,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 2, unit: "gp" },
         damage: { damage_dice: "1d4", damage_type: { index: "piercing", name: "Piercing" } },
         weight: 1,
+        rarity: "Common",
         properties: [{ index: "finesse", name: "Finesse", url: "" }, { index: "light", name: "Light", url: "" }, { index: "thrown", name: "Thrown", url: "" }],
         range: { normal: 20, long: 60 }
     },
@@ -27,6 +29,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 250, unit: "gp" },
         damage: { damage_dice: "1d10", damage_type: { index: "piercing", name: "Piercing" } },
         weight: 3,
+        rarity: "Common",
         properties: [{ index: "ammunition", name: "Ammunition", url: "" }, { index: "loading", name: "Loading", url: "" }],
         range: { normal: 30, long: 90 }
     },
@@ -36,6 +39,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 500, unit: "gp" },
         damage: { damage_dice: "1d12", damage_type: { index: "piercing", name: "Piercing" } },
         weight: 10,
+        rarity: "Common",
         properties: [{ index: "ammunition", name: "Ammunition", url: "" }, { index: "loading", name: "Loading", url: "" }, { index: "two-handed", name: "Two-Handed", url: "" }],
         range: { normal: 40, long: 120 }
     },
@@ -45,6 +49,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 100, unit: "gp" },
         damage: { damage_dice: "2d4", damage_type: { index: "piercing", name: "Piercing" } },
         weight: 3,
+        rarity: "Common",
         properties: [{ index: "ammunition", name: "Ammunition", url: "" }, { index: "reload", name: "Reload (6 shots)", url: "" }],
         range: { normal: 40, long: 120 }
     },
@@ -54,6 +59,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 500, unit: "gp" },
         damage: { damage_dice: "2d6", damage_type: { index: "piercing", name: "Piercing" } },
         weight: 8,
+        rarity: "Common",
         properties: [{ index: "ammunition", name: "Ammunition", url: "" }, { index: "two-handed", name: "Two-Handed", url: "" }, { index: "reload", name: "Reload (4 shots)", url: "" }],
         range: { normal: 80, long: 240 }
     },
@@ -64,6 +70,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 2, unit: "sp" },
         damage: { damage_dice: "1d8", damage_type: { index: "bludgeoning", name: "Bludgeoning" } },
         weight: 10,
+        rarity: "Common",
         properties: [{ index: "two-handed", name: "Two-Handed", url: "" }]
     },
     {
@@ -72,6 +79,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 5, unit: "gp" },
         damage: { damage_dice: "1d6", damage_type: { index: "slashing", name: "Slashing" } },
         weight: 2,
+        rarity: "Common",
         properties: [{ index: "light", name: "Light", url: "" }, { index: "thrown", name: "Thrown", url: "" }],
         range: { normal: 20, long: 60 }
     },
@@ -81,6 +89,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 5, unit: "sp" },
         damage: { damage_dice: "1d6", damage_type: { index: "piercing", name: "Piercing" } },
         weight: 2,
+        rarity: "Common",
         properties: [{ index: "thrown", name: "Thrown", url: "" }],
         range: { normal: 30, long: 120 }
     },
@@ -90,6 +99,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 2, unit: "gp" },
         damage: { damage_dice: "1d4", damage_type: { index: "bludgeoning", name: "Bludgeoning" } },
         weight: 2,
+        rarity: "Common",
         properties: [{ index: "light", name: "Light", url: "" }, { index: "thrown", name: "Thrown", url: "" }],
         range: { normal: 20, long: 60 }
     },
@@ -98,7 +108,8 @@ export const WEAPONS: EquipmentDetail[] = [
         equipment_category: { index: "weapon", name: "Weapon", url: "" },
         cost: { quantity: 5, unit: "gp" },
         damage: { damage_dice: "1d6", damage_type: { index: "bludgeoning", name: "Bludgeoning" } },
-        weight: 4
+        weight: 4,
+        rarity: "Common"
     },
     {
         index: "quarterstaff", name: "Quarterstaff",
@@ -106,6 +117,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 2, unit: "sp" },
         damage: { damage_dice: "1d6", damage_type: { index: "bludgeoning", name: "Bludgeoning" } },
         weight: 4,
+        rarity: "Common",
         properties: [{ index: "versatile", name: "Versatile (1d8)", url: "" }]
     },
     {
@@ -114,6 +126,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 1, unit: "gp" },
         damage: { damage_dice: "1d4", damage_type: { index: "slashing", name: "Slashing" } },
         weight: 2,
+        rarity: "Common",
         properties: [{ index: "light", name: "Light", url: "" }]
     },
     {
@@ -122,6 +135,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 1, unit: "gp" },
         damage: { damage_dice: "1d6", damage_type: { index: "piercing", name: "Piercing" } },
         weight: 3,
+        rarity: "Common",
         properties: [{ index: "thrown", name: "Thrown", url: "" }, { index: "versatile", name: "Versatile (1d8)", url: "" }],
         range: { normal: 20, long: 60 }
     },
@@ -131,6 +145,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 25, unit: "gp" },
         damage: { damage_dice: "1d8", damage_type: { index: "piercing", name: "Piercing" } },
         weight: 5,
+        rarity: "Common",
         properties: [{ index: "ammunition", name: "Ammunition", url: "" }, { index: "loading", name: "Loading", url: "" }, { index: "two-handed", name: "Two-Handed", url: "" }],
         range: { normal: 80, long: 320 }
     },
@@ -140,6 +155,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 5, unit: "cp" },
         damage: { damage_dice: "1d4", damage_type: { index: "piercing", name: "Piercing" } },
         weight: 0.25,
+        rarity: "Common",
         properties: [{ index: "finesse", name: "Finesse", url: "" }, { index: "thrown", name: "Thrown", url: "" }],
         range: { normal: 20, long: 60 }
     },
@@ -149,6 +165,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 25, unit: "gp" },
         damage: { damage_dice: "1d6", damage_type: { index: "piercing", name: "Piercing" } },
         weight: 2,
+        rarity: "Common",
         properties: [{ index: "ammunition", name: "Ammunition", url: "" }, { index: "two-handed", name: "Two-Handed", url: "" }],
         range: { normal: 80, long: 320 }
     },
@@ -158,6 +175,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 1, unit: "sp" },
         damage: { damage_dice: "1d4", damage_type: { index: "bludgeoning", name: "Bludgeoning" } },
         weight: 0,
+        rarity: "Common",
         properties: [{ index: "ammunition", name: "Ammunition", url: "" }],
         range: { normal: 30, long: 120 }
     },
@@ -167,6 +185,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 10, unit: "gp" },
         damage: { damage_dice: "1d8", damage_type: { index: "slashing", name: "Slashing" } },
         weight: 4,
+        rarity: "Common",
         properties: [{ index: "versatile", name: "Versatile (1d10)", url: "" }]
     },
     {
@@ -174,7 +193,8 @@ export const WEAPONS: EquipmentDetail[] = [
         equipment_category: { index: "weapon", name: "Weapon", url: "" },
         cost: { quantity: 10, unit: "gp" },
         damage: { damage_dice: "1d8", damage_type: { index: "bludgeoning", name: "Bludgeoning" } },
-        weight: 2
+        weight: 2,
+        rarity: "Common"
     },
     {
         index: "glaive", name: "Glaive",
@@ -182,6 +202,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 20, unit: "gp" },
         damage: { damage_dice: "1d10", damage_type: { index: "slashing", name: "Slashing" } },
         weight: 6,
+        rarity: "Common",
         properties: [{ index: "heavy", name: "Heavy", url: "" }, { index: "reach", name: "Reach", url: "" }, { index: "two-handed", name: "Two-Handed", url: "" }]
     },
     {
@@ -190,6 +211,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 30, unit: "gp" },
         damage: { damage_dice: "1d12", damage_type: { index: "slashing", name: "Slashing" } },
         weight: 7,
+        rarity: "Common",
         properties: [{ index: "heavy", name: "Heavy", url: "" }, { index: "two-handed", name: "Two-Handed", url: "" }]
     },
     {
@@ -198,6 +220,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 50, unit: "gp" },
         damage: { damage_dice: "2d6", damage_type: { index: "slashing", name: "Slashing" } },
         weight: 6,
+        rarity: "Common",
         properties: [{ index: "heavy", name: "Heavy", url: "" }, { index: "two-handed", name: "Two-Handed", url: "" }]
     },
     {
@@ -206,6 +229,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 20, unit: "gp" },
         damage: { damage_dice: "1d10", damage_type: { index: "slashing", name: "Slashing" } },
         weight: 6,
+        rarity: "Common",
         properties: [{ index: "heavy", name: "Heavy", url: "" }, { index: "reach", name: "Reach", url: "" }, { index: "two-handed", name: "Two-Handed", url: "" }]
     },
     {
@@ -214,6 +238,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 10, unit: "gp" },
         damage: { damage_dice: "1d12", damage_type: { index: "piercing", name: "Piercing" } },
         weight: 6,
+        rarity: "Common",
         properties: [{ index: "reach", name: "Reach", url: "" }, { index: "special", name: "Special", url: "" }]
     },
     {
@@ -222,6 +247,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 15, unit: "gp" },
         damage: { damage_dice: "1d8", damage_type: { index: "slashing", name: "Slashing" } },
         weight: 3,
+        rarity: "Common",
         properties: [{ index: "versatile", name: "Versatile (1d10)", url: "" }]
     },
     {
@@ -230,6 +256,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 10, unit: "gp" },
         damage: { damage_dice: "2d6", damage_type: { index: "bludgeoning", name: "Bludgeoning" } },
         weight: 10,
+        rarity: "Common",
         properties: [{ index: "heavy", name: "Heavy", url: "" }, { index: "two-handed", name: "Two-Handed", url: "" }]
     },
     {
@@ -237,7 +264,8 @@ export const WEAPONS: EquipmentDetail[] = [
         equipment_category: { index: "weapon", name: "Weapon", url: "" },
         cost: { quantity: 15, unit: "gp" },
         damage: { damage_dice: "1d8", damage_type: { index: "piercing", name: "Piercing" } },
-        weight: 4
+        weight: 4,
+        rarity: "Common"
     },
     {
         index: "pike", name: "Pike",
@@ -245,6 +273,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 5, unit: "gp" },
         damage: { damage_dice: "1d10", damage_type: { index: "piercing", name: "Piercing" } },
         weight: 18,
+        rarity: "Common",
         properties: [{ index: "heavy", name: "Heavy", url: "" }, { index: "reach", name: "Reach", url: "" }, { index: "two-handed", name: "Two-Handed", url: "" }]
     },
     {
@@ -253,6 +282,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 25, unit: "gp" },
         damage: { damage_dice: "1d8", damage_type: { index: "piercing", name: "Piercing" } },
         weight: 2,
+        rarity: "Common",
         properties: [{ index: "finesse", name: "Finesse", url: "" }]
     },
     {
@@ -261,6 +291,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 25, unit: "gp" },
         damage: { damage_dice: "1d6", damage_type: { index: "slashing", name: "Slashing" } },
         weight: 3,
+        rarity: "Common",
         properties: [{ index: "finesse", name: "Finesse", url: "" }, { index: "light", name: "Light", url: "" }]
     },
     {
@@ -269,6 +300,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 10, unit: "gp" },
         damage: { damage_dice: "1d6", damage_type: { index: "piercing", name: "Piercing" } },
         weight: 2,
+        rarity: "Common",
         properties: [{ index: "finesse", name: "Finesse", url: "" }, { index: "light", name: "Light", url: "" }]
     },
     {
@@ -277,6 +309,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 5, unit: "gp" },
         damage: { damage_dice: "1d6", damage_type: { index: "piercing", name: "Piercing" } },
         weight: 4,
+        rarity: "Common",
         properties: [{ index: "thrown", name: "Thrown", url: "" }, { index: "versatile", name: "Versatile (1d8)", url: "" }],
         range: { normal: 20, long: 60 }
     },
@@ -285,7 +318,8 @@ export const WEAPONS: EquipmentDetail[] = [
         equipment_category: { index: "weapon", name: "Weapon", url: "" },
         cost: { quantity: 5, unit: "gp" },
         damage: { damage_dice: "1d8", damage_type: { index: "piercing", name: "Piercing" } },
-        weight: 2
+        weight: 2,
+        rarity: "Common"
     },
     {
         index: "warhammer", name: "Warhammer",
@@ -293,6 +327,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 15, unit: "gp" },
         damage: { damage_dice: "1d8", damage_type: { index: "bludgeoning", name: "Bludgeoning" } },
         weight: 2,
+        rarity: "Common",
         properties: [{ index: "versatile", name: "Versatile (1d10)", url: "" }]
     },
     {
@@ -301,6 +336,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 2, unit: "gp" },
         damage: { damage_dice: "1d4", damage_type: { index: "slashing", name: "Slashing" } },
         weight: 3,
+        rarity: "Common",
         properties: [{ index: "finesse", name: "Finesse", url: "" }, { index: "reach", name: "Reach", url: "" }]
     },
     {
@@ -309,6 +345,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 10, unit: "gp" },
         damage: { damage_dice: "1", damage_type: { index: "piercing", name: "Piercing" } },
         weight: 1,
+        rarity: "Common",
         properties: [{ index: "ammunition", name: "Ammunition", url: "" }, { index: "loading", name: "Loading", url: "" }],
         range: { normal: 25, long: 100 }
     },
@@ -318,6 +355,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 75, unit: "gp" },
         damage: { damage_dice: "1d6", damage_type: { index: "piercing", name: "Piercing" } },
         weight: 3,
+        rarity: "Common",
         properties: [{ index: "ammunition", name: "Ammunition", url: "" }, { index: "light", name: "Light", url: "" }, { index: "loading", name: "Loading", url: "" }],
         range: { normal: 30, long: 120 }
     },
@@ -327,6 +365,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 50, unit: "gp" },
         damage: { damage_dice: "1d10", damage_type: { index: "piercing", name: "Piercing" } },
         weight: 18,
+        rarity: "Common",
         properties: [{ index: "ammunition", name: "Ammunition", url: "" }, { index: "heavy", name: "Heavy", url: "" }, { index: "loading", name: "Loading", url: "" }, { index: "two-handed", name: "Two-Handed", url: "" }],
         range: { normal: 100, long: 400 }
     },
@@ -336,6 +375,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 50, unit: "gp" },
         damage: { damage_dice: "1d8", damage_type: { index: "piercing", name: "Piercing" } },
         weight: 2,
+        rarity: "Common",
         properties: [{ index: "ammunition", name: "Ammunition", url: "" }, { index: "heavy", name: "Heavy", url: "" }, { index: "two-handed", name: "Two-Handed", url: "" }],
         range: { normal: 150, long: 600 }
     },
@@ -344,6 +384,7 @@ export const WEAPONS: EquipmentDetail[] = [
         equipment_category: { index: "weapon", name: "Weapon", url: "" },
         cost: { quantity: 1, unit: "gp" },
         weight: 3,
+        rarity: "Common",
         properties: [{ index: "special", name: "Special", url: "" }, { index: "thrown", name: "Thrown", url: "" }],
         range: { normal: 5, long: 15 }
     },
@@ -353,6 +394,7 @@ export const WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 100, unit: "gp" },
         damage: { damage_dice: "1d6", damage_type: { index: "piercing", name: "Piercing" } },
         weight: 1,
+        rarity: "Common",
         properties: [{ index: "ammunition", name: "Ammunition", url: "" }, { index: "light", name: "Light", url: "" }, { index: "loading", name: "Loading", url: "" }],
         range: { normal: 20, long: 60 }
     }

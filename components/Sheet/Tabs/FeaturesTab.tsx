@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CharacterState } from '@/types';
-import { WIDGET_BG } from '../CharacterSheet';
+import { WIDGET_BG } from '../../../data/constants';
 
 interface FeaturesTabProps {
     character: CharacterState;
@@ -8,9 +8,10 @@ interface FeaturesTabProps {
     getAllFeatures: () => any[];
     setSelectedDetail: (item: any) => void;
     onTabChange?: (tab: any) => void;
+    setShowHomebrewModal: (val: boolean, tab?: 'race' | 'class' | 'subclass' | 'background' | 'spell' | 'item' | 'wildshape' | 'familiar' | 'feat') => void;
 }
 
-const FeaturesTab: React.FC<FeaturesTabProps> = ({ character, setCharacter, getAllFeatures, setSelectedDetail, onTabChange }) => {
+const FeaturesTab: React.FC<FeaturesTabProps> = ({ character, setCharacter, getAllFeatures, setSelectedDetail, onTabChange, setShowHomebrewModal }) => {
     const [featureFilter, setFeatureFilter] = useState('All');
     const [featureSearch, setFeatureSearch] = useState('');
 
@@ -82,29 +83,26 @@ const FeaturesTab: React.FC<FeaturesTabProps> = ({ character, setCharacter, getA
             )}
 
             <section className="space-y-4">
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                    <div className="flex gap-2 bg-[#0b0c0e] p-1 rounded-lg border border-gray-700 overflow-x-auto no-scrollbar">
-                        {['All', 'Class', 'Race', 'Feat'].map(f => (
-                            <button 
-                                key={f} 
-                                onClick={() => setFeatureFilter(f)} 
-                                className={`px-5 py-1.5 rounded text-[10px] font-bold uppercase transition-all whitespace-nowrap ${featureFilter === f ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
-                            >
-                                {f}
-                            </button>
-                        ))}
-                    </div>
-                    <div className="relative w-full md:w-64 group">
+                <div className="flex flex-col md:flex-row justify-between items-end gap-4">
+                    <div className="flex flex-wrap gap-2 items-center w-full md:w-auto">
+                        <div className="flex gap-2 items-center overflow-x-auto pb-1 no-scrollbar">
+                            {['All', 'Class', 'Race', 'Feat'].map(f => (
+                                <button 
+                                    key={f} 
+                                    onClick={() => setFeatureFilter(f)} 
+                                    className={`text-[10px] font-bold uppercase px-3 py-1 rounded border transition-colors ${featureFilter === f ? 'bg-white text-black border-white' : 'bg-black/40 text-gray-400 border-gray-600'}`}
+                                >
+                                    {f}
+                                </button>
+                            ))}
+                        </div>
                         <input 
                             type="text" 
                             placeholder="Search features..." 
                             value={featureSearch} 
                             onChange={(e) => setFeatureSearch(e.target.value)} 
-                            className="w-full bg-[#1b1c20] border border-gray-700 rounded-lg py-2 px-4 pl-10 text-xs text-white focus:border-dnd-gold outline-none transition-all group-hover:border-gray-600" 
+                            className="text-[9px] font-bold uppercase px-3 py-1.5 rounded border bg-black/40 text-white border-gray-700 focus:border-dnd-gold outline-none w-full md:w-64 placeholder:text-gray-600" 
                         />
-                        <svg className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2 group-hover:text-dnd-gold transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                        </svg>
                     </div>
                 </div>
 

@@ -1835,5 +1835,119 @@ export const SUBCLASSES: ExtendedSubclassDetail[] = [
             { index: "survivalist", name: "Survivalist", level: 3, source: "Scout", url: "", desc: ["Proficiency and Expertise in Nature and Survival."] }
         ]
 
+    },
+    {
+        index: "ghostslayer",
+        name: "Order of the Ghostslayer",
+        source: "Blood Hunter Order",
+        class: { index: "blood-hunter", name: "Blood Hunter", url: "" },
+        desc: ["The Order of the Ghostslayer is the oldest and most traditional of the orders, having its roots in the very first blood hunters. These hunters seek out and destroy the undead, using their own life force to fuel their strikes."],
+        feature_details: [
+            { 
+                index: "rite-of-the-dawn", 
+                name: "Rite of the Dawn", 
+                level: 3, 
+                source: "Ghostslayer", 
+                url: "", 
+                desc: ["You learn the Rite of the Dawn as a crimson rite. While this rite is active, your weapon deals radiant damage. Additionally, you shed bright light in a 20-foot radius and dim light for an additional 20 feet. Your attacks with this rite deal extra radiant damage to undead equal to your Wisdom modifier."] 
+            },
+            { 
+                index: "curse-specialist", 
+                name: "Curse Specialist", 
+                level: 3, 
+                source: "Ghostslayer", 
+                url: "", 
+                desc: ["You gain an additional use of your Blood Maledict feature. Additionally, your blood curses can affect any creature, regardless of whether it has blood or not."] 
+            },
+            { 
+                index: "ethereal-step", 
+                name: "Ethereal Step", 
+                level: 7, 
+                source: "Ghostslayer", 
+                url: "", 
+                desc: ["At the start of your turn, if you aren't incapacitated, you can magically step into the ethereal plane. You remain there until the end of your current turn. You can use this feature a number of times equal to your Intelligence modifier (min 1) per long rest."] 
+            },
+            { 
+                index: "brand-of-sundering", 
+                name: "Brand of Sundering", 
+                level: 11, 
+                source: "Ghostslayer", 
+                url: "", 
+                desc: ["Your Brand of Castigation now exposes a creature's vulnerabilities. Your Crimson Rite damage die is doubled against a branded creature."] 
+            },
+            { 
+                index: "blood-curse-of-the-exorcist", 
+                name: "Blood Curse of the Exorcist", 
+                level: 15, 
+                source: "Ghostslayer", 
+                url: "", 
+                desc: ["You learn the Blood Curse of the Exorcist. This does not count against your number of blood curses known."] 
+            },
+            { 
+                index: "rite-of-the-dawn-improved", 
+                name: "Rite of the Dawn (Improved)", 
+                level: 18, 
+                source: "Ghostslayer", 
+                url: "", 
+                desc: ["Your Rite of the Dawn now deals even more damage to undead, and you can use it to protect your allies."] 
+            }
+        ]
+    },
+    {
+        index: "lycan",
+        name: "Order of the Lycan",
+        source: "Blood Hunter Order",
+        class: { index: "blood-hunter", name: "Blood Hunter", url: "" },
+        desc: ["The Order of the Lycan is a proud and ancient order of blood hunters who have embraced the curse of lycanthropy, using it as a weapon against the darkness. These hunters can transform into a hybrid form, gaining incredible strength and resilience."],
+        feature_details: [
+            { 
+                index: "heightened-senses", 
+                name: "Heightened Senses", 
+                level: 3, 
+                source: "Lycan", 
+                url: "", 
+                desc: ["You gain advantage on Wisdom (Perception) checks that rely on hearing or smell."] 
+            },
+            { 
+                index: "hybrid-transformation", 
+                name: "Hybrid Transformation", 
+                level: 3, 
+                source: "Lycan", 
+                url: "", 
+                desc: ["As a bonus action, you can transform into a hybrid form for up to 1 hour. While in this form, you gain a bonus to melee damage rolls, resistance to bludgeoning, piercing, and slashing damage from nonmagical attacks that aren't silvered, and your AC increases by 1. You also gain the Feral Might and Resilient Hide features."] 
+            },
+            { 
+                index: "stalkers-prowess", 
+                name: "Stalker's Prowess", 
+                level: 7, 
+                source: "Lycan", 
+                url: "", 
+                desc: ["Your speed increases by 10 feet. You also gain a bonus to your jump distance equal to your Strength score."] 
+            },
+            { 
+                index: "advanced-transformation", 
+                name: "Advanced Transformation", 
+                level: 11, 
+                source: "Lycan", 
+                url: "", 
+                desc: ["You can now use your Hybrid Transformation twice between rests. Additionally, your hybrid form's bonuses increase."] 
+            },
+            { 
+                index: "iron-volley", 
+                name: "Iron Volley", 
+                level: 15, 
+                source: "Lycan", 
+                url: "", 
+                desc: ["You can use your reaction to make a melee attack against a creature that misses you with a melee attack."] 
+            },
+            { 
+                index: "hybrid-transformation-mastery", 
+                name: "Hybrid Transformation Mastery", 
+                level: 18, 
+                source: "Lycan", 
+                url: "", 
+                desc: ["You can now use your Hybrid Transformation an unlimited number of times. Additionally, you gain the Bloodlust feature."] 
+            }
+        ]
     }
 ];

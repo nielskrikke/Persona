@@ -11,10 +11,11 @@ interface FamiliarManagerModalProps {
     activeFamiliarId?: string;
     onUpdateFamiliars: (familiars: BeastDetail[]) => void;
     onSetActive: (familiar: BeastDetail | null) => void;
+    onOpenForge: () => void;
 }
 
 const FamiliarManagerModal: React.FC<FamiliarManagerModalProps> = ({ 
-    isOpen, onClose, currentFamiliars, activeFamiliarId, onUpdateFamiliars, onSetActive 
+    isOpen, onClose, currentFamiliars, activeFamiliarId, onUpdateFamiliars, onSetActive, onOpenForge 
 }) => {
     const [selectedStandard, setSelectedStandard] = useState<string>('');
     const [showCustomModal, setShowCustomModal] = useState(false);
@@ -139,10 +140,10 @@ const FamiliarManagerModal: React.FC<FamiliarManagerModalProps> = ({
                             <span className="text-[10px] text-gray-600 uppercase font-bold">- OR -</span>
                         </div>
                         <button 
-                            onClick={() => setShowCustomModal(true)}
+                            onClick={onOpenForge}
                             className="w-full mt-3 py-2 border border-gray-600 hover:border-pink-400 text-gray-400 hover:text-pink-400 font-bold uppercase text-xs rounded transition-colors"
                         >
-                            Create Custom Familiar
+                            Forge Custom Familiar
                         </button>
                     </div>
                 </div>

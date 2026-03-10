@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { CharacterState, SpellDetail } from '../../../types';
-import { WIDGET_BG } from '../CharacterSheet';
+import { WIDGET_BG } from '../../../data/constants';
 import { getSpellDamageString } from '../../../utils/rules';
 
 interface SpellsTabProps {
@@ -14,10 +14,11 @@ interface SpellsTabProps {
     spellAttackStr: string;
     spellMod: number;
     setShowSpellManager: (val: boolean) => void;
+    setShowHomebrewModal: (val: boolean, tab?: 'race' | 'class' | 'subclass' | 'background' | 'spell' | 'item' | 'wildshape' | 'familiar' | 'feat') => void;
 }
 
 const SpellsTab: React.FC<SpellsTabProps> = ({ 
-    character, setCharacter, roll, triggerRollMenu, setSelectedDetail, spellSave, spellAttackStr, spellMod, setShowSpellManager 
+    character, setCharacter, roll, triggerRollMenu, setSelectedDetail, spellSave, spellAttackStr, spellMod, setShowSpellManager, setShowHomebrewModal 
 }) => {
     const [spellFilter, setSpellFilter] = useState<number | 'all'>('all');
     const [spellSearch, setSpellSearch] = useState('');
@@ -26,10 +27,84 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
 
     const getDcType = (spell: SpellDetail) => spell.dc?.dc_type?.name?.substring(0, 3).toUpperCase() || null;
 
+    const availableLevels = Array.from(new Set([
+        ...character.spells.map(s => s.level),
+        ...Object.entries(character.spellSlots)
+            .filter(([_, slots]) => (slots as any).max > 0)
+            .map(([lvl]) => parseInt(lvl))
+    ]));
+    const maxLevel = availableLevels.length > 0 ? Math.max(...availableLevels) : 0;
+
     return (
         <div className="max-w-5xl mx-auto space-y-6">
-            <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 ${WIDGET_BG} p-4 rounded-xl border border-[#3e4149]/50 shadow-sm`}><div className="flex flex-col items-center justify-center p-2"><span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Modifier</span><span className="text-2xl font-bold text-dnd-gold">{spellAttackStr}</span></div><div className="flex flex-col items-center justify-center p-2 border-l border-gray-800"><span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Spell Attack</span><span className="text-2xl font-bold text-white">{spellAttackStr}</span></div><div className="flex flex-col items-center justify-center p-2 border-l border-gray-800"><span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Save DC</span><span className="text-2xl font-bold text-white">{spellSave}</span></div><div className="flex flex-col items-center justify-center p-2 border-l border-gray-800"><span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Level</span><span className="text-2xl font-bold text-gray-400">{character.level}</span></div></div>
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-2"><div className="flex flex-col gap-2 w-full md:w-auto"><div className="flex gap-2 items-center overflow-x-auto pb-1 w-full md:w-auto"><button onClick={() => setSpellFilter('all')} className={`text-[10px] font-bold uppercase px-3 py-1 rounded border transition-colors ${spellFilter === 'all' ? 'bg-white text-black border-white' : 'bg-black/40 text-gray-400 border-gray-600'}`}>All</button>{[0,1,2,3,4,5,6,7,8,9].map(l => (<button key={l} onClick={() => setSpellFilter(l)} className={`text-[10px] font-bold uppercase px-3 py-1 rounded border transition-colors ${spellFilter === l ? 'bg-white text-black border-white' : 'bg-black/40 text-gray-400 border-gray-600'}`}>{l === 0 ? 'C' : l}</button>))}</div><div className="flex gap-2"><button onClick={() => setConcentrationOnly(!concentrationOnly)} className={`text-[9px] font-bold uppercase px-2 py-1 rounded border transition-colors ${concentrationOnly ? 'bg-blue-600 border-blue-500 text-white' : 'bg-black/40 text-gray-500 border-gray-700'}`}>Concentration</button><button onClick={() => setRitualOnly(!ritualOnly)} className={`text-[9px] font-bold uppercase px-2 py-1 rounded border transition-colors ${ritualOnly ? 'bg-yellow-600 border-yellow-500 text-white' : 'bg-black/40 text-gray-500 border-gray-700'}`}>Ritual</button></div></div><div className="flex gap-2 w-full md:w-auto"><input type="text" placeholder="Search spells..." value={spellSearch} onChange={(e) => setSpellSearch(e.target.value)} className="bg-[#0b0c0e] border border-gray-600/50 rounded px-2 py-1 text-xs text-white focus:border-dnd-gold outline-none flex-grow md:w-48" /><button onClick={() => setShowSpellManager(true)} className="text-[10px] text-dnd-red font-bold uppercase border border-dnd-red bg-black/40 px-2 py-0.5 rounded hover:bg-dnd-red hover:text-white transition-colors whitespace-nowrap">Manage Spells</button></div></div>
+            <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 ${WIDGET_BG} p-4 rounded-xl border border-[#3e4149]/50 shadow-sm`}>
+                <div className="flex flex-col items-center justify-center p-2">
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Modifier</span>
+                    <span className="text-2xl font-bold text-dnd-gold">{spellAttackStr}</span>
+                </div>
+                <div className="flex flex-col items-center justify-center p-2 border-l border-gray-800">
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Spell Attack</span>
+                    <span className="text-2xl font-bold text-white">{spellAttackStr}</span>
+                </div>
+                <div className="flex flex-col items-center justify-center p-2 border-l border-gray-800">
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Save DC</span>
+                    <span className="text-2xl font-bold text-white">{spellSave}</span>
+                </div>
+                <div className="flex flex-col items-center justify-center p-2 border-l border-gray-800">
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Level</span>
+                    <span className="text-2xl font-bold text-gray-400">{character.level}</span>
+                </div>
+            </div>
+
+            <div className="flex flex-col md:flex-row justify-between items-end gap-4 mb-2">
+                <div className="flex flex-col gap-2 w-full md:w-auto">
+                    <div className="flex gap-2 items-center overflow-x-auto pb-1 w-full md:w-auto">
+                        <button 
+                            onClick={() => setSpellFilter('all')} 
+                            className={`text-[10px] font-bold uppercase px-3 py-1 rounded border transition-colors ${spellFilter === 'all' ? 'bg-white text-black border-white' : 'bg-black/40 text-gray-400 border-gray-600'}`}
+                        >
+                            All
+                        </button>
+                        {[0,1,2,3,4,5,6,7,8,9].filter(l => l <= maxLevel).map(l => (
+                            <button 
+                                key={l} 
+                                onClick={() => setSpellFilter(l)} 
+                                className={`text-[10px] font-bold uppercase px-3 py-1 rounded border transition-colors ${spellFilter === l ? 'bg-white text-black border-white' : 'bg-black/40 text-gray-400 border-gray-600'}`}
+                            >
+                                {l === 0 ? 'C' : l}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="flex flex-wrap gap-2 items-center">
+                        <button 
+                            onClick={() => setConcentrationOnly(!concentrationOnly)} 
+                            className={`text-[9px] font-bold uppercase px-2 py-1 rounded border transition-colors ${concentrationOnly ? 'bg-blue-600 border-blue-500 text-white' : 'bg-black/40 text-gray-500 border-gray-700'}`}
+                        >
+                            Concentration
+                        </button>
+                        <button 
+                            onClick={() => setRitualOnly(!ritualOnly)} 
+                            className={`text-[9px] font-bold uppercase px-2 py-1 rounded border transition-colors ${ritualOnly ? 'bg-yellow-600 border-yellow-500 text-white' : 'bg-black/40 text-gray-500 border-gray-700'}`}
+                        >
+                            Ritual
+                        </button>
+                        <input 
+                            type="text" 
+                            placeholder="Search spells..." 
+                            value={spellSearch} 
+                            onChange={(e) => setSpellSearch(e.target.value)} 
+                            className="text-[9px] font-bold uppercase px-3 py-1 rounded border bg-black/40 text-white border-gray-700 focus:border-dnd-gold outline-none w-full md:w-48 placeholder:text-gray-600" 
+                        />
+                    </div>
+                </div>
+                <button 
+                    onClick={() => setShowSpellManager(true)} 
+                    className="text-[10px] text-dnd-red font-bold uppercase border border-dnd-red bg-black/40 px-4 py-1.5 rounded hover:bg-dnd-red hover:text-white transition-colors whitespace-nowrap"
+                >
+                    Manage Spells
+                </button>
+            </div>
+
             <div className="space-y-6">
                 {[0,1,2,3,4,5,6,7,8,9].map(lvl => {
                     if (spellFilter !== 'all' && spellFilter !== lvl) return null;
