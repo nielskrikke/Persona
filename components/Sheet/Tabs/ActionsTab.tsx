@@ -42,6 +42,21 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
     const [actionFilter, setActionFilter] = useState('ALL');
 
     const allAttacks = getAttacks();
+    
+    const filteredAttacks = allAttacks.filter(attack => {
+        if (actionFilter === 'ALL') return true;
+        if (actionFilter === 'ATTACK') return true; // Attacks are always attacks
+        
+        const activation = attack.source?.activationType?.toLowerCase();
+        if (actionFilter === 'ACTION' && (activation === 'action' || !activation)) return true;
+        if (actionFilter === 'BONUS ACTION' && activation === 'bonus') return true;
+        if (actionFilter === 'REACTION' && activation === 'reaction') return true;
+        if (actionFilter === 'OTHER' && (activation === 'legendary' || activation === 'other')) return true;
+        if (actionFilter === 'LIMITED USE' && attack.source?.maxUses) return true;
+        
+        return false;
+    });
+
     const favAttacks = allAttacks.filter(a => character.favorites.includes(a.id));
     const favOtherSpells = character.spells.filter(s => character.favorites.includes(s.index) && !favAttacks.some(a => a.id === s.index)).map(spell => {
         const notes = [spell.level === 0 ? 'Cantrip' : `Lvl ${spell.level}`];
@@ -164,7 +179,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                  <div className="overflow-x-auto custom-scrollbar">
                      <div className="grid grid-cols-[40px_1fr_80px_120px_120px] gap-2 px-6 py-2 bg-[#121316]/50 text-[10px] font-bold text-gray-500 uppercase tracking-wider items-center min-w-[600px]"><div>Type</div><div>Action</div><div className="text-center">Range</div><div className="text-center">Damage</div><div className="text-center">Hit / DC</div></div>
                      <div className="divide-y divide-[#2e3036]/60 min-w-[600px]">
-                         {allAttacks.map((attack, i) => (
+                         {filteredAttacks.map((attack, i) => (
                              <div key={i} className="grid grid-cols-[40px_1fr_80px_120px_120px] gap-2 items-center px-6 py-4 hover:bg-[#2e3036]/50 transition-colors group cursor-pointer" onClick={() => setSelectedDetail(attack.source ? { ...attack.source, id: attack.id } : attack)}>
                                  <div className="w-8 h-8 flex items-center justify-center text-gray-500 shrink-0 border border-gray-600/50 rounded-md bg-gray-800 self-center">
                                      {renderActionIcon(attack)}
@@ -179,7 +194,15 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                             <span className="text-[8px] bg-yellow-900/40 text-yellow-500 border border-yellow-800/60 px-1 rounded h-3 flex items-center">R</span>
                                         )}
                                     </div>
-                                    <div className="text-[10px] text-gray-500 truncate lowercase">{attack.type}{attack.notes?.length ? ` • ${attack.notes.join(' • ')}` : ''}</div>
+                                    <div className="text-[10px] text-gray-500 truncate lowercase">
+                                        {attack.type}
+                                        {attack.notes?.length ? ` • ${attack.notes.join(' • ')}` : ''}
+                                        {attack.source?.maxUses && (
+                                            <span className="ml-2 text-dnd-gold font-bold uppercase text-[8px]">
+                                                Limited: {character.featureUsage[attack.name]?.current || attack.source.maxUses}/{attack.source.maxUses}
+                                            </span>
+                                        )}
+                                    </div>
                                  </div>
                                  <div className="text-center text-[10px] text-gray-400 font-bold uppercase">{attack.range}</div>
                                  <div className="flex justify-center"><button onClick={(e) => { e.stopPropagation(); roll(attack.damage, `Damage ${attack.name}`); }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex flex-col items-center justify-center text-center"><span className="text-sm font-bold text-white">{attack.damage}</span><span className="text-[8px] text-gray-500 uppercase">{attack.type}</span></button></div>

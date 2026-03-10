@@ -381,14 +381,20 @@ export interface CustomAction {
     id: string;
     name: string;
     type: 'attack' | 'action' | 'bonus' | 'reaction' | 'other' | 'weapon' | 'spell' | 'feature';
+    activationType?: 'action' | 'bonus' | 'reaction' | 'legendary' | 'other';
     ability?: AbilityName;
+    isProficient?: boolean;
     bonus?: number;
     hit?: number;
+    saveDC?: number;
+    saveAbility?: AbilityName;
     damage?: string;
     damageType?: string;
     desc?: string;
     description?: string;
     range?: string;
+    maxUses?: number;
+    reset?: 'short' | 'long';
 }
 
 export interface ItemModifier {

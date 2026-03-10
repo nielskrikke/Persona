@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { X, User, GraduationCap, Activity, Shield, Settings, Plus, Trash2, Save, Languages, Palette, Type, Dice5, Eye, Info, Sparkles } from 'lucide-react';
 import { CharacterState, APIReference, RaceDetail, SubraceDetail, BackgroundDetail, FeatDetail, ABILITY_NAMES, ABILITY_LABELS, AbilityScores, SpellDetail } from '@/types';
 import { fetchClasses, fetchRaces, fetchSubraces, fetchBackgrounds, fetchFeatsList, fetchRaceDetail, fetchSubraceDetail, fetchBackgroundDetail, fetchSubclasses, fetchSubclassDetail, fetchSubclassLevels, fetchClassLevels, getLocalSpells } from '@/data/index';
 import { getSpellSlots, calculateModifier, SKILL_LIST } from '@/utils/rules';
@@ -24,7 +25,7 @@ const ManageCharacterModal = ({
     onUpdate: (data: any) => void, 
     onLevelUp: (classIndex: string, updates: Partial<CharacterState>) => Promise<void> 
 }) => {
-    const [tab, setTab] = useState<'identity' | 'classes' | 'abilities' | 'proficiencies' | 'trackers' | 'settings'>('identity');
+    const [tab, setTab] = useState<'identity' | 'classes' | 'abilities' | 'proficiencies' | 'trackers' | 'theme'>('identity');
     
     // Identity State
     const [name, setName] = useState(character.name);
@@ -468,18 +469,51 @@ const ManageCharacterModal = ({
     }
 
     return (
-        <div className="fixed inset-0 bg-black/90 z-[300] flex items-center justify-center p-4">
-            <div className="bg-[#1b1c20] border border-dnd-gold rounded-lg w-full max-w-6xl shadow-2xl relative flex flex-col h-[90vh]">
-                <button onClick={onClose} className="absolute top-4 right-6 text-gray-400 hover:text-white text-2xl z-20 transition-colors">&times;</button>
-                
-                <div className="flex border-b border-gray-700 bg-[#121316] shrink-0 overflow-x-auto">
-                    {['identity', 'classes', 'abilities', 'proficiencies', 'trackers', 'settings'].map(t => (
+        <div 
+            className="fixed inset-0 z-[300] flex items-center justify-center p-4 md:p-8 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300"
+            onClick={onClose}
+        >
+            <div 
+                className="bg-[#1b1c20] border border-gray-800 w-full max-w-6xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300"
+                onClick={(e) => e.stopPropagation()}
+            >
+                {/* Header */}
+                <div className="p-6 bg-[#121316] border-b border-gray-800 flex justify-between items-center">
+                    <div>
+                        <h2 className="text-2xl font-serif text-white">Manage Character</h2>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">
+                            Refine your hero's identity, abilities, and appearance
+                        </p>
+                    </div>
+                    <button 
+                        onClick={onClose}
+                        className="p-2 hover:bg-gray-800 rounded-full text-gray-400 hover:text-white transition-colors"
+                    >
+                        <X size={24} />
+                    </button>
+                </div>
+
+                {/* Tabs */}
+                <div className="px-6 py-1 bg-[#16171a] border-b border-gray-800 flex flex-wrap gap-2">
+                    {[
+                        { id: 'identity', label: 'Identity', icon: User },
+                        { id: 'classes', label: 'Classes', icon: GraduationCap },
+                        { id: 'abilities', label: 'Abilities', icon: Activity },
+                        { id: 'proficiencies', label: 'Proficiencies', icon: Shield },
+                        { id: 'trackers', label: 'Trackers', icon: Activity },
+                        { id: 'theme', label: 'Theme', icon: Palette }
+                    ].map(t => (
                         <button 
-                            key={t}
-                            onClick={() => setTab(t as any)} 
-                            className={`px-6 py-4 font-bold uppercase text-sm tracking-widest transition-colors ${tab === t ? 'bg-[#1b1c20] text-dnd-gold border-t-2 border-dnd-gold' : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800'}`}
+                            key={t.id}
+                            onClick={() => setTab(t.id as any)} 
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                                tab === t.id 
+                                    ? 'bg-dnd-gold text-black shadow-lg shadow-dnd-gold/20' 
+                                    : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800'
+                            }`}
                         >
-                            {t}
+                            <t.icon size={14} />
+                            {t.label}
                         </button>
                     ))}
                 </div>
@@ -488,48 +522,73 @@ const ManageCharacterModal = ({
                     
                     {/* IDENTITY TAB */}
                     {tab === 'identity' && (
-                        <div className="max-w-3xl mx-auto space-y-6">
+                        <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-gray-500 text-xs uppercase font-bold mb-1">Name</label>
-                                    <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full bg-black/30 border border-gray-700 rounded p-3 text-white focus:border-dnd-gold outline-none" />
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Character Name</label>
+                                    <input 
+                                        type="text" 
+                                        value={name} 
+                                        onChange={e => setName(e.target.value)} 
+                                        className="w-full bg-black/40 border border-gray-800 rounded-xl p-3 text-white focus:border-dnd-gold/50 outline-none transition-all" 
+                                    />
                                 </div>
-                                <div>
-                                    <label className="block text-gray-500 text-xs uppercase font-bold mb-1">Avatar URL</label>
-                                    <input type="text" value={avatar} onChange={e => setAvatar(e.target.value)} className="w-full bg-black/30 border border-gray-700 rounded p-3 text-white focus:border-dnd-gold outline-none" />
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Avatar URL</label>
+                                    <input 
+                                        type="text" 
+                                        value={avatar} 
+                                        onChange={e => setAvatar(e.target.value)} 
+                                        className="w-full bg-black/40 border border-gray-800 rounded-xl p-3 text-white focus:border-dnd-gold/50 outline-none transition-all" 
+                                    />
                                 </div>
-                                <div>
-                                    <label className="block text-gray-500 text-xs uppercase font-bold mb-1">Race</label>
-                                    <select value={selectedRaceIndex} onChange={e => handleRaceChange(e.target.value)} className="w-full bg-black/30 border border-gray-700 rounded p-3 text-white focus:border-dnd-gold outline-none">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Race</label>
+                                    <select 
+                                        value={selectedRaceIndex} 
+                                        onChange={e => handleRaceChange(e.target.value)} 
+                                        className="w-full bg-black/40 border border-gray-800 rounded-xl p-3 text-white focus:border-dnd-gold/50 outline-none transition-all"
+                                    >
                                         {allRaces.map(r => <option key={r.index} value={r.index}>{r.name}</option>)}
                                     </select>
                                 </div>
-                                <div>
-                                    <label className="block text-gray-500 text-xs uppercase font-bold mb-1">Subrace</label>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Subrace</label>
                                     <select 
                                         value={selectedSubraceIndex} 
                                         onChange={e => setSelectedSubraceIndex(e.target.value)} 
-                                        className="w-full bg-black/30 border border-gray-700 rounded p-3 text-white focus:border-dnd-gold outline-none disabled:opacity-50"
+                                        className="w-full bg-black/40 border border-gray-800 rounded-xl p-3 text-white focus:border-dnd-gold/50 outline-none transition-all disabled:opacity-30"
                                         disabled={loadingSubraces || allSubraces.length === 0}
                                     >
                                         <option value="">{allSubraces.length > 0 ? 'Select Subrace' : 'None Available'}</option>
                                         {allSubraces.map(s => <option key={s.index} value={s.index}>{s.name}</option>)}
                                     </select>
                                 </div>
-                                <div>
-                                    <label className="block text-gray-500 text-xs uppercase font-bold mb-1">Background</label>
-                                    <select value={selectedBackgroundIndex} onChange={e => setSelectedBackgroundIndex(e.target.value)} className="w-full bg-black/30 border border-gray-700 rounded p-3 text-white focus:border-dnd-gold outline-none">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Background</label>
+                                    <select 
+                                        value={selectedBackgroundIndex} 
+                                        onChange={e => setSelectedBackgroundIndex(e.target.value)} 
+                                        className="w-full bg-black/40 border border-gray-800 rounded-xl p-3 text-white focus:border-dnd-gold/50 outline-none transition-all"
+                                    >
                                         <option value="">Select Background</option>
                                         {allBackgrounds.map(b => <option key={b.index} value={b.index}>{b.name}</option>)}
                                     </select>
                                 </div>
-                                <div>
-                                    <label className="block text-gray-500 text-xs uppercase font-bold mb-1">Alignment</label>
-                                    <input type="text" value={alignment} onChange={e => setAlignment(e.target.value)} className="w-full bg-black/30 border border-gray-700 rounded p-3 text-white focus:border-dnd-gold outline-none" />
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Alignment</label>
+                                    <input 
+                                        type="text" 
+                                        value={alignment} 
+                                        onChange={e => setAlignment(e.target.value)} 
+                                        className="w-full bg-black/40 border border-gray-800 rounded-xl p-3 text-white focus:border-dnd-gold/50 outline-none transition-all" 
+                                    />
                                 </div>
-                                <div className="md:col-span-2 bg-black/20 p-5 rounded-xl border border-gray-800">
-                                    <label className="block text-gray-500 text-xs uppercase font-bold mb-3 tracking-widest">Languages known</label>
-                                    <div className="flex gap-2 mb-4">
+                                <div className="md:col-span-2 bg-black/20 p-6 rounded-2xl border border-gray-800 space-y-4">
+                                    <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-500">
+                                        <Languages size={12} /> Languages Known
+                                    </label>
+                                    <div className="flex gap-2">
                                         <div className="flex-grow relative">
                                             <input 
                                                 type="text" 
@@ -537,56 +596,74 @@ const ManageCharacterModal = ({
                                                 value={newLangInput} 
                                                 onChange={e => setNewLangInput(e.target.value)} 
                                                 placeholder="Add custom language..."
-                                                className="w-full bg-[#0b0c0e] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-dnd-gold"
+                                                className="w-full bg-black/40 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-dnd-gold/50 transition-all"
                                                 onKeyDown={e => e.key === 'Enter' && addManualLanguage()}
                                             />
                                             <datalist id="standard-languages-manage">
                                                 {STANDARD_LANGUAGES.map(l => <option key={l} value={l} />)}
                                             </datalist>
                                         </div>
-                                        <button onClick={addManualLanguage} className="bg-gray-700 hover:bg-gray-600 px-4 rounded-lg text-xs font-bold uppercase text-white transition-colors">Add</button>
+                                        <button 
+                                            onClick={addManualLanguage} 
+                                            className="px-6 bg-gray-800 hover:bg-gray-700 rounded-xl text-xs font-bold uppercase text-white transition-all"
+                                        >
+                                            Add
+                                        </button>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
                                         {languages.map(lang => (
-                                            <span key={lang} className="bg-dnd-gold/10 border border-dnd-gold/30 px-3 py-1 rounded-full text-[10px] font-black text-dnd-gold uppercase flex items-center gap-2">
+                                            <span key={lang} className="bg-dnd-gold/10 border border-dnd-gold/30 px-3 py-1.5 rounded-full text-[10px] font-black text-dnd-gold uppercase flex items-center gap-2 animate-in zoom-in duration-200">
                                                 {lang}
-                                                <button onClick={() => removeManualLanguage(lang)} className="hover:text-white transition-colors">&times;</button>
+                                                <button onClick={() => removeManualLanguage(lang)} className="hover:text-white transition-colors">
+                                                    <X size={12} />
+                                                </button>
                                             </span>
                                         ))}
-                                        {languages.length === 0 && <span className="text-gray-600 italic text-[10px]">No languages recorded. Add 'Common' or others.</span>}
+                                        {languages.length === 0 && <span className="text-gray-600 italic text-xs">No languages recorded. Add 'Common' or others.</span>}
                                     </div>
                                 </div>
-                                <div>
-                                    <label className="block text-gray-500 text-xs uppercase font-bold mb-1">Experience Points</label>
-                                    <input type="number" value={xp} onChange={e => setXp(e.target.value)} className="w-full bg-black/30 border border-gray-700 rounded p-3 text-white focus:border-dnd-gold outline-none" />
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Experience Points</label>
+                                    <input 
+                                        type="number" 
+                                        value={xp} 
+                                        onChange={e => setXp(e.target.value)} 
+                                        className="w-full bg-black/40 border border-gray-800 rounded-xl p-3 text-white focus:border-dnd-gold/50 outline-none transition-all" 
+                                    />
                                 </div>
                             </div>
-                            <div className="pt-4 border-t border-gray-800">
-                                <button onClick={saveIdentity} className="w-full py-4 bg-dnd-gold hover:bg-yellow-600 text-black font-bold uppercase rounded shadow-lg transition-colors">Save Identity</button>
+                            <div className="pt-6 border-t border-gray-800 flex justify-end">
+                                <button 
+                                    onClick={saveIdentity} 
+                                    className="px-8 py-2.5 bg-dnd-gold hover:bg-white text-black font-black uppercase tracking-widest rounded-xl shadow-lg shadow-dnd-gold/10 transition-all flex items-center justify-center gap-2 text-xs"
+                                >
+                                    <Save size={14} />
+                                    Save Identity
+                                </button>
                             </div>
                         </div>
                     )}
 
                     {/* CLASSES TAB */}
                     {tab === 'classes' && (
-                        <div className="max-w-4xl mx-auto space-y-8">
+                        <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
                             <div className="space-y-4">
                                 {character.classes.map((cls, idx) => {
                                     const requiredLevel = SUBCLASS_LEVELS[cls.definition.name] || 3;
                                     const canPickSubclass = cls.level >= requiredLevel;
 
                                     return (
-                                        <div key={idx} className="bg-gray-800 border border-gray-700 rounded-lg p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 group hover:border-gray-500 transition-colors">
-                                            <div>
+                                        <div key={idx} className="bg-black/20 border border-gray-800 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 group hover:border-gray-700 transition-all">
+                                            <div className="space-y-3">
                                                 <div className="flex items-center gap-3">
-                                                    <h3 className="text-xl font-bold text-white">{cls.definition.name}</h3>
-                                                    <span className="bg-black/40 px-2 py-1 rounded text-xs font-bold text-dnd-gold border border-dnd-gold/30">Level {cls.level}</span>
+                                                    <h3 className="text-2xl font-serif text-white">{cls.definition.name}</h3>
+                                                    <span className="bg-dnd-gold/10 px-3 py-1 rounded-full text-xs font-black text-dnd-gold border border-dnd-gold/20">Level {cls.level}</span>
                                                 </div>
                                                 {canPickSubclass && (
-                                                    <div className="mt-2">
-                                                        <label className="text-[10px] text-gray-500 uppercase font-bold mr-2">Subclass:</label>
+                                                    <div className="flex items-center gap-3">
+                                                        <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Subclass</label>
                                                         <select 
-                                                            className="bg-[#0b0c0e] border border-gray-600 rounded px-2 py-1 text-xs text-white outline-none focus:border-dnd-gold"
+                                                            className="bg-black/40 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-dnd-gold/50 transition-all"
                                                             value={cls.subclass?.index || ''}
                                                             onFocus={() => loadSubclasses(cls.definition.index)}
                                                             onChange={(e) => handleSubclassChange(cls.definition.index, e.target.value)}
@@ -599,31 +676,33 @@ const ManageCharacterModal = ({
                                                     </div>
                                                 )}
                                                 {!canPickSubclass && (
-                                                     <div className="mt-2 text-xs text-gray-500 italic">
+                                                     <div className="text-xs text-gray-500 italic flex items-center gap-2">
+                                                         <Info size={14} />
                                                          Subclass available at level {requiredLevel}
                                                      </div>
                                                 )}
                                             </div>
-                                            <div className="flex gap-2 shrink-0">
+                                            <div className="flex flex-wrap gap-2 shrink-0">
                                                 {cls.level > 1 && (
                                                     <button 
                                                         onClick={() => handleLevelDown(cls.definition.index)}
-                                                        className="px-4 py-2 bg-gray-700 border border-gray-600 hover:bg-gray-600 text-white font-bold uppercase text-xs rounded transition-colors"
+                                                        className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white font-bold uppercase text-[10px] tracking-widest rounded-lg transition-all"
                                                     >
                                                         Level Down
                                                     </button>
                                                 )}
                                                 <button 
                                                     onClick={() => setWizardClassIndex(cls.definition.index)}
-                                                    className="px-4 py-2 bg-blue-900/30 border border-blue-600 hover:bg-blue-800 text-blue-100 font-bold uppercase text-xs rounded transition-colors"
+                                                    className="px-4 py-2 bg-blue-900/20 border border-blue-800 hover:border-blue-500 text-blue-400 font-bold uppercase text-[10px] tracking-widest rounded-lg transition-all"
                                                 >
                                                     Level Up
                                                 </button>
                                                 <button 
                                                     onClick={() => handleRemoveClass(cls.definition.index)}
-                                                    className="px-4 py-2 bg-red-900/30 border border-red-600 hover:bg-red-800 text-red-100 font-bold uppercase text-xs rounded transition-colors"
+                                                    className="px-4 py-2 bg-red-900/20 border border-red-900/50 hover:bg-red-900/40 text-red-400 font-bold uppercase text-[10px] tracking-widest rounded-lg transition-all flex items-center gap-2"
                                                 >
-                                                    Remove Class
+                                                    <Trash2 size={14} />
+                                                    Remove
                                                 </button>
                                             </div>
                                         </div>
@@ -631,16 +710,17 @@ const ManageCharacterModal = ({
                                 })}
                             </div>
 
-                            <div className="pt-6 border-t border-gray-700">
-                                <h4 className="text-sm font-bold text-gray-400 uppercase mb-4">Add Multiclass</h4>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div className="pt-8 border-t border-gray-800">
+                                <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-6">Add Multiclass</h4>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     {allClasses.filter(c => !character.classes.some(existing => existing.definition.index === c.index)).map(cls => (
                                         <button 
                                             key={cls.index}
                                             onClick={() => { setWizardClassIndex(cls.index); setIsInitiation(true); }}
-                                            className="p-3 bg-black/40 border border-gray-700 hover:border-dnd-gold rounded text-center text-sm font-bold text-gray-300 hover:text-white transition-all"
+                                            className="p-4 bg-black/20 border border-gray-800 hover:border-dnd-gold/50 rounded-xl text-center text-sm font-bold text-gray-400 hover:text-white transition-all flex items-center justify-center gap-2 group"
                                         >
-                                            + {cls.name}
+                                            <Plus size={16} className="text-gray-600 group-hover:text-dnd-gold transition-colors" />
+                                            {cls.name}
                                         </button>
                                     ))}
                                 </div>
@@ -650,43 +730,54 @@ const ManageCharacterModal = ({
 
                     {/* ABILITIES TAB */}
                     {tab === 'abilities' && (
-                        <div className="max-w-4xl mx-auto space-y-10">
-                            <section>
-                                <h3 className="text-sm font-bold text-dnd-gold uppercase tracking-widest mb-4 border-b border-gray-700 pb-2">Ability Scores</h3>
+                        <div className="max-w-4xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                            <section className="space-y-6">
+                                <div className="flex items-center gap-3 border-b border-gray-800 pb-2">
+                                    <Activity size={18} className="text-dnd-gold" />
+                                    <h3 className="text-[10px] font-black text-dnd-gold uppercase tracking-[0.2em]">Ability Scores</h3>
+                                </div>
                                 <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
                                     {ABILITY_NAMES.map(stat => (
-                                        <div key={stat} className="bg-gray-800 p-3 rounded border border-gray-700 text-center">
-                                            <label className="text-[10px] font-bold text-gray-500 uppercase block mb-2">{ABILITY_LABELS[stat]}</label>
+                                        <div key={stat} className="bg-black/20 p-4 rounded-2xl border border-gray-800 text-center space-y-3">
+                                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block">{ABILITY_LABELS[stat]}</label>
                                             <input 
                                                 type="number" 
                                                 value={abilities[stat]} 
                                                 onChange={(e) => handleAbilityChange(stat, e.target.value)}
-                                                className="w-full bg-black/40 border border-gray-600 rounded py-2 text-center text-xl font-bold text-white focus:border-dnd-gold outline-none" 
+                                                className="w-full bg-black/40 border border-gray-700 rounded-xl py-3 text-center text-2xl font-serif font-bold text-white focus:border-dnd-gold/50 outline-none transition-all" 
                                             />
                                         </div>
                                     ))}
                                 </div>
                             </section>
 
-                            <section>
-                                <h3 className="text-sm font-bold text-dnd-gold uppercase tracking-widest mb-4 border-b border-gray-700 pb-2">Feats</h3>
-                                <div className="space-y-2 mb-4">
+                            <section className="space-y-6">
+                                <div className="flex items-center gap-3 border-b border-gray-800 pb-2">
+                                    <Sparkles size={18} className="text-dnd-gold" />
+                                    <h3 className="text-[10px] font-black text-dnd-gold uppercase tracking-[0.2em]">Feats</h3>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     {character.feats.map((feat, i) => (
-                                        <div key={i} className="flex justify-between items-center bg-gray-800 p-3 rounded border border-gray-700">
-                                            <div>
-                                                <div className="font-bold text-white">{feat.name}</div>
-                                                <div className="text-[10px] text-gray-500 line-clamp-1">{feat.desc[0]}</div>
+                                        <div key={i} className="flex justify-between items-center bg-black/20 p-4 rounded-xl border border-gray-800 group hover:border-gray-700 transition-all">
+                                            <div className="min-w-0">
+                                                <div className="font-bold text-sm text-white truncate">{feat.name}</div>
+                                                <div className="text-[10px] text-gray-500 line-clamp-1 italic">{feat.desc[0]}</div>
                                             </div>
-                                            <button onClick={() => handleRemoveFeat(feat.index)} className="text-red-500 hover:text-red-300 font-bold px-3">&times;</button>
+                                            <button 
+                                                onClick={() => handleRemoveFeat(feat.index)} 
+                                                className="p-2 text-gray-600 hover:text-red-400 transition-colors"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
                                         </div>
                                     ))}
-                                    {character.feats.length === 0 && <div className="text-gray-500 italic text-sm">No feats acquired.</div>}
+                                    {character.feats.length === 0 && <div className="col-span-2 text-gray-600 italic text-sm text-center py-8 border border-dashed border-gray-800 rounded-2xl">No feats acquired.</div>}
                                 </div>
-                                <div className="flex gap-2">
+                                <div className="flex gap-3 pt-4">
                                     <select 
                                         value={featToAdd} 
                                         onChange={e => setFeatToAdd(e.target.value)} 
-                                        className="flex-grow bg-[#0b0c0e] border border-gray-600 rounded p-2 text-white focus:border-dnd-gold outline-none"
+                                        className="flex-grow bg-black/40 border border-gray-700 rounded-xl p-3 text-white focus:border-dnd-gold/50 outline-none transition-all"
                                     >
                                         <option value="">Select Feat to Add...</option>
                                         {allFeats.map(f => <option key={f.index} value={f.index}>{f.name}</option>)}
@@ -694,25 +785,34 @@ const ManageCharacterModal = ({
                                     <button 
                                         onClick={handleAddFeat} 
                                         disabled={!featToAdd}
-                                        className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white font-bold uppercase rounded text-xs disabled:opacity-50"
+                                        className="px-8 py-3 bg-gray-800 hover:bg-gray-700 text-white font-black uppercase tracking-widest rounded-xl text-xs disabled:opacity-30 transition-all"
                                     >
                                         Add
                                     </button>
                                 </div>
                             </section>
 
-                            <div className="pt-4 border-t border-gray-800">
-                                <button onClick={saveAbilities} className="w-full py-4 bg-dnd-gold hover:bg-yellow-600 text-black font-bold uppercase rounded shadow-lg transition-colors">Save Stats & Feats</button>
+                            <div className="pt-8 border-t border-gray-800 flex justify-end">
+                                <button 
+                                    onClick={saveAbilities} 
+                                    className="px-8 py-2.5 bg-dnd-gold hover:bg-white text-black font-black uppercase tracking-widest rounded-xl shadow-lg shadow-dnd-gold/10 transition-all flex items-center justify-center gap-2 text-xs"
+                                >
+                                    <Save size={14} />
+                                    Save Stats & Feats
+                                </button>
                             </div>
                         </div>
                     )}
                     
                     {/* PROFICIENCIES TAB */}
                     {tab === 'proficiencies' && (
-                        <div className="max-w-4xl mx-auto space-y-10">
-                            <section>
-                                <h3 className="text-sm font-bold text-dnd-gold uppercase tracking-widest mb-4 border-b border-gray-700 pb-2">Skill Proficiencies</h3>
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        <div className="max-w-4xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                            <section className="space-y-6">
+                                <div className="flex items-center gap-3 border-b border-gray-800 pb-2">
+                                    <Shield size={18} className="text-dnd-gold" />
+                                    <h3 className="text-[10px] font-black text-dnd-gold uppercase tracking-[0.2em]">Skill Proficiencies</h3>
+                                </div>
+                                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                                     {SKILL_LIST.map(skill => {
                                         const isProf = skills.includes(skill.name);
                                         const isExp = expertise.includes(skill.name);
@@ -720,35 +820,53 @@ const ManageCharacterModal = ({
                                         return (
                                             <div 
                                                 key={skill.name} 
-                                                className={`flex items-center gap-3 p-2 rounded cursor-pointer border transition-colors ${isExp ? 'bg-dnd-gold/10 border-dnd-gold' : isProf ? 'bg-gray-800 border-gray-600' : 'border-transparent hover:bg-gray-800'}`}
+                                                className={`flex items-center gap-4 p-4 rounded-xl cursor-pointer border transition-all ${
+                                                    isExp ? 'bg-dnd-gold/10 border-dnd-gold shadow-lg shadow-dnd-gold/5' : 
+                                                    isProf ? 'bg-gray-800/50 border-gray-700' : 
+                                                    'bg-black/20 border-gray-800 hover:border-gray-700 hover:bg-black/30'
+                                                }`}
                                                 onClick={() => cycleSkill(skill.name)}
                                             >
-                                                <div className={`w-4 h-4 flex items-center justify-center rounded border ${isExp ? 'border-dnd-gold bg-dnd-gold text-black' : isProf ? 'border-gray-500 bg-gray-500' : 'border-gray-600 bg-black/40'}`}>
-                                                    {isExp && <span className="text-[10px] font-bold">E</span>}
-                                                    {isProf && !isExp && <span className="text-[10px] font-bold text-black">✓</span>}
+                                                <div className={`w-6 h-6 flex items-center justify-center rounded-lg border transition-all ${
+                                                    isExp ? 'border-dnd-gold bg-dnd-gold text-black' : 
+                                                    isProf ? 'border-gray-500 bg-gray-500 text-black' : 
+                                                    'border-gray-700 bg-black/40'
+                                                }`}>
+                                                    {isExp && <span className="text-[10px] font-black">E</span>}
+                                                    {isProf && !isExp && <span className="text-[10px] font-black">✓</span>}
                                                 </div>
-                                                <span className={`text-sm ${isExp ? 'text-dnd-gold font-bold' : 'text-gray-300'}`}>{skill.name}</span>
+                                                <div className="flex flex-col">
+                                                    <span className={`text-sm font-bold ${isExp ? 'text-dnd-gold' : isProf ? 'text-white' : 'text-gray-400'}`}>
+                                                        {skill.name}
+                                                    </span>
+                                                    <span className="text-[8px] uppercase font-black text-gray-600 tracking-widest">
+                                                        {skill.ability.substring(0, 3)}
+                                                    </span>
+                                                </div>
                                             </div>
                                         );
                                     })}
                                 </div>
                             </section>
 
-                            {/* Racial Spell Choice (e.g. High Elf Cantrip) */}
+                            {/* Racial Spell Choice */}
                             {character.spells.some(s => s.sourceClassIndex === 'racial') && (
-                                <section>
-                                    <h3 className="text-sm font-bold text-dnd-gold uppercase tracking-widest mb-4 border-b border-gray-700 pb-2">Racial Spells</h3>
+                                <section className="space-y-6">
+                                    <div className="flex items-center gap-3 border-b border-gray-800 pb-2">
+                                        <Sparkles size={18} className="text-dnd-gold" />
+                                        <h3 className="text-[10px] font-black text-dnd-gold uppercase tracking-[0.2em]">Racial Spells</h3>
+                                    </div>
                                     <div className="space-y-3">
                                         {character.spells.filter(s => s.sourceClassIndex === 'racial').map(spell => (
-                                            <div key={spell.index} className="flex items-center justify-between bg-gray-800 p-3 rounded border border-gray-700">
+                                            <div key={spell.index} className="flex items-center justify-between bg-black/20 p-5 rounded-2xl border border-gray-800">
                                                 <div>
-                                                    <div className="font-bold text-white">{spell.name}</div>
-                                                    <div className="text-[10px] text-gray-500">Source: Race</div>
+                                                    <div className="font-bold text-white text-lg font-serif">{spell.name}</div>
+                                                    <div className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Source: Race</div>
                                                 </div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs text-gray-400">Change to:</span>
+                                                <div className="flex items-center gap-4">
+                                                    <span className="text-xs text-gray-500 font-bold italic">Change to:</span>
                                                     <select 
-                                                        className="bg-black/40 border border-gray-600 rounded p-1 text-xs text-white outline-none focus:border-dnd-gold w-40"
+                                                        className="bg-black/40 border border-gray-700 rounded-xl px-4 py-2 text-xs text-white outline-none focus:border-dnd-gold/50 transition-all w-48"
                                                         onChange={(e) => replaceRacialSpell(spell.index, e.target.value)}
                                                         value=""
                                                     >
@@ -761,243 +879,251 @@ const ManageCharacterModal = ({
                                             </div>
                                         ))}
                                     </div>
-                                    <p className="text-[10px] text-gray-500 mt-2">
+                                    <p className="text-[10px] text-gray-600 italic flex items-center gap-2">
+                                        <Info size={14} />
                                         Note: Changing a racial spell here will replace the existing one in your spellbook.
                                     </p>
                                 </section>
                             )}
 
-                            <div className="pt-4 border-t border-gray-800">
-                                <button onClick={saveProficiencies} className="w-full py-4 bg-dnd-gold hover:bg-yellow-600 text-black font-bold uppercase rounded shadow-lg transition-colors">Save Proficiencies</button>
+                            <div className="pt-8 border-t border-gray-800 flex justify-end">
+                                <button 
+                                    onClick={saveProficiencies} 
+                                    className="px-8 py-2.5 bg-dnd-gold hover:bg-white text-black font-black uppercase tracking-widest rounded-xl shadow-lg shadow-dnd-gold/10 transition-all flex items-center justify-center gap-2 text-xs"
+                                >
+                                    <Save size={14} />
+                                    Save Proficiencies
+                                </button>
                             </div>
                         </div>
                     )}
 
                     {/* TRACKERS TAB */}
                     {tab === 'trackers' && (
-                        <div className="max-w-2xl mx-auto">
-                             <div className="space-y-3 mb-8">
+                        <div className="max-w-3xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                             <div className="space-y-4">
+                                    <div className="flex items-center gap-3 border-b border-gray-800 pb-2 mb-6">
+                                        <Activity size={18} className="text-dnd-gold" />
+                                        <h3 className="text-[10px] font-black text-dnd-gold uppercase tracking-[0.2em]">Active Trackers</h3>
+                                    </div>
                                     {Object.entries(localFeatures).map(([featName, usage]: [string, any]) => (
-                                        <div key={featName} className="flex items-center gap-4 bg-gray-800 p-3 rounded border border-gray-700">
+                                        <div key={featName} className="flex flex-col sm:flex-row items-center gap-6 bg-black/20 p-6 rounded-2xl border border-gray-800 group hover:border-gray-700 transition-all">
                                             <div className="flex-grow">
-                                                <div className="font-bold text-white">{featName}</div>
-                                                <div className="text-[10px] text-gray-500 flex items-center gap-2 mt-1">
-                                                    <span>Current: {usage.current}</span>
-                                                    <span className="text-gray-600">|</span>
-                                                    <div className="flex items-center gap-1">
-                                                        <span>Resets:</span>
+                                                <div className="font-bold text-lg text-white font-serif">{featName}</div>
+                                                <div className="flex items-center gap-4 mt-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Max Uses:</span>
+                                                        <span className="text-sm font-bold text-white">{usage.max}</span>
+                                                    </div>
+                                                    <div className="h-3 w-px bg-gray-800" />
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Resets:</span>
                                                         <select 
                                                             value={usage.reset || 'long'} 
                                                             onChange={(e) => setLocalFeatures((prev: any) => ({
                                                                 ...prev,
                                                                 [featName]: { ...prev[featName], reset: e.target.value as 'short' | 'long' }
                                                             }))}
-                                                            className="bg-[#0b0c0e] border border-gray-600 rounded px-1 py-0.5 text-[10px] text-white focus:border-dnd-gold outline-none uppercase font-bold"
+                                                            className="bg-black/40 border border-gray-700 rounded-lg px-2 py-1 text-[10px] text-white focus:border-dnd-gold/50 outline-none uppercase font-black tracking-widest transition-all"
                                                         >
-                                                            <option value="short">Short</option>
-                                                            <option value="long">Long</option>
+                                                            <option value="short">Short Rest</option>
+                                                            <option value="long">Long Rest</option>
                                                         </select>
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs text-gray-400 uppercase font-bold">Max</span>
-                                                <input 
-                                                    type="number" 
-                                                    value={usage.max} 
-                                                    onChange={(e) => setLocalFeatures((prev: any) => ({
-                                                        ...prev,
-                                                        [featName]: { ...prev[featName], max: parseInt(e.target.value) || 0 }
-                                                    }))}
-                                                    className="w-16 bg-[#0b0c0e] border border-gray-600 rounded p-1 text-center text-white focus:border-dnd-gold outline-none"
-                                                />
-                                            </div>
                                             <button 
-                                                onClick={() => handleDeleteFeature(featName)} 
-                                                className="text-gray-500 hover:text-red-500 p-2" 
-                                                title="Delete Tracker"
+                                                onClick={() => handleDeleteFeature(featName)}
+                                                className="p-3 bg-red-900/10 text-red-400 hover:bg-red-900/20 rounded-xl transition-all border border-red-900/20"
                                             >
-                                                &times;
+                                                <Trash2 size={18} />
                                             </button>
                                         </div>
                                     ))}
-                                    {Object.keys(localFeatures).length === 0 && <div className="text-center text-gray-500 italic py-4">No features tracked.</div>}
-                                </div>
+                                    {Object.keys(localFeatures).length === 0 && (
+                                        <div className="text-gray-600 italic text-sm text-center py-12 border border-dashed border-gray-800 rounded-3xl">
+                                            No custom trackers defined.
+                                        </div>
+                                    )}
+                             </div>
 
-                                <div className="bg-[#151619] p-4 rounded border border-gray-700">
-                                    <h4 className="text-sm font-bold text-white mb-3 uppercase">Add New Tracker</h4>
-                                    <div className="flex gap-2">
+                             <div className="bg-black/40 p-8 rounded-3xl border border-gray-800 space-y-6">
+                                <div className="flex items-center gap-3 border-b border-gray-800 pb-2">
+                                    <Plus size={18} className="text-dnd-gold" />
+                                    <h3 className="text-[10px] font-black text-dnd-gold uppercase tracking-[0.2em]">Add New Tracker</h3>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Feature Name</label>
                                         <input 
                                             type="text" 
-                                            placeholder="Feature Name" 
+                                            placeholder="e.g. Ki Points, Superiority Dice" 
                                             value={newFeatName} 
                                             onChange={e => setNewFeatName(e.target.value)} 
-                                            className="flex-grow bg-[#0b0c0e] border border-gray-600 rounded p-2 text-white focus:border-dnd-gold outline-none"
+                                            className="w-full bg-black/40 border border-gray-700 rounded-xl p-3 text-white focus:border-dnd-gold/50 outline-none transition-all" 
                                         />
-                                        <input 
-                                            type="number" 
-                                            placeholder="Max" 
-                                            value={newFeatMax} 
-                                            onChange={e => setNewFeatMax(parseInt(e.target.value) || 0)} 
-                                            className="w-20 bg-[#0b0c0e] border border-gray-600 rounded p-2 text-white focus:border-dnd-gold outline-none text-center"
-                                        />
-                                        <select 
-                                            value={newFeatReset} 
-                                            onChange={(e) => setNewFeatReset(e.target.value as 'short' | 'long')}
-                                            className="bg-[#0b0c0e] border border-gray-600 rounded p-2 text-white focus:border-dnd-gold outline-none text-xs uppercase font-bold"
-                                        >
-                                            <option value="short">Short Rest</option>
-                                            <option value="long">Long Rest</option>
-                                        </select>
-                                        <button 
-                                            onClick={handleAddFeature} 
-                                            disabled={!newFeatName}
-                                            className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded font-bold uppercase disabled:opacity-50"
-                                        >
-                                            Add
-                                        </button>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Max Uses</label>
+                                            <input 
+                                                type="number" 
+                                                value={newFeatMax} 
+                                                onChange={e => setNewFeatMax(parseInt(e.target.value) || 1)} 
+                                                className="w-full bg-black/40 border border-gray-700 rounded-xl p-3 text-white focus:border-dnd-gold/50 outline-none transition-all" 
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Reset On</label>
+                                            <select 
+                                                value={newFeatReset} 
+                                                onChange={e => setNewFeatReset(e.target.value as any)} 
+                                                className="w-full bg-black/40 border border-gray-700 rounded-xl p-3 text-white focus:border-dnd-gold/50 outline-none transition-all"
+                                            >
+                                                <option value="short">Short Rest</option>
+                                                <option value="long">Long Rest</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
+                                <button 
+                                    onClick={handleAddFeature} 
+                                    disabled={!newFeatName}
+                                    className="w-full py-4 bg-gray-800 hover:bg-gray-700 text-white font-black uppercase tracking-widest rounded-xl text-xs disabled:opacity-30 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Plus size={16} />
+                                    Add Tracker
+                                </button>
+                             </div>
 
-                                <button onClick={handleSaveTrackers} className="w-full py-4 bg-dnd-gold hover:bg-yellow-600 text-black font-bold uppercase rounded shadow-lg transition-colors mt-8">Save Feature Changes</button>
+                             <div className="pt-8 border-t border-gray-800 flex justify-end">
+                                <button 
+                                    onClick={handleSaveTrackers} 
+                                    className="px-8 py-2.5 bg-dnd-gold hover:bg-white text-black font-black uppercase tracking-widest rounded-xl shadow-lg shadow-dnd-gold/10 transition-all flex items-center justify-center gap-2 text-xs"
+                                >
+                                    <Save size={14} />
+                                    Save All Trackers
+                                </button>
+                             </div>
                         </div>
                     )}
 
-                    {/* SETTINGS TAB */}
-                    {tab === 'settings' && (
-                        <div className="max-w-lg mx-auto">
-                            <h3 className="text-xl font-serif text-dnd-gold mb-4">Display & Sheet Settings</h3>
-                            <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 space-y-6">
-                                <div>
-                                    <div className="flex justify-between items-center mb-4">
-                                        <label className="text-sm font-bold text-white uppercase">Text Size Adjustment</label>
-                                        <span className="text-dnd-gold font-bold">{Math.round(fontScale * 100)}%</span>
-                                    </div>
-                                    <input 
-                                        type="range" 
-                                        min="1.0" 
-                                        max="1.5" 
-                                        step="0.05" 
-                                        value={fontScale} 
-                                        onChange={e => setFontScale(parseFloat(e.target.value))}
-                                        className="w-full h-2 bg-gray-900 rounded-lg appearance-none cursor-pointer accent-dnd-gold"
-                                    />
-                                    <div className="flex justify-between text-[10px] text-gray-500 uppercase font-bold mt-2">
-                                        <span>Default</span>
-                                        <span>Large</span>
-                                        <span>Extra Large</span>
-                                    </div>
+                    {/* THEME TAB */}
+                    {tab === 'theme' && (
+                        <div className="max-w-3xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                            <section className="space-y-8">
+                                <div className="flex items-center gap-3 border-b border-gray-800 pb-2">
+                                    <Palette size={18} className="text-dnd-gold" />
+                                    <h3 className="text-[10px] font-black text-dnd-gold uppercase tracking-[0.2em]">Visual Theme</h3>
                                 </div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-4">
+                                        <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-500">
+                                            <Type size={12} /> UI Font Scale
+                                        </label>
+                                        <div className="flex items-center gap-4 bg-black/20 p-4 rounded-2xl border border-gray-800">
+                                            <input 
+                                                type="range" min="0.8" max="1.5" step="0.05" 
+                                                value={fontScale} 
+                                                onChange={e => setFontScale(parseFloat(e.target.value))} 
+                                                className="flex-grow accent-dnd-gold"
+                                            />
+                                            <span className="text-sm font-bold text-white min-w-[3rem] text-right">{Math.round(fontScale * 100)}%</span>
+                                        </div>
+                                    </div>
 
-                                <div>
-                                    <label className="text-sm font-bold text-white uppercase block mb-2">Background Image URL</label>
-                                    <input 
-                                        type="text" 
-                                        placeholder="https://example.com/wallpaper.jpg"
-                                        value={backgroundImageUrl} 
-                                        onChange={e => setBackgroundImageUrl(e.target.value)} 
-                                        className="w-full bg-[#0b0c0e] border border-gray-600 rounded p-3 text-white focus:border-dnd-gold outline-none"
-                                    />
-                                </div>
+                                    <div className="space-y-4">
+                                        <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-500">
+                                            <Dice5 size={12} /> 3D Dice Settings
+                                        </label>
+                                        <button 
+                                            onClick={() => setShow3DDice(!show3DDice)}
+                                            className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${
+                                                show3DDice ? 'bg-blue-900/10 border-blue-800 text-blue-400' : 'bg-black/20 border-gray-800 text-gray-500'
+                                            }`}
+                                        >
+                                            <span className="text-xs font-bold uppercase tracking-widest">Enable 3D Dice</span>
+                                            <div className={`w-10 h-5 rounded-full relative transition-all ${show3DDice ? 'bg-blue-600' : 'bg-gray-800'}`}>
+                                                <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${show3DDice ? 'left-6' : 'left-1'}`} />
+                                            </div>
+                                        </button>
+                                    </div>
 
-                                <div>
-                                    <label className="text-sm font-bold text-white uppercase block mb-2">Background Color</label>
-                                    <div className="flex gap-2">
-                                        <input 
-                                            type="color" 
-                                            value={backgroundColor} 
-                                            onChange={e => setBackgroundColor(e.target.value)} 
-                                            className="h-10 w-12 bg-transparent border-0 cursor-pointer rounded"
-                                        />
+                                    <div className="space-y-4">
+                                        <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-500">
+                                            <Palette size={12} /> Background Color
+                                        </label>
+                                        <div className="flex items-center gap-3 bg-black/20 p-3 rounded-2xl border border-gray-800">
+                                            <input type="color" value={backgroundColor} onChange={e => setBackgroundColor(e.target.value)} className="w-10 h-10 rounded-lg bg-transparent border-none cursor-pointer" />
+                                            <input type="text" value={backgroundColor} onChange={e => setBackgroundColor(e.target.value)} className="flex-grow bg-transparent text-xs font-mono text-gray-400 uppercase outline-none" />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-500">
+                                            <Sparkles size={12} /> Primary Theme Color
+                                        </label>
+                                        <div className="flex items-center gap-3 bg-black/20 p-3 rounded-2xl border border-gray-800">
+                                            <input type="color" value={themeColor} onChange={e => setThemeColor(e.target.value)} className="w-10 h-10 rounded-lg bg-transparent border-none cursor-pointer" />
+                                            <input type="text" value={themeColor} onChange={e => setThemeColor(e.target.value)} className="flex-grow bg-transparent text-xs font-mono text-gray-400 uppercase outline-none" />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-500">
+                                            <Palette size={12} /> Secondary Theme Color
+                                        </label>
+                                        <div className="flex items-center gap-3 bg-black/20 p-3 rounded-2xl border border-gray-800">
+                                            <input type="color" value={themeColorSecondary} onChange={e => setThemeColorSecondary(e.target.value)} className="w-10 h-10 rounded-lg bg-transparent border-none cursor-pointer" />
+                                            <input type="text" value={themeColorSecondary} onChange={e => setThemeColorSecondary(e.target.value)} className="flex-grow bg-transparent text-xs font-mono text-gray-400 uppercase outline-none" />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-500">
+                                            <Dice5 size={12} /> 3D Dice Color
+                                        </label>
+                                        <div className="flex items-center gap-3 bg-black/20 p-3 rounded-2xl border border-gray-800">
+                                            <input type="color" value={diceColor} onChange={e => setDiceColor(e.target.value)} className="w-10 h-10 rounded-lg bg-transparent border-none cursor-pointer" />
+                                            <input type="text" value={diceColor} onChange={e => setDiceColor(e.target.value)} className="flex-grow bg-transparent text-xs font-mono text-gray-400 uppercase outline-none" />
+                                        </div>
+                                    </div>
+
+                                    <div className="md:col-span-2 space-y-4">
+                                        <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-500">
+                                            <Eye size={12} /> Background Image URL
+                                        </label>
                                         <input 
                                             type="text" 
-                                            value={backgroundColor}
-                                            onChange={e => setBackgroundColor(e.target.value)}
-                                            className="flex-grow bg-[#0b0c0e] border border-gray-600 rounded p-2 text-white focus:border-dnd-gold outline-none uppercase"
-                                            placeholder="#2b2b2b"
+                                            value={backgroundImageUrl} 
+                                            onChange={e => setBackgroundImageUrl(e.target.value)} 
+                                            placeholder="https://example.com/image.jpg"
+                                            className="w-full bg-black/40 border border-gray-800 rounded-xl p-4 text-white focus:border-dnd-gold/50 outline-none transition-all" 
                                         />
-                                        <button 
-                                            onClick={() => setBackgroundColor('#2b2b2b')}
-                                            className="text-xs uppercase font-bold text-gray-500 hover:text-white border border-gray-600 px-3 rounded"
-                                        >
-                                            Reset
-                                        </button>
                                     </div>
                                 </div>
+                            </section>
 
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="text-sm font-bold text-white uppercase block mb-2">Theme Color (Primary)</label>
-                                        <div className="flex gap-2 items-center">
-                                            <input 
-                                                type="color" 
-                                                value={themeColor} 
-                                                onChange={e => setThemeColor(e.target.value)} 
-                                                className="w-12 h-10 bg-transparent border-0 cursor-pointer rounded overflow-hidden"
-                                            />
-                                            <button 
-                                                onClick={() => setThemeColor('#c9ad6a')}
-                                                className="text-[10px] uppercase font-bold text-gray-500 hover:text-dnd-gold border border-gray-600 rounded px-2 py-1"
-                                            >
-                                                Reset
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="text-sm font-bold text-white uppercase block mb-2">Theme Color (Secondary)</label>
-                                        <div className="flex gap-2 items-center">
-                                            <input 
-                                                type="color" 
-                                                value={themeColorSecondary} 
-                                                onChange={e => setThemeColorSecondary(e.target.value)} 
-                                                className="w-12 h-10 bg-transparent border-0 cursor-pointer rounded overflow-hidden"
-                                            />
-                                            <button 
-                                                onClick={() => setThemeColorSecondary('#8a0b0b')}
-                                                className="text-[10px] uppercase font-bold text-gray-500 hover:text-red-500 border border-gray-600 rounded px-2 py-1"
-                                            >
-                                                Reset
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="text-sm font-bold text-white uppercase block mb-2">3D Dice Color</label>
-                                    <div className="flex gap-2 items-center">
-                                        <input 
-                                            type="color" 
-                                            value={diceColor} 
-                                            onChange={e => setDiceColor(e.target.value)} 
-                                            className="w-12 h-10 bg-transparent border-0 cursor-pointer rounded overflow-hidden"
-                                        />
-                                        <button 
-                                            onClick={() => setDiceColor('#c9ad6a')}
-                                            className="text-[10px] uppercase font-bold text-gray-500 hover:text-dnd-gold border border-gray-600 rounded px-2 py-1"
-                                        >
-                                            Reset
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="border-t border-gray-700 pt-4">
-                                     <label className="flex items-center justify-between cursor-pointer group">
-                                        <span className="text-sm font-bold text-white uppercase">Enable 3D Dice Rolling</span>
-                                        <div className="relative">
-                                            <input 
-                                                type="checkbox" 
-                                                className="sr-only" 
-                                                checked={show3DDice} 
-                                                onChange={(e) => setShow3DDice(e.target.checked)} 
-                                            />
-                                            <div className={`w-10 h-6 rounded-full shadow-inner transition-colors ${show3DDice ? 'bg-dnd-gold' : 'bg-gray-600'}`}></div>
-                                            <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform transform ${show3DDice ? 'translate-x-4' : 'translate-x-0'}`}></div>
-                                        </div>
-                                     </label>
-                                     <p className="text-[10px] text-gray-500 mt-2">If disabled, dice rolls will only appear in the log.</p>
-                                </div>
-
-                                <button onClick={() => { onUpdate({ fontScale, backgroundImageUrl, backgroundColor, themeColor, themeColorSecondary, diceColor, show3DDice }); onClose(); }} className="w-full py-4 bg-dnd-gold hover:bg-yellow-600 text-black font-bold uppercase rounded shadow-lg transition-colors mt-8">Save Settings</button>
+                            <div className="pt-8 border-t border-gray-800 flex justify-end">
+                                <button 
+                                    onClick={() => {
+                                        onUpdate({
+                                            fontScale,
+                                            backgroundImageUrl,
+                                            backgroundColor,
+                                            themeColor,
+                                            themeColorSecondary,
+                                            diceColor,
+                                            show3DDice
+                                        });
+                                        onClose();
+                                    }} 
+                                    className="px-8 py-2.5 bg-dnd-gold hover:bg-white text-black font-black uppercase tracking-widest rounded-xl shadow-lg shadow-dnd-gold/10 transition-all flex items-center justify-center gap-2 text-xs"
+                                >
+                                    <Save size={14} />
+                                    Apply All Settings
+                                </button>
                             </div>
                         </div>
                     )}

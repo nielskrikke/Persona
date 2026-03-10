@@ -208,8 +208,14 @@ const ItemSearchModal: React.FC<ItemSearchModalProps> = ({ isOpen, onClose, item
     };
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-8 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
-            <div className="bg-[#1b1c20] border border-gray-800 w-full max-w-5xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
+        <div 
+            className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-8 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300"
+            onClick={onClose}
+        >
+            <div 
+                className="bg-[#1b1c20] border border-gray-800 w-full max-w-5xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300"
+                onClick={(e) => e.stopPropagation()}
+            >
                 {/* Header */}
                 <div className="p-6 bg-[#121316] border-b border-gray-800 flex justify-between items-center">
                     <div>
@@ -552,13 +558,13 @@ const ItemSearchModal: React.FC<ItemSearchModalProps> = ({ isOpen, onClose, item
                                         placeholder="Search by name..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="w-full bg-black/40 border border-gray-800 rounded-xl py-4 pl-12 pr-4 text-white placeholder-gray-600 focus:outline-none focus:border-dnd-gold/50 transition-all"
+                                        className="w-full bg-black/40 border border-gray-800 rounded-xl py-2.5 pl-12 pr-4 text-white placeholder-gray-600 focus:outline-none focus:border-dnd-gold/50 transition-all"
                                         autoFocus
                                     />
                                 </div>
                                 <button 
                                     onClick={() => setShowFilters(!showFilters)}
-                                    className={`px-6 rounded-xl border transition-all flex items-center gap-2 font-bold text-sm ${
+                                    className={`px-4 rounded-xl border transition-all flex items-center gap-2 font-bold text-sm ${
                                         showFilters || rarityFilter.length > 0 || magicOnly || attunementFilter !== 'any'
                                             ? 'bg-dnd-gold border-dnd-gold text-black' 
                                             : 'bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-500'
@@ -694,8 +700,9 @@ const ItemSearchModal: React.FC<ItemSearchModalProps> = ({ isOpen, onClose, item
                                         return (
                                             <div 
                                                 key={item.index}
-                                                className={`flex flex-col bg-black/20 border rounded-xl transition-all overflow-hidden ${
-                                                    isExpanded ? 'border-dnd-gold bg-black/40 ring-1 ring-dnd-gold/20' : 'border-gray-800 hover:border-gray-700 hover:bg-black/30'
+                                                onClick={() => setExpandedItem(isExpanded ? null : item.index)}
+                                                className={`flex flex-col bg-black/20 border rounded-xl transition-all overflow-hidden cursor-pointer ${
+                                                    isExpanded ? 'border-gray-700 bg-black/40' : 'border-gray-800 hover:border-gray-700 hover:bg-black/30'
                                                 }`}
                                             >
                                                 <div className="flex items-center p-4 gap-4">
@@ -736,14 +743,11 @@ const ItemSearchModal: React.FC<ItemSearchModalProps> = ({ isOpen, onClose, item
                                                     </div>
 
                                                     <div className="flex items-center gap-2">
+                                                        <div className={`p-2 rounded-lg transition-colors ${isExpanded ? 'bg-gray-800 text-white' : 'text-gray-500 hover:bg-gray-800 hover:text-white'}`}>
+                                                            <Info size={18} />
+                                                        </div>
                                                         <button 
-                                                            onClick={() => setExpandedItem(isExpanded ? null : item.index)}
-                                                            className={`p-2 rounded-lg transition-colors ${isExpanded ? 'bg-dnd-gold text-black' : 'text-gray-500 hover:bg-gray-800 hover:text-white'}`}
-                                                        >
-                                                            {isExpanded ? <ChevronUp size={18} /> : <Info size={18} />}
-                                                        </button>
-                                                        <button 
-                                                            onClick={() => onSelectItem(item)}
+                                                            onClick={(e) => { e.stopPropagation(); onSelectItem(item); }}
                                                             className="flex items-center gap-2 px-4 py-2 bg-dnd-gold text-black rounded-lg text-xs font-black uppercase hover:bg-white transition-all shadow-lg shadow-dnd-gold/10"
                                                         >
                                                             <Plus size={14} />

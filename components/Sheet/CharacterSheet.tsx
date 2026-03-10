@@ -26,7 +26,7 @@ import SteelDefenderModal from './Modals/SteelDefenderModal';
 import CompanionStatBlockModal from './Modals/CompanionStatBlockModal';
 import DetailSidePanel from './SidePanels/DetailSidePanel';
 import HomebrewManagerModal from '../Dashboard/HomebrewManagerModal';
-import SpellManagerSidePanel from './SidePanels/SpellManagerSidePanel';
+import SpellManagerModal from './Modals/SpellManagerModal';
 import RollContextMenu from './Shared/RollContextMenu';
 
 // Tab Components
@@ -1004,7 +1004,42 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 attacks.push({ id: spell.index, name: spell.name, range: spell.range, hit: spellAttack + extraSpellAttack, save: dc ? { dc: spellSave, type: dc } : null, damage: dmgStr || 'See Desc', type: spell.damage?.damage_type?.name || 'Magic', notes: [spell.level === 0 ? 'Cantrip' : `Lvl ${spell.level}`], source: spell });
             }
         });
-        character.customActions?.forEach(action => { attacks.push({ id: action.id, name: action.name, range: action.range || '-', hit: action.hit !== undefined ? action.hit : null, damage: action.damage || '-', type: action.damageType || action.type, notes: [action.description || ''], source: { name: action.name, desc: action.description || '', category: 'Custom' } }); });
+        character.customActions?.forEach(action => {
+            let hit: number | null = null;
+            let save: { type: string, dc: number } | null = null;
+
+            if (action.saveDC !== undefined) {
+                save = { 
+                    type: action.saveAbility?.toUpperCase() || 'DC', 
+                    dc: action.saveDC 
+                };
+            } else if (action.hit !== undefined) {
+                hit = action.hit;
+            } else if (action.ability) {
+                const mod = calculateModifier(getStat(action.ability));
+                hit = (action.isProficient ? prof : 0) + mod + (action.bonus || 0);
+            }
+
+            attacks.push({ 
+                id: action.id, 
+                name: action.name, 
+                range: action.range || '-', 
+                hit,
+                save,
+                damage: action.damage || '-', 
+                type: action.damageType || action.type, 
+                notes: [
+                    action.activationType ? action.activationType.charAt(0).toUpperCase() + action.activationType.slice(1) : '',
+                    action.description || ''
+                ].filter(Boolean), 
+                source: { 
+                    ...action,
+                    name: action.name, 
+                    desc: action.description || '', 
+                    category: 'Custom' 
+                } 
+            }); 
+        });
         return attacks;
     };
 
@@ -1037,6 +1072,18 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
          if (sorcerer && sorcerer.level >= 1) {
              list.push({ id: 'feature-innate-sorcery', name: "Innate Sorcery", category: 'Action', desc: "DC +1 and Advantage on attack rolls for 1 minute." });
          }
+
+         character.customActions?.forEach(action => {
+            if (action.activationType === 'bonus') {
+                list.push({ 
+                    id: action.id, 
+                    name: action.name, 
+                    category: 'Custom', 
+                    desc: action.description || action.desc || '', 
+                    source: { ...action, category: 'Custom' } 
+                });
+            }
+        });
 
          return list;
     };
@@ -1126,7 +1173,20 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             <ManageCharacterModal isOpen={showManageCharacterModal} character={character} onClose={() => setShowManageCharacterModal(false)} onUpdate={(updates) => setCharacter(prev => ({...prev, ...updates}))} onLevelUp={performLevelUp} />
             <HealthManagerModal isOpen={showHealthManager} character={character} onClose={() => setShowHealthManager(false)} onUpdate={(updates) => setCharacter(prev => { if (prev.activeWildShape && updates.activeWildShape) return { ...prev, activeWildShape: updates.activeWildShape }; if (prev.activeWildShape && updates.currentHp !== undefined) return { ...prev, activeWildShape: { ...prev.activeWildShape, currentHp: updates.currentHp } }; if (prev.activeEldritchCannon && updates.activeEldritchCannon) return { ...prev, activeEldritchCannon: updates.activeEldritchCannon }; if (prev.activeSteelDefender && updates.activeSteelDefender) return { ...prev, activeSteelDefender: updates.activeSteelDefender }; return {...prev, ...updates}; })} onTakeDamage={handleDamageTrigger} />
             <ShortRestModal isOpen={showShortRestModal} character={character} onUpdate={(updates) => setCharacter(prev => ({...prev, ...updates}))} onClose={() => setShowShortRestModal(false)} onRoll={roll} />
-            <CustomActionModal isOpen={showCustomActionModal} onClose={() => setShowCustomActionModal(false)} onSave={(action) => setCharacter(prev => ({...prev, customActions: [...(prev.customActions || []), action]}))} />
+            <CustomActionModal 
+                isOpen={showCustomActionModal} 
+                onClose={() => setShowCustomActionModal(false)} 
+                onSave={(action) => setCharacter(prev => {
+                    const newState = { ...prev, customActions: [...(prev.customActions || []), action] };
+                    if (action.maxUses) {
+                        newState.featureUsage = {
+                            ...newState.featureUsage,
+                            [action.name]: { max: action.maxUses, current: action.maxUses, reset: action.reset || 'long' }
+                        };
+                    }
+                    return newState;
+                })} 
+            />
             <ItemSearchModal 
                 isOpen={showItemSearchModal} 
                 onClose={() => setShowItemSearchModal(false)} 
@@ -1225,7 +1285,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             </footer>
 
             <main className="flex-grow flex flex-col md:flex-row overflow-hidden max-w-[1400px] mx-auto w-full relative font-scalable-text z-10 pt-0 pb-[64px] md:pb-0">
-                <aside className={isSidePanelPinned && (showSpellManager || !!selectedDetail) 
+                <aside className={isSidePanelPinned && !!selectedDetail 
                     ? "hidden md:flex flex-col md:w-[340px] lg:w-[320px] bg-[#121316]/50 border-r border-[#3e4149] p-4 gap-4 overflow-y-auto custom-scrollbar shrink-0 backdrop-blur-md" 
                     : "hidden md:flex md:flex-col lg:grid lg:grid-cols-2 md:w-[340px] lg:w-[600px] bg-[#121316]/50 border-r border-[#3e4149] p-4 gap-4 overflow-y-auto custom-scrollbar shrink-0 backdrop-blur-md"
                 }>
@@ -1263,10 +1323,16 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     </div>
                 </section>
                 
-                {(showSpellManager || !!selectedDetail) && !isSidePanelPinned && (<div className="absolute inset-0 z-[150] bg-transparent" onClick={() => { setShowSpellManager(false); setSelectedDetail(null); }}></div>)}
+                {!!selectedDetail && !isSidePanelPinned && (<div className="absolute inset-0 z-[150] bg-transparent" onClick={() => { setSelectedDetail(null); }}></div>)}
                 <DetailSidePanel item={selectedDetail} character={character} onClose={() => setSelectedDetail(null)} onAction={(action, itm) => { if (action === 'toggleEquip') toggleEquipped(itm.id); if (action === 'toggleAttune') toggleAttunement(itm.id); if (action === 'remove') { if ('quantity' in itm) updateQuantity(itm.id, 0); else setCharacter(prev => ({ ...prev, spells: prev.spells.filter(s => s.index !== itm.index || s.sourceClassIndex !== itm.sourceClassIndex) })); setSelectedDetail(null); } }} isPinned={isSidePanelPinned} onTogglePin={() => setIsSidePanelPinned(!isSidePanelPinned)} isFavorite={selectedDetail ? character.favorites.includes(getEntityId(selectedDetail)) : false} onToggleFavorite={() => { if (selectedDetail) toggleFavorite(getEntityId(selectedDetail)); }} />
-                <SpellManagerSidePanel character={character} isOpen={showSpellManager} onClose={() => setShowSpellManager(false)} onUpdateSpells={(spells) => setCharacter(prev => ({...prev, spells}))} onAddCustom={() => setShowCustomSpellModal(true)} isPinned={isSidePanelPinned} onTogglePin={() => setIsSidePanelPinned(!isSidePanelPinned)} />
             </main>
+            <SpellManagerModal 
+                character={character} 
+                isOpen={showSpellManager} 
+                onClose={() => setShowSpellManager(false)} 
+                onUpdateSpells={(spells) => setCharacter(prev => ({...prev, spells}))} 
+                onAddCustom={() => setShowCustomSpellModal(true)} 
+            />
         </div>
     );
 };
