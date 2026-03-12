@@ -5,19 +5,21 @@ export const AutoSaveInput = ({
     value, 
     onSave, 
     className, 
-    placeholder 
+    placeholder,
+    type = "text"
 }: { 
     value: string, 
     onSave: (val: string) => void, 
     className?: string, 
-    placeholder?: string 
+    placeholder?: string,
+    type?: string
 }) => {
     const [local, setLocal] = useState(value);
     useEffect(() => setLocal(value), [value]);
 
     return (
         <input 
-            type="text"
+            type={type}
             value={local}
             onChange={e => setLocal(e.target.value)}
             onBlur={() => { if (local !== value) onSave(local); }}

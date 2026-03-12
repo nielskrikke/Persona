@@ -353,7 +353,23 @@ export const CLASSES: ExtendedClassDetail[] = [
         ],
         feature_details: [
             { index: "spellcasting-cleric", name: "Spellcasting", level: 1, source: "Cleric", url: "", desc: ["As a conduit for divine power, you can cast cleric spells. You prepare a number of spells from the Cleric list based on your level."] },
-            { index: "divine-order", name: "Divine Order", level: 1, source: "Cleric", url: "", desc: ["You have dedicated yourself to one of the following roles: Protector (Proficiency with heavy armor and martial weapons) or Thaumaturge (Extra cantrip, +Wis to Arcana/Religion)."] },
+            { 
+                index: "divine-order", 
+                name: "Divine Order", 
+                level: 1, 
+                source: "Cleric", 
+                url: "", 
+                desc: ["You have dedicated yourself to one of the following roles: Protector (Proficiency with heavy armor and martial weapons) or Thaumaturge (Extra cantrip, +Wis to Arcana/Religion)."],
+                effects: [{ 
+                    type: 'feature_choice', 
+                    name: 'Divine Order', 
+                    count: 1, 
+                    options: [
+                        { name: 'Protector', desc: 'Proficiency with heavy armor and martial weapons' },
+                        { name: 'Thaumaturge', desc: 'Extra cantrip, +Wis to Arcana/Religion' }
+                    ] 
+                }]
+            },
             { index: "channel-divinity", name: "Channel Divinity", level: 2, source: "Cleric", url: "", desc: ["You gain the ability to channel divine energy directly from your deity. You start with two such effects: Turn Undead and Divine Spark. You regain expended uses on a Short or Long Rest."] },
             { index: "cleric-subclass", name: "Cleric Subclass", level: 3, source: "Cleric", url: "", desc: ["Choose a divine domain related to your deity."] },
             { index: "sear-undead", name: "Sear Undead", level: 5, source: "Cleric", url: "", desc: ["Whenever you use Turn Undead, you also deal radiant damage equal to 3 times your Wisdom modifier to each undead that fails its saving throw."] },
@@ -408,12 +424,44 @@ export const CLASSES: ExtendedClassDetail[] = [
         feature_details: [
             { index: "spellcasting-druid", name: "Spellcasting", level: 1, source: "Druid", url: "", desc: ["Drawing on the divine essence of nature itself, you can cast spells to shape that essence to your will."] },
             { index: "druidic", name: "Druidic", level: 1, source: "Druid", url: "", desc: ["You know Druidic, the secret language of druids."] },
-            { index: "primal-order", name: "Primal Order", level: 1, source: "Druid", url: "", desc: ["You have dedicated yourself to one of the following roles: Magician (extra cantrip, +Wis to Arcana/Nature) or Warden (Proficiency with martial weapons and heavy armor)."] },
+            { 
+                index: "primal-order", 
+                name: "Primal Order", 
+                level: 1, 
+                source: "Druid", 
+                url: "", 
+                desc: ["You have dedicated yourself to one of the following roles: Magician (extra cantrip, +Wis to Arcana/Nature) or Warden (Proficiency with martial weapons and heavy armor)."],
+                effects: [{
+                    type: 'feature_choice',
+                    name: 'Primal Order',
+                    count: 1,
+                    options: [
+                        { name: 'Magician', desc: 'Extra cantrip, +Wis to Arcana/Nature' },
+                        { name: 'Warden', desc: 'Proficiency with martial weapons and heavy armor' }
+                    ]
+                }]
+            },
             { index: "wild-shape", name: "Wild Shape", level: 2, source: "Druid", url: "", desc: ["You can use your action to magically assume the shape of a beast. You regain expended uses when you finish a long rest, or one use on a short rest."] },
             { index: "wild-companion", name: "Wild Companion", level: 2, source: "Druid", url: "", desc: ["You can summon a spirit that takes the form of an animal. You can cast the Find Familiar spell without expending a spell slot by expending a use of your Wild Shape."] },
             { index: "druid-subclass", name: "Druid Subclass", level: 3, source: "Druid", url: "", desc: ["Choose a druidic circle that identifies your connection to nature."] },
             { index: "wild-resurgence", name: "Wild Resurgence", level: 5, source: "Druid", url: "", desc: ["Once per long rest, you can expend a spell slot to regain one use of Wild Shape, or expend a use of Wild Shape to regain a level 1 spell slot."] },
-            { index: "elemental-fury", name: "Elemental Fury", level: 7, source: "Druid", url: "", desc: ["Your connection to nature allows you to channel elemental power. Choose Potent Spellcasting (+Wis to cantrip damage) or Primal Strike (+1d8 cold/fire/lightning/thunder damage once per turn on attacks)."] },
+            { 
+                index: "elemental-fury", 
+                name: "Elemental Fury", 
+                level: 7, 
+                source: "Druid", 
+                url: "", 
+                desc: ["Your connection to nature allows you to channel elemental power. Choose Potent Spellcasting (+Wis to cantrip damage) or Primal Strike (+1d8 cold/fire/lightning/thunder damage once per turn on attacks)."],
+                effects: [{
+                    type: 'feature_choice',
+                    name: 'Elemental Fury',
+                    count: 1,
+                    options: [
+                        { name: 'Potent Spellcasting', desc: 'Add Wis modifier to cantrip damage' },
+                        { name: 'Primal Strike', desc: 'Once per turn, deal 1d8 cold/fire/lightning/thunder damage once per turn on attacks' }
+                    ]
+                }]
+            },
             { index: "improved-elemental-fury", name: "Improved Elemental Fury", level: 15, source: "Druid", url: "", desc: ["The damage of your Elemental Fury choice increases."] },
             { index: "beast-spells", name: "Beast Spells", level: 18, source: "Druid", url: "", desc: ["You can cast many of your druid spells in any shape you assume using Wild Shape."] },
             { index: "epic-boon", name: "Epic Boon", level: 19, source: "Druid", url: "", desc: ["You gain an Epic Boon feat of your choice."] },
@@ -652,7 +700,15 @@ export const CLASSES: ExtendedClassDetail[] = [
             { index: "spellcasting-ranger-2024", name: "Spellcasting", level: 1, source: "Ranger", url: "", desc: ["You have learned to use the magical essence of nature to cast spells. You prepare a list of spells from the Ranger list."] },
             { index: "favored-enemy-2024", name: "Favored Enemy", level: 1, source: "Ranger", url: "", desc: ["You always have the Hunter's Mark spell prepared. You can cast it without expending a spell slot a number of times equal to your Proficiency Bonus."] },
             { index: "weapon-mastery-ranger", name: "Weapon Mastery", level: 1, source: "Ranger", url: "", desc: ["Your training with weapons allows you to use the mastery properties of specific kinds of weapons. You can choose a number of weapon types to master based on your level."] },
-            { index: "deft-explorer", name: "Deft Explorer", level: 2, source: "Ranger", url: "", desc: ["You are an unsurpassed explorer. You gain the Canny benefit now, and you gain the Roving and Tireless benefits at later levels. Canny: Expertise in one skill and two languages."] },
+            { 
+                index: "deft-explorer", 
+                name: "Deft Explorer", 
+                level: 2, 
+                source: "Ranger", 
+                url: "", 
+                desc: ["You are an unsurpassed explorer. You gain the Canny benefit now, and you gain the Roving and Tireless benefits at later levels. Canny: Expertise in one skill and two languages."],
+                effects: [{ type: 'expertise_choice', category: 'skill', count: 1 }]
+            },
             { 
                 index: "fighting-style-ranger", 
                 name: "Fighting Style", 
@@ -664,7 +720,15 @@ export const CLASSES: ExtendedClassDetail[] = [
             },
             { index: "extra-attack-ranger", name: "Extra Attack", level: 5, source: "Ranger", url: "", desc: ["You can attack twice, instead of once, whenever you take the Attack action on your turn."] },
             { index: "roving", name: "Roving", level: 6, source: "Ranger", url: "", desc: ["Your walking speed increases by 5 feet. You also gain a climbing speed and a swimming speed equal to your walking speed."] },
-            { index: "expertise-ranger", name: "Expertise", level: 9, source: "Ranger", url: "", desc: ["Choose two of your skill proficiencies. Your proficiency bonus is doubled for these choices."] },
+            { 
+                index: "expertise-ranger", 
+                name: "Expertise", 
+                level: 9, 
+                source: "Ranger", 
+                url: "", 
+                desc: ["Choose two of your skill proficiencies. Your proficiency bonus is doubled for these choices."],
+                effects: [{ type: 'expertise_choice', category: 'skill', count: 2 }]
+            },
             { index: "tireless", name: "Tireless", level: 10, source: "Ranger", url: "", desc: ["As an action, you can give yourself temporary hit points (1d8 + Wisdom modifier) a number of times equal to your Proficiency Bonus per Long Rest. In addition, when you finish a Short Rest, your exhaustion level, if any, is decreased by 1."] },
             { index: "relentless-hunter", name: "Relentless Hunter", level: 13, source: "Ranger", url: "", desc: ["Taking damage can't break your concentration on Hunter's Mark."] },
             { index: "natures-veil", name: "Nature's Veil", level: 14, source: "Ranger", url: "", desc: ["You can draw on the powers of nature to hide yourself. As a Bonus Action, you can magically become invisible, along with any equipment you are wearing or carrying, until the end of your next turn. (PB/Long Rest)"] },

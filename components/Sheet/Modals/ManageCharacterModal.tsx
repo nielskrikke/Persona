@@ -5,6 +5,7 @@ import { fetchClasses, fetchRaces, fetchSubraces, fetchBackgrounds, fetchFeatsLi
 import { getSpellSlots, calculateModifier, SKILL_LIST } from '@/utils/rules';
 import { CLASS_FEATURES, STANDARD_LANGUAGES } from '../../../data/constants';
 import LevelUpWizard from '../LevelUpWizard';
+import DiceRoller3D from '../Shared/DiceRoller3D';
 
 const SUBCLASS_LEVELS: Record<string, number> = {
     'Cleric': 1, 'Warlock': 1, 'Sorcerer': 1,
@@ -632,7 +633,7 @@ const ManageCharacterModal = ({
                                     />
                                 </div>
                             </div>
-                            <div className="pt-6 border-t border-gray-800 flex justify-end">
+                            <div className="pt-6 border-t border-gray-800 flex justify-start">
                                 <button 
                                     onClick={saveIdentity} 
                                     className="px-8 py-2.5 bg-dnd-gold hover:bg-white text-black font-black uppercase tracking-widest rounded-xl shadow-lg shadow-dnd-gold/10 transition-all flex items-center justify-center gap-2 text-xs"
@@ -792,7 +793,7 @@ const ManageCharacterModal = ({
                                 </div>
                             </section>
 
-                            <div className="pt-8 border-t border-gray-800 flex justify-end">
+                            <div className="pt-8 border-t border-gray-800 flex justify-start">
                                 <button 
                                     onClick={saveAbilities} 
                                     className="px-8 py-2.5 bg-dnd-gold hover:bg-white text-black font-black uppercase tracking-widest rounded-xl shadow-lg shadow-dnd-gold/10 transition-all flex items-center justify-center gap-2 text-xs"
@@ -886,7 +887,7 @@ const ManageCharacterModal = ({
                                 </section>
                             )}
 
-                            <div className="pt-8 border-t border-gray-800 flex justify-end">
+                            <div className="pt-8 border-t border-gray-800 flex justify-start">
                                 <button 
                                     onClick={saveProficiencies} 
                                     className="px-8 py-2.5 bg-dnd-gold hover:bg-white text-black font-black uppercase tracking-widest rounded-xl shadow-lg shadow-dnd-gold/10 transition-all flex items-center justify-center gap-2 text-xs"
@@ -996,7 +997,7 @@ const ManageCharacterModal = ({
                                 </button>
                              </div>
 
-                             <div className="pt-8 border-t border-gray-800 flex justify-end">
+                             <div className="pt-8 border-t border-gray-800 flex justify-start">
                                 <button 
                                     onClick={handleSaveTrackers} 
                                     className="px-8 py-2.5 bg-dnd-gold hover:bg-white text-black font-black uppercase tracking-widest rounded-xl shadow-lg shadow-dnd-gold/10 transition-all flex items-center justify-center gap-2 text-xs"
@@ -1105,7 +1106,7 @@ const ManageCharacterModal = ({
                                 </div>
                             </section>
 
-                            <div className="pt-8 border-t border-gray-800 flex justify-end">
+                            <div className="pt-8 border-t border-gray-800 flex justify-start">
                                 <button 
                                     onClick={() => {
                                         onUpdate({

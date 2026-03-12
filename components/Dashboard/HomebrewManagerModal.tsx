@@ -77,6 +77,11 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     const [activeTab, setActiveTab] = useState<'race' | 'class' | 'subclass' | 'background' | 'spell' | 'item' | 'wildshape' | 'familiar' | 'feat'>(initialTab || 'race');
     const [loading, setLoading] = useState(false);
     const [showForm, setShowForm] = useState(false);
+    const [showImportArea, setShowImportArea] = useState(false);
+    const [importType, setImportType] = useState<'json' | 'url'>('json');
+    const [importJson, setImportJson] = useState('');
+    const [importUrl, setImportUrl] = useState('');
+    const [isScraping, setIsScraping] = useState(false);
     const [list, setList] = useState<any[]>([]);
     const [isSharedGlobally, setIsSharedGlobally] = useState(false);
     const modalRef = useRef<HTMLDivElement>(null);
@@ -226,6 +231,133 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
         setBeastSize('Medium'); setBeastType('Beast'); setBeastAc(10); setBeastHp(10); setBeastSpeed('30 ft.'); setBeastAbilities({ str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 }); setBeastSenses(''); setBeastLanguages(''); setBeastCr(0); setBeastActions([]);
         setFeatPrerequisite(''); setFeatEffects([]);
         setShowForm(false);
+        setShowImportArea(false);
+        setImportJson('');
+        setImportUrl('');
+        setIsScraping(false);
+    };
+
+    const handleImportUrl = async () => {
+        if (!importUrl) return;
+        setIsScraping(true);
+        try {
+            const response = await fetch('/api/scrape', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: importUrl, type: activeTab })
+            });
+            const data = await response.json();
+            if (data.error) throw new Error(data.error);
+
+            // Populate fields based on scraped data
+            if (data.name) setName(data.name);
+            if (data.description) setDescription(data.description);
+
+            if (activeTab === 'spell') {
+                if (data.level !== undefined) setSpellLevel(data.level);
+                if (data.school) setSpellSchool(data.school);
+                if (data.casting_time) setSpellCastTime(data.casting_time);
+                if (data.range) setSpellRange(data.range);
+                if (data.components) setSpellComponents(data.components);
+                if (data.duration) setSpellDuration(data.duration);
+            } else if (activeTab === 'item') {
+                if (data.rarity) setItemRarity(data.rarity);
+                if (data.weight !== undefined) setItemWeight(data.weight);
+                if (data.requires_attunement !== undefined) setItemAttunement(data.requires_attunement);
+            } else if (activeTab === 'race') {
+                if (data.size) setSize(data.size);
+                if (data.speed) setSpeeds(prev => ({ ...prev, walk: data.speed }));
+            }
+
+            setShowImportArea(false);
+            setImportUrl('');
+            setShowForm(true);
+            alert("Data extracted from URL! Please review and complete the missing fields.");
+        } catch (err: any) {
+            alert(err.message || "Failed to extract data from URL.");
+        } finally {
+            setIsScraping(false);
+        }
+    };
+
+    const handleImportJson = () => {
+        try {
+            const data = JSON.parse(importJson);
+            if (!data || typeof data !== 'object') throw new Error("Invalid JSON");
+
+            // Basic fields
+            if (data.name) setName(data.name);
+            if (data.description) setDescription(data.description);
+            if (data.desc && Array.isArray(data.desc)) setDescription(data.desc.join('\n'));
+
+            if (activeTab === 'race') {
+                if (data.speed) setSpeeds(prev => ({ ...prev, walk: typeof data.speed === 'number' ? data.speed : data.speed.walk || 30 }));
+                if (data.size) setSize(data.size);
+                if (data.ability_bonuses) {
+                    setAbilityBonuses(data.ability_bonuses.map((ab: any) => ({
+                        stat: ab.ability_score?.index || ab.stat,
+                        bonus: ab.bonus
+                    })));
+                }
+                if (data.traits) {
+                    setTraits(data.traits.map((t: any) => ({
+                        name: t.name,
+                        desc: Array.isArray(t.desc) ? t.desc.join('\n') : t.desc,
+                        effects: t.modifiers || t.effects || []
+                    })));
+                }
+            } else if (activeTab === 'spell') {
+                if (data.level !== undefined) setSpellLevel(data.level);
+                if (data.school) setSpellSchool(data.school.name || data.school);
+                if (data.casting_time) setSpellCastTime(data.casting_time);
+                if (data.range) setSpellRange(data.range);
+                if (data.duration) setSpellDuration(data.duration.replace("Concentration, ", ""));
+                if (data.concentration !== undefined) setSpellConcentration(data.concentration);
+                if (data.ritual !== undefined) setSpellRitual(data.ritual);
+                if (data.components) setSpellComponents(data.components);
+                if (data.material) setSpellMaterial(data.material);
+                if (data.higher_level) setSpellHigherLevel(Array.isArray(data.higher_level) ? data.higher_level.join('\n') : data.higher_level);
+            } else if (activeTab === 'item') {
+                if (data.equipment_category) setItemCategory(data.equipment_category.name || data.equipment_category);
+                if (data.rarity) setItemRarity(data.rarity);
+                if (data.weight !== undefined) setItemWeight(data.weight);
+                if (data.cost) setItemCost(`${data.cost.quantity || 0} ${data.cost.unit || 'gp'}`);
+                if (data.requires_attunement !== undefined) setItemAttunement(data.requires_attunement);
+            } else if (activeTab === 'background') {
+                if (data.skill_proficiencies) setBgSkills(data.skill_proficiencies);
+                if (data.feature) {
+                    setBgFeatureName(data.feature.name);
+                    if (!description && data.feature.desc) setDescription(Array.isArray(data.feature.desc) ? data.feature.desc.join('\n') : data.feature.desc);
+                }
+                if (data.equipment) setBgEquipment(Array.isArray(data.equipment) ? data.equipment.join(', ') : data.equipment);
+            } else if (activeTab === 'feat') {
+                if (data.prerequisite) setFeatPrerequisite(data.prerequisite);
+                if (data.effects) setFeatEffects(data.effects);
+            } else if (activeTab === 'wildshape' || activeTab === 'familiar') {
+                if (data.size) setBeastSize(data.size);
+                if (data.type) setBeastType(data.type);
+                if (data.ac) setBeastAc(data.ac);
+                if (data.hp) setBeastHp(data.hp);
+                if (data.speed) setBeastSpeed(data.speed);
+                if (data.str) setBeastAbilities(prev => ({ ...prev, str: data.str }));
+                if (data.dex) setBeastAbilities(prev => ({ ...prev, dex: data.dex }));
+                if (data.con) setBeastAbilities(prev => ({ ...prev, con: data.con }));
+                if (data.int) setBeastAbilities(prev => ({ ...prev, int: data.int }));
+                if (data.wis) setBeastAbilities(prev => ({ ...prev, wis: data.wis }));
+                if (data.cha) setBeastAbilities(prev => ({ ...prev, cha: data.cha }));
+                if (data.senses) setBeastSenses(data.senses);
+                if (data.languages) setBeastLanguages(data.languages);
+                if (data.challenge_rating !== undefined) setBeastCr(data.challenge_rating);
+                if (data.actions) setBeastActions(data.actions);
+            }
+
+            setShowImportArea(false);
+            setImportJson('');
+            setShowForm(true);
+            alert("Data imported successfully! Please review the fields.");
+        } catch (err) {
+            alert("Failed to parse JSON. Please ensure it is a valid object.");
+        }
     };
 
     const handleDelete = async (id: string) => {
@@ -414,7 +546,10 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     <div className="md:w-72 border-r border-gray-800 bg-black/20 flex flex-col shrink-0">
                         <div className="p-4 border-b border-gray-800 flex justify-between items-center">
                             <h3 className="text-[10px] font-black uppercase text-gray-500 tracking-widest">The Archives</h3>
-                            <button onClick={() => setShowForm(true)} className="text-[10px] text-dnd-gold hover:underline font-bold uppercase">+ Forge New</button>
+                            <div className="flex gap-2">
+                                <button onClick={() => setShowImportArea(true)} className="text-[10px] text-indigo-400 hover:underline font-bold uppercase">Import</button>
+                                <button onClick={() => setShowForm(true)} className="text-[10px] text-dnd-gold hover:underline font-bold uppercase">+ Forge New</button>
+                            </div>
                         </div>
                         <div className="flex-grow overflow-y-auto custom-scrollbar p-2 space-y-1">
                             {loading && list.length === 0 ? <div className="p-4 text-xs text-gray-600 animate-pulse">Browsing scrolls...</div> : (
@@ -447,7 +582,89 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     </div>
 
                     {/* Main Content Area */}
-                    <div className="flex-grow overflow-y-auto custom-scrollbar bg-[#1b1c20]">
+                    <div className="flex-grow overflow-y-auto custom-scrollbar bg-[#1b1c20] relative">
+                        {showImportArea && (
+                            <div className="absolute inset-0 z-50 bg-[#1b1c20] p-8 flex flex-col animate-in fade-in duration-300">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h3 className="text-2xl font-serif text-dnd-gold uppercase tracking-tighter">Import Homebrew</h3>
+                                    <button onClick={() => setShowImportArea(false)} className="text-gray-500 hover:text-white">&times;</button>
+                                </div>
+                                
+                                <div className="flex gap-4 mb-6">
+                                    <button 
+                                        onClick={() => setImportType('json')}
+                                        className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${importType === 'json' ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-500'}`}
+                                    >
+                                        JSON Object
+                                    </button>
+                                    <button 
+                                        onClick={() => setImportType('url')}
+                                        className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${importType === 'url' ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-500'}`}
+                                    >
+                                        Web URL
+                                    </button>
+                                </div>
+
+                                {importType === 'json' ? (
+                                    <>
+                                        <p className="text-gray-500 text-xs mb-4 font-serif italic">Paste a JSON object matching the D&D 5e schema to populate the forge fields.</p>
+                                        <textarea 
+                                            value={importJson}
+                                            onChange={e => setImportJson(e.target.value)}
+                                            className="flex-grow bg-[#0b0c0e] border border-gray-800 rounded-xl p-4 text-xs font-mono text-indigo-300 outline-none focus:border-indigo-500 mb-6 resize-none"
+                                            placeholder='{ "name": "My Homebrew", ... }'
+                                        />
+                                        <div className="flex gap-4">
+                                            <button 
+                                                onClick={() => setShowImportArea(false)}
+                                                className="px-8 py-3 bg-gray-800 text-gray-400 rounded-lg font-black uppercase text-[10px] tracking-widest"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button 
+                                                onClick={handleImportJson}
+                                                className="flex-grow py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-black uppercase text-[10px] tracking-widest shadow-xl transition-all"
+                                            >
+                                                Process JSON
+                                            </button>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="text-gray-500 text-xs mb-4 font-serif italic">Enter a URL from a D&D wiki or database. We'll try our best to extract the data without AI.</p>
+                                        <input 
+                                            type="url"
+                                            value={importUrl}
+                                            onChange={e => setImportUrl(e.target.value)}
+                                            className="w-full bg-[#0b0c0e] border border-gray-800 rounded-xl p-4 text-sm text-white outline-none focus:border-indigo-500 mb-6"
+                                            placeholder="https://www.dandwiki.com/wiki/..."
+                                        />
+                                        <div className="flex-grow"></div>
+                                        <div className="flex gap-4">
+                                            <button 
+                                                onClick={() => setShowImportArea(false)}
+                                                className="px-8 py-3 bg-gray-800 text-gray-400 rounded-lg font-black uppercase text-[10px] tracking-widest"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button 
+                                                onClick={handleImportUrl}
+                                                disabled={isScraping || !importUrl}
+                                                className="flex-grow py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-800 disabled:text-gray-600 text-white rounded-lg font-black uppercase text-[10px] tracking-widest shadow-xl transition-all flex items-center justify-center gap-2"
+                                            >
+                                                {isScraping ? (
+                                                    <>
+                                                        <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                        Scraping...
+                                                    </>
+                                                ) : "Extract Data"}
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        )}
+
                         {!showForm ? (
                             <div className="h-full flex flex-col items-center justify-center text-center p-10 max-w-lg mx-auto">
                                 <div className="w-24 h-24 bg-dnd-gold/5 border border-dnd-gold/20 rounded-full flex items-center justify-center text-5xl mb-8 opacity-20 shadow-[0_0_50px_rgba(201,173,106,0.1)]">📜</div>

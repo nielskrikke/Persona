@@ -16,6 +16,7 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack }) =
     const [backgrounds, setBackgrounds] = useState<APIReference[]>([]);
     const [selectedBackground, setSelectedBackground] = useState<BackgroundDetail | null>(null);
     const [loading, setLoading] = useState(true);
+    const [validationError, setValidationError] = useState<string | null>(null);
 
     // Dynamic Choices State
     const [chosenLanguages, setChosenLanguages] = useState<string[]>([]);
@@ -43,9 +44,11 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack }) =
         setSelectedBackground(detail);
         setChosenLanguages([]);
         setChoiceSelections({});
+        setValidationError(null);
     };
 
     const toggleLanguage = (lang: string, max: number) => {
+        setValidationError(null);
         if (chosenLanguages.includes(lang)) {
             setChosenLanguages(prev => prev.filter(l => l !== lang));
         } else if (chosenLanguages.length < max) {
@@ -66,6 +69,7 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack }) =
     };
 
     const toggleChoice = (choiceIdx: number, item: string, max: number) => {
+        setValidationError(null);
         setChoiceSelections(prev => {
             const current = prev[choiceIdx] || [];
             if (current.includes(item)) {
@@ -78,12 +82,15 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack }) =
     };
 
     const handleSubmit = () => {
-        if (!name.trim()) { alert("Please give your character a name."); return; }
+        if (!name.trim()) { 
+            setValidationError("Please give your character a name."); 
+            return; 
+        }
         if (!selectedBackground) return;
 
         const langCount = typeof selectedBackground.languages === 'number' ? selectedBackground.languages : 0;
         if (chosenLanguages.length !== langCount) {
-             alert(`Please select ${langCount} additional language(s).`);
+             setValidationError(`Please select ${langCount} additional language(s).`);
              return;
         }
 
@@ -91,11 +98,12 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack }) =
         for (let i = 0; i < choices.length; i++) {
             const sel = choiceSelections[i] || [];
             if (sel.length !== choices[i].choose) {
-                alert(`Please complete all selections for the ${selectedBackground.name} background.`);
+                setValidationError(`Please complete all selections for the ${selectedBackground.name} background.`);
                 return;
             }
         }
 
+        setValidationError(null);
         // Segregate choices into Skills and Tools based on item name heuristics
         const extraSkills: string[] = [];
         const extraTools: string[] = [];
@@ -292,20 +300,28 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack }) =
 
             {/* Persistent Footer Actions */}
             <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#0b0c0e] via-[#0b0c0e] to-transparent z-[100]">
-                <div className="max-w-6xl mx-auto flex gap-4">
-                    <button 
-                        onClick={onBack}
-                        className="px-10 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white font-black uppercase text-xs tracking-widest rounded-xl transition-all shadow-xl"
-                    >
-                        &larr; Back
-                    </button>
-                    <button 
-                        onClick={handleSubmit}
-                        disabled={!name.trim() || !selectedBackground}
-                        className={`flex-grow py-4 font-black uppercase text-xs tracking-[0.2em] rounded-xl shadow-2xl transition-all transform active:scale-95 ${!name.trim() || !selectedBackground ? 'bg-gray-800 text-gray-600 cursor-not-allowed border border-gray-700' : 'bg-dnd-gold hover:bg-yellow-600 text-black'}`}
-                    >
-                        Finalize Legend
-                    </button>
+                <div className="max-w-6xl mx-auto">
+                    {validationError && (
+                        <div className="mb-4 p-3 bg-red-900/40 border border-red-500/50 rounded-lg text-red-200 text-xs font-bold animate-in slide-in-from-bottom-2">
+                            <span className="mr-2">⚠️</span>
+                            {validationError}
+                        </div>
+                    )}
+                    <div className="flex gap-4">
+                        <button 
+                            onClick={onBack}
+                            className="px-10 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white font-black uppercase text-xs tracking-widest rounded-xl transition-all shadow-xl"
+                        >
+                            &larr; Back
+                        </button>
+                        <button 
+                            onClick={handleSubmit}
+                            disabled={!name.trim() || !selectedBackground}
+                            className={`flex-grow py-4 font-black uppercase text-xs tracking-[0.2em] rounded-xl shadow-2xl transition-all transform active:scale-95 ${!name.trim() || !selectedBackground ? 'bg-gray-800 text-gray-600 cursor-not-allowed border border-gray-700' : 'bg-dnd-gold hover:bg-yellow-600 text-black'}`}
+                        >
+                            Finalize Legend
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

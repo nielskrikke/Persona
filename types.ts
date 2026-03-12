@@ -212,6 +212,7 @@ export interface CharacterClass {
     definition: ClassDetail;
     level: number;
     subclass: SubclassDetail | null;
+    featureChoices?: Record<string, string[]>;
 }
 
 export interface Currency {
@@ -337,6 +338,8 @@ export interface CharacterState {
     quests: any[];
     contacts: LogEntry[];
     generalNotes: string;
+    encounteredCreatures: EncounteredCreature[];
+    sessionNotes: SessionNote[];
     themeColor: string;
     themeColorSecondary: string;
     show3DDice: boolean;
@@ -411,3 +414,24 @@ export interface ExtendedFeatDetail extends APIReference {
 }
 
 export type FeatDetail = ExtendedFeatDetail;
+
+export interface EncounteredCreature {
+    id: string;
+    name: string;
+    ac?: number;
+    hp?: number;
+    weaknesses?: string;
+    resistances?: string;
+    immunities?: string;
+    notes?: string;
+}
+
+export interface SessionNote {
+    id: string;
+    sessionNumber: number;
+    title?: string;
+    date?: string;
+    itemsFound?: string;
+    locationsDiscovered?: string;
+    generalNotes?: string;
+}

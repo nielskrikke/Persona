@@ -1,7 +1,7 @@
 import React from 'react';
 import { CharacterState } from '@/types';
 import { WIDGET_BG } from '../../../data/constants';
-import { QuestLogSection, ContactLogSection } from '../Widgets/LogSections';
+import { QuestLogSection, ContactLogSection, CreatureLogSection, SessionNoteLogSection } from '../Widgets/LogSections';
 import { AutoSaveTextarea } from '../Shared/AutoSaveInputs';
 
 interface LogTabProps {
@@ -24,6 +24,21 @@ const LogTab: React.FC<LogTabProps> = ({ character, setCharacter, onOpenVault, s
         p.name.toLowerCase().includes(search.toLowerCase()) || 
         (p.description || '').toLowerCase().includes(search.toLowerCase()) ||
         (p.location || '').toLowerCase().includes(search.toLowerCase())
+    );
+
+    const filteredCreatures = (character.encounteredCreatures || []).filter(c => 
+        c.name.toLowerCase().includes(search.toLowerCase()) || 
+        (c.notes || '').toLowerCase().includes(search.toLowerCase()) ||
+        (c.weaknesses || '').toLowerCase().includes(search.toLowerCase()) ||
+        (c.resistances || '').toLowerCase().includes(search.toLowerCase())
+    );
+
+    const filteredSessionNotes = (character.sessionNotes || []).filter(s => 
+        (s.title || '').toLowerCase().includes(search.toLowerCase()) ||
+        (s.generalNotes || '').toLowerCase().includes(search.toLowerCase()) ||
+        (s.itemsFound || '').toLowerCase().includes(search.toLowerCase()) ||
+        (s.locationsDiscovered || '').toLowerCase().includes(search.toLowerCase()) ||
+        (s.date || '').toLowerCase().includes(search.toLowerCase())
     );
 
     const notesMatch = !search || (character.generalNotes || '').toLowerCase().includes(search.toLowerCase());
@@ -50,12 +65,20 @@ const LogTab: React.FC<LogTabProps> = ({ character, setCharacter, onOpenVault, s
                 </div>
             </div>
 
+            {(filteredSessionNotes.length > 0 || !search) && (
+                <SessionNoteLogSection title="Session Notes" items={filteredSessionNotes} onUpdate={(s) => setCharacter(p => ({...p, sessionNotes: s}))} />
+            )}
+
             {(filteredQuests.length > 0 || !search) && (
                 <QuestLogSection title="Quests" items={filteredQuests} onUpdate={(q) => setCharacter(p => ({...p, quests: q}))} />
             )}
             
             {(filteredPeople.length > 0 || !search) && (
                 <ContactLogSection title="People" items={filteredPeople} onUpdate={(c) => setCharacter(p => ({...p, contacts: c}))} />
+            )}
+
+            {(filteredCreatures.length > 0 || !search) && (
+                <CreatureLogSection title="Creatures" items={filteredCreatures} onUpdate={(c) => setCharacter(p => ({...p, encounteredCreatures: c}))} />
             )}
 
             {notesMatch && (
@@ -67,7 +90,7 @@ const LogTab: React.FC<LogTabProps> = ({ character, setCharacter, onOpenVault, s
                 </div>
             )}
 
-            {search && filteredQuests.length === 0 && filteredPeople.length === 0 && !notesMatch && (
+            {search && filteredQuests.length === 0 && filteredPeople.length === 0 && filteredCreatures.length === 0 && filteredSessionNotes.length === 0 && !notesMatch && (
                 <div className="text-center py-20 text-gray-500 italic text-sm">
                     No matches found for "{search}"
                 </div>

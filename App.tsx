@@ -51,6 +51,8 @@ const INITIAL_CHARACTER: CharacterState = {
     lore: [],
     quests: [],
     contacts: [],
+    encounteredCreatures: [],
+    sessionNotes: [],
     generalNotes: '',
     themeColor: '',
     themeColorSecondary: '',
@@ -176,6 +178,8 @@ const App: React.FC = () => {
                 lore: json.lore || [],
                 quests: Array.isArray(json.quests) && typeof json.quests[0] === 'object' ? json.quests : [],
                 contacts: contacts,
+                encounteredCreatures: json.encounteredCreatures || [],
+                sessionNotes: json.sessionNotes || [],
                 generalNotes: json.generalNotes || '',
                 expertise: json.expertise || [],
                 favorites: json.favorites || [],
@@ -293,12 +297,33 @@ const App: React.FC = () => {
     const mergedSkills = Array.from(new Set([...character.skills, ...skills]));
     const mergedTools = Array.from(new Set([...character.toolProficiencies, ...tools]));
 
+    // Extract feature choices into classFeatures
+    const choiceFeatures: ClassFeature[] = [];
+    classes.forEach(cls => {
+        if (cls.featureChoices) {
+            Object.entries(cls.featureChoices).forEach(([featureIndex, selections]) => {
+                const feature = cls.definition.feature_details?.find((f: any) => f.index === featureIndex);
+                if (feature) {
+                    choiceFeatures.push({
+                        index: `${featureIndex}-selection`,
+                        name: `${feature.name}: ${selections.join(', ')}`,
+                        level: feature.level,
+                        source: cls.definition.name,
+                        desc: [`You chose: ${selections.join(', ')}`],
+                        url: ''
+                    });
+                }
+            });
+        }
+    });
+
     updateCharacter({ 
         classes: classes, 
         maxHp: totalHp, 
         currentHp: totalHp, 
         skills: mergedSkills,
-        toolProficiencies: mergedTools
+        toolProficiencies: mergedTools,
+        classFeatures: [...character.classFeatures.filter(f => f.source === 'Race'), ...choiceFeatures]
     });
     setPhase('abilities');
   };
@@ -523,6 +548,8 @@ const App: React.FC = () => {
                 initialClasses={character.classes} 
                 totalLevel={character.level}
                 onBack={handleBack} 
+                currentSkills={character.skills}
+                currentTools={character.toolProficiencies}
             />
         )}
         {phase === 'abilities' && <AbilityScoreStep race={character.race} initialScores={character.abilities} onSave={handleAbilitiesSave} onBack={handleBack} />}

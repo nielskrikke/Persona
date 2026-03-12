@@ -1,7 +1,7 @@
 
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Text } from '@react-three/drei';
+import { Text, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
 
 // Workaround for R3F types in this specific environment
@@ -13,6 +13,7 @@ const LineBasicMaterial = 'lineBasicMaterial' as any;
 const AmbientLight = 'ambientLight' as any;
 const PointLight = 'pointLight' as any;
 const DirectionalLight = 'directionalLight' as any;
+const SpotLight = 'spotLight' as any;
 
 // --- UTILS ---
 
@@ -75,6 +76,14 @@ const Die: React.FC<DieProps> = ({ type, result, color, position, onComplete }) 
     const meshRef = useRef<THREE.Mesh>(null);
     const [landed, setLand] = useState(false);
     const contrastColor = useMemo(() => getContrastingColor(color), [color]);
+    
+    // Material Properties
+    const materialProps = useMemo(() => ({
+        color: color,
+        roughness: 0.2,
+        metalness: 0.3,
+        flatShading: false,
+    }), [color]);
     
     // Animation State
     const [rotationSpeed] = useState(() => new THREE.Vector3(
@@ -207,16 +216,11 @@ const Die: React.FC<DieProps> = ({ type, result, color, position, onComplete }) 
 
     return (
         <Mesh ref={meshRef} geometry={geometry}>
-            <MeshStandardMaterial 
-                color={color} 
-                roughness={0.2} 
-                metalness={0.3} 
-                flatShading={true} 
-            />
+            <MeshStandardMaterial {...materialProps} />
             
             <LineSegments>
                 <EdgesGeometry args={[geometry, 25]} /> 
-                <LineBasicMaterial color={contrastColor} linewidth={2} opacity={0.4} transparent />
+                <LineBasicMaterial color={contrastColor} linewidth={2} opacity={0.6} transparent />
             </LineSegments>
             
             {faceData.map((face, i) => {

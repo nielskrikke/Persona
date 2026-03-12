@@ -43,6 +43,7 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
     const [search, setSearch] = useState('');
     const [hoveredSpell, setHoveredSpell] = useState<SpellDetail | null>(null);
     const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
+    const [validationError, setValidationError] = useState<string | null>(null);
 
     const activeClass = casterClasses.find(c => c.definition.index === activeClassIndex);
     const limits = activeClass 
@@ -80,6 +81,7 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
     };
 
     const toggleSpell = (spell: SpellDetail) => {
+        setValidationError(null);
         const list = classSpells[activeClassIndex] || [];
         const isSelected = list.some(s => s.index === spell.index);
         
@@ -97,6 +99,26 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
     };
 
     const handleConfirm = () => {
+        // Check if all classes have their spells selected
+        for (const cls of casterClasses) {
+            const clsIndex = cls.definition.index;
+            const selected = classSpells[clsIndex] || [];
+            const clsLimits = getSpellsKnownCount(cls, character.abilities);
+            
+            const cantrips = selected.filter(s => s.level === 0).length;
+            const leveled = selected.filter(s => s.level > 0).length;
+            
+            if (cantrips < clsLimits.cantrips) {
+                setValidationError(`You can select ${clsLimits.cantrips - cantrips} more cantrips for ${cls.definition.name}.`);
+                return;
+            }
+            if (leveled < clsLimits.spells) {
+                setValidationError(`You can select ${clsLimits.spells - leveled} more spells for ${cls.definition.name}.`);
+                return;
+            }
+        }
+
+        setValidationError(null);
         const allSelected = Object.entries(classSpells).flatMap(([cIndex, spells]) => 
             (spells as SpellDetail[]).map(s => ({
                 ...s,
@@ -314,19 +336,27 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
 
             {/* Persistent Footer Actions */}
             <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#0b0c0e] via-[#0b0c0e] to-transparent z-[100]">
-                <div className="max-w-6xl mx-auto flex gap-4">
-                    <button 
-                        onClick={onBack}
-                        className="px-10 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white font-black uppercase text-xs tracking-widest rounded-xl transition-all shadow-xl"
-                    >
-                        &larr; Back
-                    </button>
-                    <button 
-                        onClick={handleConfirm}
-                        className="flex-grow py-4 font-black uppercase text-xs tracking-[0.2em] rounded-xl shadow-2xl transition-all transform active:scale-95 bg-dnd-gold hover:bg-yellow-600 text-black"
-                    >
-                        Confirm Spellbook
-                    </button>
+                <div className="max-w-6xl mx-auto">
+                    {validationError && (
+                        <div className="mb-4 p-3 bg-red-900/40 border border-red-500/50 rounded-lg text-red-200 text-xs font-bold animate-in slide-in-from-bottom-2">
+                            <span className="mr-2">⚠️</span>
+                            {validationError}
+                        </div>
+                    )}
+                    <div className="flex gap-4">
+                        <button 
+                            onClick={onBack}
+                            className="px-10 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white font-black uppercase text-xs tracking-widest rounded-xl transition-all shadow-xl"
+                        >
+                            &larr; Back
+                        </button>
+                        <button 
+                            onClick={handleConfirm}
+                            className="flex-grow py-4 font-black uppercase text-xs tracking-[0.2em] rounded-xl shadow-2xl transition-all transform active:scale-95 bg-dnd-gold hover:bg-yellow-600 text-black"
+                        >
+                            Confirm Spellbook
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

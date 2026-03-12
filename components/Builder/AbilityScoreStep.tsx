@@ -17,6 +17,7 @@ const AbilityScoreStep: React.FC<AbilityScoreStepProps> = ({ race, initialScores
     const [baseScores, setBaseScores] = useState<AbilityScores>({...initialScores});
     const [pointsUsed, setPointsUsed] = useState(0);
     const [mode, setMode] = useState<'pointbuy' | 'manual'>('pointbuy');
+    const [validationError, setValidationError] = useState<string | null>(null);
 
     const getRaceBonus = (stat: AbilityName): number => {
         if (!race) return 0;
@@ -34,6 +35,7 @@ const AbilityScoreStep: React.FC<AbilityScoreStepProps> = ({ race, initialScores
     }, [baseScores]);
 
     const handleScoreChange = (stat: AbilityName, delta: number) => {
+        setValidationError(null);
         const currentScore = baseScores[stat];
         const newScore = currentScore + delta;
 
@@ -52,6 +54,7 @@ const AbilityScoreStep: React.FC<AbilityScoreStepProps> = ({ race, initialScores
     };
 
     const handleManualInput = (stat: AbilityName, value: string) => {
+        setValidationError(null);
         const val = parseInt(value) || 0;
         if (val >= 1 && val <= 20) {
              setBaseScores(prev => ({ ...prev, [stat]: val }));
@@ -59,6 +62,7 @@ const AbilityScoreStep: React.FC<AbilityScoreStepProps> = ({ race, initialScores
     };
 
     const handleRandomize = () => {
+        setValidationError(null);
         const shuffled = [...STANDARD_ARRAY].sort(() => Math.random() - 0.5);
         const newScores: any = {};
         ABILITY_NAMES.forEach((stat, index) => {
@@ -66,6 +70,15 @@ const AbilityScoreStep: React.FC<AbilityScoreStepProps> = ({ race, initialScores
         });
         setBaseScores(newScores);
         setMode('pointbuy');
+    };
+
+    const handleConfirm = () => {
+        if (mode === 'pointbuy' && pointsUsed < MAX_POINTS) {
+            setValidationError(`You still have ${MAX_POINTS - pointsUsed} points remaining. Please spend all points.`);
+            return;
+        }
+        setValidationError(null);
+        onSave(baseScores);
     };
 
     const remainingPoints = MAX_POINTS - pointsUsed;
@@ -81,13 +94,13 @@ const AbilityScoreStep: React.FC<AbilityScoreStepProps> = ({ race, initialScores
                     
                     <div className="flex flex-wrap justify-center gap-2 bg-black/40 p-1 rounded-full border border-gray-800">
                         <button 
-                            onClick={() => setMode('pointbuy')}
+                            onClick={() => { setMode('pointbuy'); setValidationError(null); }}
                             className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${mode === 'pointbuy' ? 'bg-dnd-gold text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
                         >
                             Point Buy
                         </button>
                         <button 
-                            onClick={() => setMode('manual')}
+                            onClick={() => { setMode('manual'); setValidationError(null); }}
                             className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${mode === 'manual' ? 'bg-dnd-gold text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
                         >
                             Manual
@@ -172,19 +185,27 @@ const AbilityScoreStep: React.FC<AbilityScoreStepProps> = ({ race, initialScores
 
             {/* Persistent Footer Actions */}
             <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#0b0c0e] via-[#0b0c0e] to-transparent z-[100]">
-                <div className="max-w-6xl mx-auto flex gap-4">
-                    <button 
-                        onClick={onBack}
-                        className="px-10 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white font-black uppercase text-xs tracking-widest rounded-xl transition-all shadow-xl"
-                    >
-                        &larr; Back
-                    </button>
-                    <button 
-                        onClick={() => onSave(baseScores)}
-                        className="flex-grow py-4 font-black uppercase text-xs tracking-[0.2em] rounded-xl shadow-2xl transition-all transform active:scale-95 bg-dnd-gold hover:bg-yellow-600 text-black"
-                    >
-                        Confirm Attributes
-                    </button>
+                <div className="max-w-6xl mx-auto">
+                    {validationError && (
+                        <div className="mb-4 p-3 bg-red-900/40 border border-red-500/50 rounded-lg text-red-200 text-xs font-bold animate-in slide-in-from-bottom-2">
+                            <span className="mr-2">⚠️</span>
+                            {validationError}
+                        </div>
+                    )}
+                    <div className="flex gap-4">
+                        <button 
+                            onClick={onBack}
+                            className="px-10 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white font-black uppercase text-xs tracking-widest rounded-xl transition-all shadow-xl"
+                        >
+                            &larr; Back
+                        </button>
+                        <button 
+                            onClick={handleConfirm}
+                            className="flex-grow py-4 font-black uppercase text-xs tracking-[0.2em] rounded-xl shadow-2xl transition-all transform active:scale-95 bg-dnd-gold hover:bg-yellow-600 text-black"
+                        >
+                            Confirm Attributes
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

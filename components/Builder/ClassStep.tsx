@@ -8,6 +8,8 @@ interface ClassStepProps {
   initialClasses: CharacterClass[];
   totalLevel: number;
   onBack: () => void;
+  currentSkills: string[];
+  currentTools: string[];
 }
 
 interface DraftClass {
@@ -18,7 +20,7 @@ interface DraftClass {
     subclass?: SubclassDetail; 
 }
 
-const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLevel, onBack }) => {
+const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLevel, onBack, currentSkills, currentTools }) => {
   const [availableClasses, setAvailableClasses] = useState<APIReference[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -31,6 +33,11 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
   
   // Proficiency Choices State (Indexed by choice index)
   const [chosenProficiencies, setChosenProficiencies] = useState<Record<number, string[]>>({});
+  
+  // Feature Choices State: { classIndex: { featureIndex: [selectedOptions] } }
+  const [featureChoices, setFeatureChoices] = useState<Record<string, Record<string, string[]>>>({});
+  
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -47,6 +54,14 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
                   subclassIndex: c.subclass?.index,
                   subclass: c.subclass
               });
+              
+              if (c.featureChoices) {
+                  setFeatureChoices(prev => ({
+                      ...prev,
+                      [c.definition.index]: c.featureChoices || {}
+                  }));
+              }
+
               if (!classDetails[c.definition.index]) {
                   const detail = await fetchClassDetail(c.definition.index);
                   if(detail) setClassDetails(prev => ({...prev, [c.definition.index]: detail}));
@@ -74,6 +89,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
   };
 
   const addClass = async (index: string, name: string) => {
+      setValidationError(null);
       if (draftClasses.some(c => c.index === index)) return;
       const currentAssigned = draftClasses.reduce((acc, c) => acc + c.level, 0);
       if (currentAssigned >= totalLevel) return;
@@ -88,6 +104,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
   };
 
   const removeClass = (index: string) => {
+      setValidationError(null);
       setDraftClasses(prev => prev.filter(c => c.index !== index));
       if (index === draftClasses[0]?.index) {
           setChosenProficiencies({}); 
@@ -95,6 +112,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
   };
 
   const updateLevel = (index: string, delta: number) => {
+      setValidationError(null);
       const currentAssigned = draftClasses.reduce((acc, c) => acc + c.level, 0);
       setDraftClasses(prev => prev.map(c => {
           if (c.index !== index) return c;
@@ -106,6 +124,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
   };
 
   const updateSubclass = async (classIndex: string, subIndex: string) => {
+      setValidationError(null);
       const detail = await fetchSubclassDetail(subIndex);
       setDraftClasses(prev => prev.map(c => {
           if (c.index !== classIndex) return c;
@@ -114,6 +133,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
   };
 
   const toggleProficiency = (choiceIdx: number, item: string, max: number) => {
+      setValidationError(null);
       setChosenProficiencies(prev => {
           const current = prev[choiceIdx] || [];
           if (current.includes(item)) {
@@ -125,17 +145,66 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
       });
   };
 
+  const handleFeatureChoice = (classIndex: string, featureIndex: string, option: string, count: number) => {
+      setFeatureChoices(prev => {
+          const classChoices = prev[classIndex] || {};
+          const currentOptions = classChoices[featureIndex] || [];
+          
+          let newOptions;
+          if (currentOptions.includes(option)) {
+              newOptions = currentOptions.filter(o => o !== option);
+          } else {
+              if (count === 1) {
+                  newOptions = [option];
+              } else if (currentOptions.length < count) {
+                  newOptions = [...currentOptions, option];
+              } else {
+                  newOptions = [...currentOptions.slice(1), option];
+              }
+          }
+          
+          return {
+              ...prev,
+              [classIndex]: {
+                  ...classChoices,
+                  [featureIndex]: newOptions
+              }
+          };
+      });
+  };
+
+  const getAvailableExpertiseOptions = (classIndex: string) => {
+      const raceSkills = currentSkills || [];
+      let classSkills: string[] = [];
+      if (draftClasses[0]?.index === classIndex) {
+          const primaryDetail = classDetails[classIndex];
+          const choices = primaryDetail?.proficiency_choices || [];
+          choices.forEach((choice, i) => {
+              if (choice.type === 'proficiencies') {
+                  const selected = chosenProficiencies[i] || [];
+                  selected.forEach(item => {
+                       const isSkill = ["Acrobatics", "Animal Handling", "Arcana", "Athletics", "Deception", "History", "Insight", "Intimidation", "Investigation", "Medicine", "Nature", "Perception", "Performance", "Persuasion", "Religion", "Sleight of Hand", "Stealth", "Survival"]
+                          .some(s => item.toLowerCase().includes(s.toLowerCase()));
+                      if (isSkill) classSkills.push(item.replace("Skill: ", ""));
+                  });
+              }
+          });
+      }
+      return Array.from(new Set([...raceSkills, ...classSkills]));
+  };
+
   const handleConfirm = () => {
       if (draftClasses.length === 0) return;
       const finalClasses: CharacterClass[] = draftClasses.map(d => ({
           definition: classDetails[d.index],
           level: d.level,
-          subclass: d.subclass
+          subclass: d.subclass || null,
+          featureChoices: featureChoices[d.index]
       }));
 
       const assigned = draftClasses.reduce((acc, c) => acc + c.level, 0);
       if (assigned !== totalLevel) {
-          alert(`You have assigned ${assigned} levels out of ${totalLevel}. Please assign all levels.`);
+          setValidationError(`You have assigned ${assigned} levels out of ${totalLevel}. Please assign all levels.`);
           return;
       }
       
@@ -147,11 +216,35 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
           const choice = choices[i];
           const selected = chosenProficiencies[i] || [];
           if (selected.length !== choice.choose) {
-              alert(`Please select ${choice.choose} options for choice group #${i+1} (${choice.type}).`);
+              setValidationError(`Please select ${choice.choose} options for choice group #${i+1} (${choice.type}).`);
               return;
           }
       }
 
+      // Subclass validation
+      for (const draft of draftClasses) {
+          const needsSubclass = draft.level >= 3 || (['cleric', 'warlock', 'sorcerer'].includes(draft.index) && draft.level >= 1) || (draft.index === 'wizard' && draft.level >= 2) || (draft.index === 'druid' && draft.level >= 2);
+          if (needsSubclass && !draft.subclass) {
+              setValidationError(`Please select a subclass for ${draft.name}.`);
+              return;
+          }
+
+          // Feature choices validation
+          const detail = classDetails[draft.index];
+          if (detail?.feature_details) {
+              const relevantFeatures = detail.feature_details.filter(f => f.level <= draft.level && f.effects);
+              for (const feature of relevantFeatures) {
+                  const selections = featureChoices[draft.index]?.[feature.index] || [];
+                  const totalRequired = feature.effects.reduce((acc: number, e: any) => acc + (e.count || 0), 0);
+                  if (selections.length < totalRequired) {
+                      setValidationError(`Please complete selections for ${feature.name} in ${draft.name}.`);
+                      return;
+                  }
+              }
+          }
+      }
+
+      setValidationError(null);
       // Distribute into Skills vs Tools based on Choice Type or Category
       const selectedSkills: string[] = [];
       const selectedTools: string[] = [];
@@ -279,8 +372,60 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
                                                {draft.subclass.desc[0]}
                                            </div>
                                        )}
-                                   </div>
-                               )}
+
+                                    </div>
+                                )}
+
+                                {detail?.feature_details?.filter(f => f.level <= draft.level && f.effects).map(feature => (
+                                    <div key={feature.index} className="mb-6 p-4 bg-black/30 rounded-lg border border-dnd-gold/20 animate-in fade-in duration-500">
+                                        <h4 className="text-[10px] font-black text-dnd-gold uppercase tracking-widest mb-3">{feature.name}</h4>
+                                        {feature.effects.map((effect: any, effectIdx: number) => (
+                                            <div key={effectIdx} className="mb-4 last:mb-0">
+                                                {effect.type === 'feature_choice' && (
+                                                    <>
+                                                        <p className="text-[10px] text-gray-500 uppercase font-black mb-2">Choose {effect.count}:</p>
+                                                        <div className="grid grid-cols-1 gap-2">
+                                                            {effect.options.map((option: any) => (
+                                                                <button
+                                                                    key={option.name}
+                                                                    onClick={() => handleFeatureChoice(draft.index, feature.index, option.name, effect.count)}
+                                                                    className={`text-left p-3 rounded-lg border transition-all ${
+                                                                        (featureChoices[draft.index]?.[feature.index] || []).includes(option.name)
+                                                                            ? 'bg-dnd-gold/10 border-dnd-gold text-dnd-gold'
+                                                                            : 'bg-black/40 border-gray-700 text-gray-400 hover:border-gray-500'
+                                                                    }`}
+                                                                >
+                                                                    <div className="text-xs font-bold uppercase tracking-tight">{option.name}</div>
+                                                                    <div className="text-[10px] opacity-60 mt-1 leading-relaxed">{option.desc}</div>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </>
+                                                )}
+                                                {effect.type === 'expertise_choice' && (
+                                                    <>
+                                                        <p className="text-[10px] text-gray-500 uppercase font-black mb-2">Choose {effect.count} for Expertise:</p>
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            {getAvailableExpertiseOptions(draft.index).map(skill => (
+                                                                <button
+                                                                    key={skill}
+                                                                    onClick={() => handleFeatureChoice(draft.index, feature.index, skill, effect.count)}
+                                                                    className={`text-left p-2 rounded-lg border transition-all text-[11px] font-bold uppercase tracking-tight ${
+                                                                        (featureChoices[draft.index]?.[feature.index] || []).includes(skill)
+                                                                            ? 'bg-dnd-gold/10 border-dnd-gold text-dnd-gold'
+                                                                            : 'bg-black/40 border-gray-700 text-gray-400 hover:border-gray-500'
+                                                                    }`}
+                                                                >
+                                                                    {skill}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                ))}
 
                                {idx === 0 && detail && (
                                    <section className="mt-6 pt-6 border-t border-gray-800 space-y-5">
@@ -330,20 +475,28 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
 
       {/* Persistent Footer Actions */}
       <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#0b0c0e] via-[#0b0c0e] to-transparent z-[100]">
-        <div className="max-w-6xl mx-auto flex gap-4">
-            <button 
-                onClick={onBack}
-                className="px-10 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white font-black uppercase text-xs tracking-widest rounded-xl transition-all shadow-xl"
-            >
-                &larr; Back
-            </button>
-            <button 
-                onClick={handleConfirm}
-                disabled={currentAssigned !== totalLevel || draftClasses.length === 0}
-                className={`flex-grow py-4 font-black uppercase text-xs tracking-[0.2em] rounded-xl shadow-2xl transition-all transform active:scale-95 ${currentAssigned !== totalLevel || draftClasses.length === 0 ? 'bg-gray-800 text-gray-600 cursor-not-allowed border border-gray-700' : 'bg-dnd-gold hover:bg-yellow-600 text-black'}`}
-            >
-                Confirm Path
-            </button>
+        <div className="max-w-6xl mx-auto">
+            {validationError && (
+                <div className="mb-4 p-3 bg-red-900/40 border border-red-500/50 rounded-lg text-red-200 text-xs font-bold animate-in slide-in-from-bottom-2">
+                    <span className="mr-2">⚠️</span>
+                    {validationError}
+                </div>
+            )}
+            <div className="flex gap-4">
+                <button 
+                    onClick={onBack}
+                    className="px-10 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white font-black uppercase text-xs tracking-widest rounded-xl transition-all shadow-xl"
+                >
+                    &larr; Back
+                </button>
+                <button 
+                    onClick={handleConfirm}
+                    disabled={currentAssigned !== totalLevel || draftClasses.length === 0}
+                    className={`flex-grow py-4 font-black uppercase text-xs tracking-[0.2em] rounded-xl shadow-2xl transition-all transform active:scale-95 ${currentAssigned !== totalLevel || draftClasses.length === 0 ? 'bg-gray-800 text-gray-600 cursor-not-allowed border border-gray-700' : 'bg-dnd-gold hover:bg-yellow-600 text-black'}`}
+                >
+                    Confirm Path
+                </button>
+            </div>
         </div>
       </div>
     </div>

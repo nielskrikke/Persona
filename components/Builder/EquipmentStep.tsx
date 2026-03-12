@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { EquipmentDetail, InventoryItem } from '../../types';
 import { fetchEquipment, fetchEquipmentDetail } from '../../data/index';
 import ItemSearchModal from './ItemSearchModal';
-import { Search } from 'lucide-react';
+import { Search, Globe } from 'lucide-react';
 
 interface EquipmentStepProps {
     onComplete: (equipment: InventoryItem[]) => void;
@@ -103,7 +103,7 @@ const EquipmentStep: React.FC<EquipmentStepProps> = ({ onComplete, onBack }) => 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
                 {/* Available Area */}
                 <div className="bg-[#1b1c20] border border-gray-800 rounded-xl flex flex-col overflow-hidden shadow-2xl h-full">
-                    <div className="p-5 bg-[#121316] border-b border-gray-800 shrink-0">
+                    <div className="p-5 bg-[#121316] border-b border-gray-800 shrink-0 flex items-center justify-between">
                         <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
                             <span className="w-1.5 h-1.5 rounded-full bg-dnd-gold"></span>
                             Armory
