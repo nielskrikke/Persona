@@ -162,21 +162,39 @@ export const saveHomebrew = async (
     table: 'custom_races' | 'custom_classes' | 'custom_subclasses' | 'custom_backgrounds' | 'custom_spells' | 'custom_equipment' | 'custom_beasts' | 'custom_familiars' | 'custom_feats', 
     userId: string, 
     payload: any,
-    isPublic: boolean = false
+    isPublic: boolean = false,
+    id?: string
 ) => {
-    const { data, error } = await supabase
-        .from(table)
-        .insert([{ 
-            user_id: userId,
-            name: payload.name, 
-            data: payload,
-            is_public: isPublic
-        }])
-        .select()
-        .single();
-        
-    if (error) throw error;
-    return data;
+    if (id) {
+        const { data, error } = await supabase
+            .from(table)
+            .update({ 
+                name: payload.name, 
+                data: payload,
+                is_public: isPublic
+            })
+            .eq('id', id)
+            .eq('user_id', userId)
+            .select()
+            .single();
+            
+        if (error) throw error;
+        return data;
+    } else {
+        const { data, error } = await supabase
+            .from(table)
+            .insert([{ 
+                user_id: userId,
+                name: payload.name, 
+                data: payload,
+                is_public: isPublic
+            }])
+            .select()
+            .single();
+            
+        if (error) throw error;
+        return data;
+    }
 };
 
 export const deleteHomebrew = async (

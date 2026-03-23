@@ -126,7 +126,7 @@ export const QuestLogSection = ({
                                 <select 
                                     value={selectedItem.status || 'active'} 
                                     onChange={(e) => updateItem(selectedItem.id, { status: e.target.value })}
-                                    className={`text-xs font-bold uppercase bg-black/40 border border-gray-700 rounded px-3 py-1.5 outline-none cursor-pointer ${
+                                    className={`text-xs font-bold uppercase bg-black border border-gray-700 rounded px-3 py-1.5 outline-none cursor-pointer [&>option]:bg-[#1b1c20] [&>option]:text-white ${
                                         selectedItem.status === 'completed' ? 'text-green-500' :
                                         selectedItem.status === 'failed' ? 'text-red-500' :
                                         'text-blue-400'
@@ -294,7 +294,7 @@ export const ContactLogSection = ({
                                     <select 
                                         value={selectedItem.relationship || 'Neutral'} 
                                         onChange={(e) => updateItem(selectedItem.id, { relationship: e.target.value })}
-                                        className={`w-full text-xs font-bold uppercase bg-black/40 border border-gray-700 rounded px-3 py-1.5 outline-none cursor-pointer ${
+                                        className={`w-full text-xs font-bold uppercase bg-black border border-gray-700 rounded px-3 py-1.5 outline-none cursor-pointer [&>option]:bg-[#1b1c20] [&>option]:text-white ${
                                             selectedItem.relationship === 'Ally' ? 'text-green-500' :
                                             selectedItem.relationship === 'Enemy' ? 'text-red-500' :
                                             'text-gray-400'
@@ -310,7 +310,7 @@ export const ContactLogSection = ({
                                     <select 
                                         value={selectedItem.status || 'Unknown'} 
                                         onChange={(e) => updateItem(selectedItem.id, { status: e.target.value })}
-                                        className="w-full text-xs font-bold uppercase bg-black/40 border border-gray-700 rounded px-3 py-1.5 outline-none cursor-pointer text-gray-400"
+                                        className="w-full text-xs font-bold uppercase bg-black border border-gray-700 rounded px-3 py-1.5 outline-none cursor-pointer text-gray-400 [&>option]:bg-[#1b1c20] [&>option]:text-white"
                                     >
                                         <option value="Alive">Alive</option>
                                         <option value="Dead">Dead</option>

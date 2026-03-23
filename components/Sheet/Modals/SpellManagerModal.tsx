@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { X, Search, Filter, Plus, Info, ChevronUp, ChevronDown, Sparkles, Book, Wand2, GraduationCap, Trash2 } from 'lucide-react';
 import { CharacterState, SpellDetail } from '../../../types';
-import { getLocalSpells } from '../../../data/index';
-import { getSpellsKnownCount } from '../../../utils/rules';
+import { fetchSpellsByClass } from '../../../data/index';
+import { getSpellsKnownCount, getEffectiveAbilities, isPreparedCaster } from '../../../utils/rules';
 
 interface SpellManagerModalProps {
     isOpen: boolean;
@@ -11,6 +11,7 @@ interface SpellManagerModalProps {
     character: CharacterState;
     onUpdateSpells: (spells: SpellDetail[]) => void;
     onAddCustom: () => void;
+    onDuplicateToHomebrew?: (spell: any) => void;
 }
 
 const SpellManagerModal: React.FC<SpellManagerModalProps> = ({ 
@@ -18,7 +19,8 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
     onClose, 
     character, 
     onUpdateSpells,
-    onAddCustom 
+    onAddCustom,
+    onDuplicateToHomebrew
 }) => {
     const [activeClassIndex, setActiveClassIndex] = useState<string>('');
     const [availableSpells, setAvailableSpells] = useState<SpellDetail[]>([]);
@@ -40,10 +42,12 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
     }, [isOpen, character.classes]);
 
     const activeClass = character.classes.find(c => c.definition.index === activeClassIndex);
+    const effectiveAbilities = useMemo(() => getEffectiveAbilities(character), [character]);
+    const isPrepared = activeClass ? isPreparedCaster(activeClass.definition.index) : false;
     
     // Calculate limits for the ACTIVE class
     const limits = activeClass 
-        ? getSpellsKnownCount(activeClass, character.abilities)
+        ? getSpellsKnownCount(activeClass, effectiveAbilities)
         : { cantrips: 0, spells: 0 };
 
     // Calculate current usage for the ACTIVE class
@@ -57,7 +61,7 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
         
         const loadSpells = async () => {
             setLoading(true);
-            const spells = getLocalSpells(activeClassIndex);
+            const spells = await fetchSpellsByClass(activeClassIndex, character.user_id);
             const sorted = spells.sort((a,b) => a.level - b.level || a.name.localeCompare(b.name));
             setAvailableSpells(sorted);
             setLoading(false);
@@ -80,7 +84,6 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
             ? (limits.cantrips > 0 && currentCantrips >= limits.cantrips) 
             : (limits.spells > 0 && currentLeveled >= limits.spells);
         
-        const maxSpellLevel = Math.ceil((activeClass?.level || 1) / 2); 
         const tooHigh = spell.level > maxSpellLevel && spell.level > 0;
 
         if (overLimit || tooHigh) {
@@ -103,7 +106,7 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
     const getMaxSpellLevel = (clsName: string, level: number) => {
         const name = clsName.toLowerCase();
         // Full Casters
-        if (['bard', 'cleric', 'druid', 'sorcerer', 'wizard'].includes(name)) {
+        if (['bard', 'cleric', 'druid', 'sorcerer', 'wizard', 'card-master', 'card master'].includes(name)) {
             if (level >= 17) return 9;
             if (level >= 15) return 8;
             if (level >= 13) return 7;
@@ -203,7 +206,7 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
                     <div>
                         <h2 className="text-2xl font-serif text-white">Spell Manager</h2>
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">
-                            Manage your spellbook and prepared spells
+                            Manage your {isPrepared ? 'prepared spells' : 'spellbook'}
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -245,7 +248,7 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
                             }`}
                         >
                             <Book size={18} />
-                            My Spellbook
+                            {isPrepared ? 'Prepared Spells' : 'My Spellbook'}
                         </button>
                     </div>
 
@@ -305,7 +308,7 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
                                 </span>
                             </div>
                             <div className="flex flex-col">
-                                <span className="text-[9px] font-black uppercase tracking-widest text-gray-500">Known / Prepared</span>
+                                <span className="text-[9px] font-black uppercase tracking-widest text-gray-500">{isPrepared ? 'Prepared' : 'Known'}</span>
                                 <span className={`text-sm font-bold ${currentLeveled >= limits.spells ? 'text-red-400' : 'text-white'}`}>
                                     {currentLeveled} / {limits.spells}
                                 </span>
@@ -376,6 +379,13 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
                                             </div>
 
                                             <div className="flex items-center gap-2">
+                                                <div 
+                                                    onClick={(e) => { e.stopPropagation(); onDuplicateToHomebrew?.(spell); }}
+                                                    className="p-2 rounded-lg text-gray-500 hover:bg-gray-800 hover:text-dnd-gold transition-colors"
+                                                    title="Duplicate to Homebrew Forge"
+                                                >
+                                                    <Sparkles size={18} />
+                                                </div>
                                                 <div className={`p-2 rounded-lg transition-colors ${isExpanded ? 'bg-gray-800 text-white' : 'text-gray-500 hover:bg-gray-800 hover:text-white'}`}>
                                                     <Info size={18} />
                                                 </div>
@@ -385,7 +395,7 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
                                                         className="flex items-center gap-2 px-4 py-2 bg-red-900/20 text-red-400 border border-red-900/50 rounded-lg text-xs font-black uppercase hover:bg-red-900/40 transition-all"
                                                     >
                                                         <Trash2 size={14} />
-                                                        Forget
+                                                        {isPrepared ? 'Unprepare' : 'Forget'}
                                                     </button>
                                                 ) : (
                                                     <button 
@@ -393,7 +403,7 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
                                                         className="flex items-center gap-2 px-4 py-2 bg-dnd-gold text-black rounded-lg text-xs font-black uppercase hover:bg-white transition-all shadow-lg shadow-dnd-gold/10"
                                                     >
                                                         <Plus size={14} />
-                                                        Learn
+                                                        {isPrepared ? 'Prepare' : 'Learn'}
                                                     </button>
                                                 )}
                                             </div>

@@ -9,9 +9,10 @@ const LANGUAGE_LIST = ["Abyssal", "Celestial", "Common", "Deep Speech", "Draconi
 interface BackgroundStepProps {
     onComplete: (name: string, background: BackgroundDetail, extraData: { languages: string[], tools: string[], skills: string[] }) => void;
     onBack: () => void;
+    userId?: string;
 }
 
-const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack }) => {
+const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, userId }) => {
     const [name, setName] = useState('');
     const [backgrounds, setBackgrounds] = useState<APIReference[]>([]);
     const [selectedBackground, setSelectedBackground] = useState<BackgroundDetail | null>(null);
@@ -28,19 +29,19 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack }) =
 
     useEffect(() => {
         const load = async () => {
-            const results = await fetchBackgrounds();
+            const results = await fetchBackgrounds(userId);
             setBackgrounds(results);
             setLoading(false);
             if(results.length > 0) {
-                 const details = await fetchBackgroundDetail(results[0].index);
+                 const details = await fetchBackgroundDetail(results[0].index, userId);
                  setSelectedBackground(details);
             }
         };
         load();
-    }, []);
+    }, [userId]);
 
     const handleBackgroundSelect = async (index: string) => {
-        const detail = await fetchBackgroundDetail(index);
+        const detail = await fetchBackgroundDetail(index, userId);
         setSelectedBackground(detail);
         setChosenLanguages([]);
         setChoiceSelections({});
@@ -120,11 +121,39 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack }) =
             }
         });
 
+        const levelChoices: any[] = [];
+        if (langCount > 0) {
+            levelChoices.push({
+                id: `background-languages-${selectedBackground.index}`,
+                level: 1,
+                source: selectedBackground.name,
+                type: 'language',
+                label: 'Background Languages',
+                value: chosenLanguages,
+                options: LANGUAGE_LIST,
+                count: langCount
+            });
+        }
+        
+        selectedBackground.proficiency_choices?.forEach((choice, cIdx) => {
+            levelChoices.push({
+                id: `background-proficiency-${selectedBackground.index}-${cIdx}`,
+                level: 1,
+                source: selectedBackground.name,
+                type: 'skill', // simplified
+                label: `Background Proficiency Choice ${cIdx + 1}`,
+                value: choiceSelections[cIdx] || [],
+                options: choice.from.options.map(o => o.item.name),
+                count: choice.choose
+            });
+        });
+
         onComplete(name, selectedBackground, { 
             languages: [...chosenLanguages, ...extraPersonalLanguages], 
             tools: extraTools, 
-            skills: extraSkills 
-        });
+            skills: extraSkills,
+            choices: levelChoices
+        } as any);
     };
 
     if (loading) return <div className="text-dnd-gold animate-pulse text-center mt-20 font-serif italic text-xl">Writing your history...</div>;

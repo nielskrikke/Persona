@@ -69,6 +69,31 @@ export const RANGER_SPELLS: SpellDetail[] = [
         index: "speak-with-animals", name: "Speak with Animals", level: 1, school: { name: "Divination", index: "divination" }, casting_time: "1 action", range: "Self", components: ["V", "S"], duration: "10 minutes", ritual: true, concentration: false, classes: [], 
         desc: ["You gain the ability to comprehend and verbally communicate with beasts for the duration. The knowledge and awareness of many beasts is limited by their intelligence, but at minimum, beasts can give you information about nearby locations and monsters, including whatever they can perceive or have perceived within the past day."]
     },
+    {
+        index: "absorb-elements", name: "Absorb Elements", level: 1, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 reaction", range: "Self", components: ["S"], duration: "1 round", ritual: false, concentration: false, classes: [],
+        desc: ["The spell absorbs a portion of the incoming energy, lessening its effect on you and storing it for your next melee attack. You have resistance to the triggering damage type until the start of your next turn. Also, the first time you hit with a melee attack on your next turn, the target takes an extra 1d6 damage of the triggering type, and the spell ends."],
+        higher_level: ["When you cast this spell using a spell slot of 2nd level or higher, the extra damage increases by 1d6 for each slot level above 1st."]
+    },
+    {
+        index: "zephyr-strike", name: "Zephyr Strike", level: 1, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 bonus action", range: "Self", components: ["V"], duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["You move like the wind. For the duration, your movement doesn’t provoke opportunity attacks. Once before the spell ends, you can give yourself advantage on one weapon attack roll on your turn. That attack deals an extra 1d8 force damage on a hit. Whether you hit or miss, your walking speed increases by 30 feet until the end of that turn."]
+    },
+    {
+        index: "snare", name: "Snare", level: 1, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 minute", range: "Touch", components: ["V", "S", "M"], material: "25 feet of rope, which the spell consumes", duration: "Until dispelled or triggered", ritual: false, concentration: false, classes: [],
+        desc: ["As you cast this spell, you use the rope to create a circle with a 5-foot radius on the ground or the floor. When you finish casting, the circle becomes nearly invisible and the rope disappears. The trap is nearly invisible and requires a successful Intelligence (Investigation) check against your spell save DC to be found. The trap triggers when a Small, Medium, or Large creature moves onto the ground or the floor in the spell's radius. That creature must succeed on a Dexterity saving throw or be magically hoisted into the air, leaving it hanging upside down 3 feet above the ground or the floor. The creature is restrained until the spell ends."]
+    },
+    {
+        index: "entangle", name: "Entangle", level: 1, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "90 feet", components: ["V", "S"], duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["Grasping weeds and vines sprout from the ground in a 20-foot square starting from a point within range. For the duration, these plants turn the ground in the area into difficult terrain. A creature in the area when you cast the spell must succeed on a Strength saving throw or be restrained by the entangling plants until the spell ends."],
+        dc: { dc_type: { name: "STR", index: "str" }, dc_success: "none" }
+    },
+    {
+        index: "searing-smite", name: "Searing Smite", level: 1, school: { name: "Evocation", index: "evocation" }, casting_time: "1 bonus action", range: "Self", components: ["V"], duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["The next time you hit a creature with a melee weapon attack during the spell's duration, your weapon flares with white-hot intensity, and the attack deals an extra 1d6 fire damage and ignites the target. At the start of each of its turns until the spell ends, the target must make a Constitution saving throw. On a failed save, it takes 1d6 fire damage. On a successful save, the spell ends."],
+        higher_level: ["When you cast this spell using a spell slot of 2nd level or higher, the initial extra damage increases by 1d6 for each slot level above 1st."],
+        damage: { damage_type: { name: "Fire", index: "fire" }, damage_at_slot_level: { "1": "1d6", "2": "2d6", "3": "3d6", "4": "4d6", "5": "5d6" } },
+        dc: { dc_type: { name: "CON", index: "con" }, dc_success: "none" }
+    },
 
     // Level 2
     { 
@@ -128,6 +153,34 @@ export const RANGER_SPELLS: SpellDetail[] = [
         desc: ["The ground in a 20-foot radius centered on a point within range twists and sprouts hard spikes and thorns. The area becomes difficult terrain for the duration. When a creature moves into or within the area, it takes 2d4 piercing damage for every 5 feet it travels."],
         damage: { damage_type: { name: "Piercing", index: "piercing" }, damage_at_slot_level: { "2": "2d4" } }
     },
+    {
+        index: "healing-spirit", name: "Healing Spirit", level: 2, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 bonus action", range: "60 feet", components: ["V", "S"], duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["You conjure a transparent spirit in the form of a translucent beast or fey (your choice) in an unoccupied space of a 5-foot cube you can see within range. The spirit lasts for the duration. Until the spell ends, whenever you or a creature you can see moves into the spirit’s space for the first time on a turn or starts its turn there, you can cause the spirit to restore 1d6 hit points to that creature (no action required). The spirit can’t heal constructs or undead. The spirit can heal a number of times equal to 1 + your spellcasting ability modifier (minimum of twice). After it heals that many times, the spirit disappears."],
+        higher_level: ["When you cast this spell using a spell slot of 3rd level or higher, the healing increases by 1d6 for each slot level above 2nd."]
+    },
+    {
+        index: "summon-beast", name: "Summon Beast", level: 2, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "90 feet", components: ["V", "S", "M"], material: "a feather, a tuft of fur, and a fish tail inside a gilded acorn worth at least 200 gp", duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [],
+        desc: ["You call forth a bestial spirit. It manifests in an unoccupied space that you can see within range. This corporeal form uses the Bestial Spirit stat block. When you cast the spell, choose an environment: Air, Land, or Water. The creature resembles an animal of your choice that is native to the chosen environment, which determines certain traits in its stat block. The creature disappears when it drops to 0 hit points or when the spell ends."],
+        higher_level: ["When you cast this spell using a spell slot of 3rd level or higher, use the higher level wherever the spell’s level appears in the stat block."]
+    },
+    {
+        index: "aid", name: "Aid", level: 2, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 action", range: "30 feet", components: ["V", "S", "M"], material: "A tiny strip of white cloth.", duration: "8 hours", ritual: false, concentration: false, classes: [],
+        desc: ["Your spell bolsters your allies with toughness and resolve. Choose up to three creatures within range. Each target's hit point maximum and current hit points increase by 5 for the duration."],
+        higher_level: ["When you cast this spell using a spell slot of 3rd level or higher, a target's hit points increase by an additional 5 for each slot level above 2nd."]
+    },
+    {
+        index: "enhance-ability", name: "Enhance Ability", level: 2, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "Touch", components: ["V", "S", "M"], material: "fur or a feather from a beast", duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [],
+        desc: ["You touch a creature and bestow upon it a magical enhancement. Choose one of the following effects: Bear's Endurance, Bull's Strength, Cat's Grace, Eagle's Splendor, Fox's Cunning, Owl's Wisdom."]
+    },
+    {
+        index: "gust-of-wind", name: "Gust of Wind", level: 2, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "Self (60-foot line)", components: ["V", "S", "M"], material: "a legume seed", duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["A line of strong wind 60 feet long and 10 feet wide blasts from you in a direction you choose for the spell’s duration. Each creature that starts its turn in the line must succeed on a Strength saving throw or be pushed 15 feet away from you in a direction following the line."]
+    },
+    {
+        index: "magic-weapon", name: "Magic Weapon", level: 2, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 bonus action", range: "Touch", components: ["V", "S"], duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [],
+        desc: ["You touch a nonmagical weapon. Until the spell ends, that weapon becomes a magic weapon with a +1 bonus to attack rolls and damage rolls."],
+        higher_level: ["When you cast this spell using a spell slot of 4th level or higher, the bonus increases to +2. When you use a spell slot of 6th level or higher, the bonus increases to +3."]
+    },
 
     // Level 3
     { 
@@ -180,6 +233,41 @@ export const RANGER_SPELLS: SpellDetail[] = [
         index: "wind-wall", name: "Wind Wall", level: 3, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "120 feet", components: ["V", "S", "M"], material: "Tiny fan.", duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [], 
         desc: ["A wall of strong wind rises from the ground at a point you choose within range. You can make the wall up to 50 feet long, 15 feet high, and 1 foot thick. You can shape the wall in any way you choose so long as it makes one continuous path along the ground. The strong wind keeps fog, smoke, and other gases at bay. Small or smaller flying creatures or objects can't pass through the wall."]
     },
+    {
+        index: "flame-arrows", name: "Flame Arrows", level: 3, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "Touch", components: ["V", "S"], duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [],
+        desc: ["You touch a quiver containing arrows or bolts. When a target is hit by a ranged weapon attack using a piece of ammunition from the quiver, the target takes an extra 1d6 fire damage. The spell’s magic ends on the piece of ammunition when it hits or misses, and the spell ends when twelve pieces of ammunition have been drawn from the quiver."],
+        higher_level: ["When you cast this spell using a spell slot of 4th level or higher, the number of missiles you can affect increases by two for each slot level above 3rd."]
+    },
+    {
+        index: "summon-fey", name: "Summon Fey", level: 3, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "90 feet", components: ["V", "S", "M"], material: "a gilded flower worth at least 300 gp", duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [],
+        desc: ["You call forth a fey spirit. It manifests in an unoccupied space that you can see within range. This corporeal form uses the Fey Spirit stat block. When you cast the spell, choose a mood: Fuming, Mirthful, or Tricksy. The creature resembles a fey creature of your choice which determines certain traits in its stat block. The creature disappears when it drops to 0 hit points or when the spell ends."],
+        higher_level: ["When you cast this spell using a spell slot of 4th level or higher, use the higher level wherever the spell’s level appears in the stat block."]
+    },
+    {
+        index: "blinding-smite", name: "Blinding Smite", level: 3, school: { name: "Evocation", index: "evocation" }, casting_time: "1 bonus action", range: "Self", components: ["V"], duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["The next time you hit a creature with a melee weapon attack during this spell's duration, your weapon flares with bright light, and the attack deals an extra 3d8 radiant damage. Additionally, the target must succeed on a Constitution saving throw or be blinded until the spell ends."],
+        damage: { damage_type: { name: "Radiant", index: "radiant" }, damage_at_slot_level: { "3": "3d8" } },
+        dc: { dc_type: { name: "CON", index: "con" }, dc_success: "none" }
+    },
+    {
+        index: "elemental-weapon", name: "Elemental Weapon", level: 3, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "Touch", components: ["V", "S"], duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [],
+        desc: ["A nonmagical weapon you touch becomes a magic weapon. Choose one of the following damage types: acid, cold, fire, lightning, or thunder. For the duration, the weapon has a +1 bonus to attack rolls and deals an extra 1d4 damage of the chosen type when it hits."],
+        higher_level: ["When you cast this spell using a spell slot of 5th or 6th level, the bonus to attack rolls increases to +2 and the extra damage increases to 2d4. When you use a spell slot of 7th level or higher, the bonus increases to +3 and the extra damage increases to 3d4."],
+        damage: { damage_type: { name: "Variable", index: "variable" }, damage_at_slot_level: { "3": "1d4", "5": "2d4", "7": "3d4" } }
+    },
+    {
+        index: "meld-into-stone", name: "Meld into Stone", level: 3, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "Touch", components: ["V", "S", "M"], duration: "8 hours", ritual: true, concentration: false, classes: [],
+        desc: ["You step into a stone object or surface large enough to fully contain your body, melding yourself and all the equipment you carry with the stone for the duration. Using your movement, you step into the stone at a point you can touch. Nothing of your presence remains visible or otherwise detectable by nonmagical senses."]
+    },
+    {
+        index: "revivify", name: "Revivify", level: 3, school: { name: "Necromancy", index: "necromancy" }, casting_time: "1 action", range: "Touch", components: ["V", "S", "M"], material: "diamonds worth 300 gp, which the spell consumes", duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["You touch a creature that has died within the last minute. That creature returns to life with 1 hit point. This spell can’t return to life a creature that has died of old age, nor can it restore any missing body parts."]
+    },
+    {
+        index: "ashardalons-stride", name: "Ashardalon's Stride", level: 3, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 bonus action", range: "Self", components: ["V", "S"], duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["The billowing flames of a dragon cover your feet, granting you explosive speed. For the duration, your speed increases by 20 feet and your movement doesn’t provoke opportunity attacks. When you move within 5 feet of a creature or an object that isn’t being worn or carried, it takes 1d6 fire damage from your trail of fire. A creature or object can take this damage only once during a turn."],
+        higher_level: ["When you cast this spell using a spell slot of 4th level or higher, your speed increases by an additional 5 feet and the damage increases by 1d6 for each slot level above 3rd."]
+    },
 
     // Level 4
     { 
@@ -204,6 +292,25 @@ export const RANGER_SPELLS: SpellDetail[] = [
         index: "stoneskin", name: "Stoneskin", level: 4, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 action", range: "Touch", components: ["V", "S", "M"], material: "Diamond dust worth 100gp.", duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [], 
         desc: ["This spell turns the flesh of a willing creature you touch as hard as stone. Until the spell ends, the target has resistance to nonmagical bludgeoning, piercing, and slashing damage."]
     },
+    {
+        index: "guardian-of-nature", name: "Guardian of Nature", level: 4, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 bonus action", range: "Self", components: ["V"], duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["A spirit of nature makes you its vessel. You gain one of the following benefits of your choice: Primal Beast or Great Tree."]
+    },
+    {
+        index: "summon-elemental", name: "Summon Elemental", level: 4, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "90 feet", components: ["V", "S", "M"], material: "pristine air, pebbles, ash, and water inside a gold-inlaid vial worth at least 400 gp", duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [],
+        desc: ["You call forth an elemental spirit. It manifests in an unoccupied space that you can see within range. This corporeal form uses the Elemental Spirit stat block. When you cast the spell, choose an element: Air, Earth, Fire, or Water. The creature resembles a bipedal form of the chosen element, which determines certain traits in its stat block. The creature disappears when it drops to 0 hit points or when the spell ends."],
+        higher_level: ["When you cast this spell using a spell slot of 5th level or higher, use the higher level wherever the spell’s level appears in the stat block."]
+    },
+    {
+        index: "death-ward", name: "Death Ward", level: 4, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 action", range: "Touch", components: ["V", "S"], duration: "8 hours", ritual: false, concentration: false, classes: [],
+        desc: ["You touch a creature and grant it a measure of protection from death. The first time the target would drop to 0 hit points as a result of taking damage, the target instead drops to 1 hit point, and the spell ends. If the spell is still in effect when the target is subjected to an effect that would kill it instantaneously without dealing damage, that effect is instead negated against the target, and the spell ends."]
+    },
+    {
+        index: "dominate-beast", name: "Dominate Beast", level: 4, school: { name: "Enchantment", index: "enchantment" }, casting_time: "1 action", range: "60 feet", components: ["V", "S"], duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["You attempt to beguile a beast that you can see within range. It must succeed on a Wisdom saving throw or be charmed by you for the duration. If you or creatures that are friendly to you are fighting it, it has advantage on the saving throw. While the beast is charmed, you have a telepathic link with it as long as the two of you are on the same plane of existence. You can use this telepathic link to issue commands to the creature while you are conscious (no action required), which it does its best to obey."],
+        higher_level: ["When you cast this spell using a 5th-level spell slot, the duration is concentration, up to 10 minutes. When you use a 6th-level spell slot, the duration is concentration, up to 1 hour. When you use a spell slot of 7th level or higher, the duration is concentration, up to 8 hours."],
+        dc: { dc_type: { name: "WIS", index: "wis" }, dc_success: "none" }
+    },
 
     // Level 5
     { 
@@ -224,5 +331,17 @@ export const RANGER_SPELLS: SpellDetail[] = [
     { 
         index: "tree-stride", name: "Tree Stride", level: 5, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "Self", components: ["V", "S"], duration: "Concentration, up to 1 minute", ritual: false, concentration: false, classes: [], 
         desc: ["You gain the ability to enter a tree and move from inside it to inside another tree of the same kind within 500 feet. Both trees must be living and at least the same size as you. You must use 5 feet of movement to enter a tree."]
+    },
+    {
+        index: "steel-wind-strike", name: "Steel Wind Strike", level: 5, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "30 feet", components: ["S", "M"], material: "a melee weapon worth at least 1 sp", duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["You flourish the weapon used in the casting and then vanish to strike like wind. Choose up to five creatures you can see within range. Make a melee spell attack against each target. On a hit, a target takes 6d10 force damage. Then can teleport to an unoccupied space you can see within 5 feet of one of the targets you hit or missed."]
+    },
+    {
+        index: "wrath-of-nature", name: "Wrath of Nature", level: 5, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "120 feet", components: ["V", "S"], duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["You call out to the spirits of nature to rouse them against your enemies. Choose a point you can see on the ground within range. A 60-foot cube of nature’s fury lashes out from that point for the spell’s duration. Rocks, trees, and grass in the area become hostile."]
+    },
+    {
+        index: "greater-restoration", name: "Greater Restoration", level: 5, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 action", range: "Touch", components: ["V", "S", "M"], material: "diamond dust worth at least 100 gp, which the spell consumes", duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["You imbue a creature you touch with positive energy to undo a debilitating effect. You can reduce the target’s exhaustion level by one, or end one of the following upon it: one effect that charmed or petrified the target, one curse, any reduction to one of the target’s ability scores, or one effect reducing the target’s hit point maximum."]
     }
 ];

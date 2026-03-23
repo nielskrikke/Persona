@@ -22,6 +22,9 @@ const HealthManagerModal = ({
 
     const val = parseInt(amount) || 0;
 
+    const currentHp = character.currentHp;
+    const maxHp = character.maxHp;
+
     const handleHeal = () => {
         if (val <= 0) return;
         onUpdate({ currentHp: Math.min(character.maxHp, character.currentHp + val) });
@@ -93,9 +96,9 @@ const HealthManagerModal = ({
                 {/* Header Stats */}
                 <div className="bg-[#121316] p-4 flex justify-between items-center border-b border-[#3e4149]/50">
                     <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Current</span>
-                        <span className={`text-2xl font-bold font-serif ${character.currentHp < character.maxHp / 2 ? 'text-red-400' : 'text-white'}`}>
-                            {character.currentHp} <span className="text-gray-600 text-lg">/ {character.maxHp}</span>
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Current HP</span>
+                        <span className={`text-2xl font-bold font-serif ${currentHp < maxHp / 2 ? 'text-red-400' : 'text-white'}`}>
+                            {currentHp} <span className="text-gray-600 text-lg">/ {maxHp}</span>
                         </span>
                     </div>
                     {character.tempHp > 0 && (

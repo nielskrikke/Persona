@@ -7,7 +7,7 @@ interface StatsTabProps {
     character: CharacterState;
     roll: (formula: string, label: string) => void;
     layout: {left: string[], right: string[], mobile?: string[]};
-    renderWidget: (type: string) => React.ReactNode;
+    renderWidget: (type: string, key?: string) => React.ReactNode;
     setShowLayoutManager: (val: boolean) => void;
 }
 
@@ -39,7 +39,7 @@ const StatsTab: React.FC<StatsTabProps> = ({ character, roll, layout, renderWidg
             </div>
             
             <div className="space-y-4">
-                {activeWidgets.map(w => renderWidget(w))}
+                {activeWidgets.map((w, idx) => renderWidget(w, `mobile-${w}-${idx}`))}
             </div>
 
             {activeWidgets.length === 0 && (

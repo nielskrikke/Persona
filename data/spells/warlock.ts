@@ -43,8 +43,36 @@ export const WARLOCK_SPELLS: SpellDetail[] = [
         index: "true-strike", name: "True Strike", level: 0, school: { name: "Divination", index: "divination" }, casting_time: "1 action", range: "30 feet", components: ["S"], duration: "Concentration, up to 1 round", ritual: false, concentration: true, classes: [], 
         desc: ["You extend your hand and point a finger at a target in range. Your magic grants you a brief insight into the target's defenses. On your next turn, you gain advantage on your first attack roll against the target, provided that this spell hasn't ended."]
     },
+    {
+        index: "booming-blade", name: "Booming Blade", level: 0, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "5 feet", components: ["S", "M"], material: "a melee weapon worth at least 1 sp", duration: "1 round", ritual: false, concentration: false, classes: [],
+        desc: ["You brandish the weapon used in the spell’s casting and make a melee attack with it against one creature within 5 feet of you. On a hit, the target suffers the weapon attack’s normal effects and then becomes sheathed in booming energy until the start of your next turn. If the target willingly moves 5 feet or more before then, the target takes 1d8 thunder damage, and the spell ends."],
+        damage: { damage_type: { name: "Thunder", index: "thunder" }, damage_at_character_level: { "5": "1d8", "11": "2d8", "17": "3d8" } }
+    },
+    {
+        index: "green-flame-blade", name: "Green-Flame Blade", level: 0, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "5 feet", components: ["S", "M"], material: "a melee weapon worth at least 1 sp", duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["You brandish the weapon used in the spell’s casting and make a melee attack with it against one creature within 5 feet of you. On a hit, the target suffers the weapon attack’s normal effects, and you can cause green fire to leap from the target to a different creature of your choice that you can see within 5 feet of it. The second creature takes fire damage equal to your spellcasting ability modifier."],
+        damage: { damage_type: { name: "Fire", index: "fire" }, damage_at_character_level: { "5": "1d8", "11": "2d8", "17": "3d8" } }
+    },
+    {
+        index: "toll-the-dead", name: "Toll the Dead", level: 0, school: { name: "Necromancy", index: "necromancy" }, casting_time: "1 action", range: "60 feet", components: ["V", "S"], duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["You point at one creature you can see within range, and the sound of a dolorous bell fills the air around it for a moment. The target must succeed on a Wisdom saving throw or take 1d8 necrotic damage. If the target is missing any of its hit points, it instead takes 1d12 necrotic damage."],
+        damage: { damage_type: { name: "Necrotic", index: "necrotic" }, damage_at_character_level: { "1": "1d8", "5": "2d8", "11": "3d8", "17": "4d8" } },
+        dc: { dc_type: { name: "WIS", index: "wis" }, dc_success: "none" }
+    },
+    {
+        index: "thunderclap", name: "Thunderclap", level: 0, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "5 feet", components: ["S"], duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["You create a burst of thunderous sound that can be heard up to 100 feet away. Each creature within range, other than you, must succeed on a Constitution saving throw or take 1d6 thunder damage."],
+        damage: { damage_type: { name: "Thunder", index: "thunder" }, damage_at_character_level: { "1": "1d6", "5": "2d6", "11": "3d6", "17": "4d6" } },
+        dc: { dc_type: { name: "CON", index: "con" }, dc_success: "none" }
+    },
 
     // Level 1
+    {
+        index: "cause-fear", name: "Cause Fear", level: 1, school: { name: "Necromancy", index: "necromancy" }, casting_time: "1 action", range: "60 feet", components: ["V"], duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["You awaken the sense of mortality in one creature you can see within range. A construct or an undead is immune to this spell. The target must succeed on a Wisdom saving throw or become frightened of you until the spell ends. The frightened target can repeat the saving throw at the end of each of its turns, ending the effect on itself on a success."],
+        higher_level: ["When you cast this spell using a spell slot of 2nd level or higher, you can target one additional creature for each slot level above 1st. The creatures must be within 30 feet of each other when you target them."],
+        dc: { dc_type: { name: "WIS", index: "wis" }, dc_success: "none" }
+    },
     { 
         index: "armor-of-agathys", name: "Armor of Agathys", level: 1, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 action", range: "Self", components: ["V", "S", "M"], material: "A cup of water.", duration: "1 hour", ritual: false, concentration: false, classes: [], 
         desc: ["A protective magical force surrounds you, manifesting as a spectral frost that covers you and your gear. You gain 5 temporary hit points for the duration. If a creature hits you with a melee attack while you have these hit points, the creature takes 5 cold damage."],
@@ -163,6 +191,31 @@ export const WARLOCK_SPELLS: SpellDetail[] = [
         desc: ["You suggest a course of activity (limited to a sentence or two) and magically influence a creature you can see within range that can hear and understand you. Creatures that can't be charmed are immune to this effect. The suggestion must be worded in such a manner as to make the course of activity sound reasonable."],
         dc: { dc_type: { name: "WIS", index: "wis" }, dc_success: "none" }
     },
+    {
+        index: "mind-spike", name: "Mind Spike", level: 2, school: { name: "Divination", index: "divination" }, casting_time: "1 action", range: "60 feet", components: ["S"], duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [],
+        desc: ["You reach into the mind of one creature you can see within range. The target must make a Wisdom saving throw, taking 3d8 psychic damage on a failed save, or half as much damage on a successful one. On a failed save, you also always know the target’s location until the spell ends, but only while the two of you are on the same plane of existence. While you have this knowledge, the target can’t become hidden from you, and if it’s invisible, it gains no benefit from that condition against you."],
+        higher_level: ["When you cast this spell using a spell slot of 3rd level or higher, the damage increases by 1d8 for each slot level above 2nd."]
+    },
+    {
+        index: "shadow-blade", name: "Shadow Blade", level: 2, school: { name: "Illusion", index: "illusion" }, casting_time: "1 bonus action", range: "Self", components: ["V", "S"], duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["You weave together threads of shadow to create a sword of solidified gloom in your hand. This magic sword lasts until the spell ends. It counts as a simple melee weapon with which you are proficient. It deals 2d8 psychic damage on a hit and has the finesse, light, and thrown properties (range 20/60). When you use the sword to attack a target that is in dim light or darkness, you have advantage on the attack roll."],
+        higher_level: ["When you cast this spell using a 3rd- or 4th-level spell slot, the damage increases to 3d8. When you cast it using a 5th- or 6th-level spell slot, the damage increases to 4d8. When you cast it using a spell slot of 7th level or higher, the damage increases to 5d8."]
+    },
+    {
+        index: "thunder-step", name: "Thunder Step", level: 3, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "90 feet", components: ["V"], duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["You teleport yourself to an unoccupied space you can see within range. Immediately after you disappear, a thunderous boom sounds, and each creature within 10 feet of the space you left must make a Constitution saving throw, taking 3d10 thunder damage on a failed save, or half as much damage on a successful one. You can bring along objects as long as their weight doesn’t exceed what you can carry. You can also teleport one willing creature of your size or smaller who is carrying gear up to its carrying capacity. The creature must be within 5 feet of you when you cast this spell, and there must be an unoccupied space within 5 feet of your destination space for the creature to appear in; otherwise, the creature is left behind."],
+        higher_level: ["When you cast this spell using a spell slot of 4th level or higher, the damage increases by 1d10 for each slot level above 3rd."]
+    },
+    {
+        index: "enemies-abound", name: "Enemies Abound", level: 3, school: { name: "Enchantment", index: "enchantment" }, casting_time: "1 action", range: "120 feet", components: ["V", "S"], duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["You reach into the mind of one creature you can see and force it to make an Intelligence saving throw. A creature automatically succeeds if it is immune to being charmed. On a failed save, the target loses the ability to distinguish friend from foe, regarding all creatures it can see as enemies until the spell ends. Each time the target takes damage, it can repeat the saving throw, ending the effect on itself on a success."],
+        dc: { dc_type: { name: "INT", index: "int" }, dc_success: "none" }
+    },
+    {
+        index: "summon-lesser-demons", name: "Summon Lesser Demons", level: 3, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "60 feet", components: ["V", "S", "M"], material: "a vial of blood from a humanoid killed within the past 24 hours", duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [],
+        desc: ["You utter foul incantations, summoning demons from the Abyss. Roll on the following table to determine what appears: 1-2: Two demons of challenge rating 1 or lower. 3-4: Four demons of challenge rating 1/2 or lower. 5-6: Eight demons of challenge rating 1/4 or lower. The demons are hostile to all creatures, including you. Roll initiative for the summoned demons as a group, which has its own turns. The demons pursue and attack the nearest non-demons to the best of their ability. As part of casting the spell, you can form a circle on the ground with the blood used as a material component. The circle is large enough to encompass your space. While the spell lasts, the summoned demons can’t cross the circle or harm it, and they can’t target anyone within it. Using the material component in this manner consumes it when the spell ends."],
+        higher_level: ["When you cast this spell using a spell slot of 6th or 7th level, you summon twice as many demons. When you cast it using a spell slot of 8th or 9th level, you summon three times as many demons."]
+    },
 
     // Level 3
     { 
@@ -236,6 +289,21 @@ export const WARLOCK_SPELLS: SpellDetail[] = [
         index: "dimension-door", name: "Dimension Door", level: 4, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "500 feet", components: ["V"], duration: "Instantaneous", ritual: false, concentration: false, classes: [], 
         desc: ["You teleport yourself from your current location to any other spot within range. You arrive at exactly the spot desired. It can be a place you can see, one you can visualize, or one you can describe by stating distance and direction."]
     },
+    {
+        index: "summon-greater-demon", name: "Summon Greater Demon", level: 4, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "60 feet", components: ["V", "S", "M"], material: "a vial of blood from a humanoid killed within the past 24 hours", duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [],
+        desc: ["You utter foul incantations, summoning a demon from the Abyss. You choose the demon’s type, which must be one of challenge rating 5 or lower. The demon appears in an unoccupied space you can see within range, and the demon disappears when it drops to 0 hit points or when the spell ends. The demon is unfriendly to you and your companions. Roll initiative for the demon, which has its own turns. On each of its turns, it attacks the nearest creature it can perceive. If no creature is near enough to move to and attack, the demon stalks anything that it can ascertain. At the end of each of the demon’s turns, it makes a Charisma saving throw. If it succeeds, the spell ends. As part of casting the spell, you can form a circle on the ground with the blood used as a material component. The circle is large enough to encompass your space. While the spell lasts, the summoned demon can’t cross the circle or harm it, and it can’t target anyone within it. Using the material component in this manner consumes it when the spell ends."],
+        higher_level: ["When you cast this spell using a spell slot of 5th level, the challenge rating increases to 6. When you use a spell slot of 6th level, the challenge rating increases to 7. When you use a spell slot of 7th level, the challenge rating increases to 8. When you use a spell slot of 8th level, the challenge rating increases to 9. When you use a spell slot of 9th level, the challenge rating increases to 10."]
+    },
+    {
+        index: "shadow-of-moil", name: "Shadow of Moil", level: 4, school: { name: "Necromancy", index: "necromancy" }, casting_time: "1 action", range: "Self", components: ["V", "S", "M"], material: "an undead eyeball encased in a gem worth at least 150 gp", duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["Flame-like shadows wreathe your body until the spell ends, causing you to become heavily obscured to others. The shadows turn dim light within 10 feet of you into darkness, and bright light in the same area into dim light. Until the spell ends, you have resistance to radiant damage. In addition, whenever a creature within 10 feet of you hits you with an attack, the shadows lash out at that creature, dealing it 2d8 necrotic damage."]
+    },
+    {
+        index: "sickening-radiance", name: "Sickening Radiance", level: 4, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "120 feet", components: ["V", "S"], duration: "Concentration, up to 10 minutes", ritual: false, concentration: true, classes: [],
+        desc: ["Dim, greenish light spreads within a 30-foot-radius sphere centered on a point you choose within range. The light spreads around corners, and it lasts until the spell ends. When a creature moves into the spell’s area for the first time on a turn or starts its turn there, that creature must succeed on a Constitution saving throw or take 4d10 radiant damage, and it suffers one level of exhaustion and emits a dim, greenish light in a 5-foot radius. This light and the exhaustion caused by this spell go away when the spell ends."],
+        damage: { damage_type: { name: "Radiant", index: "radiant" }, damage_at_slot_level: { "4": "4d10", "5": "5d10", "6": "6d10", "7": "7d10", "8": "8d10", "9": "9d10" } },
+        dc: { dc_type: { name: "CON", index: "con" }, dc_success: "none" }
+    },
     { 
         index: "hallucinatory-terrain", name: "Hallucinatory Terrain", level: 4, school: { name: "Illusion", index: "illusion" }, casting_time: "10 minutes", range: "300 feet", components: ["V", "S", "M"], material: "A stone, a twig, and a bit of green plant.", duration: "24 hours", ritual: false, concentration: false, classes: [], 
         desc: ["You make natural terrain in a 150-foot cube in range look, sound, and smell like some other sort of natural terrain. Thus, open fields or a road can be made to resemble a swamp, hill, crevasse, or some other difficult or impassable terrain."]
@@ -246,9 +314,25 @@ export const WARLOCK_SPELLS: SpellDetail[] = [
         index: "contact-other-plane", name: "Contact Other Plane", level: 5, school: { name: "Divination", index: "divination" }, casting_time: "1 minute", range: "Self", components: ["V"], duration: "1 minute", ritual: true, concentration: false, classes: [], 
         desc: ["You mentally contact a demigod, the spirit of a long-dead sage, or some other mysterious entity from another plane. Contacting this extraplanar intelligence can strain or even break your mind. When you cast this spell, make a DC 15 Intelligence saving throw. On a failure, you take 6d6 psychic damage and are insane until you finish a long rest. On a success, you can ask the entity up to five questions."]
     },
+    {
+        index: "danse-macabre", name: "Danse Macabre", level: 5, school: { name: "Necromancy", index: "necromancy" }, casting_time: "1 action", range: "60 feet", components: ["V", "S"], duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [],
+        desc: ["Threads of dark energy leap from your fingers to pierce up to five Small or Medium corpses you can see within range. Each corpse rises as a skeleton or a zombie (your choice). You decide what each corpse becomes. On each of your turns, you can use a bonus action to mentally command any creature you made with this spell. You can command one or all of them, issuing the same command to each one. If you issue no commands, the creature only defends itself against hostile creatures. Once given an order, the creature continues to follow it until its task is complete. The creature is under your control until the spell ends, after which it becomes inanimate once more."],
+        higher_level: ["When you cast this spell using a spell slot of 6th level or higher, you can animate up to two additional corpses for each slot level above 5th."]
+    },
     { 
         index: "dream", name: "Dream", level: 5, school: { name: "Illusion", index: "illusion" }, casting_time: "1 minute", range: "Unlimited", components: ["V", "S", "M"], material: "A handful of sand, a dab of ink, and a writing quill plucked from a sleeping bird.", duration: "8 hours", ritual: false, concentration: false, classes: [], 
         desc: ["This spell shapes a creature's dreams. Choose a creature known to you as the target of this spell. The target must be on the same plane of existence as you. Creatures that don't sleep, such as elves, can't be contacted by this spell. You, or a willing creature you touch, enters a trance state, acting as a messenger."]
+    },
+    {
+        index: "enervation", name: "Enervation", level: 5, school: { name: "Necromancy", index: "necromancy" }, casting_time: "1 action", range: "60 feet", components: ["V", "S"], duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["A tendril of inky darkness reaches out from you, touching a creature you can see within range to drain life from it. The target must make a Dexterity saving throw. On a successful save, the target takes 2d8 necrotic damage, and the spell ends. On a failed save, the target takes 4d8 necrotic damage, and until the spell ends, you can use your action on each of your turns to automatically deal 4d8 necrotic damage to the target. The spell ends if you use your action to do anything else, if the target is ever outside the spell’s range, or if the target has total cover from you. Whenever the spell deals damage to a target, you regain hit points equal to half the amount of necrotic damage the target takes."],
+        higher_level: ["When you cast this spell using a spell slot of 6th level or higher, the damage increases by 1d8 for each slot level above 5th."],
+        damage: { damage_type: { name: "Necrotic", index: "necrotic" }, damage_at_slot_level: { "5": "4d8", "6": "5d8", "7": "6d8", "8": "7d8", "9": "8d8" } },
+        dc: { dc_type: { name: "DEX", index: "dex" }, dc_success: "half" }
+    },
+    {
+        index: "far-step", name: "Far Step", level: 5, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 bonus action", range: "Self", components: ["V"], duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["You teleport up to 60 feet to an unoccupied space you can see. On each of your turns before the spell ends, you can use a bonus action to teleport in this way again."]
     },
     { 
         index: "hold-monster", name: "Hold Monster", level: 5, school: { name: "Enchantment", index: "enchantment" }, casting_time: "1 action", range: "90 feet", components: ["V", "S", "M"], material: "A small, straight piece of iron.", duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [], 
@@ -260,6 +344,12 @@ export const WARLOCK_SPELLS: SpellDetail[] = [
         index: "scrying", name: "Scrying", level: 5, school: { name: "Divination", index: "divination" }, casting_time: "10 minutes", range: "Self", components: ["V", "S", "M"], material: "A focus worth at least 1,000 gp, such as a crystal ball, a silver mirror, or a font filled with holy water.", duration: "Concentration, up to 10 minutes", ritual: false, concentration: true, classes: [], 
         desc: ["You can see and hear a particular creature you choose that is on the same plane of existence as you. The target must make a Wisdom saving throw, which is modified by how well you know the target and the sort of physical connection you have to it."],
         dc: { dc_type: { name: "WIS", index: "wis" }, dc_success: "none" }
+    },
+    {
+        index: "synaptic-static", name: "Synaptic Static", level: 5, school: { name: "Enchantment", index: "enchantment" }, casting_time: "1 action", range: "120 feet", components: ["V", "S"], duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["You choose a point within range and cause psychic energy to explode there. Each creature in a 20-foot-radius sphere centered on that point must make an Intelligence saving throw. A creature with an Intelligence score of 2 or lower can’t be affected by this spell. A target takes 8d6 psychic damage on a failed save, or half as much damage on a successful one. After a failed save, a target has muddled thoughts for 1 minute. During that time, it rolls a d6 and subtracts the number rolled from all its attack rolls and ability checks, as well as its Constitution saving throws to maintain concentration. The target can make an Intelligence saving throw at the end of each of its turns, ending the effect on itself on a success."],
+        damage: { damage_type: { name: "Psychic", index: "psychic" }, damage_at_slot_level: { "5": "8d6" } },
+        dc: { dc_type: { name: "INT", index: "int" }, dc_success: "half" }
     },
 
     // Level 6
@@ -294,6 +384,21 @@ export const WARLOCK_SPELLS: SpellDetail[] = [
         desc: ["You attempt to turn one creature that you can see within range into stone. If the target's body is made of flesh, the creature must make a Constitution saving throw. On a failed save, it is restrained as its flesh begins to harden. On a successful save, the creature isn't affected. A creature restrained by this spell must make another Constitution saving throw at the end of each of its turns. If it successfully saves against this spell three times, the spell ends. If it fails its saves three times, it is turned to stone and subjected to the petrified condition for the duration."],
         dc: { dc_type: { name: "CON", index: "con" }, dc_success: "none" }
     },
+    {
+        index: "mental-prison", name: "Mental Prison", level: 6, school: { name: "Illusion", index: "illusion" }, casting_time: "1 action", range: "60 feet", components: ["S"], duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["You attempt to bind a creature within an illusory cell that only it perceives. One creature you can see within range must make an Intelligence saving throw. The target succeeds automatically if it is immune to being charmed. On a failed save, the target takes 5d10 psychic damage, and you make the area immediately around the target's space appear dangerous to it in some way. The target is restrained and can't see anything outside the illusory cell. If the target is moved out of the cell, or if it reaches out of the cell, it takes 10d10 psychic damage and the spell ends."],
+        damage: { damage_type: { name: "Psychic", index: "psychic" }, damage_at_slot_level: { "6": "5d10" } },
+        dc: { dc_type: { name: "INT", index: "int" }, dc_success: "half" }
+    },
+    {
+        index: "scatter", name: "Scatter", level: 6, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "30 feet", components: ["V"], duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["The air quivers around up to five creatures of your choice that you can see within range. An unwilling creature must succeed on a Wisdom saving throw to resist this spell. You teleport each affected target to an unoccupied space that you can see within 120 feet of you. That space must be on the ground or on a floor."],
+        dc: { dc_type: { name: "WIS", index: "wis" }, dc_success: "none" }
+    },
+    {
+        index: "soul-cage", name: "Soul Cage", level: 6, school: { name: "Necromancy", index: "necromancy" }, casting_time: "1 reaction", range: "60 feet", components: ["V", "S", "M"], material: "a tiny silver cage worth 100 gp", duration: "8 hours", ritual: false, concentration: false, classes: [],
+        desc: ["This spell snatches the soul of a humanoid as it dies and traps it inside the tiny cage you use for the material component. Until the spell ends, you can use a bonus action to tap into the soul's power for various benefits: Steal Life, Query Soul, Borrow Experience, or Eyes of the Dead. You can use these benefits a total of six times. Once you use the sixth benefit, the soul is released, and the spell ends."]
+    },
     { 
         index: "mass-suggestion", name: "Mass Suggestion", level: 6, school: { name: "Enchantment", index: "enchantment" }, casting_time: "1 action", range: "60 feet", components: ["V", "M"], material: "A snake's tongue and either a bit of honeycomb or a drop of sweet oil.", duration: "24 hours", ritual: false, concentration: false, classes: [], 
         desc: ["You suggest a course of activity (limited to a sentence or two) and magically influence up to twelve creatures of your choice that you can see within range and that can hear and understand you. Creatures that can't be charmed are immune to this effect."],
@@ -310,6 +415,16 @@ export const WARLOCK_SPELLS: SpellDetail[] = [
         index: "etherealness", name: "Etherealness", level: 7, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "Self", components: ["V", "S"], duration: "8 hours", ritual: false, concentration: false, classes: [], 
         desc: ["You step into the border regions of the Ethereal Plane, in the area where it overlaps with your current plane. You remain in the Border Ethereal for the duration or until you use your action to dismiss the spell."],
         higher_level: ["When you cast this spell using a spell slot of 8th level or higher, you can target up to three willing creatures (including yourself) for each slot level above 7th. The creatures must be within 10 feet of you when you cast the spell."]
+    },
+    {
+        index: "crown-of-stars", name: "Crown of Stars", level: 7, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "Self", components: ["V", "S"], duration: "1 hour", ritual: false, concentration: false, classes: [],
+        desc: ["Seven star-like orbs of light appear and orbit your head until the spell ends. You can use a bonus action to send one of the orbs streaking toward a creature or object within 120 feet of you. When you do so, make a ranged spell attack. On a hit, the target takes 4d12 radiant damage. Whether you hit or miss, the orb is expended. The spell ends early if you expend the last orb."],
+        higher_level: ["When you cast this spell using a spell slot of 8th level or higher, the number of orbs created increases by two for each slot level above 7th."],
+        damage: { damage_type: { name: "Radiant", index: "radiant" }, damage_at_slot_level: { "7": "4d12" } }
+    },
+    {
+        index: "power-word-pain", name: "Power Word Pain", level: 7, school: { name: "Enchantment", index: "enchantment" }, casting_time: "1 action", range: "60 feet", components: ["V"], duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["You utter a word of power that causes waves of intense pain to assail one creature you can see within range. If the target has 100 hit points or fewer, it is subject to crippling pain. Otherwise, the spell has no effect on it. While the target is affected by crippling pain, its speed can't be more than 10 feet, and it has disadvantage on attack rolls, ability checks, and saving throws, other than Constitution saving throws. Finally, if the target tries to cast a spell, it must first succeed on a Constitution saving throw, or the casting fails and the spell is wasted. A target can make a Constitution saving throw at the end of each of its turns, ending the effect on itself on a success."]
     },
     { 
         index: "finger-of-death", name: "Finger of Death", level: 7, school: { name: "Necromancy", index: "necromancy" }, casting_time: "1 action", range: "60 feet", components: ["V", "S"], duration: "Instantaneous", ritual: false, concentration: false, classes: [], 
@@ -347,6 +462,12 @@ export const WARLOCK_SPELLS: SpellDetail[] = [
         index: "glibness", name: "Glibness", level: 8, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "Self", components: ["V"], duration: "1 hour", ritual: false, concentration: false, classes: [], 
         desc: ["Until the spell ends, when you make a Charisma check, you can replace the number you roll with a 15. Additionally, no matter what you say, magic that would determine if you are telling the truth indicates that you are being truthful."]
     },
+    {
+        index: "maddening-darkness", name: "Maddening Darkness", level: 8, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "150 feet", components: ["V", "M"], material: "a drop of pitch mixed with a drop of mercury", duration: "Concentration, up to 10 minutes", ritual: false, concentration: true, classes: [],
+        desc: ["Magical darkness spreads from a point you choose within range to fill a 60-foot-radius sphere until the spell ends. The darkness spreads around corners. A creature with darkvision can't see through this darkness, and nonmagical light can't illuminate it. If any of this spell's area overlaps with an area of light created by a spell of 8th level or lower, the spell that created the light is dispelled. When a creature enters the spell's area for the first time on a turn or starts its turn there, that creature must make a Wisdom saving throw. On a failed save, the creature takes 8d8 psychic damage, or half as much damage on a successful one."],
+        damage: { damage_type: { name: "Psychic", index: "psychic" }, damage_at_slot_level: { "8": "8d8" } },
+        dc: { dc_type: { name: "WIS", index: "wis" }, dc_success: "half" }
+    },
     { 
         index: "power-word-stun", name: "Power Word Stun", level: 8, school: { name: "Enchantment", index: "enchantment" }, casting_time: "1 action", range: "60 feet", components: ["V"], duration: "Instantaneous", ritual: false, concentration: false, classes: [], 
         desc: ["You speak a word of power that can overwhelm the mind of one creature you can see within range. If the target has 150 hit points or fewer, it is stunned. Otherwise, the spell has no effect."]
@@ -357,6 +478,11 @@ export const WARLOCK_SPELLS: SpellDetail[] = [
         index: "astral-projection", name: "Astral Projection", level: 9, school: { name: "Necromancy", index: "necromancy" }, casting_time: "1 hour", range: "Touch", components: ["V", "S", "M"], material: "One jacinth worth at least 1,000 gp and one ornately carved bar of silver worth at least 100 gp per creature, all of which the spell consumes.", duration: "Special", ritual: false, concentration: false, classes: [], 
         desc: ["You and up to eight willing creatures within range project your astral bodies into the Astral Plane (the spell fails and the casting is wasted if you are already on that plane). The material body you leave behind is unconscious and in a state of suspended animation; it doesn't need food or air and doesn't age."]
     },
+    {
+        index: "blade-of-disaster", name: "Blade of Disaster", level: 9, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 bonus action", range: "60 feet", components: ["V", "S"], duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["You create a blade-shaped planar rift, about 3 feet long, in an unoccupied space you can see within range. The blade lasts until the spell ends. When you cast the spell, you can make up to two melee spell attacks with the blade, each against a creature, loose object, or structure within 5 feet of the blade. On a hit, the target takes 4d12 force damage. This attack scores a critical hit if the number on the d20 is 18 or higher. On a critical hit, the blade deals an extra 8d12 force damage (for a total of 12d12 force damage). As a bonus action on your turn, you can move the blade up to 30 feet to an unoccupied space you can see and then make up to two melee spell attacks with it."],
+        damage: { damage_type: { name: "Force", index: "force" }, damage_at_slot_level: { "9": "4d12" } }
+    },
     { 
         index: "foresight", name: "Foresight", level: 9, school: { name: "Divination", index: "divination" }, casting_time: "1 minute", range: "Touch", components: ["V", "S", "M"], material: "A hummingbird feather.", duration: "8 hours", ritual: false, concentration: false, classes: [], 
         desc: ["You touch a willing creature and bestow a limited ability to see into the immediate future. For the duration, the target can't be surprised and has advantage on attack rolls, ability checks, and saving throws. Additionally, other creatures have disadvantage on attack rolls against the target for the duration."]
@@ -364,6 +490,12 @@ export const WARLOCK_SPELLS: SpellDetail[] = [
     { 
         index: "imprisonment", name: "Imprisonment", level: 9, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 minute", range: "30 feet", components: ["V", "S", "M"], material: "A vellum depiction or a carved statuette in the likeness of the target, and a special component that varies according to the version of the spell you choose, worth at least 500 gp per Hit Die of the target.", duration: "Until dispelled", ritual: false, concentration: false, classes: [], 
         desc: ["You create a magical restraint to hold a creature that you can see within range. The target must succeed on a Wisdom saving throw or be bound by the spell; if it succeeds, it is immune to this spell if you cast it again. While affected by this spell, the creature doesn't need to breathe, eat, or drink, and it doesn't age. Divination spells can't locate or perceive the target. The conditions for ending the spell are determined when you cast it."]
+    },
+    {
+        index: "psychic-scream", name: "Psychic Scream", level: 9, school: { name: "Enchantment", index: "enchantment" }, casting_time: "1 action", range: "90 feet", components: ["S"], duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["You unleash a psychic blast from within your mind. Up to ten creatures of your choice that you can see within range must make an Intelligence saving throw. A creature takes 14d6 psychic damage on a failed save, or half as much damage on a successful one. A creature that fails the save is also stunned. If a target is killed by this damage, its head explodes, assuming it has one. A stunned creature can make an Intelligence saving throw at the end of each of its turns, ending the effect on itself on a success."],
+        damage: { damage_type: { name: "Psychic", index: "psychic" }, damage_at_slot_level: { "9": "14d6" } },
+        dc: { dc_type: { name: "INT", index: "int" }, dc_success: "half" }
     },
     { 
         index: "power-word-kill", name: "Power Word Kill", level: 9, school: { name: "Enchantment", index: "enchantment" }, casting_time: "1 action", range: "60 feet", components: ["V"], duration: "Instantaneous", ritual: false, concentration: false, classes: [], 

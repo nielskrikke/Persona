@@ -53,11 +53,12 @@ const LayoutManagerModal = ({
 
     useEffect(() => {
         if (isOpen) {
-            setLeftCol(layout.left || []);
-            setRightCol(layout.right || []);
-            setMobileLayout(layout.mobile || []);
+            const dedupe = (arr: string[]) => Array.from(new Set(arr || []));
+            setLeftCol(dedupe(layout.left));
+            setRightCol(dedupe(layout.right));
+            setMobileLayout(dedupe(layout.mobile));
             
-            refreshUnused(layout.left || [], layout.right || []);
+            refreshUnused(dedupe(layout.left), dedupe(layout.right));
             setSearch('');
         }
     }, [isOpen, layout]);

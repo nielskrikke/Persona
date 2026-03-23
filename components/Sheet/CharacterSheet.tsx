@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { CharacterState, ABILITY_NAMES, ABILITY_LABELS, RollResult, AbilityName, SpellDetail, InventoryItem, Currency, RuleEntry, BeastDetail, EldritchCannonDetail, SteelDefenderDetail, EquipmentDetail } from '../../types';
-import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString } from '../../utils/rules';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Sparkles } from 'lucide-react';
+import { CharacterState, ABILITY_NAMES, ABILITY_LABELS, RollResult, AbilityName, SpellDetail, InventoryItem, Currency, RuleEntry, CreatureDetail, EldritchCannonDetail, SteelDefenderDetail, EquipmentDetail, ItemModifier } from '../../types';
+import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities } from '../../utils/rules';
 import { rollDice } from '../../utils/dice';
-import { WIDGET_LABELS, DEFAULT_LAYOUT, STANDARD_CONDITIONS, CLASS_FEATURES, STANDARD_ACTIONS, STATIC_RULES, WIDGET_BG } from '../../data/constants';
+import CreatureManagerModal from './Modals/CreatureManagerModal';
+import { WIDGET_LABELS, DEFAULT_LAYOUT, STANDARD_CONDITIONS, CLASS_FEATURES, STANDARD_ACTIONS, STATIC_RULES, WIDGET_BG, PICK_A_CARD_TABLE } from '../../data/constants';
 import { Library, fetchEquipment, fetchEquipmentDetail } from '../../data/index';
 import DiceRoller3D, { QueuedRoll } from './Shared/DiceRoller3D';
 import { saveCharacterToDb } from '../../services/supabase';
@@ -17,12 +19,11 @@ import CustomActionModal from './Modals/CustomActionModal';
 import ItemSearchModal from '../Builder/ItemSearchModal';
 import LayoutManagerModal from './Modals/LayoutManagerModal';
 import CustomSpellModal from './Modals/CustomSpellModal';
-import WildShapeModal from './Modals/WildShapeModal';
 import ConcentrationCheckModal from './Modals/ConcentrationCheckModal';
-import FamiliarManagerModal from './Modals/FamiliarManagerModal';
-import FamiliarStatBlockModal from './Modals/FamiliarStatBlockModal';
+import CreatureStatBlockModal from './Modals/CreatureStatBlockModal';
 import EldritchCannonModal from './Modals/EldritchCannonModal';
 import SteelDefenderModal from './Modals/SteelDefenderModal';
+import CardOptionsModal from './Modals/CardOptionsModal';
 import CompanionStatBlockModal from './Modals/CompanionStatBlockModal';
 import DetailSidePanel from './SidePanels/DetailSidePanel';
 import HomebrewManagerModal from '../Dashboard/HomebrewManagerModal';
@@ -31,6 +32,7 @@ import RollContextMenu from './Shared/RollContextMenu';
 
 // Tab Components
 import ActionsTab from './Tabs/ActionsTab';
+import ErrorBoundary from '../ErrorBoundary';
 import SpellsTab from './Tabs/SpellsTab';
 import InventoryTab from './Tabs/InventoryTab';
 import FeaturesTab from './Tabs/FeaturesTab';
@@ -72,17 +74,28 @@ const getCharacterSpecificRules = (character: CharacterState): RuleEntry[] => {
     return rules;
 };
 
-const SavingThrowRow: React.FC<{ label: string, stat: AbilityName, isProf: boolean, mod: number, onRoll: (formula: string, label: string) => void, onContextMenu: (e: React.MouseEvent, formula: string, label: string) => void }> = ({ label, stat, isProf, mod, onRoll, onContextMenu }) => (
+const SavingThrowRow: React.FC<{ 
+    label: string, 
+    stat: AbilityName, 
+    isProf: boolean, 
+    mod: number, 
+    advantage?: boolean, 
+    onRoll: (formula: string, label: string) => void, 
+    onContextMenu: (e: React.MouseEvent, formula: string, label: string) => void 
+}> = ({ label, stat, isProf, mod, advantage, onRoll, onContextMenu }) => (
     <div 
         className="flex items-center justify-between text-xs p-1 hover:bg-[#2e3036]/50 rounded group"
-        onContextMenu={(e) => onContextMenu(e, `1d20${formatModifier(mod)}`, `${label} Save`)}
+        onContextMenu={(e) => onContextMenu(e, advantage ? `2d20kh1${formatModifier(mod)}` : `1d20${formatModifier(mod)}`, `${label} Save`)}
     >
         <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full border ${isProf ? 'bg-dnd-gold border-dnd-gold' : 'border-gray-600'}`}></div>
-            <span className="text-gray-300 font-bold">{label}</span>
+            <span className="text-gray-300 font-bold flex items-center gap-1 flex-wrap">
+                {label}
+                {advantage && <span className="text-[8px] bg-gray-800/60 text-gray-500 px-1 rounded border border-gray-700/50">ADV</span>}
+            </span>
         </div>
         <button
-            onClick={() => onRoll(`1d20${formatModifier(mod)}`, `${label} Save`)}
+            onClick={() => onRoll(advantage ? `2d20kh1${formatModifier(mod)}` : `1d20${formatModifier(mod)}`, `${label} Save`)}
             className="font-mono text-gray-400 hover:text-white hover:underline"
         >
             {formatModifier(mod)}
@@ -90,11 +103,20 @@ const SavingThrowRow: React.FC<{ label: string, stat: AbilityName, isProf: boole
     </div>
 );
 
-const SkillRow: React.FC<{ skill: string, stat: AbilityName, isProf: boolean, isExpertise: boolean, mod: number, onRoll: (formula: string, label: string) => void, onContextMenu: (e: React.MouseEvent, formula: string, label: string) => void }> = ({ skill, stat, isProf, isExpertise, mod, onRoll, onContextMenu }) => (
+const SkillRow: React.FC<{ 
+    skill: string, 
+    stat: AbilityName, 
+    isProf: boolean, 
+    isExpertise: boolean, 
+    mod: number, 
+    advantage?: boolean, 
+    onRoll: (formula: string, label: string) => void, 
+    onContextMenu: (e: React.MouseEvent, formula: string, label: string) => void 
+}> = ({ skill, stat, isProf, isExpertise, mod, advantage, onRoll, onContextMenu }) => (
     <div 
         className="flex items-center justify-between text-xs p-1 hover:bg-[#2e3036]/50 rounded group cursor-pointer" 
-        onClick={() => onRoll(`1d20${formatModifier(mod)}`, `${skill} Check`)}
-        onContextMenu={(e) => onContextMenu(e, `1d20${formatModifier(mod)}`, `${skill} Check`)}
+        onClick={() => onRoll(advantage ? `2d20kh1${formatModifier(mod)}` : `1d20${formatModifier(mod)}`, `${skill} Check`)}
+        onContextMenu={(e) => onContextMenu(e, advantage ? `2d20kh1${formatModifier(mod)}` : `1d20${formatModifier(mod)}`, `${skill} Check`)}
     >
         <div className="flex items-center gap-2">
              <div className={`flex items-center justify-center w-3 h-3`}>
@@ -106,7 +128,10 @@ const SkillRow: React.FC<{ skill: string, stat: AbilityName, isProf: boolean, is
                     <div className="w-1 h-1 rounded-full bg-gray-800"></div>
                 )}
             </div>
-            <span className={`text-gray-300 ${isExpertise ? 'text-dnd-gold font-bold' : ''}`}>{skill} <span className="text-[9px] text-gray-600 ml-1">({stat.toUpperCase()})</span></span>
+            <span className={`text-gray-300 flex items-center gap-1 flex-wrap ${isExpertise ? 'text-dnd-gold font-bold' : ''}`}>
+                {skill} <span className="text-[9px] text-gray-600 ml-1">({stat.toUpperCase()})</span>
+                {advantage && <span className="text-[8px] bg-gray-800/60 text-gray-500 px-1 rounded border border-gray-700/50">ADV</span>}
+            </span>
         </div>
         <span className={`font-mono ${isProf ? 'text-white font-bold' : 'text-gray-500'}`}>{formatModifier(mod)}</span>
     </div>
@@ -134,9 +159,17 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                  favorites: initialCharacter.favorites || [], 
                  contacts: initialCharacter.contacts || [], 
                  quests: Array.isArray(initialCharacter.quests) ? initialCharacter.quests : [], 
-                 customBeasts: initialCharacter.customBeasts || [], 
-                 familiars: initialCharacter.familiars || [],
-                 activeFamiliar: initialCharacter.activeFamiliar || null,
+                 customCreatures: initialCharacter.customCreatures || [], 
+                 creatures: initialCharacter.creatures || [],
+                 activeWildShape: initialCharacter.activeWildShape ? (
+                     ('creature' in initialCharacter.activeWildShape) ? initialCharacter.activeWildShape : { creature: initialCharacter.activeWildShape as any, currentHp: (initialCharacter.activeWildShape as any).hp || 0, maxHp: (initialCharacter.activeWildShape as any).hp || 0 }
+                 ) : null,
+                 activeFamiliar: initialCharacter.activeFamiliar ? (
+                     ('creature' in initialCharacter.activeFamiliar) ? initialCharacter.activeFamiliar : { creature: initialCharacter.activeFamiliar as any, currentHp: (initialCharacter.activeFamiliar as any).hp || 0, maxHp: (initialCharacter.activeFamiliar as any).hp || 0 }
+                 ) : null,
+                 activePolymorph: initialCharacter.activePolymorph ? (
+                     ('creature' in initialCharacter.activePolymorph) ? initialCharacter.activePolymorph : { creature: initialCharacter.activePolymorph as any, currentHp: (initialCharacter.activePolymorph as any).hp || 0, maxHp: (initialCharacter.activePolymorph as any).hp || 0 }
+                 ) : null,
                  activeEldritchCannon: initialCharacter.activeEldritchCannon || null,
                  eldritchCannonFreebieUsed: initialCharacter.eldritchCannonFreebieUsed || false,
                  activeSteelDefender: initialCharacter.activeSteelDefender || null,
@@ -158,6 +191,46 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const cdMax = cdFeat.formula(c.level, initialCharacter.abilities);
                 initialFeatures[cdFeat.name] = { max: cdMax, current: cdMax, reset: cdFeat.reset };
             }
+            if (c.definition.name === 'Fighter' && c.level >= 2) {
+                const asFeat = CLASS_FEATURES['Fighter-AS'];
+                const asMax = asFeat.formula(c.level, initialCharacter.abilities);
+                initialFeatures[asFeat.name] = { max: asMax, current: asMax, reset: asFeat.reset };
+            }
+            if (c.definition.name === 'Fighter' && c.level >= 9) {
+                const indFeat = CLASS_FEATURES['Fighter-Indomitable'];
+                const indMax = indFeat.formula(c.level, initialCharacter.abilities);
+                initialFeatures[indFeat.name] = { max: indMax, current: indMax, reset: indFeat.reset };
+            }
+            if (c.definition.name === 'Monk' && c.level >= 2) {
+                const umFeat = CLASS_FEATURES['Monk-UM'];
+                const umMax = umFeat.formula(c.level, initialCharacter.abilities);
+                initialFeatures[umFeat.name] = { max: umMax, current: umMax, reset: umFeat.reset };
+            }
+            if (c.definition.name === 'Ranger' && c.level >= 10) {
+                const tFeat = CLASS_FEATURES['Ranger-Tireless'];
+                const tMax = tFeat.formula(c.level, initialCharacter.abilities);
+                initialFeatures[tFeat.name] = { max: tMax, current: tMax, reset: tFeat.reset };
+            }
+            if (c.definition.name === 'Ranger' && c.level >= 14) {
+                const nvFeat = CLASS_FEATURES['Ranger-NV'];
+                const nvMax = nvFeat.formula(c.level, initialCharacter.abilities);
+                initialFeatures[nvFeat.name] = { max: nvMax, current: nvMax, reset: nvFeat.reset };
+            }
+            if (c.definition.name === 'Sorcerer' && c.level >= 1) {
+                const isFeat = CLASS_FEATURES['Sorcerer-IS'];
+                const isMax = isFeat.formula(c.level, initialCharacter.abilities);
+                initialFeatures[isFeat.name] = { max: isMax, current: isMax, reset: isFeat.reset };
+            }
+            if (c.definition.name === 'Artificer' && c.level >= 3 && c.subclass?.index === 'artillerist') {
+                const ecFeat = CLASS_FEATURES['Artificer-EC'];
+                const ecMax = ecFeat.formula(c.level, initialCharacter.abilities);
+                initialFeatures[ecFeat.name] = { max: ecMax, current: ecMax, reset: ecFeat.reset };
+            }
+            if (c.definition.name === 'Artificer' && c.level >= 7) {
+                const fgFeat = CLASS_FEATURES['Artificer-FG'];
+                const fgMax = fgFeat.formula(c.level, initialCharacter.abilities);
+                initialFeatures[fgFeat.name] = { max: fgMax, current: fgMax, reset: fgFeat.reset };
+            }
         });
         const inventory = initialCharacter.inventory && initialCharacter.inventory.length > 0 ? initialCharacter.inventory : initialCharacter.equipment.map((item, i) => ({ id: `init-${i}`, name: item, quantity: 1, weight: 5, equipped: true, attuned: false }));
         return {
@@ -174,9 +247,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             quests: [],
             contacts: [],
             expertise: initialCharacter.expertise || [],
-            customBeasts: [],
+            customCreatures: [],
             familiars: [],
+            activeWildShape: null,
             activeFamiliar: null,
+            activePolymorph: null,
             activeEldritchCannon: null,
             eldritchCannonFreebieUsed: false,
             activeSteelDefender: null,
@@ -235,7 +310,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         }
     }, [character.themeColor, character.themeColorSecondary]);
 
-    const [activeTab, setActiveTab] = useState<'actions' | 'spells' | 'inventory' | 'features' | 'rules' | 'log' | 'stats'>('actions');
+    const [activeTab, setActiveTab] = useState<'actions' | 'spells' | 'inventory' | 'features' | 'rules' | 'log' | 'stats' | 'choices'>('actions');
     const [logs, setLogs] = useState<RollResult[]>([]);
     const [rollHistory, setRollHistory] = useState<RollResult[]>([]); 
     const [activeConditions, setActiveConditions] = useState<string[]>([]);
@@ -248,20 +323,109 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const [showManageCharacterModal, setShowManageCharacterModal] = useState(false);
     const [showItemSearchModal, setShowItemSearchModal] = useState(false);
     const [itemSearchMode, setItemSearchMode] = useState<'search' | 'custom'>('search');
+    const [duplicateItem, setDuplicateItem] = useState<EquipmentDetail | null>(null);
+    const [duplicateSpell, setDuplicateSpell] = useState<SpellDetail | null>(null);
     const [showLayoutManager, setShowLayoutManager] = useState(false);
     const [showCustomSpellModal, setShowCustomSpellModal] = useState(false);
-    const [showWildShapeModal, setShowWildShapeModal] = useState(false);
-    const [showFamiliarModal, setShowFamiliarModal] = useState(false); 
+    const [showCreatureModal, setShowCreatureModal] = useState(false);
+    const [creatureModalMode, setCreatureModalMode] = useState<'wildshape' | 'familiar' | 'polymorph'>('wildshape');
     const [showEldritchCannonModal, setShowEldritchCannonModal] = useState(false);
     const [showSteelDefenderModal, setShowSteelDefenderModal] = useState(false);
+    const [showCardOptionsModal, setShowCardOptionsModal] = useState(false);
     const [showHomebrewModal, setShowHomebrewModal] = useState(false);
-    const [homebrewInitialTab, setHomebrewInitialTab] = useState<'race' | 'class' | 'subclass' | 'background' | 'spell' | 'item' | 'wildshape' | 'familiar' | 'feat' | undefined>(undefined);
-    const [viewingFamiliar, setViewingFamiliar] = useState<BeastDetail | null>(null); 
-    const [viewingWildShape, setViewingWildShape] = useState<BeastDetail | null>(null);
+    const [homebrewInitialTab, setHomebrewInitialTab] = useState<'race' | 'class' | 'subclass' | 'background' | 'spell' | 'item' | 'creature' | 'feat' | undefined>(undefined);
+    const [homebrewInitialData, setHomebrewInitialData] = useState<any>(null);
+    const [viewingFamiliar, setViewingFamiliar] = useState<CreatureDetail | null>(null); 
+    const [viewingWildShape, setViewingWildShape] = useState<CreatureDetail | null>(null);
     const [viewingCompanion, setViewingCompanion] = useState<any | null>(null);
     const [concentrationCheck, setConcentrationCheck] = useState<{ dc: number; spellName: string } | null>(null);
     const [selectedDetail, setSelectedDetail] = useState<any | null>(null);
-    const [layout, setLayout] = useState(character.layout || DEFAULT_LAYOUT);
+    const [layout, setLayout] = useState(() => {
+        const initial = character.layout || DEFAULT_LAYOUT;
+        const seen = new Set<string>();
+        return {
+            left: (initial.left || []).filter(w => { if (seen.has(w)) return false; seen.add(w); return true; }),
+            right: (initial.right || []).filter(w => { if (seen.has(w)) return false; seen.add(w); return true; }),
+            mobile: Array.from(new Set(initial.mobile || []))
+        };
+    });
+    
+    useEffect(() => {
+        if (character.classes.some(c => c.definition.index === 'card-master')) {
+            setLayout(prev => {
+                const hasLeft = prev.left.includes('activeCards');
+                const hasRight = prev.right.includes('activeCards');
+                
+                if (hasLeft && hasRight) {
+                    // Remove from left, keep in right
+                    return {
+                        ...prev,
+                        left: prev.left.filter(w => w !== 'activeCards'),
+                        right: prev.right.filter((v, i, a) => a.indexOf(v) === i)
+                    };
+                }
+                
+                if (hasLeft || hasRight) {
+                    // Already in one, just deduplicate within arrays
+                    return {
+                        ...prev,
+                        left: prev.left.filter((v, i, a) => a.indexOf(v) === i),
+                        right: prev.right.filter((v, i, a) => a.indexOf(v) === i)
+                    };
+                }
+                
+                return { ...prev, right: ['activeCards', ...prev.right] };
+            });
+        }
+    }, [character.classes.length]);
+    // Auto-add polymorph widget to layout when active
+    useEffect(() => {
+        if (character.activePolymorph) {
+            setLayout(prev => {
+                const isInLayout = prev.left.includes('polymorph') || prev.right.includes('polymorph');
+                if (isInLayout) return prev;
+                
+                // Add to right column by default
+                return {
+                    ...prev,
+                    right: ['polymorph', ...prev.right]
+                };
+            });
+        }
+    }, [!!character.activePolymorph]);
+
+    // Auto-add wildshape widget to layout when active
+    useEffect(() => {
+        if (character.activeWildShape) {
+            setLayout(prev => {
+                const isInLayout = prev.left.includes('wildshape') || prev.right.includes('wildshape');
+                if (isInLayout) return prev;
+                
+                // Add to right column by default
+                return {
+                    ...prev,
+                    right: ['wildshape', ...prev.right]
+                };
+            });
+        }
+    }, [!!character.activeWildShape]);
+
+    // Auto-add familiar widget to layout when active
+    useEffect(() => {
+        if (character.activeFamiliar) {
+            setLayout(prev => {
+                const isInLayout = prev.left.includes('familiar') || prev.right.includes('familiar');
+                if (isInLayout) return prev;
+                
+                // Add to right column by default
+                return {
+                    ...prev,
+                    right: ['familiar', ...prev.right]
+                };
+            });
+        }
+    }, [!!character.activeFamiliar]);
+
     const [isSidePanelPinned, setIsSidePanelPinned] = useState(false);
     const [rollMenu, setRollMenu] = useState<{x: number, y: number, formula: string, label: string} | null>(null);
     const [activeRoll, setActiveRoll] = useState<QueuedRoll | null>(null);
@@ -269,128 +433,359 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
     useEffect(() => {
         const loadEquipment = async () => {
-            const items = await fetchEquipment();
+            const items = await fetchEquipment(currentUser?.id);
             setAllEquipment(items);
         };
         loadEquipment();
-    }, []);
+    }, [currentUser?.id]);
+
+    // Sync featureUsage with CLASS_FEATURES to ensure new resources are tracked
+    useEffect(() => {
+        if (!character) return;
+        
+        let hasChanges = false;
+        const newUsage = { ...character.featureUsage };
+        
+        character.classes.forEach(c => {
+            const feat = CLASS_FEATURES[c.definition.name];
+            if (feat) {
+                const max = feat.formula(c.level, character.abilities);
+                if (!newUsage[feat.name] || newUsage[feat.name].max !== max) {
+                    newUsage[feat.name] = {
+                        max,
+                        current: newUsage[feat.name] ? Math.min(newUsage[feat.name].current, max) : max,
+                        reset: feat.reset
+                    };
+                    hasChanges = true;
+                }
+            }
+            
+            // Special cases for subclasses or level-specific features
+            const specialFeats = [];
+            if (c.definition.name === 'Paladin' && c.level >= 3) specialFeats.push('Paladin-CD');
+            if (c.definition.name === 'Fighter' && c.level >= 2) specialFeats.push('Fighter-AS');
+            if (c.definition.name === 'Fighter' && c.level >= 9) specialFeats.push('Fighter-Indomitable');
+            if (c.definition.name === 'Monk' && c.level >= 2) specialFeats.push('Monk-UM');
+            if (c.definition.name === 'Ranger' && c.level >= 10) specialFeats.push('Ranger-Tireless');
+            if (c.definition.name === 'Ranger' && c.level >= 14) specialFeats.push('Ranger-NV');
+            if (c.definition.name === 'Sorcerer' && c.level >= 1) specialFeats.push('Sorcerer-IS');
+            if (c.definition.name === 'Artificer' && c.level >= 3 && c.subclass?.index === 'artillerist') specialFeats.push('Artificer-EC');
+            if (c.definition.name === 'Artificer' && c.level >= 7) specialFeats.push('Artificer-FG');
+
+            specialFeats.forEach(key => {
+                const sFeat = CLASS_FEATURES[key];
+                if (sFeat) {
+                    const max = sFeat.formula(c.level, character.abilities);
+                    if (!newUsage[sFeat.name] || newUsage[sFeat.name].max !== max) {
+                        newUsage[sFeat.name] = {
+                            max,
+                            current: newUsage[sFeat.name] ? Math.min(newUsage[sFeat.name].current, max) : max,
+                            reset: sFeat.reset
+                        };
+                        hasChanges = true;
+                    }
+                }
+            });
+        });
+        
+        if (hasChanges) {
+            setCharacter(prev => ({ ...prev, featureUsage: newUsage }));
+        }
+    }, [character?.classes, character?.abilities]);
 
     const prof = calculateProficiency(character.level);
     
-    const getStat = (stat: AbilityName): number => {
-         if (character.activeWildShape && ['str', 'dex', 'con'].includes(stat)) {
-            return character.activeWildShape.beast[stat];
+    const activeModifiers = React.useMemo(() => {
+        const mods: any[] = [];
+
+        // 1. Racial Traits
+        if (character.race) {
+            const race = character.race as any;
+            race.traits?.forEach((trait: any) => {
+                trait.modifiers?.forEach((m: any) => mods.push(m));
+            });
         }
-        let override = 0;
-        character.inventory.forEach(item => {
-             if (item.equipped) {
-                 if (item.requires_attunement && !item.attuned) return;
-                 item.modifiers?.forEach(mod => {
-                     if (mod.type === 'set' && mod.target === stat) override = Math.max(override, Number(mod.value));
-                 });
-             }
+
+        // 2. Subracial Traits
+        if (character.subrace) {
+            const subrace = character.subrace as any;
+            subrace.traits?.forEach((trait: any) => {
+                trait.modifiers?.forEach((m: any) => mods.push(m));
+            });
+        }
+
+        // 3. Class Features
+        character.classes.forEach(cls => {
+            const features = cls.definition.feature_details || [];
+            features.forEach(f => {
+                if (f.level <= cls.level && f.effects) {
+                    f.effects.forEach((e: any) => mods.push(e));
+                }
+            });
         });
-        if (override > 0) return override;
-        const raceBonus = character.race?.ability_bonuses.find(b => b.ability_score.index === stat)?.bonus || 0;
-        const subraceBonus = character.subrace?.ability_bonuses.find(b => b.ability_score.index === stat)?.bonus || 0;
-        return character.abilities[stat] + raceBonus + subraceBonus; 
+
+        // 4. Equipped & Attuned Items
+        character.inventory.forEach(item => {
+            if (item.equipped && (!item.requires_attunement || item.attuned)) {
+                item.modifiers?.forEach(m => mods.push(m));
+            }
+        });
+
+        return mods;
+    }, [character.race, character.subrace, character.inventory, character.classes]);
+
+    const effectiveAbilities = useMemo(() => getEffectiveAbilities(character), [character]);
+
+    const getStat = (stat: AbilityName): number => {
+        return effectiveAbilities[stat];
     };
 
     const spellAbilityRef = character.classes[0]?.definition.spellcasting?.spellcasting_ability.index as AbilityName | undefined;
     const spellMod = spellAbilityRef ? calculateModifier(getStat(spellAbilityRef)) : 0;
-    const spellAttack = prof + spellMod;
+    
+    let extraSpellAttack = 0;
+    let extraSpellSave = 0;
+    activeModifiers.forEach(m => {
+        if (m.type === 'bonus') {
+            if (m.target === 'spell_attack') extraSpellAttack += Number(m.value);
+            if (m.target === 'spell_save_dc') extraSpellSave += Number(m.value);
+        }
+    });
+
+    const spellAttack = prof + spellMod + extraSpellAttack;
     const spellAttackStr = formatModifier(spellAttack);
-    const spellSave = 8 + prof + spellMod;
+    const spellSave = 8 + prof + spellMod + extraSpellSave;
 
     const strMod = calculateModifier(getStat('str'));
     const dexMod = calculateModifier(getStat('dex'));
+    const initAdv = activeModifiers.some(m => m.type === 'advantage' && m.target === 'initiative');
     const conMod = calculateModifier(getStat('con'));
     const wisMod = calculateModifier(getStat('wis'));
     const intMod = calculateModifier(getStat('int'));
+    const chaMod = calculateModifier(getStat('cha'));
     const conSaveBonus = conMod + (character.classes.some(c => c.definition.saving_throws.some(s => s.index === 'con' || s.name === 'CON')) ? prof : 0);
     
     const calculateAC = () => {
-        if (character.activeWildShape) return character.activeWildShape.beast.ac;
         const armor = character.inventory.find(i => i.equipped && i.armor_class && !i.name.toLowerCase().includes('shield'));
         const shield = character.inventory.find(i => i.equipped && i.armor_class && i.name.toLowerCase().includes('shield'));
-        let ac = 10;
-        if (armor && armor.armor_class) {
-            ac = armor.armor_class.base;
-            if (armor.armor_class.dex_bonus) {
-                let bonus = dexMod;
-                if (armor.armor_class.max_bonus !== null) bonus = Math.min(bonus, armor.armor_class.max_bonus);
-                ac += bonus;
-            }
-        } else {
-             ac += dexMod;
-             const isBarb = character.classes.some(c => c.definition.index === 'barbarian');
-             const isMonk = character.classes.some(c => c.definition.index === 'monk');
-             if (isBarb) ac += conMod;
-             else if (isMonk) ac += wisMod;
-        }
-        if (shield && shield.armor_class) ac += shield.armor_class.base;
-        character.inventory.forEach(item => {
-            if (item.equipped) {
-                if (item.requires_attunement && !item.attuned) return;
-                item.modifiers?.forEach(mod => { if (mod.type === 'bonus' && mod.target === 'ac') ac += Number(mod.value); });
+        
+        let baseAC = 10;
+        let dexBonus = dexMod;
+
+        // Check for 'set' AC modifiers (like Natural Armor)
+        activeModifiers.forEach(m => {
+            if (m.type === 'set' && m.target === 'ac') {
+                baseAC = Math.max(baseAC, Number(m.value));
             }
         });
-        return ac;
+
+        if (armor && armor.armor_class) {
+            baseAC = armor.armor_class.base;
+            if (armor.armor_class.dex_bonus) {
+                if (armor.armor_class.max_bonus !== null) dexBonus = Math.min(dexBonus, armor.armor_class.max_bonus);
+            } else {
+                dexBonus = 0;
+            }
+        } else {
+             // Unarmored Defense
+             const isBarb = character.classes.some(c => c.definition.index === 'barbarian');
+             const isMonk = character.classes.some(c => c.definition.index === 'monk');
+             if (isBarb) baseAC += conMod;
+             else if (isMonk) baseAC += wisMod;
+        }
+
+        let total = baseAC + dexBonus;
+        if (shield && shield.armor_class) total += shield.armor_class.base;
+
+        // Item/Trait Bonuses
+        activeModifiers.forEach(m => {
+            if (m.type === 'bonus' && m.target === 'ac') {
+                total += Number(m.value);
+            }
+        });
+
+        return total;
     };
 
     const getGlobalSaveBonus = () => {
         let bonus = 0;
-        character.inventory.forEach(item => {
-            if (!item.equipped) return;
-            if (item.requires_attunement && !item.attuned) return;
-            item.modifiers?.forEach(mod => { if (mod.type === 'bonus' && mod.target === 'saves') bonus += Number(mod.value); });
+        activeModifiers.forEach(m => {
+            if (m.type === 'bonus' && m.target === 'saves') {
+                bonus += Number(m.value);
+            }
         });
+
+        // Paladin Aura of Protection
         const paladin = character.classes.find(c => c.definition.name === 'Paladin');
         if (paladin && paladin.level >= 6) bonus += Math.max(1, calculateModifier(getStat('cha')));
+        
         return bonus;
     };
 
+    const getACBreakdown = () => {
+        const armor = character.inventory.find(i => i.equipped && i.armor_class && !i.name.toLowerCase().includes('shield'));
+        const shield = character.inventory.find(i => i.equipped && i.armor_class && i.name.toLowerCase().includes('shield'));
+        
+        const breakdown: { label: string, value: number }[] = [];
+        let baseAC = 10;
+        let dexBonus = dexMod;
+
+        // Check for 'set' AC modifiers (like Natural Armor)
+        let setAC = -1;
+        let setSource = '';
+        activeModifiers.forEach(m => {
+            if (m.type === 'set' && m.target === 'ac') {
+                if (Number(m.value) > setAC) {
+                    setAC = Number(m.value);
+                    setSource = 'Natural Armor'; // Or more specific if we had the source name
+                }
+            }
+        });
+
+        if (setAC !== -1) {
+            baseAC = setAC;
+            breakdown.push({ label: setSource, value: setAC });
+        }
+
+        if (armor && armor.armor_class) {
+            baseAC = armor.armor_class.base;
+            breakdown.push({ label: armor.name, value: baseAC });
+            if (armor.armor_class.dex_bonus) {
+                if (armor.armor_class.max_bonus !== null) {
+                    dexBonus = Math.min(dexBonus, armor.armor_class.max_bonus);
+                    breakdown.push({ label: `Dexterity (Max ${armor.armor_class.max_bonus})`, value: dexBonus });
+                } else {
+                    breakdown.push({ label: 'Dexterity', value: dexBonus });
+                }
+            } else {
+                dexBonus = 0;
+                breakdown.push({ label: 'Dexterity (No Bonus)', value: 0 });
+            }
+        } else {
+             if (setAC === -1) breakdown.push({ label: 'Base Unarmored', value: 10 });
+             
+             // Unarmored Defense
+             const isBarb = character.classes.some(c => c.definition.index === 'barbarian');
+             const isMonk = character.classes.some(c => c.definition.index === 'monk');
+             if (isBarb) {
+                 breakdown.push({ label: 'Unarmored Defense (Con)', value: conMod });
+             } else if (isMonk) {
+                 breakdown.push({ label: 'Unarmored Defense (Wis)', value: wisMod });
+             }
+
+             if (setAC === -1) breakdown.push({ label: 'Dexterity', value: dexMod });
+        }
+
+        if (shield && shield.armor_class) {
+            breakdown.push({ label: shield.name, value: shield.armor_class.base });
+        }
+
+        // Item/Trait Bonuses
+        activeModifiers.forEach(m => {
+            if (m.type === 'bonus' && m.target === 'ac') {
+                breakdown.push({ label: 'Bonus', value: Number(m.value) });
+            }
+        });
+
+        return breakdown;
+    };
+
+    const getSpeedBreakdown = () => {
+        const breakdown: { label: string, value: any }[] = [];
+        let baseSpeed = character.race?.speed || 30;
+        breakdown.push({ label: 'Base Race Speed', value: baseSpeed });
+
+        // Monk Unarmored Movement
+        const monk = character.classes.find(c => c.definition.index === 'monk');
+        if (monk && monk.level >= 2) {
+            const hasArmor = character.inventory.some(i => i.equipped && i.armor_class && !i.name.toLowerCase().includes('shield'));
+            const hasShield = character.inventory.some(i => i.equipped && i.armor_class && i.name.toLowerCase().includes('shield'));
+            if (!hasArmor && !hasShield) {
+                let bonus = 10;
+                if (monk.level >= 18) bonus = 30;
+                else if (monk.level >= 14) bonus = 25;
+                else if (monk.level >= 10) bonus = 20;
+                else if (monk.level >= 6) bonus = 15;
+                breakdown.push({ label: 'Unarmored Movement (Monk)', value: `+${bonus}` });
+            }
+        }
+
+        // Ranger Roving
+        const ranger = character.classes.find(c => c.definition.index === 'ranger');
+        if (ranger && ranger.level >= 6) {
+            const hasHeavy = character.inventory.some(i => i.equipped && i.armor_class && i.name.toLowerCase().includes('plate'));
+            if (!hasHeavy) {
+                breakdown.push({ label: 'Roving (Ranger)', value: '+10' });
+            }
+        }
+
+        // Item/Trait Bonuses
+        activeModifiers.forEach(m => {
+            if (m.target === 'speed') {
+                if (m.type === 'bonus') breakdown.push({ label: 'Bonus', value: formatModifier(Number(m.value)) });
+                if (m.type === 'set') breakdown.push({ label: 'Set', value: m.value });
+            }
+        });
+
+        return breakdown;
+    };
+
     const acValue = calculateAC();
+    const acBreakdown = getACBreakdown();
     const globalSaveBonus = getGlobalSaveBonus();
     
     const calculateSpeed = () => {
-        if (character.activeWildShape) return character.activeWildShape.beast.speed;
         let baseSpeed = character.race?.speed || 30;
         
         const monk = character.classes.find(c => c.definition.index === 'monk');
         const ranger = character.classes.find(c => c.definition.index === 'ranger');
 
-        if (monk) {
+        if (monk && monk.level >= 2) {
             const hasArmor = character.inventory.some(i => i.equipped && i.armor_class && !i.name.toLowerCase().includes('shield'));
             const hasShield = character.inventory.some(i => i.equipped && i.armor_class && i.name.toLowerCase().includes('shield'));
             if (!hasArmor && !hasShield) {
-                const ml = monk.level;
-                let bonus = 0;
-                if (ml >= 18) bonus = 30;
-                else if (ml >= 14) bonus = 25;
-                else if (ml >= 10) bonus = 20;
-                else if (ml >= 6) bonus = 15;
-                else if (ml >= 2) bonus = 10;
-                baseSpeed += bonus;
+                if (monk.level >= 18) baseSpeed += 30;
+                else if (monk.level >= 14) baseSpeed += 25;
+                else if (monk.level >= 10) baseSpeed += 20;
+                else if (monk.level >= 6) baseSpeed += 15;
+                else baseSpeed += 10;
             }
         }
-        
+
         if (ranger && ranger.level >= 6) {
             const hasHeavy = character.inventory.some(i => i.equipped && i.armor_class && i.name.toLowerCase().includes('plate'));
-            if (!hasHeavy) baseSpeed += 5;
+            if (!hasHeavy) baseSpeed += 10;
         }
-        
-        return `${baseSpeed} ft.`;
+
+        let total = baseSpeed;
+        activeModifiers.forEach(m => {
+            if (m.target === 'speed') {
+                if (m.type === 'bonus') total += Number(m.value);
+                else if (m.type === 'set') total = Math.max(total, Number(m.value));
+            }
+        });
+
+        return total;
     };
 
     const speed = calculateSpeed();
+    const speedBreakdown = getSpeedBreakdown();
     const currentWeight = character.inventory.reduce((sum: number, item) => sum + (item.weight || 0) * (item.quantity || 1), 0);
     const maxWeight = getStat('str') * 15;
 
+    useEffect(() => {
+        if (selectedDetail && 'quantity' in selectedDetail) {
+            const updated = character.inventory.find(i => i.id === selectedDetail.id);
+            if (updated && (updated.equipped !== selectedDetail.equipped || updated.attuned !== selectedDetail.attuned || updated.quantity !== selectedDetail.quantity)) {
+                setSelectedDetail(updated);
+            }
+        }
+    }, [character.inventory, selectedDetail]);
+
     useEffect(() => { setVisualRules([...STATIC_RULES, ...getCharacterSpecificRules(character)]); }, [character]);
 
-    const roll = (formula: string, label: string) => {
-        const result = rollDice(formula, label);
+    const roll = (formula: string, label: string, preResult?: RollResult) => {
+        const result = preResult || rollDice(formula, label);
         const diceToRoll: { type: string, result: number }[] = [];
         const parts = formula.toLowerCase().split('+');
         let rollIndex = 0;
@@ -409,6 +804,109 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         setLogs(prev => [...prev, result]);
         setRollHistory(prev => [result, ...prev].slice(0, 50)); 
         setTimeout(() => { setLogs(current => current.filter(l => l.timestamp !== result.timestamp)); }, 5000);
+    };
+
+    const handlePickACard = (isFree = false, specificCardName?: string, cost = 1) => {
+        const isWorldActive = character.activeCards?.some(c => c.name === 'The World');
+        const effectiveIsFree = isFree || isWorldActive;
+
+        if (!effectiveIsFree) {
+            const choicePoints = character.featureUsage['Choice Points'];
+            if (!choicePoints || choicePoints.current < cost) {
+                alert(`Need ${cost} Choice Points!`);
+                return;
+            }
+        }
+
+        let card;
+        let rollVal;
+        let rollResult;
+
+        const cmClass = character.classes.find(c => c.definition.index === 'card-master');
+        const lvl = cmClass ? cmClass.level : 1;
+        const dieSize = lvl >= 10 ? 21 : 20;
+
+        if (specificCardName) {
+            card = PICK_A_CARD_TABLE.find(c => c.name === specificCardName);
+            rollVal = card?.roll || 21;
+            // Create a fake roll result for the specific card so dice match
+            rollResult = {
+                formula: `1d${dieSize}`,
+                label: `Pick a Card: ${card?.name || 'Unknown'}`,
+                total: rollVal,
+                rolls: [rollVal],
+                timestamp: Date.now()
+            };
+        } else {
+            rollResult = rollDice(`1d${dieSize}`, 'Pick a Card');
+            rollVal = rollResult.total;
+            card = PICK_A_CARD_TABLE.find(c => c.roll === rollVal);
+        }
+
+        if (card) {
+            roll(`1d${dieSize}`, `Pick a Card: ${card.name} (${rollVal})`, rollResult);
+            
+            const newCard = {
+                roll: rollVal,
+                name: card.name,
+                duration: card.duration,
+                timestamp: Date.now()
+            };
+            
+            setCharacter(prev => {
+                const activeCards = prev.activeCards || [];
+                const updatedCards = [...activeCards, newCard];
+                
+                const durationCounts: Record<string, number> = {};
+                updatedCards.forEach(c => {
+                    durationCounts[c.duration] = (durationCounts[c.duration] || 0) + 1;
+                });
+                
+                let totalExhaustion = 0;
+                Object.values(durationCounts).forEach(count => {
+                    if (count > 2) {
+                        totalExhaustion += (count - 2);
+                    }
+                });
+                
+                const oldDurationCounts: Record<string, number> = {};
+                activeCards.forEach(c => {
+                    oldDurationCounts[c.duration] = (oldDurationCounts[c.duration] || 0) + 1;
+                });
+                let oldExhaustion = 0;
+                Object.values(oldDurationCounts).forEach(count => {
+                    if (count > 2) oldExhaustion += (count - 2);
+                });
+
+                const diff = totalExhaustion - oldExhaustion;
+                
+                const newFeatureUsage = { ...prev.featureUsage };
+                if (!isFree && newFeatureUsage['Choice Points']) {
+                    newFeatureUsage['Choice Points'] = {
+                        ...newFeatureUsage['Choice Points'],
+                        current: newFeatureUsage['Choice Points'].current - cost
+                    };
+                }
+
+                return {
+                    ...prev,
+                    activeCards: updatedCards,
+                    exhaustion: Math.min(6, (prev.exhaustion || 0) + (diff > 0 ? diff : 0)),
+                    featureUsage: newFeatureUsage
+                };
+            });
+        }
+    };
+
+    const removeActiveCard = (timestamp: number) => {
+        setCharacter(prev => ({
+            ...prev,
+            activeCards: (prev.activeCards || []).filter(c => c.timestamp !== timestamp)
+        }));
+    };
+
+    const setExhaustion = (val: number) => {
+        setCharacter(prev => ({ ...prev, exhaustion: Math.max(0, Math.min(6, val)) }));
     };
 
     const triggerRollMenu = (e: React.MouseEvent, formula: string, label: string) => {
@@ -432,13 +930,49 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         if (character.activeConcentration) { const dc = Math.max(10, Math.floor(dmg / 2)); setConcentrationCheck({ dc, spellName: character.activeConcentration.name }); }
     };
     
-    const handleWildShapeTransform = (beast: BeastDetail) => {
-        const newFeatures = { ...character.featureUsage };
-        if (newFeatures['Wild Shape'] && newFeatures['Wild Shape'].current > 0) newFeatures['Wild Shape'] = { ...newFeatures['Wild Shape'], current: newFeatures['Wild Shape'].current - 1 };
-        setCharacter(prev => ({ ...prev, featureUsage: newFeatures, activeWildShape: { beast, currentHp: beast.hp } }));
-        setShowWildShapeModal(false);
+    const handleCreatureAction = (creature: CreatureDetail) => {
+        if (creatureModalMode === 'wildshape') {
+            const newFeatures = { ...character.featureUsage };
+            if (newFeatures['Wild Shape'] && newFeatures['Wild Shape'].current > 0) {
+                newFeatures['Wild Shape'] = { ...newFeatures['Wild Shape'], current: newFeatures['Wild Shape'].current - 1 };
+            }
+            setCharacter(prev => ({ 
+                ...prev, 
+                featureUsage: newFeatures, 
+                activeWildShape: { creature, currentHp: creature.hp, maxHp: creature.hp } 
+            }));
+        } else if (creatureModalMode === 'familiar') {
+            setCharacter(prev => ({ 
+                ...prev, 
+                activeFamiliar: { creature, currentHp: creature.hp, maxHp: creature.hp } 
+            }));
+        } else if (creatureModalMode === 'polymorph') {
+            setCharacter(prev => ({ 
+                ...prev, 
+                activePolymorph: { creature, currentHp: creature.hp, maxHp: creature.hp } 
+            }));
+        }
+        setShowCreatureModal(false);
     };
-    const handleWildShapeRevert = () => setCharacter(prev => ({ ...prev, activeWildShape: null }));
+
+    const handleWildShapeRevert = () => {
+        setCharacter(prev => ({ ...prev, activeWildShape: null }));
+    };
+
+    const handleCreatureHpChange = (type: 'wildshape' | 'familiar' | 'polymorph', amount: number) => {
+        setCharacter(prev => {
+            const key = type === 'wildshape' ? 'activeWildShape' : type === 'familiar' ? 'activeFamiliar' : 'activePolymorph';
+            const active = prev[key];
+            if (!active) return prev;
+            
+            const newHp = Math.max(0, Math.min(active.maxHp, active.currentHp + amount));
+            if (newHp === 0) {
+                // All active creature forms (wild shape, familiar, polymorph) drop on 0 HP
+                return { ...prev, [key]: null };
+            }
+            return { ...prev, [key]: { ...active, currentHp: newHp } };
+        });
+    };
 
     const handleSummonCannon = (cannon: EldritchCannonDetail, slotLevel: number) => {
         setCharacter(prev => {
@@ -527,6 +1061,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         setCharacter(prev => ({ ...prev, inventory: prev.inventory.map(i => i.id === id ? { ...i, quantity: newQty } : i) }));
     };
 
+    const handleDuplicateToHomebrew = (type: 'item' | 'spell', data: any) => {
+        setHomebrewInitialTab(type);
+        setHomebrewInitialData(data);
+        setShowHomebrewModal(true);
+    };
+
     const handleAddItem = async (item: EquipmentDetail) => {
         const newItem: InventoryItem = {
             ...item,
@@ -551,6 +1091,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         });
     };
     const toggleEquipped = (id: string) => { setCharacter(prev => ({ ...prev, inventory: prev.inventory.map(i => i.id === id ? { ...i, equipped: !i.equipped } : i) })); };
+    const toggleItemFlag = (id: string, flag: keyof InventoryItem) => {
+        setCharacter(prev => ({
+            ...prev,
+            inventory: prev.inventory.map(i => i.id === id ? { ...i, [flag]: !i[flag] } : i)
+        }));
+    };
     const toggleFavorite = (id: string) => {
         setCharacter(prev => {
             const newFavs = prev.favorites?.includes(id) ? (prev.favorites || []).filter(fav => fav !== id) : [...(prev.favorites || []), id];
@@ -558,7 +1104,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         });
     };
 
-    const renderWidget = (type: string) => {
+    const renderWidget = (type: string, key?: string) => {
+        const widgetKey = key || type;
         switch (type) {
             case 'steelDefender':
                 const isBattleSmith = character.classes.some(c => c.definition.index === 'artificer' && c.subclass?.index === 'battle-smith' && c.level >= 3);
@@ -566,7 +1113,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const defender = character.activeSteelDefender;
                 return (
                     <div 
-                        key="steelDefender" 
+                        key={widgetKey} 
                         className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3 relative group cursor-pointer hover:border-orange-400 transition-colors`}
                         onClick={() => {
                             if (defender) {
@@ -635,7 +1182,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const cannon = character.activeEldritchCannon;
                 return (
                     <div 
-                        key="eldritchCannon" 
+                        key={widgetKey} 
                         className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3 relative group cursor-pointer hover:border-dnd-gold transition-colors`}
                         onClick={() => {
                             if (cannon) {
@@ -721,21 +1268,96 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 );
             case 'familiar':
                 return (
-                    <div key="familiar" onClick={() => character.activeFamiliar && setViewingFamiliar(character.activeFamiliar)} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3 relative group ${character.activeFamiliar ? 'cursor-pointer hover:border-pink-400 transition-colors' : ''}`}>
-                         <div className="flex justify-between items-center mb-2"><h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest flex items-center gap-2">Familiar</h3><button onClick={(e) => { e.stopPropagation(); setShowFamiliarModal(true); }} className="text-[10px] uppercase font-bold text-gray-400 hover:text-white border border-gray-600 bg-black/40 px-2 py-0.5 rounded transition-colors">Manage</button></div>
-                         {character.activeFamiliar ? (
-                             <div className="space-y-2 pointer-events-none">
-                                 <div className="flex justify-between items-start"><div className="font-bold text-white">{character.activeFamiliar.name}</div><div className="text-[10px] text-gray-400">{character.activeFamiliar.size} {character.activeFamiliar.type}</div></div>
-                                 <div className="grid grid-cols-3 gap-1 text-center bg-gray-800/50 rounded p-1"><div><div className="text-[9px] text-gray-500 uppercase">AC</div><div className="text-white font-bold text-sm">{character.activeFamiliar.ac}</div></div><div><div className="text-[9px] text-gray-500 uppercase">HP</div><div className="text-white font-bold text-sm">{character.activeFamiliar.hp}</div></div><div><div className="text-[9px] text-gray-500 uppercase">Spd</div><div className="text-white font-bold text-[10px] leading-tight mt-0.5">{character.activeFamiliar.speed.replace(' ft.', '')}</div></div></div>
-                                 <div className="text-[10px] text-gray-400 space-y-1">{character.activeFamiliar.senses && <div><span className="font-bold text-gray-500">Senses:</span> {character.activeFamiliar.senses}</div>}{character.activeFamiliar.actions?.length > 0 && (<div><span className="font-bold text-gray-500 block">Actions:</span>{character.activeFamiliar.actions.map(a => (<div key={a.name} className="truncate pl-1">• {a.name}</div>))}</div>)}</div>
+                    <div key={widgetKey} onClick={() => character.activeFamiliar?.creature && setViewingFamiliar(character.activeFamiliar.creature)} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3 relative group ${character.activeFamiliar ? 'cursor-pointer hover:border-pink-400 transition-colors' : ''}`}>
+                         <div className="flex justify-between items-center mb-2">
+                             <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest flex items-center gap-2">Familiar</h3>
+                             <button onClick={(e) => { e.stopPropagation(); setCreatureModalMode('familiar'); setShowCreatureModal(true); }} className="text-[10px] uppercase font-bold text-gray-400 hover:text-white border border-gray-600 bg-black/40 px-2 py-0.5 rounded transition-colors">Manage</button>
+                         </div>
+                         {character.activeFamiliar?.creature ? (
+                             <div className="space-y-2">
+                                 <div className="flex justify-between items-start"><div className="font-bold text-white">{character.activeFamiliar.creature.name}</div><div className="text-[10px] text-gray-400">{character.activeFamiliar.creature.size} {character.activeFamiliar.creature.type}</div></div>
+                                 <div className="grid grid-cols-3 gap-1 text-center bg-gray-800/50 rounded p-1">
+                                     <div><div className="text-[9px] text-gray-500 uppercase">AC</div><div className="text-white font-bold text-sm">{character.activeFamiliar.creature.ac}</div></div>
+                                     <div className="flex flex-col items-center">
+                                         <div className="text-[9px] text-gray-500 uppercase">HP</div>
+                                         <div className="flex items-center gap-1">
+                                             <button onClick={(e) => { e.stopPropagation(); handleCreatureHpChange('familiar', -1); }} className="w-4 h-4 flex items-center justify-center bg-red-900/30 text-red-400 rounded hover:bg-red-900/50">-</button>
+                                             <div className="text-white font-bold text-sm">{character.activeFamiliar.currentHp}</div>
+                                             <button onClick={(e) => { e.stopPropagation(); handleCreatureHpChange('familiar', 1); }} className="w-4 h-4 flex items-center justify-center bg-green-900/30 text-green-400 rounded hover:bg-green-900/50">+</button>
+                                         </div>
+                                     </div>
+                                     <div><div className="text-[9px] text-gray-500 uppercase">Spd</div><div className="text-white font-bold text-[10px] leading-tight mt-0.5">{character.activeFamiliar.creature.speed.replace(' ft.', '')}</div></div>
+                                 </div>
+                                 <div className="text-[10px] text-gray-400 space-y-1">{character.activeFamiliar.creature.senses && <div><span className="font-bold text-gray-500">Senses:</span> {character.activeFamiliar.creature.senses}</div>}{character.activeFamiliar.creature.actions?.length > 0 && (<div><span className="font-bold text-gray-500 block">Actions:</span>{character.activeFamiliar.creature.actions.map(a => (<div key={a.name} className="truncate pl-1">• {a.name}</div>))}</div>)}</div>
                              </div>
                          ) : <div className="text-center py-4 text-gray-600 italic text-xs">No familiar summoned.</div>}
+                    </div>
+                );
+            case 'wildshape':
+                if (!character.activeWildShape) return null;
+                return (
+                    <div key={widgetKey} onClick={() => character.activeWildShape?.creature && setViewingWildShape(character.activeWildShape.creature)} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3 relative group ${character.activeWildShape ? 'cursor-pointer hover:border-dnd-gold transition-colors' : ''}`}>
+                         <div className="flex justify-between items-center mb-2">
+                             <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest flex items-center gap-2">Wild Shape</h3>
+                             <div className="flex gap-1">
+                                 <button onClick={(e) => { e.stopPropagation(); setCreatureModalMode('wildshape'); setShowCreatureModal(true); }} className="text-[10px] uppercase font-bold text-gray-400 hover:text-white border border-gray-600 bg-black/40 px-2 py-0.5 rounded transition-colors">Manage</button>
+                                 {character.activeWildShape && (
+                                     <button onClick={(e) => { e.stopPropagation(); handleWildShapeRevert(); }} title="Revert Form" className="text-[10px] text-red-400 hover:text-white border border-red-900/50 bg-red-900/20 px-1.5 py-0.5 rounded transition-colors">✕</button>
+                                 )}
+                             </div>
+                         </div>
+                        {character.activeWildShape?.creature ? (
+                             <div className="space-y-2">
+                                 <div className="flex justify-between items-start"><div className="font-bold text-white">{character.activeWildShape.creature.name}</div><div className="text-[10px] text-gray-400">{character.activeWildShape.creature.size} {character.activeWildShape.creature.type}</div></div>
+                                 <div className="grid grid-cols-3 gap-1 text-center bg-gray-800/50 rounded p-1">
+                                     <div><div className="text-[9px] text-gray-500 uppercase">AC</div><div className="text-white font-bold text-sm">{character.activeWildShape.creature.ac}</div></div>
+                                     <div className="flex flex-col items-center">
+                                         <div className="text-[9px] text-gray-500 uppercase">HP</div>
+                                         <div className="flex items-center gap-1">
+                                             <button onClick={(e) => { e.stopPropagation(); handleCreatureHpChange('wildshape', -1); }} className="w-4 h-4 flex items-center justify-center bg-red-900/30 text-red-400 rounded hover:bg-red-900/50">-</button>
+                                             <div className="text-white font-bold text-sm">{character.activeWildShape.currentHp}</div>
+                                             <button onClick={(e) => { e.stopPropagation(); handleCreatureHpChange('wildshape', 1); }} className="w-4 h-4 flex items-center justify-center bg-green-900/30 text-green-400 rounded hover:bg-green-900/50">+</button>
+                                         </div>
+                                     </div>
+                                     <div><div className="text-[9px] text-gray-500 uppercase">Spd</div><div className="text-white font-bold text-[10px] leading-tight mt-0.5">{character.activeWildShape.creature.speed.replace(' ft.', '')}</div></div>
+                                 </div>
+                                 <div className="text-[10px] text-gray-400 space-y-1">{character.activeWildShape.creature.actions?.length > 0 && (<div><span className="font-bold text-gray-500 block">Actions:</span>{character.activeWildShape.creature.actions.map(a => (<div key={a.name} className="truncate pl-1">• {a.name}</div>))}</div>)}</div>
+                             </div>
+                        ) : null}
+                    </div>
+                );
+            case 'polymorph':
+                if (!character.activePolymorph) return null;
+                return (
+                    <div key={widgetKey} onClick={() => character.activePolymorph?.creature && setViewingWildShape(character.activePolymorph.creature)} className={`${WIDGET_BG} border border-purple-900/30 rounded-lg p-3 relative group ${character.activePolymorph ? 'cursor-pointer hover:border-purple-400 transition-colors' : ''}`}>
+                         <div className="flex justify-between items-center mb-2">
+                             <h3 className="font-bold text-xs text-purple-400 uppercase tracking-widest flex items-center gap-2">Polymorph</h3>
+                             <button onClick={(e) => { e.stopPropagation(); setCreatureModalMode('polymorph'); setShowCreatureModal(true); }} className="text-[10px] uppercase font-bold text-gray-400 hover:text-white border border-gray-600 bg-black/40 px-2 py-0.5 rounded transition-colors">Manage</button>
+                         </div>
+                         {character.activePolymorph?.creature ? (
+                             <div className="space-y-2">
+                                 <div className="flex justify-between items-start"><div className="font-bold text-white">{character.activePolymorph.creature.name}</div><div className="text-[10px] text-gray-400">{character.activePolymorph.creature.size} {character.activePolymorph.creature.type}</div></div>
+                                 <div className="grid grid-cols-3 gap-1 text-center bg-gray-800/50 rounded p-1">
+                                     <div><div className="text-[9px] text-gray-500 uppercase">AC</div><div className="text-white font-bold text-sm">{character.activePolymorph.creature.ac}</div></div>
+                                     <div className="flex flex-col items-center">
+                                         <div className="text-[9px] text-gray-500 uppercase">HP</div>
+                                         <div className="flex items-center gap-1">
+                                             <button onClick={(e) => { e.stopPropagation(); handleCreatureHpChange('polymorph', -1); }} className="w-4 h-4 flex items-center justify-center bg-red-900/30 text-red-400 rounded hover:bg-red-900/50">-</button>
+                                             <div className="text-white font-bold text-sm">{character.activePolymorph.currentHp}</div>
+                                             <button onClick={(e) => { e.stopPropagation(); handleCreatureHpChange('polymorph', 1); }} className="w-4 h-4 flex items-center justify-center bg-green-900/30 text-green-400 rounded hover:bg-green-900/50">+</button>
+                                         </div>
+                                     </div>
+                                     <div><div className="text-[9px] text-gray-500 uppercase">Spd</div><div className="text-white font-bold text-[10px] leading-tight mt-0.5">{character.activePolymorph.creature.speed.replace(' ft.', '')}</div></div>
+                                 </div>
+                                 <div className="text-[10px] text-gray-400 space-y-1">{character.activePolymorph.creature.actions?.length > 0 && (<div><span className="font-bold text-gray-500 block">Actions:</span>{character.activePolymorph.creature.actions.map(a => (<div key={a.name} className="truncate pl-1">• {a.name}</div>))}</div>)}</div>
+                             </div>
+                         ) : <div className="text-center py-4 text-gray-600 italic text-xs">Not polymorphed.</div>}
                     </div>
                 );
             case 'concentration':
                  const bonusStr = conSaveBonus >= 0 ? `+${conSaveBonus}` : `${conSaveBonus}`;
                  return (
-                    <div key="concentration" className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3 relative overflow-hidden group`}>
+                    <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3 relative overflow-hidden group`}>
                         <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest mb-2 flex items-center gap-2">Concentration {character.activeConcentration && <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.8)]"/>}</h3>
                         {character.activeConcentration ? (
                             <div className="bg-blue-900/20 border-blue-500/30 rounded p-3">
@@ -748,10 +1370,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             case 'features':
                 const isDruid = character.classes.some(c => c.definition.index === 'druid');
                 return (
-                    <div key="features" className="space-y-4">
-                        {isDruid && (
+                    <div key={widgetKey} className="space-y-4">
+                        {isDruid && !character.featureUsage['Wild Shape']?.hidden && (
                              <div className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3 transition-colors`}>
-                                 <div className="flex justify-between items-center mb-2"><h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Wild Shape</h3><button onClick={() => setShowWildShapeModal(true)} disabled={!!character.activeWildShape} className="text-[9px] bg-green-900/30 text-green-400 border border-green-800 hover:bg-green-800 hover:text-white px-2 py-0.5 rounded uppercase font-bold disabled:opacity-50 disabled:cursor-not-allowed">{character.activeWildShape ? 'Active' : 'Transform'}</button></div>
+                                 <div className="flex justify-between items-center mb-2"><h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Wild Shape</h3><button onClick={() => { setCreatureModalMode('wildshape'); setShowCreatureModal(true); }} disabled={!!character.activeWildShape} className="text-[9px] bg-dnd-gold/10 text-dnd-gold border border-dnd-gold/50 hover:bg-dnd-gold hover:text-black px-2 py-0.5 rounded uppercase font-bold disabled:opacity-50 disabled:cursor-not-allowed">{character.activeWildShape ? 'Active' : 'Transform'}</button></div>
                                  <div className="flex gap-1.5 justify-start">
                                      {Array.from({length: character.featureUsage['Wild Shape']?.max || 2}).map((_, i) => {
                                          const usage = character.featureUsage['Wild Shape']; if (!usage) return null; const usedCount = usage.max - usage.current; const isUsed = i < usedCount;
@@ -760,7 +1382,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                  </div>
                              </div>
                         )}
-                        {Object.entries(character.featureUsage).filter(([name]) => name !== 'Wild Shape').map(([name, usage]: [string, any]) => {
+                        {Object.entries(character.featureUsage).filter(([name, usage]) => name !== 'Wild Shape' && !usage.hidden).map(([name, usage]: [string, any]) => {
                             const usedCount = usage.max - usage.current;
                             return (
                             <div key={name} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
@@ -779,41 +1401,219 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         )})}
                     </div>
                 );
-            case 'saves':
+            case 'activeCards': {
+                const cmClass = character.classes.find(c => c.definition.index === 'card-master');
+                if (!cmClass) return null;
+                const cmLevel = cmClass.level;
+                const foolStacks = character.foolStacks || 0;
+
                 return (
-                    <div key="saves" className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
+                    <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
+                        <div className="flex justify-between items-center mb-3">
+                            <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest flex items-center gap-2">
+                                Active Cards
+                                <button 
+                                    onClick={() => setShowCardOptionsModal(true)}
+                                    className="text-gray-500 hover:text-dnd-gold transition-colors"
+                                    title="View Card Reference"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                                </button>
+                            </h3>
+                            <div className="text-[10px] text-gray-500 font-bold">DC {spellSave}</div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                            {character.activeCards && character.activeCards.length > 0 ? (
+                                character.activeCards.map((card, idx) => (
+                                    <div key={`${card.name}-${idx}`} className="bg-gray-800/30 border border-gray-700/50 rounded p-2 flex justify-between items-center">
+                                        <div>
+                                            <div className="text-xs font-bold text-white">{card.name}</div>
+                                            <div className="text-[9px] text-gray-500 uppercase">{card.duration}</div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {cmLevel >= 4 && (
+                                                <button 
+                                                    onClick={() => {
+                                                        const isWorldActive = character.activeCards?.some(c => c.name === 'The World');
+                                                        const stacksToAdd = isWorldActive ? 2 : 1;
+                                                        
+                                                        setCharacter(prev => ({
+                                                            ...prev,
+                                                            activeCards: prev.activeCards?.filter((_, i) => i !== idx),
+                                                            foolStacks: (prev.foolStacks || 0) + stacksToAdd
+                                                        }));
+                                                        
+                                                        if (cmLevel >= 20) {
+                                                            handlePickACard(true);
+                                                        }
+                                                    }}
+                                                    className="text-[9px] bg-gray-800/40 text-gray-400 border border-gray-700 hover:bg-gray-700 hover:text-white px-1.5 py-0.5 rounded uppercase font-bold transition-colors"
+                                                    title="Sacrifice card for a Fool Stack"
+                                                >
+                                                    Sacrifice
+                                                </button>
+                                            )}
+                                            <button 
+                                                onClick={() => setCharacter(prev => ({
+                                                    ...prev,
+                                                    activeCards: prev.activeCards?.filter((_, i) => i !== idx)
+                                                }))}
+                                                className="text-gray-500 hover:text-red-400 transition-colors"
+                                            >
+                                                &times;
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-4 text-gray-600 italic text-[10px]">No cards currently active.</div>
+                            )}
+                        </div>
+
+                        {cmLevel >= 4 && (
+                            <div className="mt-4 pt-3 border-t border-gray-800/50">
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Fool Stacks</span>
+                                    <div className="flex items-center gap-2">
+                                        <button 
+                                            onClick={() => setCharacter(prev => ({ ...prev, foolStacks: Math.max(0, (prev.foolStacks || 0) - 1) }))}
+                                            className="w-5 h-5 flex items-center justify-center bg-gray-800 border border-gray-700 rounded text-gray-400 hover:text-white"
+                                        >
+                                            -
+                                        </button>
+                                        <span className="text-xs font-bold text-purple-400 w-4 text-center">{foolStacks}</span>
+                                        <button 
+                                            onClick={() => setCharacter(prev => ({ ...prev, foolStacks: (prev.foolStacks || 0) + 1 }))}
+                                            className="w-5 h-5 flex items-center justify-center bg-gray-800 border border-gray-700 rounded text-gray-400 hover:text-white"
+                                        >
+                                            +
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2 items-center">
+                                    <p className="text-[9px] text-gray-500 italic leading-tight flex-1">
+                                        Sacrifice active cards to gain stacks. Expend all stacks to cast the Fool Spell.
+                                    </p>
+                                    {foolStacks > 0 && (
+                                        <button 
+                                            onClick={() => {
+                                                const isWorldActive = character.activeCards?.some(c => c.name === 'The World');
+                                                const isLevel20 = cmLevel >= 20;
+                                                let diceCount = 3 + (isLevel20 ? foolStacks * 2 : foolStacks);
+                                                if (isWorldActive) diceCount *= 2;
+                                                
+                                                roll(`${diceCount}d8`, 'The Fool Spell Damage');
+                                                setCharacter(prev => ({ ...prev, foolStacks: 0 }));
+                                            }}
+                                            className="text-[9px] bg-purple-900/40 text-purple-300 border border-purple-700 hover:bg-purple-700 hover:text-white px-2 py-1 rounded uppercase font-black tracking-widest transition-colors"
+                                        >
+                                            Cast
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {character.exhaustion > 0 && (
+                            <div className="mt-3 pt-2 border-t border-red-900/30 flex items-center justify-between">
+                                <span className="text-[9px] font-bold text-red-500 uppercase">Exhaustion Level</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-red-400">{character.exhaustion}</span>
+                                    <button 
+                                        onClick={() => setExhaustion(0)}
+                                        className="text-[9px] bg-red-900/20 text-red-400 border border-red-900/40 hover:bg-red-900/40 hover:text-white px-1.5 py-0.5 rounded uppercase font-bold transition-colors"
+                                    >
+                                        Clear
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            }
+            case 'saves':
+                const situationalSaves = activeModifiers.filter(m => m.type === 'advantage' && m.target === 'saves' && m.filter);
+                return (
+                    <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
                          <div className="flex justify-between items-center mb-2"><h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Saving Throws</h3></div>
                          <div className="space-y-1">{ABILITY_NAMES.map(stat => { 
-                             const saveName = stat.substring(0,3).toUpperCase(); 
-                             const isProf = !!character.classes.some(c => c.definition.saving_throws.some(s => s.name === saveName)); 
+                             const isProf = !!character.classes.some(c => c.definition.saving_throws.some(s => s.name === stat.substring(0,3).toUpperCase())); 
                              const mod = calculateModifier(getStat(stat)) + (isProf ? prof : 0) + globalSaveBonus; 
-                             return <SavingThrowRow key={stat} label={ABILITY_LABELS[stat]} stat={stat} isProf={isProf} mod={mod} onRoll={roll} onContextMenu={triggerRollMenu} />; 
+                             const hasFullAdv = activeModifiers.some(m => m.type === 'advantage' && (m.target === `${stat}_save` || (m.target === 'saves' && (!m.filter || m.filter.toLowerCase() === ABILITY_LABELS[stat].toLowerCase()))));
+                             
+                             return <SavingThrowRow key={stat} label={ABILITY_LABELS[stat]} stat={stat} isProf={isProf} mod={mod} advantage={hasFullAdv} onRoll={roll} onContextMenu={triggerRollMenu} />; 
                          })}</div>
+                         {situationalSaves.length > 0 && (
+                             <div className="mt-3 pt-2 border-t border-gray-800/50">
+                                 <span className="text-[9px] font-bold text-gray-500 uppercase block mb-1">Situational Advantages</span>
+                                 <div className="flex flex-wrap gap-1">
+                                     {situationalSaves.map((m, i) => (
+                                         <span key={i} className="text-[8px] bg-gray-800/60 text-gray-500 px-1.5 py-0.5 rounded border border-gray-700/50">Adv vs {m.filter}</span>
+                                     ))}
+                                 </div>
+                             </div>
+                         )}
                     </div>
                 );
             case 'skills':
+                const situationalSkills = activeModifiers.filter(m => m.type === 'advantage' && m.target === 'skills' && m.filter);
                 return (
-                     <div key="skills" className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}><h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest mb-2">Skills</h3><div className="space-y-0.5">{SKILL_LIST.map(skill => { const isProf = character.skills.includes(skill.name); const isExpertise = character.expertise?.includes(skill.name); const mod = calculateModifier(getStat(skill.ability)) + (isProf ? prof : 0) + (isExpertise ? prof : 0); return <SkillRow key={skill.name} skill={skill.name} stat={skill.ability} isProf={isProf} isExpertise={isExpertise} mod={mod} onRoll={roll} onContextMenu={triggerRollMenu} />; })}</div></div>
+                    <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
+                        <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest mb-2">Skills</h3>
+                        <div className="space-y-0.5">
+                            {SKILL_LIST.map(skill => { 
+                                const hasFeatureProf = activeModifiers.some(m => m.type === 'proficiency' && m.target === skill.name && m.category === 'skill');
+                                const hasFeatureExpertise = activeModifiers.some(m => m.type === 'expertise' && m.target === skill.name);
+                                
+                                // Special logic for "Trust the Destiny"
+                                const isCardMaster2 = character.classes.some(c => c.definition.index === 'card-master' && c.level >= 2);
+                                const isTrustSkill = isCardMaster2 && (skill.name === 'Arcana' || skill.name === 'Religion');
+                                
+                                const isProf = character.skills.includes(skill.name) || hasFeatureProf || isTrustSkill; 
+                                
+                                // Expertise if already proficient and has the feature
+                                const isExpertise = character.expertise?.includes(skill.name) || 
+                                                  hasFeatureExpertise || 
+                                                  (isTrustSkill && character.skills.includes(skill.name)); 
+                                
+                                const mod = calculateModifier(getStat(skill.ability)) + (isProf ? prof : 0) + (isExpertise ? prof : 0); 
+                                const hasFullAdv = activeModifiers.some(m => m.type === 'advantage' && (m.target === skill.name.toLowerCase().replace(/\s+/g, '_') || (m.target === 'skills' && (!m.filter || m.filter.toLowerCase() === skill.name.toLowerCase())))) || isTrustSkill;
+
+                                return <SkillRow key={skill.name} skill={skill.name} stat={skill.ability} isProf={isProf} isExpertise={isExpertise} mod={mod} advantage={hasFullAdv} onRoll={roll} onContextMenu={triggerRollMenu} />; 
+                            })}
+                        </div>
+                        {situationalSkills.length > 0 && (
+                            <div className="mt-3 pt-2 border-t border-gray-800/50">
+                                <span className="text-[9px] font-bold text-gray-500 uppercase block mb-1">Situational Advantages</span>
+                                <div className="flex flex-wrap gap-1">
+                                    {situationalSkills.map((m, i) => (
+                                        <span key={i} className="text-[8px] bg-gray-800/60 text-gray-500 px-1.5 py-0.5 rounded border border-gray-700/50">Adv on {m.filter}</span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 );
             case 'proficiencies':
                 const charLanguages = Array.from(new Set([...(character.languages || []), ...(character.race?.languages?.map(l => l.name) || [])]));
                 const charTools = Array.from(new Set([...(character.toolProficiencies || [])]));
                 const allProfs = Array.from(new Set([...character.classes.flatMap(c => c.definition.proficiencies.map(p => p.name)), ...(character.race?.starting_proficiencies?.map(p => p.name) || [])]));
                 return (
-                    <div key="proficiencies" className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
+                    <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
                         <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest mb-2">Proficiencies & Languages</h3>
                         <div className="text-xs text-gray-300 space-y-4">
                             <div><span className="font-bold text-gray-500 block mb-1 uppercase text-[10px] tracking-wider">Armor & Weapons</span><div className="flex flex-wrap gap-1">{allProfs.map((p, i) => (<span key={i} className="bg-gray-800/80 px-2 py-0.5 rounded text-gray-300 border border-gray-700/50">{cleanProficiencyName(p)}</span>))}</div></div>
                             {charTools.length > 0 && (<div><span className="font-bold text-gray-500 block mb-1 uppercase text-[10px] tracking-wider">Tools</span><div className="flex flex-wrap gap-1">{charTools.map(t => (<span key={t} className="bg-gray-800/80 px-2 py-0.5 rounded text-gray-300 border border-gray-700/50">{cleanProficiencyName(t)}</span>))}</div></div>)}
-                            <div><span className="font-bold text-gray-500 block mb-1 uppercase text-[10px] tracking-wider">Languages</span><div className="flex flex-wrap gap-1">{charLanguages.map(l => <span key={l} className="bg-gray-800/80 px-2 py-0.5 rounded text-gray-300 border border-gray-700/50">{l}</span>)}{character.activeWildShape && <span className="text-gray-500 italic text-[10px]">(Cannot speak)</span>}</div></div>
+                            <div><span className="font-bold text-gray-500 block mb-1 uppercase text-[10px] tracking-wider">Languages</span><div className="flex flex-wrap gap-1">{charLanguages.map(l => <span key={l} className="bg-gray-800/80 px-2 py-0.5 rounded text-gray-300 border border-gray-700/50">{l}</span>)}</div></div>
                         </div>
                     </div>
                 );
             case 'spells':
-                if (character.activeWildShape && !character.classes.some(c => c.definition.index === 'druid' && c.level >= 18)) return (<div key="spells-blocked" className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3 opacity-50`}><h3 className="font-bold text-xs text-gray-500 uppercase tracking-widest">Spells</h3><p className="text-xs text-gray-500 italic mt-2">Cannot cast spells while in Wild Shape.</p></div>);
+                if (false) return null; // Removed Wild Shape spellcasting restriction
                 const widgetSlots = (Object.entries(character.spellSlots) as [string, {max: number, current: number}][]).map(([l, s]) => ({ level: parseInt(l), ...s })).filter(s => (s.max as number) > 0).sort((a, b) => a.level - b.level);
                 return (
-                    <div key="spells" className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
+                    <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
                         <div className="flex justify-between items-center mb-2 cursor-pointer hover:text-dnd-gold" onClick={() => setActiveTab('spells')}><h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Spells</h3><span className="text-[10px] text-gray-500">View All &rarr;</span></div>
                         <div className="flex justify-between text-xs text-gray-300 mb-2"><span>DC: <strong className="text-white">{spellSave}</strong></span><span>Attack: <strong className="text-white">+{spellAttack}</strong></span></div>
                         <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-1">{widgetSlots.map(slot => (<div key={slot.level} className="flex gap-1 items-center"><span className="text-[9px] font-bold text-gray-500 w-4">{slot.level}</span><div className="flex gap-0.5 flex-wrap">{Array.from({length: slot.max}).map((_, i) => { const usedCount = (slot.max as number) - (slot.current as number); const isUsed = i < usedCount; return (<div key={i} className={`w-2.5 h-2.5 rounded-full border ${isUsed ? 'bg-dnd-red border-dnd-red' : 'bg-transparent border-gray-600'}`}></div>); })}</div></div>))}{widgetSlots.length === 0 && <span className="text-gray-500 text-[10px]">No slots.</span>}</div>
@@ -822,51 +1622,156 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             case 'inventory':
                 const { cp, sp, ep, gp, pp } = character.currency;
                 return (
-                    <div key="inventory" className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3 h-min overflow-hidden flex flex-col`}>
+                    <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3 h-min overflow-hidden flex flex-col`}>
                         <div className="flex justify-between items-center mb-2 cursor-pointer hover:text-dnd-gold" onClick={() => setActiveTab('inventory')}><h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Inventory</h3><span className="text-[10px] text-gray-500">View All &rarr;</span></div>
-                        {character.activeWildShape && <p className="text-[9px] text-orange-400 italic mb-2">Gear merged into form.</p>}
+
                         <div className="mb-3 space-y-1"><div className="flex justify-between text-[9px] text-gray-500 font-bold uppercase"><span>Encumbrance</span><span className={Number(currentWeight) > Number(maxWeight) ? 'text-dnd-red' : 'text-gray-400'}>{currentWeight} / {maxWeight} lb</span></div><div className="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden"><div className={`h-full ${Number(currentWeight) > Number(maxWeight) ? 'bg-dnd-red' : 'bg-gray-500'}`} style={{width: `${Math.min(100, (Number(currentWeight)/Number(maxWeight))*100)}%`}}></div></div></div>
                         <div className="grid grid-cols-5 gap-1">{[{ label: 'PP', val: pp }, { label: 'GP', val: gp, highlight: true }, { label: 'EP', val: ep }, { label: 'SP', val: sp }, { label: 'CP', val: cp }].map((c) => (<div key={c.label} className={`flex flex-col items-center p-1 rounded ${c.highlight ? 'bg-dnd-gold/10 border border-dnd-gold/30' : 'bg-gray-800/30 border border-gray-800/50'}`}><span className={`text-[8px] font-bold uppercase mb-0.5 ${c.highlight ? 'text-dnd-gold' : 'text-gray-500'}`}>{c.label}</span><span className={`text-[10px] font-bold leading-none ${c.highlight ? 'text-white' : 'text-gray-300'}`}>{c.val}</span></div>))}</div>
                     </div>
                 );
-            case 'actions':
+            case 'actions': {
                 const topAttacks = getAttacks().slice(0, 3);
                 return (
-                    <div key="actions" className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
-                        <div className="flex justify-between items-center mb-2 cursor-pointer hover:text-dnd-gold" onClick={() => setActiveTab('actions')}><h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Actions</h3><span className="text-[10px] text-gray-500">View All &rarr;</span></div>
+                    <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
+                        <div className="flex justify-between items-center mb-2 cursor-pointer hover:text-dnd-gold" onClick={() => setActiveTab('actions')}>
+                            <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Actions</h3>
+                            <span className="text-[10px] text-gray-500">View All &rarr;</span>
+                        </div>
                         <div className="space-y-1">{topAttacks.map((att, i) => (<div key={i} className="flex justify-between items-center text-xs text-gray-300"><span className="truncate w-24">{att.name}</span><span className="font-bold text-gray-400">+{att.hit || 0}</span></div>))}</div>
                     </div>
                 );
+            }
+            case 'exhaustion':
+                return (
+                    <div key={widgetKey} className={`${WIDGET_BG} border border-dnd-red/30 rounded-lg p-3`}>
+                        <div className="flex justify-between items-center mb-2">
+                            <h3 className="font-bold text-xs text-dnd-red uppercase tracking-widest">Exhaustion</h3>
+                            {(character.exhaustion || 0) > 0 && (
+                                <button 
+                                    onClick={() => setExhaustion(0)}
+                                    className="text-[9px] text-gray-500 hover:text-white uppercase font-bold"
+                                >
+                                    Clear
+                                </button>
+                            )}
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <div className="flex gap-1">
+                                {[1, 2, 3, 4, 5, 6].map(lvl => (
+                                    <button 
+                                        key={lvl} 
+                                        onClick={() => setExhaustion(character.exhaustion === lvl ? lvl - 1 : lvl)}
+                                        className={`w-5 h-5 rounded-full border flex items-center justify-center text-[10px] font-bold transition-all ${lvl <= (character.exhaustion || 0) ? 'bg-dnd-red border-dnd-red text-white' : 'bg-gray-800 border-gray-600 text-gray-500 hover:border-dnd-red'}`}
+                                    >
+                                        {lvl}
+                                    </button>
+                                ))}
+                            </div>
+                            <span className="text-[10px] font-bold text-gray-400 uppercase">Level {character.exhaustion || 0}</span>
+                        </div>
+                        {character.exhaustion && character.exhaustion > 0 && (
+                            <div className="mt-2 text-[9px] text-gray-400 italic">
+                                {character.exhaustion === 1 && "Disadvantage on ability checks"}
+                                {character.exhaustion === 2 && "Speed halved"}
+                                {character.exhaustion === 3 && "Disadvantage on attack rolls and saving throws"}
+                                {character.exhaustion === 4 && "Hit point maximum halved"}
+                                {character.exhaustion === 5 && "Speed reduced to 0"}
+                                {character.exhaustion === 6 && "Death"}
+                            </div>
+                        )}
+                    </div>
+                );
             case 'rules':
-                return (<div key="rules" className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}><div className="flex justify-between items-center mb-2 cursor-pointer hover:text-dnd-gold" onClick={() => setActiveTab('rules')}><h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Rules</h3><span className="text-[10px] text-gray-500">View All &rarr;</span></div><div className="grid grid-cols-2 gap-2"><button onClick={() => setActiveTab('rules')} className="bg-gray-800/60 border border-gray-600 rounded p-1 text-[10px] hover:border-dnd-gold">Conditions</button><button onClick={() => setActiveTab('rules')} className="bg-gray-800/60 border border-gray-600 rounded p-1 text-[10px] hover:border-dnd-gold">General</button></div></div>);
+                return (<div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}><div className="flex justify-between items-center mb-2 cursor-pointer hover:text-dnd-gold" onClick={() => setActiveTab('rules')}><h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Rules</h3><span className="text-[10px] text-gray-500">View All &rarr;</span></div><div className="grid grid-cols-2 gap-2"><button onClick={() => setActiveTab('rules')} className="bg-gray-800/60 border border-gray-600 rounded p-1 text-[10px] hover:border-dnd-gold">Conditions</button><button onClick={() => setActiveTab('rules')} className="bg-gray-800/60 border border-gray-600 rounded p-1 text-[10px] hover:border-dnd-gold">General</button></div></div>);
             case 'senses':
                 const passPerc = 10 + calculateModifier(getStat('wis')) + (character.skills.includes('Perception') ? prof : 0) + (character.expertise?.includes('Perception') ? prof : 0);
                 const passInv = 10 + calculateModifier(getStat('int')) + (character.skills.includes('Investigation') ? prof : 0) + (character.expertise?.includes('Investigation') ? prof : 0);
                 const passIns = 10 + calculateModifier(getStat('wis')) + (character.skills.includes('Insight') ? prof : 0) + (character.expertise?.includes('Insight') ? prof : 0);
-                const dv = character.activeWildShape ? (character.activeWildShape.beast.senses.includes('Darkvision') ? 'Yes' : 'None') : (character.race?.traits?.find(t => t.index === 'darkvision') ? '60ft' : 'None');
+                const dv = (character.race?.traits?.find(t => t.index === 'darkvision') ? '60ft' : 'None');
                 return (
-                    <div key="senses" className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
+                    <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
                          <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest mb-2">Senses</h3>
                          <div className="grid grid-cols-2 gap-y-2 text-xs"><div className="flex items-center gap-2"><span className="bg-gray-800 w-6 h-6 flex items-center justify-center rounded font-bold text-white border border-gray-600">{passPerc}</span><span className="text-gray-400">Passive Percep.</span></div><div className="flex items-center gap-2"><span className="bg-gray-800 w-6 h-6 flex items-center justify-center rounded font-bold text-white border border-gray-600">{passIns}</span><span className="text-gray-400">Passive Insight</span></div><div className="flex items-center gap-2"><span className="bg-gray-800 w-6 h-6 flex items-center justify-center rounded font-bold text-white border border-gray-600">{passInv}</span><span className="text-gray-400">Passive Invest.</span></div><div className="flex items-center gap-2"><span className="bg-gray-800 w-6 h-6 flex items-center justify-center rounded text-[10px] font-bold text-white border border-gray-600 italic">DV</span><span className="text-gray-400">Darkvision: {dv}</span></div></div>
                     </div>
                 );
             case 'movement':
-                return (<div key="movement" className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}><h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest mb-2">Movement</h3><div className="flex flex-wrap gap-x-4 gap-y-1 text-xs"><div className="flex items-center gap-1.5"><span className="text-gray-500 font-bold uppercase text-[9px]">Speed</span><span className="text-white font-bold">{speed}</span></div></div></div>);
+                return (
+                    <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3 relative`}>
+                        <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest mb-2">Movement</h3>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                            <SquareStatBox 
+                                label="Walking" 
+                                subLabel="Speed" 
+                                value={`${speed} ft.`} 
+                                tooltip={
+                                    <div className="space-y-1">
+                                        {speedBreakdown.map((entry, i) => (
+                                            <div key={i} className="flex justify-between text-[10px]">
+                                                <span className="text-gray-400">{entry.label}</span>
+                                                <span className="text-white font-mono">{entry.value}</span>
+                                            </div>
+                                        ))}
+                                        <div className="border-t border-gray-700 mt-1 pt-1 flex justify-between text-[10px] font-bold">
+                                            <span className="text-dnd-gold">Total</span>
+                                            <span className="text-white">{speed} ft.</span>
+                                        </div>
+                                    </div>
+                                }
+                            />
+                        </div>
+                    </div>
+                );
             case 'defenses':
-                const resistances: string[] = [];
-                if (character.race?.name.toLowerCase().includes('dwarf')) resistances.push('Poison');
-                if (character.race?.name.toLowerCase().includes('tiefling')) resistances.push('Fire');
-                character.inventory.forEach(i => { if (i.equipped && i.modifiers) i.modifiers.forEach(m => { if (m.type === 'resistance') resistances.push(String(m.value)); }); });
-                return (<div key="defenses" className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}><h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest mb-2">Defenses</h3><div className="flex flex-wrap gap-1">{resistances.map(r => (<span key={r} className="bg-gray-800 px-1 rounded text-[10px] text-gray-300">Resist: {r}</span>))}{resistances.length === 0 && <span className="text-gray-600 text-xs italic">No special defenses.</span>}</div></div>);
+                const res = activeModifiers.filter(m => m.type === 'resistance').map(m => String(m.value));
+                const imm = activeModifiers.filter(m => m.type === 'immunity').map(m => String(m.value));
+                const advDef = activeModifiers.filter(m => m.type === 'advantage' && (m.target === 'saves' || m.target === 'skills') && m.filter).map(m => String(m.filter));
+                return (
+                    <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
+                        <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest mb-2">Defenses</h3>
+                        <div className="flex flex-wrap gap-1">
+                            {res.map(r => (<span key={`res-${r}`} className="bg-blue-900/30 border border-blue-800/50 px-1.5 py-0.5 rounded text-[9px] text-blue-200 font-bold uppercase">Resist: {r}</span>))}
+                            {imm.map(i => (<span key={`imm-${i}`} className="bg-purple-900/30 border border-purple-800/50 px-1.5 py-0.5 rounded text-[9px] text-purple-200 font-bold uppercase">Immune: {i}</span>))}
+                            {advDef.map(a => (<span key={`adv-${a}`} className="bg-green-900/30 border border-green-800/50 px-1.5 py-0.5 rounded text-[9px] text-green-200 font-bold uppercase">Adv vs {a}</span>))}
+                            {res.length === 0 && imm.length === 0 && advDef.length === 0 && <span className="text-gray-600 text-xs italic">No special defenses.</span>}
+                        </div>
+                    </div>
+                );
             case 'conditions':
-                const sortedConditions = [...STANDARD_CONDITIONS].sort((a, b) => (activeConditions.includes(b) ? 1 : 0) - (activeConditions.includes(a) ? 1 : 0));
-                return (<div key="conditions" className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}><h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest mb-2">Condition Tracker</h3><div className="flex flex-wrap gap-1">{sortedConditions.map(c => (<button key={c} onClick={() => setActiveConditions(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c])} className={`px-2 py-1 rounded text-[9px] uppercase font-bold border transition-colors ${activeConditions.includes(c) ? 'bg-dnd-red border-dnd-red text-white' : 'bg-[#0b0c0e] border-gray-800 text-gray-700 hover:text-gray-500'}`}>{c}</button>))}</div></div>);
+                const sortedConditions = [...STANDARD_CONDITIONS].sort((a, b) => {
+                    const aActive = activeConditions.includes(a) || (a === 'Exhaustion' && (character.exhaustion || 0) > 0);
+                    const bActive = activeConditions.includes(b) || (b === 'Exhaustion' && (character.exhaustion || 0) > 0);
+                    return (bActive ? 1 : 0) - (aActive ? 1 : 0);
+                });
+                return (
+                    <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
+                        <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest mb-2">Condition Tracker</h3>
+                        <div className="flex flex-wrap gap-1">
+                            {sortedConditions.map(c => {
+                                const isActive = activeConditions.includes(c) || (c === 'Exhaustion' && (character.exhaustion || 0) > 0);
+                                return (
+                                    <button 
+                                        key={c} 
+                                        onClick={() => {
+                                            if (c === 'Exhaustion' && (character.exhaustion || 0) > 0) {
+                                                // If exhaustion is from cards, maybe we shouldn't allow toggling it here?
+                                                // Or we toggle the manual condition.
+                                            }
+                                            setActiveConditions(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]);
+                                        }} 
+                                        className={`px-2 py-1 rounded text-[9px] uppercase font-bold border transition-colors ${isActive ? 'bg-dnd-red border-dnd-red text-white' : 'bg-[#0b0c0e] border-gray-800 text-gray-700 hover:text-gray-500'}`}
+                                    >
+                                        {c}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                );
             case 'hitDice':
                 const dieGroups: Record<string, { max: number, spent: number }> = {};
                 character.classes.forEach(c => { const size = String(c.definition.hit_die); if (!dieGroups[size]) dieGroups[size] = { max: 0, spent: 0 }; dieGroups[size].max += c.level; dieGroups[size].spent = character.hitDiceUsage[size] || 0; });
-                if (character.activeWildShape) return (<div key="hitDice-beast" className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}><h3 className="font-bold text-xs text-green-500 uppercase tracking-widest mb-2">Beast Hit Dice</h3><div className="text-white text-sm font-bold">{character.activeWildShape.beast.hit_dice}</div></div>);
                 return (
-                    <div key="hitDice" className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
+                    <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
                         <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest mb-2">Hit Dice</h3>
                         <div className="space-y-3">{Object.entries(dieGroups).sort((a, b) => parseInt(b[0]) - parseInt(a[0])).map(([size, usage]) => (<div key={size} className="space-y-1"><div className="flex justify-between text-[10px] font-bold uppercase text-gray-500"><span>d{size}</span><span>{usage.max - usage.spent} / {usage.max} remaining</span></div><div className="flex flex-wrap gap-1">{Array.from({ length: usage.max }).map((_, i) => (<div key={i} onClick={() => { const newSpent = i < usage.spent ? i : i + 1; setCharacter(prev => ({...prev, hitDiceUsage: { ...prev.hitDiceUsage, [size]: newSpent }})); }} className={`w-3 h-3 rounded-full border cursor-pointer transition-all ${i < usage.spent ? 'bg-[#0b0c0e] border-gray-800' : 'bg-dnd-red/20 border-dnd-red/50 hover:border-dnd-red'}`}/>))}</div></div>))}</div>
                     </div>
@@ -877,10 +1782,41 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     
     const getAttacks = () => {
         const attacks: any[] = [];
-        if (character.activeWildShape) {
-            character.activeWildShape.beast.actions.forEach(action => { if (action.attack_bonus !== undefined) attacks.push({ id: `beast-action-${action.name.replace(/\s+/g, '-')}`, name: action.name, range: 'Melee', hit: action.attack_bonus, damage: action.damage_dice || '0', type: action.damage_type || 'physical', notes: [action.desc], source: { name: action.name, desc: action.desc, category: 'Beast Action' } }); });
-            return attacks;
-        }
+        const overrides = character.combatOverrides || { hitBonus: 0, damageBonus: 0, hitOverride: null, damageOverride: null };
+
+        // Helper to apply overrides
+        const applyOverrides = (baseHit: number | null, baseDamage: string) => {
+            let finalHit = baseHit;
+            let finalDamage = baseDamage;
+
+            if (finalHit !== null) {
+                if (overrides.hitOverride !== null && overrides.hitOverride !== undefined) {
+                    finalHit = overrides.hitOverride;
+                } else {
+                    finalHit += (overrides.hitBonus || 0);
+                }
+            }
+
+            if (overrides.damageOverride !== null && overrides.damageOverride !== undefined) {
+                const diceMatch = baseDamage.match(/^(\d+d\d+)/);
+                if (diceMatch) {
+                    finalDamage = `${diceMatch[1]}${formatModifier(overrides.damageOverride)}`;
+                } else {
+                    finalDamage = formatModifier(overrides.damageOverride);
+                }
+            } else if (overrides.damageBonus && overrides.damageBonus !== 0) {
+                const modMatch = baseDamage.match(/([+-]\d+)$/);
+                if (modMatch) {
+                    const currentMod = parseInt(modMatch[1]);
+                    const newMod = currentMod + overrides.damageBonus;
+                    finalDamage = baseDamage.replace(/[+-]\d+$/, formatModifier(newMod));
+                } else {
+                    finalDamage = `${baseDamage}${formatModifier(overrides.damageBonus)}`;
+                }
+            }
+
+            return { hit: finalHit, damage: finalDamage };
+        };
 
         const monk = character.classes.find(c => c.definition.index === 'monk');
         let unarmedDie = '1';
@@ -894,7 +1830,45 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             unarmedHitMod = Math.max(strMod, dexMod);
         }
 
-        attacks.push({ id: 'action-unarmed', name: 'Unarmed Strike', range: '5 ft.', hit: prof + unarmedHitMod, damage: `${unarmedDie}${formatModifier(unarmedHitMod)}`, type: 'Bludgeoning', notes: [], source: { name: 'Unarmed Strike', desc: 'A punch, kick, head-butt, or similar forceful blow.' } });
+        const { hit: unarmedHit, damage: unarmedDmg } = applyOverrides(prof + unarmedHitMod, `${unarmedDie}${formatModifier(unarmedHitMod)}`);
+        attacks.push({ id: 'action-unarmed', name: 'Unarmed Strike', range: '5 ft.', hit: unarmedHit, damage: unarmedDmg, type: 'Bludgeoning', notes: [], source: { name: 'Unarmed Strike', desc: 'A punch, kick, head-butt, or similar forceful blow.' } });
+        
+        // --- Card Master: The Fool Spell ---
+        const cmClass = character.classes.find(c => c.definition.index === 'card-master');
+        if (cmClass && cmClass.level >= 4 && (character.foolStacks || 0) > 0) {
+            const foolStacks = character.foolStacks || 0;
+            const isWorldActive = character.activeCards?.some(c => c.name === 'The World');
+            const isLevel20 = cmClass.level >= 20;
+            
+            let diceCount = 3 + (isLevel20 ? foolStacks * 2 : foolStacks);
+            if (isWorldActive) diceCount *= 2;
+            
+            const damageDice = `${diceCount}d8`;
+            const { hit: foolHit, damage: foolDmg } = applyOverrides(null, damageDice);
+            attacks.push({
+                id: 'action-fool-spell',
+                name: 'The Fool Spell',
+                range: '20 ft radius',
+                hit: foolHit,
+                save: { dc: spellSave, type: 'WIS' },
+                damage: foolDmg,
+                type: 'Necrotic',
+                notes: [`Consumes all ${foolStacks} Fool Stacks on use.`, 'Half damage on save.'],
+                source: { 
+                    name: 'The Fool Spell', 
+                    desc: [
+                        `As an action, you expend all ${foolStacks} Fool Stacks to cast this spell.`,
+                        `The spell deals ${damageDice} necrotic damage in a 20-foot radius. Targets that pass a Wisdom Saving Throw take half damage.`
+                    ],
+                    level: 0,
+                    school: { index: 'necromancy', name: 'Necromancy' },
+                    casting_time: '1 Action',
+                    range: '20 ft radius',
+                    components: ['V', 'S'],
+                    duration: 'Instantaneous'
+                }
+            });
+        }
         
         // --- Arrowsmith Specific Arrows ---
         const arrowsmithCls = character.classes.find(c => c.definition.index === 'arrowsmith');
@@ -956,12 +1930,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const def = allArrowDefinitions.find(d => d.name.toLowerCase() === arrowBaseName);
                 
                 if (def && def.level <= lvl) {
+                    const { hit: arrowHit, damage: arrowDmg } = applyOverrides(def.hit === null ? null : bowHit, def.dmg || (def.dmgPlus ? `${bowDmg}${def.dmgPlus}${formatModifier(baseDmgBonus)}` : finalBowDmg));
                     attacks.push({ 
                         id: invItem.id, 
                         name: `${def.name} Arrow`, 
                         range: def.rangeLabel || rangeStr, 
-                        hit: def.hit === null ? null : bowHit, 
-                        damage: def.dmg || (def.dmgPlus ? `${bowDmg}${def.dmgPlus}${formatModifier(baseDmgBonus)}` : finalBowDmg), 
+                        hit: arrowHit, 
+                        damage: arrowDmg, 
                         type: def.type || 'Piercing', 
                         save: def.save || null,
                         notes: ['Arrowsmith', `Qty: ${invItem.quantity}`, ...(def.notes || [])], 
@@ -973,25 +1948,96 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
         character.inventory.forEach(item => {
             if (!item.equipped || !item.damage || item.id.startsWith('as-arrow-')) return;
-            const isFinesse = item.properties?.includes('Finesse');
-            const isMonkWeapon = monk && (item.equipment_category?.index === 'weapon' && (Library.getItem(item.index || '')?.properties?.some(p => (typeof p === 'string' ? p : p.index) === 'simple') || item.name === 'Shortsword'));
-            const statMod = (isFinesse || isMonkWeapon) && dexMod > strMod ? dexMod : strMod;
+            
+            const properties = item.properties?.map(p => typeof p === 'string' ? p : p.name) || [];
+            const isFinesse = properties.includes('Finesse');
+            const isThrown = item.isThrown || properties.includes('Thrown') || (item.range && item.weapon_range !== 'Ranged' && !item.weapon_category?.toLowerCase().includes('ranged'));
+            const isReach = properties.includes('Reach');
+            const isRanged = item.weapon_range === 'Ranged' || item.weapon_category?.toLowerCase().includes('ranged') || item.equipment_category?.name?.toLowerCase().includes('ranged') || properties.includes('Ammunition');
+            const isMonkWeapon = item.isMonkWeapon || item.isKenseiWeapon || (monk && (item.equipment_category?.index === 'weapon' && (Library.getItem(item.index || '')?.properties?.some(p => (typeof p === 'string' ? p : p.index) === 'simple') || item.name === 'Shortsword')));
+            
+            // Special Attack Modifiers
+            const isMagic = item.requires_attunement || (item.modifiers && item.modifiers.length > 0) || item.isInfusion;
+            const canUseInt = item.isBattleReady && isMagic;
+            const canUseCha = item.isHexWeapon || item.isPactWeapon;
+            const canUseWis = item.isShillelagh;
+            
+            let statMod = strMod;
+            if (isFinesse || isMonkWeapon) statMod = Math.max(statMod, dexMod);
+            if (canUseInt) statMod = Math.max(statMod, intMod);
+            if (canUseCha) statMod = Math.max(statMod, chaMod);
+            if (canUseWis) statMod = Math.max(statMod, wisMod);
             
             let hitBonus = 0; let damageBonus = 0;
             item.modifiers?.forEach(mod => { if (mod.type === 'bonus') { if (mod.target === 'attack') hitBonus += Number(mod.value); if (mod.target === 'damage') damageBonus += Number(mod.value); } });
+            
             const fightingStyles = character.classFeatures.filter(f => f.name.includes('Fighting Style'));
-            fightingStyles.forEach(fs => { const desc = fs.desc?.join(' ') || ''; if (desc.includes('Archery') && (item.properties?.includes('Ammunition') || item.range)) hitBonus += 2; if (desc.includes('Dueling') && !item.properties?.includes('Two-Handed')) damageBonus += 2; });
+            fightingStyles.forEach(fs => { 
+                const desc = fs.desc?.join(' ') || ''; 
+                if (desc.includes('Archery') && (properties.includes('Ammunition') || (isRanged && item.range))) hitBonus += 2; 
+                if (desc.includes('Dueling') && !properties.includes('Two-Handed')) damageBonus += 2; 
+            });
             
             let damageDice = item.damage.damage_dice;
+            if (item.isShillelagh) damageDice = '1d8';
             if (isMonkWeapon && parseInt(unarmedDie.slice(2)) > (parseInt(damageDice.match(/d(\d+)/)?.[1] || '0'))) {
                 damageDice = unarmedDie;
             }
 
-            const rangeStr = typeof item.range === 'string' ? item.range : (item.range ? `${item.range.normal} ft.` : '5 ft.');
-            const damageType = typeof item.damage.damage_type === 'string' ? item.damage.damage_type : item.damage.damage_type.name;
-            const notes = item.properties?.map(p => typeof p === 'string' ? p : p.name) || [];
+            let baseRangeVal = isRanged ? (typeof item.range === 'string' ? item.range : (item.range ? `${item.range.normal}${item.range.long ? `/${item.range.long}` : ''} ft.` : '')) : (isReach ? '10 ft.' : '5 ft.');
+            let rangeStr = baseRangeVal;
+            
+            if (typeof item.range === 'string' && !isRanged && item.range.includes('(')) {
+                rangeStr = item.range;
+            } else if (isThrown) {
+                let tr = '';
+                if (item.thrownRange) {
+                    tr = item.thrownRange.includes('ft') ? item.thrownRange : `${item.thrownRange} ft.`;
+                } else if (item.range) {
+                    if (typeof item.range === 'string') {
+                        if (item.range !== '5 ft.' && item.range !== '10 ft.') {
+                            tr = item.range;
+                        }
+                    } else if (item.range.normal) {
+                        tr = `${item.range.normal}${item.range.long ? `/${item.range.long}` : ''} ft.`;
+                    }
+                }
+                
+                if (tr && tr !== baseRangeVal) {
+                    if (!isRanged) {
+                        if (!rangeStr.includes(tr)) {
+                            rangeStr = `${baseRangeVal} (${tr})`;
+                        }
+                    } else {
+                        rangeStr = tr;
+                    }
+                }
+            }
 
-            attacks.push({ id: item.id, name: item.name, range: rangeStr, hit: prof + statMod + hitBonus, damage: `${damageDice}${formatModifier(statMod + damageBonus)}`, type: damageType, notes: notes, source: item });
+            const damageType = item.isShillelagh ? 'Bludgeoning' : (typeof item.damage.damage_type === 'string' ? item.damage.damage_type : item.damage.damage_type.name);
+            const notes = [...(item.properties?.map(p => typeof p === 'string' ? p : p.name) || [])];
+            if (item.isMonkWeapon) notes.push('Monk Weapon');
+            if (item.isPactWeapon) notes.push('Pact Weapon');
+            if (item.isKenseiWeapon) notes.push('Kensei Weapon');
+            if (item.isHexWeapon) notes.push('Hex Weapon');
+            if (item.isShillelagh) notes.push('Shillelagh');
+            if (item.isBattleReady) notes.push('Battle Ready');
+            if (isThrown && !notes.includes('Thrown')) notes.push('Thrown');
+
+            const baseHit = prof + statMod + hitBonus;
+            const baseDamage = `${damageDice}${formatModifier(statMod + damageBonus)}`;
+            
+            const { hit: finalHit, damage: finalDamage } = applyOverrides(baseHit, baseDamage);
+
+            // If thrown damage differs, show it in damage string or notes?
+            // User said: "and the damage roll (if it differs) + the thrown range"
+            let displayDamage = finalDamage;
+            if (isThrown && item.thrownDamage && item.thrownDamage !== damageDice) {
+                const { damage: finalThrownDamage } = applyOverrides(null, `${item.thrownDamage}${formatModifier(statMod + damageBonus)}`);
+                displayDamage = `${finalDamage} / ${finalThrownDamage}`;
+            }
+
+            attacks.push({ id: item.id, name: item.name, range: rangeStr, hit: finalHit, damage: displayDamage, type: damageType, notes: notes, source: item });
         });
 
         character.spells.forEach(spell => {
@@ -999,9 +2045,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             if (desc.includes('spell attack') || spell.attack_type !== undefined) {
                 const dmgStr = getSpellDamageString(spell, character.level, spell.level || 1);
                 const dc = (spell as any).dc?.dc_type?.name?.substring(0, 3).toUpperCase();
-                let extraSpellAttack = 0;
-                character.inventory.forEach(i => { if (i.equipped && i.modifiers) i.modifiers.forEach(m => { if (m.type === 'bonus' && m.target === 'spell_attack') extraSpellAttack += Number(m.value); }); });
-                attacks.push({ id: spell.index, name: spell.name, range: spell.range, hit: spellAttack + extraSpellAttack, save: dc ? { dc: spellSave, type: dc } : null, damage: dmgStr || 'See Desc', type: spell.damage?.damage_type?.name || 'Magic', notes: [spell.level === 0 ? 'Cantrip' : `Lvl ${spell.level}`], source: spell });
+                const { hit: spellHit, damage: spellDmg } = applyOverrides(spellAttack, dmgStr || 'See Desc');
+                attacks.push({ id: spell.index, name: spell.name, range: spell.range, hit: spellHit, save: dc ? { dc: spellSave, type: dc } : null, damage: spellDmg, type: spell.damage?.damage_type?.name || 'Magic', notes: [spell.level === 0 ? 'Cantrip' : `Lvl ${spell.level}`], source: spell });
             }
         });
         character.customActions?.forEach(action => {
@@ -1020,59 +2065,192 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 hit = (action.isProficient ? prof : 0) + mod + (action.bonus || 0);
             }
 
+            const { hit: finalHit, damage: finalDamage } = applyOverrides(hit, action.damage || '0');
+
             attacks.push({ 
                 id: action.id, 
                 name: action.name, 
                 range: action.range || '-', 
-                hit,
+                hit: finalHit,
                 save,
-                damage: action.damage || '-', 
-                type: action.damageType || action.type, 
-                notes: [
-                    action.activationType ? action.activationType.charAt(0).toUpperCase() + action.activationType.slice(1) : '',
-                    action.description || ''
-                ].filter(Boolean), 
-                source: { 
-                    ...action,
-                    name: action.name, 
-                    desc: action.description || '', 
-                    category: 'Custom' 
-                } 
-            }); 
+                damage: finalDamage,
+                type: action.damageType || 'Other',
+                notes: [action.type],
+                source: action
+            });
         });
+
         return attacks;
+    };
+
+    const enrichFeature = (f_item: any) => {
+        if (f_item.index === 'the-fool') {
+            const cmClass = character.classes.find(c => c.definition.index === 'card-master');
+            const foolStacks = character.foolStacks || 0;
+            const isWorldActive = character.activeCards?.some(c => c.name === 'The World');
+            const isLevel20 = (cmClass?.level || 0) >= 20;
+            
+            let diceCount = 3 + (isLevel20 ? foolStacks * 2 : foolStacks);
+            if (isWorldActive) diceCount *= 2;
+            
+            const damageDice = `${diceCount}d8`;
+            
+            return {
+                ...f_item,
+                damage: damageDice,
+                save: { dc: spellSave, type: 'WIS' },
+                desc: [
+                    "As an action, you can sacrifice an active card to gain a Fool Stack. You can expend all stacks to cast the Fool Spell.",
+                    `The spell deals ${damageDice} necrotic damage in a 20-foot radius. For every Fool Stack consumed, the damage increases by 1d8 (or 2d8 at level 20). If 'The World' card is active, the total damage is doubled. Targets that pass a Wisdom Saving Throw take half damage.`
+                ]
+            };
+        }
+
+        const isChoice = f_item.name.includes(': ');
+        const baseName = isChoice ? f_item.name.split(': ')[0] : f_item.name.replace(/\s*\(.*?\)/, '').trim();
+        const selection = isChoice ? f_item.name.split(': ')[1] : null;
+
+        if (isChoice) {
+            for(const c_item of Library.getClasses()) {
+                const match_f = c_item.feature_details.find(fd => fd.index === f_item.index || fd.name === baseName);
+                if(match_f && match_f.effects) {
+                    const choiceEff = match_f.effects.find(e => e.type === 'feature_choice' || e.type === 'proficiency_choice');
+                    if (choiceEff && choiceEff.options) {
+                        const opt = choiceEff.options.find((o: any) => o.name === selection || o.item?.name === selection);
+                        if (opt && opt.desc) return { ...f_item, desc: [opt.desc] };
+                    }
+                }
+            }
+        }
+
+        if (f_item.desc && Array.isArray(f_item.desc) && f_item.desc.length > 0 && !isChoice) return f_item;
+        
+        for(const c_item of Library.getClasses()) {
+            const match_f = c_item.feature_details.find(fd => fd.index === f_item.index || fd.name === baseName);
+            if(match_f && match_f.desc) return { ...f_item, desc: match_f.desc };
+        }
+
+        for(const s_item of Library.getSubclasses()) {
+            const match_s = s_item.feature_details.find(fd => fd.index === f_item.index || fd.name === baseName);
+            if(match_s && match_s.desc) return { ...f_item, desc: match_s.desc };
+        }
+
+        for(const r_item of Library.getRaces()) {
+            const match_r = r_item.traits.find(tr => tr.index === f_item.index || tr.name === f_item.name);
+            if(match_r && match_r.desc) return { ...f_item, desc: match_r.desc };
+            if(r_item.subraces_details) {
+                for(const sub_item of r_item.subraces_details) {
+                    const match_st = sub_item.traits.find(tr => tr.index === f_item.index || tr.name === f_item.name);
+                    if(match_st && match_st.desc) return { ...f_item, desc: match_st.desc };
+                }
+            }
+        }
+
+        const feat_item = Library.getFeat(f_item.index);
+        if(feat_item && feat_item.desc) return { ...f_item, desc: feat_item.desc };
+        
+        return f_item;
     };
 
     const getBonusActions = () => {
          const list: any[] = [];
-         character.spells.forEach(spell => { if (spell.casting_time.toLowerCase().includes('bonus')) list.push({ id: spell.index, name: spell.name, category: 'Action', desc: `Cast ${spell.name} as a bonus action.`, source: spell }); });
+         
+         // 1. Spells with bonus action casting time
+         character.spells.forEach(spell => { 
+             if (spell.casting_time.toLowerCase().includes('bonus')) {
+                 list.push({ 
+                     id: spell.index, 
+                     name: spell.name, 
+                     category: 'Action', 
+                     desc: `Cast ${spell.name} as a bonus action.`, 
+                     source: spell 
+                 }); 
+             }
+         });
+
+         // 2. Hardcoded common bonus actions (for features that might not have explicit "bonus action" text or need specific handling)
          const classes = character.classes.map(c => c.definition.name.toLowerCase());
-         if (classes.includes('bard')) list.push({ id: 'feature-bardic-inspiration', name: 'Bardic Inspiration', category: 'Action', desc: 'Grant inspiration die.' });
-         if (classes.includes('barbarian')) list.push({ id: 'feature-rage', name: 'Rage', category: 'Action', desc: 'Enter rage.' });
-         if (classes.includes('rogue') && character.level >= 2) list.push({ id: 'feature-cunning-action', name: 'Cunning Action', category: 'Action', desc: 'Dash, Disengage, or Hide.' });
+         if (classes.includes('bard')) list.push(enrichFeature({ id: 'feature-bardic-inspiration', index: 'bardic-inspiration', name: 'Bardic Inspiration', category: 'Action' }));
+         if (classes.includes('barbarian')) list.push(enrichFeature({ id: 'feature-rage', index: 'rage', name: 'Rage', category: 'Action' }));
+         if (classes.includes('fighter')) list.push(enrichFeature({ id: 'feature-second-wind', index: 'second-wind', name: 'Second Wind', category: 'Action' }));
+         if (classes.includes('rogue') && character.level >= 2) list.push(enrichFeature({ id: 'feature-cunning-action', index: 'cunning-action', name: 'Cunning Action', category: 'Action' }));
          
          const monk = character.classes.find(c => c.definition.index === 'monk');
          if (monk && monk.level >= 2) {
-            list.push({ id: 'feature-flurry-of-blows', name: 'Flurry of Blows', category: 'Action', desc: 'Spend 1 Focus Point to make two unarmed strikes as a bonus action.' });
-            list.push({ id: 'feature-patient-defense', name: 'Patient Defense', category: 'Action', desc: 'Spend 1 Focus Point to take the Dodge action as a bonus action. Or Disengage.' });
-            list.push({ id: 'feature-step-of-the-wind', name: 'Step of the Wind', category: 'Action', desc: 'Spend 1 Focus Point to take the Dash and Disengage action as a bonus action, and jump distance is doubled.' });
+            list.push(enrichFeature({ id: 'feature-flurry-of-blows', index: 'flurry-of-blows', name: 'Flurry of Blows', category: 'Action' }));
+            list.push(enrichFeature({ id: 'feature-patient-defense', index: 'patient-defense', name: 'Patient Defense', category: 'Action' }));
+            list.push(enrichFeature({ id: 'feature-step-of-the-wind', index: 'step-of-the-wind', name: 'Step of the Wind', category: 'Action' }));
+         }
+
+         const paladin = character.classes.find(c => c.definition.index === 'paladin');
+         if (paladin) {
+             if (paladin.level >= 1) list.push(enrichFeature({ id: 'feature-lay-on-hands', index: 'lay-on-hands-2024', name: 'Lay on Hands', category: 'Action' }));
+             if (paladin.level >= 2) list.push(enrichFeature({ id: 'feature-paladins-smite', index: 'paladins-smite', name: "Paladin's Smite", category: 'Action' }));
          }
 
          const ranger = character.classes.find(c => c.definition.index === 'ranger');
          if (ranger && ranger.level >= 14) {
-             list.push({ id: 'feature-natures-veil', name: "Nature's Veil", category: 'Action', desc: "Spend a spell slot to magically become invisible until the end of your next turn." });
+             list.push(enrichFeature({ id: 'feature-natures-veil', index: 'natures-veil', name: "Nature's Veil", category: 'Action' }));
          }
          
          const rogue = character.classes.find(c => c.definition.index === 'rogue');
          if (rogue && rogue.level >= 3) {
-             list.push({ id: 'feature-steady-aim', name: "Steady Aim", category: 'Action', desc: "Gain advantage on next attack this turn. Speed becomes 0." });
+             list.push(enrichFeature({ id: 'feature-steady-aim', index: 'steady-aim', name: "Steady Aim", category: 'Action' }));
          }
 
          const sorcerer = character.classes.find(c => c.definition.index === 'sorcerer');
          if (sorcerer && sorcerer.level >= 1) {
-             list.push({ id: 'feature-innate-sorcery', name: "Innate Sorcery", category: 'Action', desc: "DC +1 and Advantage on attack rolls for 1 minute." });
+             list.push(enrichFeature({ id: 'feature-innate-sorcery', index: 'innate-sorcery', name: "Innate Sorcery", category: 'Action' }));
          }
 
+         const bloodHunter = character.classes.find(c => c.definition.index === 'blood-hunter');
+         if (bloodHunter && bloodHunter.level >= 2) {
+             list.push(enrichFeature({ id: 'feature-crimson-rite', index: 'crimson-rite', name: "Crimson Rite", category: 'Action' }));
+         }
+
+         const pugilist = character.classes.find(c => c.definition.index === 'pugilist');
+         if (pugilist) {
+             if (pugilist.level >= 1) list.push(enrichFeature({ id: 'feature-fisticuffs', index: 'fisticuffs', name: "Fisticuffs", category: 'Action' }));
+             if (pugilist.level >= 4) list.push(enrichFeature({ id: 'feature-dig-deep', index: 'dig-deep', name: "Dig Deep", category: 'Action' }));
+             if (pugilist.level >= 7) list.push(enrichFeature({ id: 'feature-shake-it-off', index: 'shake-it-off', name: "Shake It Off", category: 'Action' }));
+         }
+
+         const druid = character.classes.find(c => c.definition.index === 'druid');
+         if (druid && druid.subclass?.index === 'circle-of-the-moon') {
+             list.push(enrichFeature({ id: 'feature-combat-wild-shape', index: 'combat-wild-shape', name: "Combat Wild Shape", category: 'Action' }));
+         }
+
+         const cardMaster = character.classes.find(c => c.definition.index === 'card-master');
+         if (cardMaster) {
+             const lvl = cardMaster.level;
+             list.push(enrichFeature({ id: 'feature-pick-a-card', index: 'pick-a-card', name: 'Pick a Card', category: 'Action' }));
+             if (lvl >= 2) list.push(enrichFeature({ id: 'feature-trust-destiny', index: 'trust-the-destiny', name: 'Trust the Destiny', category: 'Action' }));
+             if (lvl >= 2) list.push(enrichFeature({ id: 'feature-chiromancy', index: 'chiromancy', name: 'Chiromancy', category: 'Action' }));
+             if (lvl >= 7) list.push(enrichFeature({ id: 'feature-mystic-shuffle', index: 'mystic-shuffle', name: 'Mystic Shuffle', category: 'Action' }));
+             if (lvl >= 8) list.push(enrichFeature({ id: 'feature-foresight-touch', index: 'chiromancy-lines-of-fate', name: 'Foresight Touch', category: 'Action' }));
+             if (lvl >= 10) list.push(enrichFeature({ id: 'feature-the-world', index: 'the-world', name: 'The World', category: 'Action' }));
+         }
+
+         // 3. Dynamic scanning of all class features for "bonus action" keywords
+         character.classFeatures.forEach(feat => {
+             // Skip if already in list
+             if (list.some(item => item.index === feat.index || item.name === feat.name)) return;
+
+             const enriched = enrichFeature(feat);
+             const descStr = Array.isArray(enriched.desc) 
+                ? enriched.desc.join(' ').toLowerCase() 
+                : (enriched.desc || '').toLowerCase();
+             
+             if (descStr.includes('bonus action')) {
+                 list.push({ 
+                     ...enriched, 
+                     id: enriched.id || `feature-${enriched.index || enriched.name.toLowerCase().replace(/\s+/g, '-')}`,
+                     category: 'Action' 
+                 });
+             }
+         });
+
+         // 4. Custom Actions
          character.customActions?.forEach(action => {
             if (action.activationType === 'bonus') {
                 list.push({ 
@@ -1088,6 +2266,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
          return list;
     };
 
+
     const tabIcons: Record<string, React.ReactNode> = {
         actions: <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" y1="19" x2="19" y2="13"/><line x1="16" y1="16" x2="20" y2="20"/><line x1="19" y1="21" x2="21" y2="19"/></svg>,
         spells: <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></svg>,
@@ -1095,58 +2274,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         features: <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7.21 15 2.66 7.14a2 2 0 0 1 .13-2.2L4.4 2.8A2 2 0 0 1 6 2h12a2 2 0 0 1 1.6.8l1.6 2.14a2 2 0 0 1 .14 2.2L16.79 15"/><circle cx="12" cy="17" r="5"/></svg>,
         rules: <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>,
         log: <svg xmlns="http://www.w3.org/2000/svg" width="18" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><line x1="16" y1="8" x2="2" y2="22"/></svg>,
-        stats: <svg xmlns="http://www.w3.org/2000/svg" width="18" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="3" x2="21" y1="9" y2="9"/><line x1="9" x2="9" y1="21" y2="9"/></svg>
+        stats: <svg xmlns="http://www.w3.org/2000/svg" width="18" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="3" x2="21" y1="9" y2="9"/><line x1="9" x2="9" y1="21" y2="9"/></svg>,
+        choices: <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M9 14h6"/><path d="M9 10h6"/><path d="M9 18h6"/></svg>
     };
 
     const getAllFeaturesSorted = () => {
          const list: any[] = [];
-         const enrichFeature = (f_item: any) => {
-             const isChoice = f_item.name.includes(': ');
-             const baseName = isChoice ? f_item.name.split(': ')[0] : f_item.name.replace(/\s*\(.*?\)/, '').trim();
-             const selection = isChoice ? f_item.name.split(': ')[1] : null;
-
-             if (isChoice) {
-                 for(const c_item of Library.getClasses()) {
-                     const match_f = c_item.feature_details.find(fd => fd.index === f_item.index || fd.name === baseName);
-                     if(match_f && match_f.effects) {
-                         const choiceEff = match_f.effects.find(e => e.type === 'feature_choice' || e.type === 'proficiency_choice');
-                         if (choiceEff && choiceEff.options) {
-                             const opt = choiceEff.options.find((o: any) => o.name === selection || o.item?.name === selection);
-                             if (opt && opt.desc) return { ...f_item, desc: [opt.desc] };
-                         }
-                     }
-                 }
-             }
-
-             if (f_item.desc && f_item.desc.length > 0 && !isChoice) return f_item;
-             
-             for(const c_item of Library.getClasses()) {
-                 const match_f = c_item.feature_details.find(fd => fd.index === f_item.index || fd.name === baseName);
-                 if(match_f && match_f.desc) return { ...f_item, desc: match_f.desc };
-             }
-
-             for(const s_item of Library.getSubclasses()) {
-                 const match_s = s_item.feature_details.find(fd => fd.index === f_item.index || fd.name === baseName);
-                 if(match_s && match_s.desc) return { ...f_item, desc: match_s.desc };
-             }
-
-             for(const r_item of Library.getRaces()) {
-                 const match_r = r_item.traits.find(tr => tr.index === f_item.index || tr.name === f_item.name);
-                 if(match_r && match_r.desc) return { ...f_item, desc: match_r.desc };
-                 if(r_item.subraces_details) {
-                     for(const sub_item of r_item.subraces_details) {
-                         const match_st = sub_item.traits.find(tr => tr.index === f_item.index || tr.name === f_item.name);
-                         if(match_st && match_st.desc) return { ...f_item, desc: match_st.desc };
-                     }
-                 }
-             }
-
-             const feat_item = Library.getFeat(f_item.index);
-             if(feat_item && feat_item.desc) return { ...f_item, desc: feat_item.desc };
-             
-             return f_item;
-         };
-
+         
         character.classFeatures.forEach((feat, idx) => list.push({ ...enrichFeature(feat), type: 'Class', uniqueId: `class-${feat.index}-${feat.level}-${idx}` }));
         character.feats.forEach((feat, idx) => list.push({ ...enrichFeature(feat), type: 'Feat', source: 'Feat', level: '-', uniqueId: `feat-${feat.index}-${idx}` }));
         character.race?.traits.forEach((trait, idx) => list.push({ ...enrichFeature(trait), type: 'Race', source: character.race?.name, level: '-', uniqueId: `race-${trait.index}-${idx}` }));
@@ -1160,6 +2294,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         });
     };
 
+    const cmClass = character.classes.find(c => c.definition.index === 'card-master');
+    const cmLevel = cmClass ? cmClass.level : 0;
+
     return (
         <div className="flex flex-col h-full text-gray-200 overflow-hidden font-scalable relative" style={{ '--sheet-scale': character.fontScale || 1.0, backgroundColor: character.backgroundColor || '#151515' } as any}>
             {saving && <div className="fixed top-2 left-1/2 transform -translate-x-1/2 z-[1000] bg-black/80 text-dnd-gold px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest border border-dnd-gold shadow-lg animate-pulse">Saving...</div>}
@@ -1171,7 +2308,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             <DiceTray logs={logs} onRoll={(f) => roll(f, 'Manual')} />
             
             <ManageCharacterModal isOpen={showManageCharacterModal} character={character} onClose={() => setShowManageCharacterModal(false)} onUpdate={(updates) => setCharacter(prev => ({...prev, ...updates}))} onLevelUp={performLevelUp} />
-            <HealthManagerModal isOpen={showHealthManager} character={character} onClose={() => setShowHealthManager(false)} onUpdate={(updates) => setCharacter(prev => { if (prev.activeWildShape && updates.activeWildShape) return { ...prev, activeWildShape: updates.activeWildShape }; if (prev.activeWildShape && updates.currentHp !== undefined) return { ...prev, activeWildShape: { ...prev.activeWildShape, currentHp: updates.currentHp } }; if (prev.activeEldritchCannon && updates.activeEldritchCannon) return { ...prev, activeEldritchCannon: updates.activeEldritchCannon }; if (prev.activeSteelDefender && updates.activeSteelDefender) return { ...prev, activeSteelDefender: updates.activeSteelDefender }; return {...prev, ...updates}; })} onTakeDamage={handleDamageTrigger} />
+            <HealthManagerModal 
+                isOpen={showHealthManager} 
+                character={character} 
+                onClose={() => setShowHealthManager(false)} 
+                onUpdate={(updates) => setCharacter(prev => ({ ...prev, ...updates }))} 
+                onTakeDamage={handleDamageTrigger} 
+            />
             <ShortRestModal isOpen={showShortRestModal} character={character} onUpdate={(updates) => setCharacter(prev => ({...prev, ...updates}))} onClose={() => setShowShortRestModal(false)} onRoll={roll} />
             <CustomActionModal 
                 isOpen={showCustomActionModal} 
@@ -1189,49 +2332,50 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             />
             <ItemSearchModal 
                 isOpen={showItemSearchModal} 
-                onClose={() => setShowItemSearchModal(false)} 
+                onClose={() => { setShowItemSearchModal(false); setDuplicateItem(null); }} 
                 items={allEquipment} 
                 onSelectItem={handleAddItem} 
                 initialMode={itemSearchMode}
+                initialItem={duplicateItem}
                 currentUser={character?.user_id ? { id: character.user_id } : undefined}
+                onDuplicateToHomebrew={(item) => handleDuplicateToHomebrew('item', item)}
             />
-            <LayoutManagerModal isOpen={showLayoutManager} onClose={() => setShowLayoutManager(false)} layout={layout} onSave={(newLayout) => { setLayout(newLayout); setCharacter(prev => ({ ...prev, layout: newLayout })); }} character={character} />
+            <LayoutManagerModal 
+                isOpen={showLayoutManager} 
+                onClose={() => setShowLayoutManager(false)} 
+                layout={layout} 
+                onSave={(newLayout) => { 
+                    const seen = new Set<string>();
+                    const cleanLayout = {
+                        left: (newLayout.left || []).filter(w => { if (seen.has(w)) return false; seen.add(w); return true; }),
+                        right: (newLayout.right || []).filter(w => { if (seen.has(w)) return false; seen.add(w); return true; }),
+                        mobile: Array.from(new Set(newLayout.mobile || []))
+                    };
+                    setLayout(cleanLayout); 
+                    setCharacter(prev => ({ ...prev, layout: cleanLayout })); 
+                }} 
+                character={character} 
+            />
             <CustomSpellModal 
                 isOpen={showCustomSpellModal} 
-                onClose={() => setShowCustomSpellModal(false)} 
+                onClose={() => { setShowCustomSpellModal(false); setDuplicateSpell(null); }} 
                 onSave={(spell) => setCharacter(prev => ({...prev, spells: [...prev.spells, spell]}))} 
                 currentUser={character?.user_id ? { id: character.user_id } : undefined}
+                initialSpell={duplicateSpell}
             />
-            <WildShapeModal 
-                isOpen={showWildShapeModal} 
-                onClose={() => setShowWildShapeModal(false)} 
-                character={character} 
-                onTransform={handleWildShapeTransform} 
-                onAddCustomBeast={(beast) => setCharacter(prev => ({...prev, customBeasts: [...(prev.customBeasts || []), beast]}))} 
-                onRemoveCustomBeast={(id) => setCharacter(prev => ({...prev, customBeasts: (prev.customBeasts || []).filter(b => b.index !== id)}))} 
-                onOpenForge={() => { setHomebrewInitialTab('wildshape'); setShowHomebrewModal(true); setShowWildShapeModal(false); }}
-            />
-            <ConcentrationCheckModal isOpen={!!concentrationCheck} dc={concentrationCheck?.dc || 10} spellName={concentrationCheck?.spellName || ''} onSuccess={() => setConcentrationCheck(null)} onFail={() => { setCharacter(prev => ({ ...prev, activeConcentration: null })); setConcentrationCheck(null); roll('1', 'Concentration Broken!'); }} conSaveModifier={conSaveBonus} onRoll={roll} />
-            <FamiliarManagerModal 
-                isOpen={showFamiliarModal} 
-                onClose={() => setShowFamiliarModal(false)} 
-                currentFamiliars={character.familiars || []} 
-                activeFamiliarId={character.activeFamiliar?.index} 
-                onUpdateFamiliars={(familiars) => setCharacter(prev => ({ ...prev, familiars }))} 
-                onSetActive={(familiar) => setCharacter(prev => ({ ...prev, activeFamiliar: familiar }))} 
-                onOpenForge={() => { setHomebrewInitialTab('familiar'); setShowHomebrewModal(true); setShowFamiliarModal(false); }}
-            />
-            <FamiliarStatBlockModal beast={viewingFamiliar} onClose={() => setViewingFamiliar(null)} />
-            <FamiliarStatBlockModal beast={viewingWildShape} onClose={() => setViewingWildShape(null)} variant="wildshape" />
+            <CreatureStatBlockModal creature={viewingFamiliar} onClose={() => setViewingFamiliar(null)} variant="familiar" />
+            <CreatureStatBlockModal creature={viewingWildShape} onClose={() => setViewingWildShape(null)} variant={creatureModalMode === 'polymorph' ? 'polymorph' : 'wildshape'} />
             <CompanionStatBlockModal companion={viewingCompanion} onClose={() => setViewingCompanion(null)} />
             <EldritchCannonModal isOpen={showEldritchCannonModal} onClose={() => setShowEldritchCannonModal(false)} character={character} onSummon={handleSummonCannon} />
             <SteelDefenderModal isOpen={showSteelDefenderModal} onClose={() => setShowSteelDefenderModal(false)} character={character} onSummon={handleSummonDefender} />
-
+            <CardOptionsModal isOpen={showCardOptionsModal} onClose={() => setShowCardOptionsModal(false)} isWorldUnlocked={cmLevel >= 10} />
+            
             <HomebrewManagerModal 
                 isOpen={showHomebrewModal}
-                onClose={() => setShowHomebrewModal(false)}
+                onClose={() => { setShowHomebrewModal(false); setHomebrewInitialData(null); }}
                 currentUser={{ id: character.user_id || 'anonymous' }}
                 initialTab={homebrewInitialTab}
+                initialData={homebrewInitialData}
             />
 
             <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-[#121316] border-b border-[#3e4149] px-4 py-2 flex items-center justify-between shadow-lg h-[52px]">
@@ -1239,19 +2383,47 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     <div className="w-8 h-8 bg-cover bg-center rounded-full border border-dnd-gold shrink-0" style={{backgroundImage: `url('${character.avatarUrl || 'https://www.dndbeyond.com/content/skins/waterdeep/images/character-placeholder.jpg'}')`}}/>
                     <div className="flex flex-col overflow-hidden"><span className="text-sm font-bold text-white truncate">{character.name}</span><span className="text-[9px] text-gray-400 truncate">{character.race?.name} | {character.classes.map(c => `${c.definition.name} ${c.level}`).join(' / ')}</span></div>
                 </div>
-                <div className="flex items-center gap-3 shrink-0"><div className="text-center"><div className="text-[9px] uppercase text-gray-500 font-bold">HP</div><div className={`text-sm font-bold ${character.currentHp < character.maxHp/2 ? 'text-red-400' : 'text-green-400'}`}>{character.currentHp}/{character.maxHp}</div></div><div className="text-center" onClick={() => setShowHealthManager(true)}><div className="text-[9px] uppercase text-gray-500 font-bold">AC</div><div className="text-sm font-bold text-white">{acValue}</div></div><button onClick={() => setShowManageCharacterModal(true)} className="text-gray-400"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></button></div>
+                <div className="flex items-center gap-3 shrink-0">
+                    <div className="text-center">
+                        <div className="text-[9px] uppercase text-gray-500 font-bold">HP</div>
+                        <div className={`text-sm font-bold ${character.currentHp < character.maxHp/2 ? 'text-red-400' : 'text-green-400'}`}>{character.currentHp}/{character.maxHp}</div>
+                    </div>
+                    <SquareStatBox 
+                        label="Armor" 
+                        subLabel="Class" 
+                        value={`${acValue}`} 
+                        tooltipPosition="bottom"
+                        tooltip={
+                            <div className="space-y-1">
+                                {acBreakdown.map((entry, i) => (
+                                    <div key={i} className="flex justify-between text-[10px]">
+                                        <span className="text-gray-400">{entry.label}</span>
+                                        <span className="text-white font-mono">{formatModifier(entry.value)}</span>
+                                    </div>
+                                ))}
+                                <div className="border-t border-gray-700 mt-1 pt-1 flex justify-between text-[10px] font-bold">
+                                    <span className="text-dnd-gold">Total</span>
+                                    <span className="text-white">{acValue}</span>
+                                </div>
+                            </div>
+                        }
+                    />
+                    <button onClick={() => setShowManageCharacterModal(true)} className="text-gray-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                    </button>
+                </div>
             </div>
 
             <header className="hidden md:block shrink-0 z-20 shadow-xl relative">
                 <div className="bg-[#121316]/80 backdrop-blur-md border-b border-[#3e4149]">
                      <div className="max-w-[1400px] mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
                         <div className="flex items-center gap-6 w-full md:w-auto">
-                            <div className={`w-20 h-20 bg-cover bg-center rounded-full border-2 shadow-[0_0_15px_rgba(201,173,106,0.3)] shrink-0 ${character.activeWildShape ? 'border-dnd-gold shadow-[0_0_20px_rgba(34,197,94,0.4)]' : 'border-dnd-gold'}`} style={{backgroundImage: `url('${character.avatarUrl || 'https://www.dndbeyond.com/content/skins/waterdeep/images/character-placeholder.jpg'}')`}}>
-                                {character.activeWildShape ? (<div className="w-full h-full flex items-center justify-center bg-black/60 text-3xl text-green-500 rounded-full">🐾</div>) : (!character.avatarUrl && <div className="w-full h-full flex items-center justify-center bg-black/50 text-3xl font-serif text-dnd-gold rounded-full">{character.name.charAt(0)}</div>)}
+                            <div className={`w-20 h-20 bg-cover bg-center rounded-full border-2 shadow-[0_0_15px_rgba(201,173,106,0.3)] shrink-0 border-dnd-gold`} style={{backgroundImage: `url('${character.avatarUrl || 'https://www.dndbeyond.com/content/skins/waterdeep/images/character-placeholder.jpg'}')`}}>
+                                {!character.avatarUrl && <div className="w-full h-full flex items-center justify-center bg-black/50 text-3xl font-serif text-dnd-gold rounded-full">{character.name.charAt(0)}</div>}
                             </div>
                             <div>
-                                <div className="flex items-center gap-3"><h1 className="text-3xl font-bold text-white font-serif tracking-tight leading-none truncate max-w-[200px] sm:max-w-md">{character.activeWildShape ? `${character.activeWildShape.beast.name} Form` : character.name}</h1><div className="flex gap-2"><button onClick={() => setShowManageCharacterModal(true)} className="text-[10px] font-bold uppercase border border-gray-600 bg-black/40 text-gray-400 hover:text-white hover:border-dnd-gold px-2 py-0.5 rounded transition-colors">Manage</button><button onClick={() => setShowLayoutManager(true)} className="text-[10px] font-bold uppercase border border-gray-600 bg-black/40 text-gray-400 hover:text-white hover:border-dnd-gold px-2 py-0.5 rounded transition-colors">Layout</button><button onClick={onOpenVault} className="text-[10px] font-bold uppercase border border-gray-600 bg-black/40 text-gray-400 hover:text-dnd-gold hover:border-dnd-gold px-2 py-0.5 rounded transition-colors flex items-center gap-1">Vault</button></div></div>
-                                <div className="flex items-center gap-3 mt-1"><div className="text-sm text-gray-400 font-medium uppercase tracking-wide">{character.activeWildShape ? <span className="text-green-500 font-bold">Wild Shape Active</span> : `${character.race?.name} | ${character.classes.map(c => `${c.definition.name} ${c.level}`).join(' / ')}`}</div>{character.activeWildShape && (<button onClick={handleWildShapeRevert} className="bg-red-900/30 hover:bg-red-800 text-red-200 text-[10px] font-bold px-3 py-0.5 rounded uppercase border border-red-800/50 transition-colors">Revert Form</button>)}{character.activeConcentration && (<div className="flex items-center gap-2 bg-blue-900/40 border border-blue-500 rounded px-2 py-0.5 text-[10px] font-bold text-blue-100 uppercase animate-in fade-in duration-500"><span className="animate-pulse">●</span> Concentrating: {character.activeConcentration.name}<button onClick={() => setCharacter(p => ({ ...p, activeConcentration: null }))} className="ml-1 text-blue-400 hover:text-white transition-colors" title="Break Concentration">&times;</button></div>)}</div>
+                                <div className="flex items-center gap-3"><h1 className="text-3xl font-bold text-white font-serif tracking-tight leading-none truncate max-w-[200px] sm:max-w-md">{character.name}</h1><div className="flex gap-2"><button onClick={() => setShowManageCharacterModal(true)} className="text-[10px] font-bold uppercase border border-gray-600 bg-black/40 text-gray-400 hover:text-white hover:border-dnd-gold px-2 py-0.5 rounded transition-colors">Manage</button><button onClick={() => setShowLayoutManager(true)} className="text-[10px] font-bold uppercase border border-gray-600 bg-black/40 text-gray-400 hover:text-white hover:border-dnd-gold px-2 py-0.5 rounded transition-colors">Layout</button><button onClick={onOpenVault} className="text-[10px] font-bold uppercase border border-gray-600 bg-black/40 text-gray-400 hover:text-dnd-gold hover:border-dnd-gold px-2 py-0.5 rounded transition-colors flex items-center gap-1">Vault</button></div></div>
+                                <div className="flex items-center gap-3 mt-1"><div className="text-sm text-gray-400 font-medium uppercase tracking-wide">{`${character.race?.name} | ${character.classes.map(c => `${c.definition.name} ${c.level}`).join(' / ')}`}</div>{character.activeConcentration && (<div className="flex items-center gap-2 bg-blue-900/40 border border-blue-500 rounded px-2 py-0.5 text-[10px] font-bold text-blue-100 uppercase animate-in fade-in duration-500"><span className="animate-pulse">●</span> Concentrating: {character.activeConcentration.name}<button onClick={() => setCharacter(p => ({ ...p, activeConcentration: null }))} className="ml-1 text-blue-400 hover:text-white transition-colors" title="Break Concentration">&times;</button></div>)}</div>
                             </div>
                         </div>
                         <div className="flex gap-4 w-full md:w-auto overflow-x-auto pb-1"><button onClick={() => handleRest('short')} className="flex items-center gap-2 px-4 py-2 bg-[#1b1c20]/80 border border-gray-600 hover:border-dnd-gold text-gray-300 hover:text-white rounded transition-colors group shrink-0"><span className="text-lg group-hover:text-dnd-red">🪑</span><div className="text-left"><div className="text-[10px] font-bold uppercase leading-none">Short</div><div className="text-xs font-bold uppercase leading-none">Rest</div></div></button><button onClick={() => handleRest('long')} className="flex items-center gap-2 px-4 py-2 bg-[#1b1c20]/80 border border-gray-600 hover:border-dnd-gold text-gray-300 hover:text-white rounded transition-colors group shrink-0"><span className="text-lg group-hover:text-dnd-gold">🌙</span><div className="text-left"><div className="text-[10px] font-bold uppercase leading-none">Long</div><div className="text-xs font-bold uppercase leading-none">Rest</div></div></button></div>
@@ -1261,14 +2433,60 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     <div className="max-w-[1400px] mx-auto px-4 flex justify-between items-center min-w-max">
                         <div className="flex gap-3">{ABILITY_NAMES.map(stat => (<HeaderStatBox key={stat} label={stat} value={getStat(stat)} modifier={calculateModifier(getStat(stat))} onRoll={roll} onContextMenu={triggerRollMenu} />))}</div>
                         <div className="flex gap-3 border-l border-gray-700/50 pl-4 md:pl-8">
-                             <SquareStatBox label="Armor" subLabel="Class" value={`${acValue}`} />
-                             <div onClick={() => roll(`1d20${formatModifier(dexMod)}`, "Initiative Roll")} onContextMenu={(e) => triggerRollMenu(e, `1d20${formatModifier(dexMod)}`, "Initiative Roll")} className="flex flex-col items-center justify-center w-16 h-16 md:w-20 md:h-20 border border-gray-600 rounded bg-[#1b1c20]/80 cursor-pointer hover:border-dnd-gold group transition-colors"><div className="text-xl font-bold text-white group-hover:text-dnd-gold leading-none">{formatModifier(dexMod)}</div><div className="text-[9px] font-bold text-gray-500 uppercase mt-1 text-center leading-tight group-hover:text-dnd-gold">Initiative<br/>Roll</div></div>
+                             <SquareStatBox 
+                                label="Armor" 
+                                subLabel="Class" 
+                                value={`${acValue}`} 
+                                tooltipPosition="bottom"
+                                tooltip={
+                                    <div className="space-y-1">
+                                        {acBreakdown.map((entry, i) => (
+                                            <div key={i} className="flex justify-between text-[10px]">
+                                                <span className="text-gray-400">{entry.label}</span>
+                                                <span className="text-white font-mono">{formatModifier(entry.value)}</span>
+                                            </div>
+                                        ))}
+                                        <div className="border-t border-gray-700 mt-1 pt-1 flex justify-between text-[10px] font-bold">
+                                            <span className="text-dnd-gold">Total</span>
+                                            <span className="text-white">{acValue}</span>
+                                        </div>
+                                    </div>
+                                }
+                             />
+                             <div 
+                                onClick={() => roll(initAdv ? `2d20kh1${formatModifier(dexMod)}` : `1d20${formatModifier(dexMod)}`, "Initiative Roll")} 
+                                onContextMenu={(e) => triggerRollMenu(e, initAdv ? `2d20kh1${formatModifier(dexMod)}` : `1d20${formatModifier(dexMod)}`, "Initiative Roll")} 
+                                className="flex flex-col items-center justify-center w-16 h-16 md:w-20 md:h-20 border border-gray-600 rounded bg-[#1b1c20]/80 cursor-pointer hover:border-dnd-gold group transition-colors relative"
+                             >
+                                {initAdv && <span className="absolute top-1 right-1 text-[7px] bg-gray-800/60 text-gray-500 px-0.5 rounded border border-gray-700/50">ADV</span>}
+                                <div className="text-xl font-bold text-white group-hover:text-dnd-gold leading-none">{formatModifier(dexMod)}</div>
+                                <div className="text-[9px] font-bold text-gray-500 uppercase mt-1 text-center leading-tight group-hover:text-dnd-gold">Initiative<br/>Roll</div>
+                             </div>
                              <SquareStatBox label="Proficiency" subLabel="Bonus" value={`+${prof}`} />
-                             <SquareStatBox label="Walking" subLabel="Speed" value={speed} />
+                             <SquareStatBox 
+                                label="Walking" 
+                                subLabel="Speed" 
+                                value={`${speed} ft.`} 
+                                tooltipPosition="bottom"
+                                tooltip={
+                                    <div className="space-y-1">
+                                        {speedBreakdown.map((entry, i) => (
+                                            <div key={i} className="flex justify-between text-[10px]">
+                                                <span className="text-gray-400">{entry.label}</span>
+                                                <span className="text-white font-mono">{entry.value}</span>
+                                            </div>
+                                        ))}
+                                        <div className="border-t border-gray-700 mt-1 pt-1 flex justify-between text-[10px] font-bold">
+                                            <span className="text-dnd-gold">Total</span>
+                                            <span className="text-white">{speed} ft.</span>
+                                        </div>
+                                    </div>
+                                }
+                             />
                              <div onClick={() => setCharacter(p => ({...p, inspiration: !p.inspiration}))} className="flex flex-col items-center justify-center w-16 h-16 md:w-20 md:h-20 border border-gray-600 rounded bg-[#1b1c20]/80 cursor-pointer hover:border-dnd-gold"><div className={`w-6 h-6 border-2 transform rotate-45 ${character.inspiration ? 'bg-dnd-gold border-dnd-gold' : 'border-gray-500'}`}></div><div className="text-[8px] font-bold text-gray-500 uppercase mt-1 text-center leading-none">Heroic<br/>Inspiration</div></div>
-                             <div className={`flex flex-col h-16 md:h-20 border rounded bg-[#1b1c20]/80 overflow-hidden min-w-[140px] cursor-pointer transition-colors ${character.activeWildShape ? 'border-gray-600 hover:border-dnd-gold' : 'border-gray-600 hover:border-dnd-gold'}`} onClick={() => setShowHealthManager(true)}>
-                                 <div className="flex-grow flex items-center justify-between px-3 gap-2"><div className="flex flex-col items-center"><span className="text-[9px] font-bold text-gray-500 uppercase">Current</span><span className={`text-xl font-bold ${character.activeWildShape ? 'text-green-400' : 'text-white'}`}>{character.activeWildShape ? character.activeWildShape.currentHp : character.currentHp}</span></div><span className="text-gray-600 text-xl font-light">/</span><div className="flex flex-col items-center"><span className="text-[9px] font-bold text-gray-500 uppercase">Max</span><span className="text-xl font-bold text-gray-400">{character.activeWildShape ? character.activeWildShape.beast.hp : character.maxHp}</span></div><div className="w-px h-8 bg-gray-700/50 mx-1"></div><div className="flex flex-col items-center"><span className="text-[9px] font-bold text-gray-500 uppercase">Temp</span><span className="text-lg font-bold text-gray-300">{character.tempHp || '--'}</span></div></div>
-                                 <div className={`py-0.5 text-center border-t ${character.activeWildShape ? 'bg-[#0b0c0e]/50 border-gray-600/50' : 'bg-[#0b0c0e]/50 border-gray-600/50'}`}><span className={`text-[9px] font-bold uppercase ${character.activeWildShape ? 'text-green-400' : 'text-gray-500'}`}>{character.activeWildShape ? 'Wild Shape HP' : 'Hit Points'}</span></div>
+                             <div className={`flex flex-col h-16 md:h-20 border rounded bg-[#1b1c20]/80 overflow-hidden min-w-[140px] cursor-pointer transition-colors border-gray-600 hover:border-dnd-gold`} onClick={() => setShowHealthManager(true)}>
+                                 <div className="flex-grow flex items-center justify-between px-3 gap-2"><div className="flex flex-col items-center"><span className="text-[9px] font-bold text-gray-500 uppercase">Current</span><span className={`text-xl font-bold text-white`}>{character.currentHp}</span></div><span className="text-gray-600 text-xl font-light">/</span><div className="flex flex-col items-center"><span className="text-[9px] font-bold text-gray-500 uppercase">Max</span><span className="text-xl font-bold text-gray-400">{character.maxHp}</span></div><div className="w-px h-8 bg-gray-700/50 mx-1"></div><div className="flex flex-col items-center"><span className="text-[9px] font-bold text-gray-500 uppercase">Temp</span><span className="text-lg font-bold text-gray-300">{character.tempHp || '--'}</span></div></div>
+                                 <div className={`py-0.5 text-center border-t bg-[#0b0c0e]/50 border-gray-600/50`}><span className={`text-[9px] font-bold uppercase text-gray-500`}>Hit Points</span></div>
                              </div>
                         </div>
                     </div>
@@ -1290,22 +2508,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     : "hidden md:flex md:flex-col lg:grid lg:grid-cols-2 md:w-[340px] lg:w-[600px] bg-[#121316]/50 border-r border-[#3e4149] p-4 gap-4 overflow-y-auto custom-scrollbar shrink-0 backdrop-blur-md"
                 }>
                     <div className="flex flex-col gap-4">
-                         {character.activeWildShape && (
-                             <div className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3 relative overflow-hidden animate-in slide-in-from-left duration-500 cursor-pointer group hover:border-green-500 transition-colors`} onClick={() => setViewingWildShape(character.activeWildShape!.beast)}>
-                                 <div className="flex justify-between items-center mb-2"><h3 className="font-bold text-xs text-green-400 uppercase tracking-widest">Active Form: {character.activeWildShape.beast.name}</h3><span className="text-[10px] text-gray-500 group-hover:text-green-300 transition-colors">View Stats &rarr;</span></div>
-                                 <div className="grid grid-cols-3 gap-2 text-center mb-3">
-                                     <div className="bg-black/20 rounded p-1"><div className="text-[9px] text-gray-500">AC</div><div className="font-bold text-white">{character.activeWildShape.beast.ac}</div></div>
-                                     <div className="bg-black/20 rounded p-1"><div className="text-[9px] text-gray-500">Speed</div><div className="font-bold text-white text-[10px] leading-tight">{character.activeWildShape.beast.speed}</div></div>
-                                     <div className="bg-black/20 rounded p-1"><div className="text-[9px] text-gray-500">CR</div><div className="font-bold text-dnd-gold">{character.activeWildShape.beast.challenge_rating}</div></div>
-                                 </div>
-                                 <div className="space-y-1">{character.activeWildShape.beast.actions.slice(0, 2).map(action => (<div key={action.name} className="text-xs truncate"><span className="font-bold text-white">{action.name}.</span> <span className="text-gray-400">{action.desc}</span></div>))}{character.activeWildShape.beast.actions.length > 2 && <div className="text-[10px] text-gray-500 italic text-center pt-1">Click for more...</div>}</div>
-                             </div>
-                         )}
-                        {layout.left.map(w => renderWidget(w))}
+                         {/* Active Form Widget removed */}
+                        {layout.left.map((w, idx) => renderWidget(w, `left-${w}-${idx}`))}
                     </div>
                     <div className="flex flex-col h-full gap-4">
                         {layout.left.length === 0 && layout.right.length === 0 && (<div className={`flex flex-col items-center justify-center h-full border border-[#3e4149] rounded-lg ${WIDGET_BG} p-8 text-center animate-in fade-in zoom-in duration-500`}><div className="text-6xl mb-4 text-dnd-gold opacity-50">🛠️</div><h2 className="text-2xl font-serif text-white mb-2">Your Sheet is Empty</h2><p className="text-gray-400 mb-6 max-w-sm">This character sheet is a blank canvas. Start by adding widgets to track your abilities, skills, and gear.</p><button onClick={() => setShowLayoutManager(true)} className="px-8 py-3 bg-dnd-gold hover:bg-yellow-600 text-black font-bold uppercase rounded shadow-lg transition-all transform hover:scale-105">Start Building Sheet</button></div>)}
-                        {layout.right.map(w => renderWidget(w))}
+                        {layout.right.map((w, idx) => renderWidget(w, `right-${w}-${idx}`))}
                     </div>
                 </aside>
 
@@ -1314,24 +2522,117 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
                     <div className="flex-grow overflow-y-auto custom-scrollbar p-4 bg-fixed bg-cover">
                         {activeTab === 'stats' && <StatsTab character={character} roll={roll} layout={layout} renderWidget={renderWidget} setShowLayoutManager={setShowLayoutManager} />}
-                        {activeTab === 'actions' && <ActionsTab character={character} roll={roll} triggerRollMenu={triggerRollMenu} setSelectedDetail={setSelectedDetail} getAttacks={getAttacks} bonusActionList={getBonusActions()} setShowCustomActionModal={setShowCustomActionModal} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} spellSave={spellSave} spellMod={spellMod} />}
-                        {activeTab === 'spells' && <SpellsTab character={character} setCharacter={setCharacter} roll={roll} triggerRollMenu={triggerRollMenu} setSelectedDetail={setSelectedDetail} spellSave={spellSave} spellAttackStr={spellAttackStr} spellMod={spellMod} setShowSpellManager={setShowSpellManager} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} />}
+                        {activeTab === 'actions' && (
+                            <ErrorBoundary>
+                                <ActionsTab character={character} roll={roll} triggerRollMenu={triggerRollMenu} setSelectedDetail={setSelectedDetail} getAttacks={getAttacks} bonusActionList={getBonusActions()} setShowCustomActionModal={setShowCustomActionModal} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} spellSave={spellSave} spellMod={spellMod} />
+                            </ErrorBoundary>
+                        )}
+                        {activeTab === 'spells' && <SpellsTab character={character} setCharacter={setCharacter} roll={roll} triggerRollMenu={triggerRollMenu} setSelectedDetail={setSelectedDetail} spellSave={spellSave} spellAttackStr={spellAttackStr} spellMod={spellMod} setShowSpellManager={setShowSpellManager} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} onPolymorphCast={() => { setCreatureModalMode('polymorph'); setShowCreatureModal(true); }} />}
                         {activeTab === 'inventory' && <InventoryTab character={character} currentWeight={currentWeight} maxWeight={maxWeight} updateQuantity={updateQuantity} toggleAttunement={toggleAttunement} setSelectedDetail={setSelectedDetail} setShowItemSearchModal={(val, mode) => { setItemSearchMode(mode || 'search'); setShowItemSearchModal(val); }} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} setCharacter={setCharacter} />}
-                        {activeTab === 'features' && <FeaturesTab character={character} setCharacter={setCharacter} getAllFeatures={getAllFeaturesSorted} setSelectedDetail={setSelectedDetail} onTabChange={setActiveTab} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} />}
+                        {activeTab === 'features' && <FeaturesTab character={character} setCharacter={setCharacter} getAllFeatures={getAllFeaturesSorted} setSelectedDetail={setSelectedDetail} onTabChange={setActiveTab} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} setShowCardOptionsModal={setShowCardOptionsModal} />}
                         {activeTab === 'rules' && <RulesTab visibleRules={visibleRules} setSelectedDetail={setSelectedDetail} />}
                         {activeTab === 'log' && <LogTab character={character} setCharacter={setCharacter} onOpenVault={onOpenVault} setShowLayoutManager={setShowLayoutManager} handleRest={handleRest} />}
                     </div>
                 </section>
                 
                 {!!selectedDetail && !isSidePanelPinned && (<div className="absolute inset-0 z-[150] bg-transparent" onClick={() => { setSelectedDetail(null); }}></div>)}
-                <DetailSidePanel item={selectedDetail} character={character} onClose={() => setSelectedDetail(null)} onAction={(action, itm) => { if (action === 'toggleEquip') toggleEquipped(itm.id); if (action === 'toggleAttune') toggleAttunement(itm.id); if (action === 'remove') { if ('quantity' in itm) updateQuantity(itm.id, 0); else setCharacter(prev => ({ ...prev, spells: prev.spells.filter(s => s.index !== itm.index || s.sourceClassIndex !== itm.sourceClassIndex) })); setSelectedDetail(null); } }} isPinned={isSidePanelPinned} onTogglePin={() => setIsSidePanelPinned(!isSidePanelPinned)} isFavorite={selectedDetail ? character.favorites.includes(getEntityId(selectedDetail)) : false} onToggleFavorite={() => { if (selectedDetail) toggleFavorite(getEntityId(selectedDetail)); }} />
+                <DetailSidePanel 
+                    item={selectedDetail} 
+                    character={character} 
+                    onClose={() => setSelectedDetail(null)} 
+                    onAction={(action, itm) => { 
+                        if (action === 'toggleFeatureUsage') {
+                            setCharacter(prev => {
+                                const newUsage = { ...prev.featureUsage };
+                                if (newUsage[itm.name]) {
+                                    newUsage[itm.name].current = Math.max(0, Math.min(newUsage[itm.name].max, newUsage[itm.name].current + itm.delta));
+                                }
+                                return { ...prev, featureUsage: newUsage };
+                            });
+                        }
+                        if (action === 'toggleEquip') toggleEquipped(itm.id); 
+                        if (action === 'toggleAttune') toggleAttunement(itm.id); 
+                        if (action === 'toggleFlag') toggleItemFlag(itm.id, itm.flag);
+                        if (action === 'updateItem') {
+                            setCharacter(prev => ({
+                                ...prev,
+                                inventory: prev.inventory.map(i => i.id === itm.id ? { ...i, ...itm.updates } : i)
+                            }));
+                        }
+                        if (action === 'pickCard') handlePickACard();
+                        if (action === 'chiromancy') {
+                            const log = {
+                                timestamp: Date.now(),
+                                label: 'Chiromancy',
+                                formula: 'Advantage',
+                                total: 0,
+                                rolls: [],
+                                details: 'Granted advantage on next roll to target.'
+                            };
+                            setLogs(prev => [log, ...prev].slice(0, 50));
+                        }
+                        if (action === 'duplicate') {
+                            if (isSpell(itm)) {
+                                setDuplicateSpell(itm);
+                                setShowCustomSpellModal(true);
+                            } else {
+                                setDuplicateItem(itm.details || itm);
+                                setItemSearchMode('custom');
+                                setShowItemSearchModal(true);
+                            }
+                            setSelectedDetail(null);
+                        }
+                        if (action === 'cast') {
+                            if (isSpell(itm)) {
+                                roll((itm as any).formula || '1d20', `Casting ${itm.name}`);
+                                
+                                // Trigger Polymorph Modal
+                                if (itm.name === 'Polymorph') {
+                                    setCreatureModalMode('polymorph');
+                                    setShowCreatureModal(true);
+                                }
+
+                                // If it's a leveled spell, consume slot if possible
+                                if (itm.level > 0) {
+                                    setCharacter(prev => {
+                                        const newSlots = { ...prev.spellSlots };
+                                        if (newSlots[itm.level] && newSlots[itm.level].current > 0) {
+                                            newSlots[itm.level] = { ...newSlots[itm.level], current: newSlots[itm.level].current - 1 };
+                                        }
+                                        return { ...prev, spellSlots: newSlots };
+                                    });
+                                }
+                            }
+                        }
+                        if (action === 'remove') { 
+                            if ('quantity' in itm) updateQuantity(itm.id, 0); 
+                            else setCharacter(prev => ({ ...prev, spells: prev.spells.filter(s => s.index !== itm.index || s.sourceClassIndex !== itm.sourceClassIndex) })); 
+                            setSelectedDetail(null); 
+                        } 
+                    }} 
+                    isPinned={isSidePanelPinned} 
+                    onTogglePin={() => setIsSidePanelPinned(!isSidePanelPinned)} 
+                    isFavorite={selectedDetail ? character.favorites.includes(getEntityId(selectedDetail)) : false} 
+                    onToggleFavorite={() => { if (selectedDetail) toggleFavorite(getEntityId(selectedDetail)); }} 
+                />
             </main>
+            <CreatureManagerModal
+                isOpen={showCreatureModal}
+                onClose={() => setShowCreatureModal(false)}
+                character={character}
+                mode={creatureModalMode}
+                onAction={handleCreatureAction}
+                onAddCustom={(creature) => setCharacter(prev => ({...prev, customCreatures: [...(prev.customCreatures || []), creature]}))}
+                onRemoveCustom={(id) => setCharacter(prev => ({...prev, customCreatures: (prev.customCreatures || []).filter(b => b.index !== id)}))}
+                onOpenForge={() => { setHomebrewInitialTab('creature'); setShowHomebrewModal(true); setShowCreatureModal(false); }}
+            />
             <SpellManagerModal 
                 character={character} 
                 isOpen={showSpellManager} 
                 onClose={() => setShowSpellManager(false)} 
                 onUpdateSpells={(spells) => setCharacter(prev => ({...prev, spells}))} 
                 onAddCustom={() => setShowCustomSpellModal(true)} 
+                onDuplicateToHomebrew={(spell) => handleDuplicateToHomebrew('spell', spell)}
             />
         </div>
     );

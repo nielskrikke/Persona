@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CharacterState, SpellDetail, BeastDetail } from '../../../types';
+import { CharacterState, SpellDetail, CreatureDetail } from '../../../types';
 import { STANDARD_ACTIONS, WIDGET_BG } from '../../../data/constants';
 import { formatModifier, getSpellDamageString } from '../../../utils/rules';
 
@@ -11,7 +11,7 @@ interface ActionsTabProps {
     getAttacks: () => any[];
     bonusActionList: any[];
     setShowCustomActionModal: (val: boolean) => void;
-    setShowHomebrewModal: (val: boolean, tab?: 'race' | 'class' | 'subclass' | 'background' | 'spell' | 'item' | 'wildshape' | 'familiar' | 'feat') => void;
+    setShowHomebrewModal: (val: boolean, tab?: 'race' | 'class' | 'subclass' | 'background' | 'spell' | 'item' | 'creature' | 'feat') => void;
     spellSave: number;
     spellMod: number;
 }
@@ -40,6 +40,8 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
     character, roll, triggerRollMenu, setSelectedDetail, getAttacks, bonusActionList, setShowCustomActionModal, setShowHomebrewModal, spellSave, spellMod 
 }) => {
     const [actionFilter, setActionFilter] = useState('ALL');
+
+    const isCardMaster = character.classes.some(c => c.definition.index === 'card-master');
 
     const allAttacks = getAttacks();
     
@@ -79,7 +81,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
     });
     
     const favTableItems = [...favAttacks, ...favOtherSpells];
-    const favBonusActionsNonSpells = bonusActionList.filter(a => character.favorites.includes(a.id) && !((a as any).source && 'school' in (a as any).source));
+    const favBonusActionsNonSpells = bonusActionList.filter(a => character.favorites.includes(a.id) && !(a.source && typeof a.source === 'object' && 'school' in a.source));
     const favStandardActions = STANDARD_ACTIONS.map(a => ({...a, id: `action-${a.name}`})).filter(a => character.favorites.includes(a.id));
     
     const favItems = character.inventory.filter(i => 
@@ -92,7 +94,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
     const hasFavorites = favTableItems.length > 0 || favBonusActionsNonSpells.length > 0 || favStandardActions.length > 0 || favItems.length > 0 || favFeatures.length > 0;
 
     const renderActionIcon = (attack: any) => {
-        const isSpellAttack = attack.source && ('school' in attack.source || attack.type === 'spell');
+        const isSpellAttack = attack.source && typeof attack.source === 'object' && ('school' in attack.source || attack.type === 'spell');
         const isUnarmed = attack.name === 'Unarmed Strike';
         
         if (isSpellAttack) return <IconMagic />;
@@ -120,26 +122,26 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                     </div>
                     {favTableItems.length > 0 && (
                         <div className="overflow-x-auto custom-scrollbar">
-                            <div className="grid grid-cols-[40px_1fr_80px_120px_120px] gap-2 px-6 py-2 bg-[#121316]/50 text-[10px] font-bold text-gray-500 uppercase tracking-wider items-center min-w-[600px]"><div>Type</div><div>Action</div><div className="text-center">Range</div><div className="text-center">Damage</div><div className="text-center">Hit / DC</div></div>
+                            <div className="grid grid-cols-[40px_1fr_120px_110px_110px] gap-2 px-6 py-2 bg-[#121316]/50 text-[10px] font-bold text-gray-500 uppercase tracking-wider items-center min-w-[600px]"><div>Type</div><div>Action</div><div className="text-center">Range</div><div className="text-center">Damage</div><div className="text-center">Hit / DC</div></div>
                             <div className="divide-y divide-[#2e3036]/60 min-w-[600px]">
                                 {favTableItems.map((attack, i) => (
-                                    <div key={i} className="grid grid-cols-[40px_1fr_80px_120px_120px] gap-2 items-center px-6 py-4 hover:bg-[#2e3036]/50 transition-colors group cursor-pointer" onClick={() => setSelectedDetail(attack.source ? { ...attack.source, id: attack.id } : attack)}>
+                                    <div key={i} className="grid grid-cols-[40px_1fr_120px_110px_110px] gap-2 items-center px-6 py-4 hover:bg-[#2e3036]/50 transition-colors group cursor-pointer" onClick={() => setSelectedDetail(attack.source && typeof attack.source === 'object' ? { ...attack.source, id: attack.id } : attack)}>
                                         <div className="w-8 h-8 flex items-center justify-center text-gray-500 shrink-0 border border-gray-600/50 rounded-md bg-gray-800 self-center">
                                             {renderActionIcon(attack)}
                                         </div>
                                         <div className="min-w-0">
                                             <div className="font-bold text-gray-200 text-sm group-hover:text-white truncate flex items-center gap-1.5">
                                                 {attack.name}
-                                                {attack.source && 'concentration' in attack.source && attack.source.concentration && (
+                                                {attack.source && typeof attack.source === 'object' && 'concentration' in attack.source && attack.source.concentration && (
                                                     <span className="text-[8px] bg-blue-900/40 text-blue-400 border border-blue-800/60 px-1 rounded h-3 flex items-center">C</span>
                                                 )}
-                                                {attack.source && 'ritual' in attack.source && attack.source.ritual && (
+                                                {attack.source && typeof attack.source === 'object' && 'ritual' in attack.source && attack.source.ritual && (
                                                     <span className="text-[8px] bg-yellow-900/40 text-yellow-500 border border-yellow-800/60 px-1 rounded h-3 flex items-center">R</span>
                                                 )}
                                             </div>
                                             <div className="text-[10px] text-gray-500 truncate lowercase">{attack.type}{attack.notes?.length ? ` • ${attack.notes.join(' • ')}` : ''}</div>
                                         </div>
-                                        <div className="text-center text-[10px] text-gray-400 font-bold uppercase">{attack.range}</div>
+                                        <div className="text-center text-[10px] text-gray-400 font-bold">{attack.range}</div>
                                         <div className="flex justify-center"><button onClick={(e) => { e.stopPropagation(); roll(attack.damage, `Damage ${attack.name}`); }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex flex-col items-center justify-center text-center"><span className="text-sm font-bold text-white">{attack.damage}</span><span className="text-[8px] text-gray-500 uppercase">{attack.type}</span></button></div>
                                         <div className="flex justify-center"><button onClick={(e) => { if (attack.hit !== null) { e.stopPropagation(); roll(`1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); } }} onContextMenu={(e) => { if (attack.hit !== null) { e.preventDefault(); e.stopPropagation(); triggerRollMenu(e, `1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); } }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex flex-col items-center justify-center text-center">{attack.hit !== null ? (<span className="text-sm font-bold text-white">{formatModifier(attack.hit)}</span>) : attack.save ? (<div className="flex flex-col items-center leading-none"><span className="text-[8px] font-bold text-gray-500 mb-0.5">{attack.save.type}</span><span className="text-sm font-bold text-white">DC {attack.save.dc}</span></div>) : ('-')}</button></div>
                                     </div>
@@ -148,25 +150,25 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                         </div>
                     )}
                     {(favBonusActionsNonSpells.length > 0 || favStandardActions.length > 0 || favItems.length > 0 || favFeatures.length > 0) && (
-                        <div className="px-6 py-4 flex flex-wrap gap-2 border-t border-gray-800/50">
+                        <div className="px-6 py-3 flex flex-wrap gap-2 border-t border-gray-800/50">
                             {favStandardActions.map(act => (
-                                <button key={act.id} onClick={() => setSelectedDetail(act)} className="px-3 py-2 bg-gray-800/80 border border-gray-600/50 rounded-md hover:border-white text-sm text-gray-300 font-bold transition-colors flex items-center gap-2">
-                                    <span className="text-gray-500"><IconHand /></span>{act.name}
+                                <button key={act.id} onClick={() => setSelectedDetail(act)} className="px-2 py-1 bg-gray-800/80 border border-gray-600/50 rounded hover:border-white text-[10px] text-gray-300 font-bold transition-colors flex items-center gap-1.5">
+                                    <span className="text-gray-500 scale-75"><IconHand /></span>{act.name}
                                 </button>
                             ))}
                             {favBonusActionsNonSpells.map((act, i) => (
-                                <button key={i} onClick={() => setSelectedDetail((act as any).source ? { ...(act as any).source, id: act.id } : act)} className="px-3 py-2 bg-gray-800/80 border border-gray-600/50 rounded-md hover:border-dnd-gold text-sm text-gray-300 font-bold transition-colors flex items-center gap-2">
-                                    <span className="text-gray-500">{renderActionIcon(act)}</span>{act.name}
+                                <button key={i} onClick={() => setSelectedDetail((act as any).source && typeof (act as any).source === 'object' ? { ...(act as any).source, id: act.id } : act)} className="px-2 py-1 bg-gray-800/80 border border-gray-600/50 rounded hover:border-dnd-gold text-[10px] text-gray-300 font-bold transition-colors flex items-center gap-1.5">
+                                    <span className="text-gray-500 scale-75">{renderActionIcon(act)}</span>{act.name}
                                 </button>
                             ))}
                             {favItems.map(item => (
-                                <button key={item.id} onClick={() => setSelectedDetail(item)} className="px-3 py-2 bg-gray-800/80 border border-gray-600/50 rounded-md hover:border-dnd-gold text-sm text-gray-300 font-bold transition-colors flex items-center gap-2">
-                                    <span className="text-gray-500">{renderActionIcon(item)}</span>{item.name}{item.quantity > 1 && <span className="text-xs text-gray-500 ml-1">x{item.quantity}</span>}
+                                <button key={item.id} onClick={() => setSelectedDetail(item)} className="px-2 py-1 bg-gray-800/80 border border-gray-600/50 rounded hover:border-dnd-gold text-[10px] text-gray-300 font-bold transition-colors flex items-center gap-1.5">
+                                    <span className="text-gray-500 scale-75">{renderActionIcon(item)}</span>{item.name}{item.quantity > 1 && <span className="text-[8px] text-gray-500 ml-1">x{item.quantity}</span>}
                                 </button>
                             ))}
                             {favFeatures.map(feat => (
-                                <button key={feat.index} onClick={() => setSelectedDetail(feat)} className="px-3 py-2 bg-gray-800/80 border border-gray-600/50 rounded-md hover:border-dnd-gold text-sm text-gray-300 font-bold transition-colors flex items-center gap-2">
-                                    <span className="text-gray-500"><IconFeatures /></span>{feat.name}
+                                <button key={feat.index} onClick={() => setSelectedDetail(feat)} className="px-2 py-1 bg-gray-800/80 border border-gray-600/50 rounded hover:border-dnd-gold text-[10px] text-gray-300 font-bold transition-colors flex items-center gap-1.5">
+                                    <span className="text-gray-500 scale-75"><IconFeatures /></span>{feat.name}
                                 </button>
                             ))}
                         </div>
@@ -177,20 +179,20 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
             <div className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-xl overflow-hidden shadow-sm`}>
                  <div className="bg-[#121316]/80 px-6 py-2 flex justify-between items-center"><h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Attack</h3></div>
                  <div className="overflow-x-auto custom-scrollbar">
-                     <div className="grid grid-cols-[40px_1fr_80px_120px_120px] gap-2 px-6 py-2 bg-[#121316]/50 text-[10px] font-bold text-gray-500 uppercase tracking-wider items-center min-w-[600px]"><div>Type</div><div>Action</div><div className="text-center">Range</div><div className="text-center">Damage</div><div className="text-center">Hit / DC</div></div>
+                     <div className="grid grid-cols-[40px_1fr_120px_110px_110px] gap-2 px-6 py-2 bg-[#121316]/50 text-[10px] font-bold text-gray-500 uppercase tracking-wider items-center min-w-[600px]"><div>Type</div><div>Action</div><div className="text-center">Range</div><div className="text-center">Damage</div><div className="text-center">Hit / DC</div></div>
                      <div className="divide-y divide-[#2e3036]/60 min-w-[600px]">
                          {filteredAttacks.map((attack, i) => (
-                             <div key={i} className="grid grid-cols-[40px_1fr_80px_120px_120px] gap-2 items-center px-6 py-4 hover:bg-[#2e3036]/50 transition-colors group cursor-pointer" onClick={() => setSelectedDetail(attack.source ? { ...attack.source, id: attack.id } : attack)}>
+                             <div key={i} className="grid grid-cols-[40px_1fr_120px_110px_110px] gap-2 items-center px-6 py-4 hover:bg-[#2e3036]/50 transition-colors group cursor-pointer" onClick={() => setSelectedDetail(attack.source && typeof attack.source === 'object' ? { ...attack.source, id: attack.id } : attack)}>
                                  <div className="w-8 h-8 flex items-center justify-center text-gray-500 shrink-0 border border-gray-600/50 rounded-md bg-gray-800 self-center">
                                      {renderActionIcon(attack)}
                                  </div>
                                  <div className="min-w-0">
                                     <div className="font-bold text-gray-200 text-sm group-hover:text-white truncate flex items-center gap-1.5">
                                         {attack.name}
-                                        {attack.source && 'concentration' in attack.source && attack.source.concentration && (
+                                        {attack.source && typeof attack.source === 'object' && 'concentration' in attack.source && attack.source.concentration && (
                                             <span className="text-[8px] bg-blue-900/40 text-blue-400 border border-blue-800/60 px-1 rounded h-3 flex items-center">C</span>
                                         )}
-                                        {attack.source && 'ritual' in attack.source && attack.source.ritual && (
+                                        {attack.source && typeof attack.source === 'object' && 'ritual' in attack.source && attack.source.ritual && (
                                             <span className="text-[8px] bg-yellow-900/40 text-yellow-500 border border-yellow-800/60 px-1 rounded h-3 flex items-center">R</span>
                                         )}
                                     </div>
@@ -204,7 +206,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                         )}
                                     </div>
                                  </div>
-                                 <div className="text-center text-[10px] text-gray-400 font-bold uppercase">{attack.range}</div>
+                                 <div className="text-center text-[10px] text-gray-400 font-bold">{attack.range}</div>
                                  <div className="flex justify-center"><button onClick={(e) => { e.stopPropagation(); roll(attack.damage, `Damage ${attack.name}`); }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex flex-col items-center justify-center text-center"><span className="text-sm font-bold text-white">{attack.damage}</span><span className="text-[8px] text-gray-500 uppercase">{attack.type}</span></button></div>
                                  <div className="flex justify-center"><button onClick={(e) => { if (attack.hit !== null) { e.stopPropagation(); roll(`1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); } }} onContextMenu={(e) => { if (attack.hit !== null) { e.preventDefault(); e.stopPropagation(); triggerRollMenu(e, `1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); } }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex flex-col items-center justify-center text-center">{attack.hit !== null ? (<span className="text-sm font-bold text-white">{formatModifier(attack.hit)}</span>) : attack.save ? (<div className="flex flex-col items-center leading-none"><span className="text-[8px] font-bold text-gray-500 mb-0.5">{attack.save.type}</span><span className="text-sm font-bold text-white">DC {attack.save.dc}</span></div>) : ('-')}</button></div>
                              </div>
@@ -212,18 +214,18 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                      </div>
                  </div>
             </div>
-            <div className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-xl overflow-hidden shadow-sm`}><div className="bg-[#121316]/80 px-6 py-2"><h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Actions in Combat</h3></div><div className="px-6 py-4 flex flex-wrap gap-2">{STANDARD_ACTIONS.map(act => (<div key={act.name} className="relative group"><button onClick={() => setSelectedDetail({ ...act, id: `action-${act.name}` })} className="px-3 py-2 bg-gray-800/80 border border-gray-600/50 rounded hover:border-white text-sm text-gray-300 font-bold transition-colors">{act.name}</button></div>))}</div></div>
-            <div className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-xl overflow-hidden shadow-sm`}><div className="bg-[#121316]/80 px-6 py-2 flex justify-between"><h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Bonus Actions</h3></div><div className="px-6 py-4 flex flex-wrap gap-2">{bonusActionList.length > 0 ? bonusActionList.map((act, i) => (
+            <div className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-xl overflow-hidden shadow-sm`}><div className="bg-[#121316]/80 px-6 py-2"><h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Actions in Combat</h3></div><div className="px-6 py-3 flex flex-wrap gap-2">{STANDARD_ACTIONS.map(act => (<div key={act.name} className="relative group"><button onClick={() => setSelectedDetail({ ...act, id: `action-${act.name}` })} className="px-2 py-1 bg-gray-800/80 border border-gray-600/50 rounded hover:border-white text-[10px] text-gray-300 font-bold transition-colors">{act.name}</button></div>))}</div></div>
+            <div className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-xl overflow-hidden shadow-sm`}><div className="bg-[#121316]/80 px-6 py-2 flex justify-between"><h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Bonus Actions</h3></div><div className="px-6 py-3 flex flex-wrap gap-2">{bonusActionList.length > 0 ? bonusActionList.map((act, i) => (
                 <div key={i} className="relative group">
                     <button 
-                        onClick={() => setSelectedDetail(act.source ? { ...act.source, id: act.id } : act)} 
-                        className="px-3 py-2 bg-gray-800/80 border border-gray-600/50 rounded hover:border-dnd-gold text-sm text-gray-300 font-bold transition-colors flex items-center gap-2"
+                        onClick={() => setSelectedDetail(act.source && typeof act.source === 'object' ? { ...act.source, id: act.id } : act)} 
+                        className="px-2 py-1 bg-gray-800/80 border border-gray-600/50 rounded hover:border-dnd-gold text-[10px] text-gray-300 font-bold transition-colors flex items-center gap-1.5"
                     >
-                        <span className="text-gray-500">{renderActionIcon(act)}</span>
+                        <span className="text-gray-500 scale-75">{renderActionIcon(act)}</span>
                         {act.name}
                     </button>
                 </div>
-            )) : (<div className="text-sm text-gray-500 italic">No bonus actions available.</div>)}</div></div>
+            )) : (<div className="text-[10px] text-gray-500 italic">No bonus actions available.</div>)}</div></div>
         </div>
     );
 };

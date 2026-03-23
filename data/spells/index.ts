@@ -18,7 +18,8 @@ const SPELL_DATA: Record<string, SpellDetail[]> = {
     'sorcerer': SORCERER_SPELLS,
     'warlock': WARLOCK_SPELLS,
     'wizard': WIZARD_SPELLS,
-    'artificer': ARTIFICER_SPELLS
+    'artificer': ARTIFICER_SPELLS,
+    'card-master': SORCERER_SPELLS
 };
 
 export const getLocalSpells = (className: string, level?: number): SpellDetail[] => {

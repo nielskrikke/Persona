@@ -4,12 +4,13 @@ import { APIReference, ClassDetail, SubclassDetail, CharacterClass } from '../..
 import { fetchClasses, fetchClassDetail, fetchSubclasses, fetchSubclassDetail } from '../../data/index';
 
 interface ClassStepProps {
-  onSelect: (classes: CharacterClass[], skills: string[], tools: string[]) => void;
+  onSelect: (classes: CharacterClass[], skills: string[], tools: string[], choices: any[]) => void;
   initialClasses: CharacterClass[];
   totalLevel: number;
   onBack: () => void;
   currentSkills: string[];
   currentTools: string[];
+  userId?: string;
 }
 
 interface DraftClass {
@@ -20,7 +21,7 @@ interface DraftClass {
     subclass?: SubclassDetail; 
 }
 
-const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLevel, onBack, currentSkills, currentTools }) => {
+const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLevel, onBack, currentSkills, currentTools, userId }) => {
   const [availableClasses, setAvailableClasses] = useState<APIReference[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -41,7 +42,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
 
   useEffect(() => {
     const load = async () => {
-      const results = await fetchClasses();
+      const results = await fetchClasses(userId);
       setAvailableClasses(results);
 
       if (initialClasses && initialClasses.length > 0) {
@@ -63,10 +64,10 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
               }
 
               if (!classDetails[c.definition.index]) {
-                  const detail = await fetchClassDetail(c.definition.index);
+                  const detail = await fetchClassDetail(c.definition.index, userId);
                   if(detail) setClassDetails(prev => ({...prev, [c.definition.index]: detail}));
                   
-                  const subs = await fetchSubclasses(c.definition.index);
+                  const subs = await fetchSubclasses(c.definition.index, userId);
                   setSubclassOptions(prev => ({...prev, [c.definition.index]: subs}));
               }
           }
@@ -75,14 +76,14 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
       setLoading(false);
     };
     load();
-  }, []);
+  }, [userId]);
 
   const fetchClassInfoIfNeeded = async (index: string) => {
       if (!classDetails[index]) {
-          const detail = await fetchClassDetail(index);
+          const detail = await fetchClassDetail(index, userId);
           if (detail) {
               setClassDetails(prev => ({...prev, [index]: detail}));
-              const subs = await fetchSubclasses(index);
+              const subs = await fetchSubclasses(index, userId);
               setSubclassOptions(prev => ({...prev, [index]: subs}));
           }
       }
@@ -125,7 +126,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
 
   const updateSubclass = async (classIndex: string, subIndex: string) => {
       setValidationError(null);
-      const detail = await fetchSubclassDetail(subIndex);
+      const detail = await fetchSubclassDetail(subIndex, userId);
       setDraftClasses(prev => prev.map(c => {
           if (c.index !== classIndex) return c;
           return { ...c, subclassIndex: subIndex, subclass: detail || undefined };
@@ -208,63 +209,27 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
           return;
       }
       
-      const primaryDetail = classDetails[draftClasses[0].index];
-      const choices = primaryDetail?.proficiency_choices || [];
-      
-      // Validation
-      for (let i = 0; i < choices.length; i++) {
-          const choice = choices[i];
-          const selected = chosenProficiencies[i] || [];
-          if (selected.length !== choice.choose) {
-              setValidationError(`Please select ${choice.choose} options for choice group #${i+1} (${choice.type}).`);
-              return;
-          }
-      }
-
-      // Subclass validation
-      for (const draft of draftClasses) {
-          const needsSubclass = draft.level >= 3 || (['cleric', 'warlock', 'sorcerer'].includes(draft.index) && draft.level >= 1) || (draft.index === 'wizard' && draft.level >= 2) || (draft.index === 'druid' && draft.level >= 2);
-          if (needsSubclass && !draft.subclass) {
-              setValidationError(`Please select a subclass for ${draft.name}.`);
-              return;
-          }
-
-          // Feature choices validation
-          const detail = classDetails[draft.index];
-          if (detail?.feature_details) {
-              const relevantFeatures = detail.feature_details.filter(f => f.level <= draft.level && f.effects);
-              for (const feature of relevantFeatures) {
-                  const selections = featureChoices[draft.index]?.[feature.index] || [];
-                  const totalRequired = feature.effects.reduce((acc: number, e: any) => acc + (e.count || 0), 0);
-                  if (selections.length < totalRequired) {
-                      setValidationError(`Please complete selections for ${feature.name} in ${draft.name}.`);
-                      return;
-                  }
-              }
-          }
-      }
-
       setValidationError(null);
-      // Distribute into Skills vs Tools based on Choice Type or Category
-      const selectedSkills: string[] = [];
-      const selectedTools: string[] = [];
-
-      choices.forEach((choice, i) => {
-          const selected = chosenProficiencies[i] || [];
-          selected.forEach(item => {
-              if (choice.type === 'proficiencies') {
-                  // Heuristic: check if item looks like a skill
-                  const isSkill = ["Acrobatics", "Animal Handling", "Arcana", "Athletics", "Deception", "History", "Insight", "Intimidation", "Investigation", "Medicine", "Nature", "Perception", "Performance", "Persuasion", "Religion", "Sleight of Hand", "Stealth", "Survival"]
-                      .some(s => item.toLowerCase().includes(s.toLowerCase()));
-                  if (isSkill) selectedSkills.push(item.replace("Skill: ", ""));
-                  else selectedTools.push(item);
-              } else {
-                  selectedTools.push(item);
-              }
-          });
+      
+      const levelChoices: any[] = [];
+      
+      // Subclasses
+      draftClasses.forEach(draft => {
+          if (draft.subclass) {
+              levelChoices.push({
+                  id: `class-subclass-${draft.index}`,
+                  level: 1, 
+                  source: draft.name,
+                  type: 'subclass',
+                  label: 'Subclass',
+                  value: [draft.subclass.name],
+                  options: subclassOptions[draft.index]?.map(s => s.name) || [],
+                  count: 1
+              });
+          }
       });
 
-      onSelect(finalClasses, selectedSkills, selectedTools);
+      onSelect(finalClasses, [], [], levelChoices);
   };
 
   const currentAssigned = draftClasses.reduce((acc, c) => acc + c.level, 0);
@@ -329,8 +294,6 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
                ) : (
                    draftClasses.map((draft, idx) => {
                        const detail = classDetails[draft.index];
-                       const subs = subclassOptions[draft.index] || [];
-                       const needsSubclass = draft.level >= 3 || (['cleric', 'warlock', 'sorcerer'].includes(draft.index) && draft.level >= 1) || (draft.index === 'wizard' && draft.level >= 2) || (draft.index === 'druid' && draft.level >= 2);
                        
                        return (
                            <div key={draft.index} className="bg-black/20 border border-gray-800 rounded-xl p-5 relative animate-in slide-in-from-right-4 duration-300">
@@ -339,7 +302,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
                                   className="absolute top-4 right-4 text-gray-600 hover:text-red-500 text-2xl transition-colors font-light"
                                >
                                   &times;
-                               </button>
+                                </button>
                                
                                <div className="flex justify-between items-center mb-6">
                                    <div>
@@ -356,113 +319,23 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
                                    </div>
                                </div>
 
-                               {needsSubclass && (
-                                   <div className="mb-6 animate-in fade-in duration-500">
-                                       <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">Divine Archetype / Specialization</label>
-                                       <select 
-                                          value={draft.subclassIndex || ''} 
-                                          onChange={(e) => updateSubclass(draft.index, e.target.value)}
-                                          className="w-full bg-[#0b0c0e] border border-gray-700 rounded-lg p-3 text-sm text-white focus:border-dnd-gold outline-none"
-                                       >
-                                           <option value="">Select Archetype...</option>
-                                           {subs.map(s => <option key={s.index} value={s.index}>{s.name}</option>)}
-                                       </select>
-                                       {draft.subclass && (
-                                           <div className="mt-3 bg-[#121316] p-4 rounded-lg border border-gray-700 text-[11px] text-gray-400 leading-relaxed font-serif italic">
-                                               {draft.subclass.desc[0]}
-                                           </div>
-                                       )}
-
-                                    </div>
-                                )}
-
-                                {detail?.feature_details?.filter(f => f.level <= draft.level && f.effects).map(feature => (
-                                    <div key={feature.index} className="mb-6 p-4 bg-black/30 rounded-lg border border-dnd-gold/20 animate-in fade-in duration-500">
-                                        <h4 className="text-[10px] font-black text-dnd-gold uppercase tracking-widest mb-3">{feature.name}</h4>
-                                        {feature.effects.map((effect: any, effectIdx: number) => (
-                                            <div key={effectIdx} className="mb-4 last:mb-0">
-                                                {effect.type === 'feature_choice' && (
-                                                    <>
-                                                        <p className="text-[10px] text-gray-500 uppercase font-black mb-2">Choose {effect.count}:</p>
-                                                        <div className="grid grid-cols-1 gap-2">
-                                                            {effect.options.map((option: any) => (
-                                                                <button
-                                                                    key={option.name}
-                                                                    onClick={() => handleFeatureChoice(draft.index, feature.index, option.name, effect.count)}
-                                                                    className={`text-left p-3 rounded-lg border transition-all ${
-                                                                        (featureChoices[draft.index]?.[feature.index] || []).includes(option.name)
-                                                                            ? 'bg-dnd-gold/10 border-dnd-gold text-dnd-gold'
-                                                                            : 'bg-black/40 border-gray-700 text-gray-400 hover:border-gray-500'
-                                                                    }`}
-                                                                >
-                                                                    <div className="text-xs font-bold uppercase tracking-tight">{option.name}</div>
-                                                                    <div className="text-[10px] opacity-60 mt-1 leading-relaxed">{option.desc}</div>
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    </>
-                                                )}
-                                                {effect.type === 'expertise_choice' && (
-                                                    <>
-                                                        <p className="text-[10px] text-gray-500 uppercase font-black mb-2">Choose {effect.count} for Expertise:</p>
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            {getAvailableExpertiseOptions(draft.index).map(skill => (
-                                                                <button
-                                                                    key={skill}
-                                                                    onClick={() => handleFeatureChoice(draft.index, feature.index, skill, effect.count)}
-                                                                    className={`text-left p-2 rounded-lg border transition-all text-[11px] font-bold uppercase tracking-tight ${
-                                                                        (featureChoices[draft.index]?.[feature.index] || []).includes(skill)
-                                                                            ? 'bg-dnd-gold/10 border-dnd-gold text-dnd-gold'
-                                                                            : 'bg-black/40 border-gray-700 text-gray-400 hover:border-gray-500'
-                                                                    }`}
-                                                                >
-                                                                    {skill}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    </>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                ))}
-
-                               {idx === 0 && detail && (
+                                {idx === 0 && detail && (
                                    <section className="mt-6 pt-6 border-t border-gray-800 space-y-5">
+                                        {detail.spellcasting && (
+                                            <div className="flex items-center gap-2 mb-4 p-2 bg-purple-900/10 border border-purple-900/30 rounded-lg">
+                                                <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest">Spellcasting Ability:</span>
+                                                <span className="text-xs font-bold text-white">{detail.spellcasting.spellcasting_ability.name}</span>
+                                            </div>
+                                        )}
+                                        
                                        <div>
                                           <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">Class Proficiencies</h4>
                                           <div className="flex flex-wrap gap-4 text-[10px] font-bold text-gray-300 uppercase">
                                             <span className="flex items-center gap-1.5"><span className="text-dnd-gold">◈</span> Hit Die: d{detail.hit_die}</span>
                                             <span className="flex items-center gap-1.5"><span className="text-dnd-gold">◈</span> Saves: {detail.saving_throws.map(s=>s.name).join(', ')}</span>
                                           </div>
+                                          <p className="text-[10px] text-gray-500 mt-2 italic">Skill and tool proficiencies will be selected in the Level Advancement steps.</p>
                                        </div>
-                                       
-                                       {detail.proficiency_choices.map((choice, cIdx) => (
-                                           <div key={cIdx}>
-                                               <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">
-                                                  Choose {choice.choose} {choice.type.replace("proficiencies", "Proficiencies")}: 
-                                                  <span className={`ml-2 ${(chosenProficiencies[cIdx] || []).length === choice.choose ? 'text-green-500' : 'text-dnd-red'}`}>{(chosenProficiencies[cIdx] || []).length} / {choice.choose}</span>
-                                               </h4>
-                                               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                                   {choice.from.options.map((option, oIdx) => {
-                                                       const itemName = (option as any).item?.name || (option as any).name;
-                                                       const isSelected = (chosenProficiencies[cIdx] || []).includes(itemName);
-                                                       return (
-                                                           <label key={oIdx} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer border transition-all ${isSelected ? 'bg-dnd-gold/10 border-dnd-gold text-dnd-gold' : 'bg-black/40 border-transparent hover:bg-gray-800 text-gray-500'}`}>
-                                                               <input 
-                                                                  type="checkbox" 
-                                                                  checked={isSelected}
-                                                                  onChange={() => toggleProficiency(cIdx, itemName, choice.choose)}
-                                                                  disabled={!isSelected && (chosenProficiencies[cIdx] || []).length >= choice.choose}
-                                                                  className="accent-dnd-gold"
-                                                               />
-                                                               <span className="text-xs font-black uppercase tracking-tight">{itemName.replace("Skill: ", "").replace("Musical Instrument: ", "")}</span>
-                                                           </label>
-                                                       );
-                                                   })}
-                                               </div>
-                                           </div>
-                                       ))}
                                    </section>
                                )}
                            </div>

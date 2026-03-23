@@ -10,6 +10,7 @@ import BackgroundStep from './components/Builder/BackgroundStep';
 import EquipmentStep from './components/Builder/EquipmentStep';
 import SpellSelectionStep from './components/Builder/SpellSelectionStep';
 import { CharacterSheet } from './components/Sheet/CharacterSheet';
+import ErrorBoundary from './components/ErrorBoundary';
 import { getSpellSlots } from './utils/rules';
 import { saveCharacterToDb, loginUser } from './services/supabase';
 import AuthModal from './components/Auth/AuthModal';
@@ -56,7 +57,11 @@ const INITIAL_CHARACTER: CharacterState = {
     generalNotes: '',
     themeColor: '',
     themeColorSecondary: '',
-    show3DDice: true
+    show3DDice: true,
+    customCreatures: [],
+    creatures: [],
+    activePolymorph: null,
+    choices: []
 };
 
 const App: React.FC = () => {
@@ -238,6 +243,9 @@ const App: React.FC = () => {
     let newLanguages = [...character.languages];
 
     if (extraData) {
+        if (extraData.choices) {
+            updateCharacter({ choices: [...character.choices, ...extraData.choices] });
+        }
         if (extraData.ancestry) {
              newFeatures.push({
                  index: 'draconic-ancestry-selection',
@@ -279,7 +287,7 @@ const App: React.FC = () => {
     setPhase('class');
   };
 
-  const handleClassSelect = async (classes: CharacterClass[], skills: string[], tools: string[]) => {
+  const handleClassSelect = async (classes: CharacterClass[], skills: string[], tools: string[], choices: any[] = []) => {
     let totalHp = 0;
     const primary = classes[0];
     if (primary) {
@@ -323,7 +331,8 @@ const App: React.FC = () => {
         currentHp: totalHp, 
         skills: mergedSkills,
         toolProficiencies: mergedTools,
-        classFeatures: [...character.classFeatures.filter(f => f.source === 'Race'), ...choiceFeatures]
+        classFeatures: [...character.classFeatures.filter(f => f.source === 'Race'), ...choiceFeatures],
+        choices: [...character.choices, ...choices]
     });
     setPhase('abilities');
   };
@@ -358,10 +367,11 @@ const App: React.FC = () => {
       setPhase('background');
   };
 
-  const handleBackgroundComplete = async (name: string, background: BackgroundDetail, extraData: { languages: string[], tools: string[], skills: string[] }) => {
+  const handleBackgroundComplete = async (name: string, background: BackgroundDetail, extraData: { languages: string[], tools: string[], skills: string[], choices?: any[] }) => {
     const newSkills = Array.from(new Set([...character.skills, ...background.skill_proficiencies, ...extraData.skills]));
     const newLanguages = Array.from(new Set([...character.languages, ...extraData.languages]));
     const newTools = Array.from(new Set([...character.toolProficiencies, ...extraData.tools]));
+    const newChoices = [...character.choices, ...(extraData.choices || [])];
     
     const newCurrency = { ...character.currency };
     newCurrency.gp += background.currency.gp;
@@ -396,7 +406,8 @@ const App: React.FC = () => {
         toolProficiencies: newTools,
         currency: newCurrency,
         classFeatures: [...character.classFeatures, bgFeature],
-        inventory: newInventory
+        inventory: newInventory,
+        choices: newChoices
     });
     setPhase('gear');
   };
@@ -541,7 +552,7 @@ const App: React.FC = () => {
         )}
         
         {phase === 'level' && <LevelStep onSelect={handleLevelSelect} onBack={handleBack} />}
-        {phase === 'race' && <RaceStep onSelect={handleRaceSelect} selectedRace={character.race} onBack={handleBack} />}
+        {phase === 'race' && <RaceStep onSelect={handleRaceSelect} selectedRace={character.race} onBack={handleBack} userId={currentUser?.id} />}
         {phase === 'class' && (
             <ClassStep 
                 onSelect={handleClassSelect} 
@@ -550,20 +561,23 @@ const App: React.FC = () => {
                 onBack={handleBack} 
                 currentSkills={character.skills}
                 currentTools={character.toolProficiencies}
+                userId={currentUser?.id}
             />
         )}
         {phase === 'abilities' && <AbilityScoreStep race={character.race} initialScores={character.abilities} onSave={handleAbilitiesSave} onBack={handleBack} />}
         {phase === 'leveling' && <LevelingStep character={character} onComplete={handleLevelingComplete} onBack={handleBack} />}
         {phase === 'spells' && <SpellSelectionStep character={character} onComplete={handleSpellComplete} onBack={handleBack} />}
-        {phase === 'background' && <BackgroundStep onComplete={handleBackgroundComplete} onBack={handleBack} />}
-        {phase === 'gear' && <EquipmentStep onComplete={handleEquipmentComplete} onBack={handleBack} />}
+        {phase === 'background' && <BackgroundStep onComplete={handleBackgroundComplete} onBack={handleBack} userId={currentUser?.id} />}
+        {phase === 'gear' && <EquipmentStep onComplete={handleEquipmentComplete} onBack={handleBack} userId={currentUser?.id} />}
         {phase === 'sheet' && (
-            <CharacterSheet 
-                character={character} 
-                currentUser={currentUser} 
-                onOpenVault={() => setShowDashboard(true)} 
-                key={character.name + '-' + (character.id || Date.now())} 
-            />
+            <ErrorBoundary>
+                <CharacterSheet 
+                    character={character} 
+                    currentUser={currentUser} 
+                    onOpenVault={() => setShowDashboard(true)} 
+                    key={character.name + '-' + (character.id || Date.now())} 
+                />
+            </ErrorBoundary>
         )}
       
       </div>

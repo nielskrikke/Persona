@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { CharacterState, FeatureEffect, FeatDetail, ABILITY_NAMES, ABILITY_LABELS, APIReference, SubclassDetail, AbilityScores, SkillDefinition, AbilityName } from '../../types';
 import { fetchLevelFeatures, fetchFeatsList, fetchSubclasses, fetchSubclassDetail, fetchSubclassLevels, fetchAllSpells, fetchClassLevels } from '../../data/index';
 import { calculateModifier, SKILL_LIST } from '../../utils/rules';
+import { TOOLS } from '../../data/items/tools';
+import { STANDARD_LANGUAGES } from '../../data/constants';
 
 interface LevelingStepProps {
     character: CharacterState;
@@ -178,13 +180,19 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
         abilities: AbilityScores;
         subclasses: Record<string, SubclassDetail>;
         features: any[];
+        choices: any[];
+        languages: string[];
+        toolProficiencies: string[];
     }>({
         skills: [...character.skills],
         expertise: [...(character.expertise || [])],
         feats: [...character.feats],
         abilities: { ...character.abilities },
         subclasses: {},
-        features: [...character.classFeatures]
+        features: [...character.classFeatures],
+        choices: [...character.choices],
+        languages: [...(character.languages || [])],
+        toolProficiencies: [...(character.toolProficiencies || [])]
     });
 
     const updateAccumulator = () => {
@@ -192,19 +200,58 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
 
          if (selectedSubclass) {
              accumulator.current.subclasses[currentItem.classIndex] = selectedSubclass;
+             // Add subclass choice
+             accumulator.current.choices.push({
+                 id: `subclass-${currentItem.classIndex}-${currentItem.level}`,
+                 level: currentItem.level,
+                 source: currentItem.className,
+                 type: 'subclass',
+                 label: getSubclassTerminology(currentItem.classIndex),
+                 value: selectedSubclass.name,
+                 options: availableSubclasses.map(s => s.name)
+             });
          }
 
          pendingChoices.forEach(c => {
              if (c.effect.type === 'expertise_choice') {
-                 (choiceSelections[c.id] || []).forEach(s => {
+                 const selections = choiceSelections[c.id] || [];
+                 selections.forEach(s => {
                      if (!accumulator.current.expertise.includes(s)) accumulator.current.expertise.push(s);
                  });
+                 accumulator.current.choices.push({
+                     id: c.id,
+                     level: currentItem.level,
+                     source: currentItem.className,
+                     type: 'expertise',
+                     label: c.feature.name,
+                     value: selections,
+                     options: accumulator.current.skills, // Options for expertise are usually current skills
+                     count: c.effect.count || 1
+                 });
              } else if (c.effect.type === 'proficiency_choice') {
-                 (choiceSelections[c.id] || []).forEach(s => {
-                      if (!accumulator.current.skills.includes(s)) accumulator.current.skills.push(s);
+                 const selections = choiceSelections[c.id] || [];
+                 selections.forEach(s => {
+                       if (c.effect.category === 'skill') {
+                           if (!accumulator.current.skills.includes(s)) accumulator.current.skills.push(s);
+                       } else if (c.effect.category === 'tool') {
+                           if (!accumulator.current.toolProficiencies.includes(s)) accumulator.current.toolProficiencies.push(s);
+                       } else if (c.effect.category === 'language') {
+                           if (!accumulator.current.languages.includes(s)) accumulator.current.languages.push(s);
+                       }
+                 });
+                 accumulator.current.choices.push({
+                     id: c.id,
+                     level: currentItem.level,
+                     source: currentItem.className,
+                     type: c.effect.category || 'skill',
+                     label: c.feature.name,
+                     value: selections,
+                     options: c.effect.options ? c.effect.options.map((o: any) => typeof o === 'string' ? o : (o.name || o.item?.name)) : (c.effect.category === 'tool' ? TOOLS.map(t => t.name) : (c.effect.category === 'language' ? STANDARD_LANGUAGES : SKILL_LIST.map(s => s.name))),
+                     count: c.effect.count || 1
                  });
              } else if (c.effect.type === 'feature_choice') {
-                 (choiceSelections[c.id] || []).forEach(s => {
+                 const selections = choiceSelections[c.id] || [];
+                 selections.forEach(s => {
                      accumulator.current.features.push({
                          index: `choice-${s.toLowerCase().replace(/\s+/g, '-')}`,
                          name: `${c.feature.name}: ${s}`,
@@ -213,13 +260,41 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
                          desc: [`Selected option: ${s}`]
                      });
                  });
+                 accumulator.current.choices.push({
+                     id: c.id,
+                     level: currentItem.level,
+                     source: currentItem.className,
+                     type: 'feature',
+                     label: c.feature.name,
+                     value: selections,
+                     options: c.effect.options.map((o: any) => o.name),
+                     count: c.effect.count || 1
+                 });
              } else if (c.effect.type === 'asi') {
                  if (asiChoice === 'ability') {
                      Object.entries(abilityIncreases).forEach(([stat, val]) => {
                          accumulator.current.abilities[stat as keyof AbilityScores] += val;
                      });
+                     accumulator.current.choices.push({
+                         id: `asi-${currentItem.level}`,
+                         level: currentItem.level,
+                         source: currentItem.className,
+                         type: 'asi',
+                         label: 'Ability Score Improvement',
+                         value: abilityIncreases,
+                         options: ABILITY_NAMES
+                     });
                  } else if (selectedFeat) {
                      accumulator.current.feats.push(selectedFeat);
+                     accumulator.current.choices.push({
+                         id: `feat-${currentItem.level}`,
+                         level: currentItem.level,
+                         source: currentItem.className,
+                         type: 'feat',
+                         label: 'Feat Selection',
+                         value: selectedFeat.name,
+                         options: availableFeats.map(f => f.name)
+                     });
                      if (selectedFeat.effects) {
                          selectedFeat.effects.forEach((eff: any, idx: number) => {
                              if (eff.type === 'asi') {
@@ -231,6 +306,16 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
                                  } else if (typeof choice === 'string' && choice) {
                                      accumulator.current.abilities[choice as keyof AbilityScores] += eff.amount;
                                  }
+                                 accumulator.current.choices.push({
+                                     id: `feat-choice-${selectedFeat.index}-${idx}`,
+                                     level: currentItem.level,
+                                     source: `Feat: ${selectedFeat.name}`,
+                                     type: 'asi',
+                                     label: 'Feat Ability Choice',
+                                     value: choice,
+                                     options: eff.options,
+                                     count: eff.count || 1
+                                 });
                              }
                          });
                      }
@@ -299,6 +384,9 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
             skills: accumulator.current.skills,
             expertise: accumulator.current.expertise,
             feats: accumulator.current.feats,
+            choices: accumulator.current.choices,
+            languages: accumulator.current.languages,
+            toolProficiencies: accumulator.current.toolProficiencies
         };
 
         updates.classes = character.classes.map(c => ({
@@ -520,6 +608,14 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
                                                         options = SKILL_LIST
                                                             .filter(s => !accumulator.current.skills.includes(s.name))
                                                             .map(s => ({ name: s.name, desc: `Gain proficiency in ${s.name}.` }));
+                                                    } else if (choice.effect.category === 'tool') {
+                                                        options = TOOLS
+                                                            .filter(t => !accumulator.current.toolProficiencies.includes(t.name))
+                                                            .map(t => ({ name: t.name, desc: `Gain proficiency in ${t.name}.` }));
+                                                    } else if (choice.effect.category === 'language') {
+                                                        options = STANDARD_LANGUAGES
+                                                            .filter(l => !accumulator.current.languages.includes(l))
+                                                            .map(l => ({ name: l, desc: `Learn the ${l} language.` }));
                                                     } else if (choice.effect.options) {
                                                         options = choice.effect.options.map((o: any) => ({
                                                             name: typeof o === 'string' ? o : (o.name || o.item?.name),

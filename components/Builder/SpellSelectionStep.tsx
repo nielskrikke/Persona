@@ -65,7 +65,7 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
                     let allSpells: SpellDetail[] = [];
                     const maxFetchLevel = 9; 
                     for (let i = 0; i <= maxFetchLevel; i++) {
-                        const spells = await fetchSpellsByClassAndLevel(cls.definition.index, i);
+                        const spells = await fetchSpellsByClassAndLevel(cls.definition.index, i, character.user_id);
                         allSpells = [...allSpells, ...spells];
                     }
                     setAvailableSpellsCache(prev => ({...prev, [activeClassIndex]: allSpells}));

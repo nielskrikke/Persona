@@ -14,10 +14,11 @@ import { SORCERER_SPELLS } from './spells/sorcerer';
 import { WARLOCK_SPELLS } from './spells/warlock';
 import { WIZARD_SPELLS } from './spells/wizard';
 import { ARTIFICER_SPELLS } from './spells/artificer';
-import { COMMON_BEASTS } from './beasts';
+import { COMMON_CREATURES } from './beasts';
+import { STANDARD_FAMILIARS } from './familiars';
 import { loadHomebrew } from '../services/supabase';
 
-import { APIReference, RaceDetail, ClassDetail, SubclassDetail, SubraceDetail, EquipmentDetail, SpellDetail, FeatDetail, TraitDetail, BackgroundDetail, BeastDetail } from '../types';
+import { APIReference, RaceDetail, ClassDetail, SubclassDetail, SubraceDetail, EquipmentDetail, SpellDetail, FeatDetail, TraitDetail, BackgroundDetail, CreatureDetail } from '../types';
 
 export { getLocalSpells } from './spells/index';
 
@@ -43,8 +44,12 @@ export const Library = {
     getBackgrounds: (): BackgroundDetail[] => BACKGROUNDS,
     getBackground: (indexOrName: string): BackgroundDetail | undefined => BACKGROUNDS.find(b => b.index === indexOrName || b.name === indexOrName),
 
-    // Beasts
-    getBeasts: (): BeastDetail[] => COMMON_BEASTS,
+    // Creatures
+    getCreatures: (): CreatureDetail[] => {
+        const all = [...COMMON_CREATURES, ...STANDARD_FAMILIARS];
+        // Deduplicate by index
+        return Array.from(new Map(all.map(c => [c.index, c])).values());
+    },
 
     // Item APIs
     getItem: (index: string): EquipmentDetail | undefined => getItem(index),
@@ -60,32 +65,36 @@ export const Library = {
             backgrounds: BACKGROUNDS.filter(b => b.name.toLowerCase().includes(q)),
             items: ALL_ITEMS.filter(i => i.name.toLowerCase().includes(q)),
             spells: [], 
-            beasts: COMMON_BEASTS.filter(b => b.name.toLowerCase().includes(q))
+            creatures: Library.getCreatures().filter(b => b.name.toLowerCase().includes(q))
         };
     }
 };
 
 // --- DATA ACCESS ADAPTERS ---
 
-export const fetchRaces = async (): Promise<APIReference[]> => {
-    const custom = await loadHomebrew('custom_races');
-    const combined = [...RACES, ...custom];
+export const fetchRaces = async (userId?: string): Promise<APIReference[]> => {
+    const custom = await loadHomebrew('custom_races', userId);
+    const combined = [...RACES, ...custom.map((r: any) => ({ ...r, name: `${r.name} (HB)` }))];
     return combined.map(r => ({ index: r.index, name: r.name, url: "", isCustom: r.isCustom }));
 };
 
-export const fetchRaceDetail = async (index: string): Promise<RaceDetail | null> => {
-    const custom = await loadHomebrew('custom_races');
-    return [...RACES, ...custom].find(r => r.index === index) || null;
+export const fetchRaceDetail = async (index: string, userId?: string): Promise<RaceDetail | null> => {
+    const custom = await loadHomebrew('custom_races', userId);
+    const race = [...RACES, ...custom].find(r => r.index === index);
+    if (race && custom.some((r: any) => r.index === index)) {
+        return { ...race, name: `${race.name} (HB)` };
+    }
+    return race || null;
 };
 
-export const fetchSubraces = async (raceIndex: string): Promise<APIReference[]> => {
-    const race = await fetchRaceDetail(raceIndex);
+export const fetchSubraces = async (raceIndex: string, userId?: string): Promise<APIReference[]> => {
+    const race = await fetchRaceDetail(raceIndex, userId);
     if (!race || !race.subraces_details) return [];
     return race.subraces_details.map(s => ({ index: s.index, name: s.name, url: "" }));
 };
 
-export const fetchSubraceDetail = async (index: string): Promise<SubraceDetail | null> => {
-    const races = [...RACES, ...(await loadHomebrew('custom_races'))];
+export const fetchSubraceDetail = async (index: string, userId?: string): Promise<SubraceDetail | null> => {
+    const races = [...RACES, ...(await loadHomebrew('custom_races', userId))];
     for (const race of races) {
         if (race.subraces_details) {
             const sub = race.subraces_details.find((s: any) => s.index === index);
@@ -95,64 +104,88 @@ export const fetchSubraceDetail = async (index: string): Promise<SubraceDetail |
     return null;
 };
 
-export const fetchClasses = async (): Promise<APIReference[]> => {
-    const custom = await loadHomebrew('custom_classes');
-    const combined = [...CLASSES, ...custom];
+export const fetchClasses = async (userId?: string): Promise<APIReference[]> => {
+    const custom = await loadHomebrew('custom_classes', userId);
+    const combined = [...CLASSES, ...custom.map((c: any) => ({ ...c, name: `${c.name} (HB)` }))];
     return combined.map(c => ({ index: c.index, name: c.name, url: "", isCustom: c.isCustom }));
 };
 
-export const fetchClassDetail = async (index: string): Promise<ClassDetail | null> => {
-    const custom = await loadHomebrew('custom_classes');
-    return [...CLASSES, ...custom].find(c => c.index === index) || null;
+export const fetchClassDetail = async (index: string, userId?: string): Promise<ClassDetail | null> => {
+    const custom = await loadHomebrew('custom_classes', userId);
+    const cls = [...CLASSES, ...custom].find(c => c.index === index);
+    if (cls && custom.some((c: any) => c.index === index)) {
+        return { ...cls, name: `${cls.name} (HB)` };
+    }
+    return cls || null;
 };
 
-export const fetchSubclasses = async (classIndex: string): Promise<APIReference[]> => {
-    const custom = await loadHomebrew('custom_subclasses');
-    const combined = [...SUBCLASSES, ...custom];
+export const fetchSubclasses = async (classIndex: string, userId?: string): Promise<APIReference[]> => {
+    const custom = await loadHomebrew('custom_subclasses', userId);
+    const combined = [...SUBCLASSES, ...custom.map((s: any) => ({ ...s, name: `${s.name} (HB)` }))];
     return combined
         .filter(s => s.class?.index === classIndex)
         .map(s => ({ index: s.index, name: s.name, url: "", isCustom: s.isCustom }));
 };
 
-export const fetchSubclassDetail = async (index: string): Promise<SubclassDetail | null> => {
-    const custom = await loadHomebrew('custom_subclasses');
-    return [...SUBCLASSES, ...custom].find(s => s.index === index) || null;
+export const fetchSubclassDetail = async (index: string, userId?: string): Promise<SubclassDetail | null> => {
+    const custom = await loadHomebrew('custom_subclasses', userId);
+    const sub = [...SUBCLASSES, ...custom].find(s => s.index === index);
+    if (sub && custom.some((s: any) => s.index === index)) {
+        return { ...sub, name: `${sub.name} (HB)` };
+    }
+    return sub || null;
 };
 
-export const fetchEquipment = async (): Promise<EquipmentDetail[]> => {
-    const custom = await loadHomebrew('custom_equipment');
-    return [...ALL_ITEMS, ...custom];
+export const fetchEquipment = async (userId?: string): Promise<EquipmentDetail[]> => {
+    const custom = await loadHomebrew('custom_equipment', userId);
+    return [...ALL_ITEMS, ...custom.map((i: any) => ({ ...i, name: `${i.name} (HB)` }))];
 };
 
-export const fetchEquipmentDetail = async (index: string): Promise<EquipmentDetail | null> => {
-    const custom = await loadHomebrew('custom_equipment');
-    return [...ALL_ITEMS, ...custom].find(i => i.index === index) || null;
+export const fetchEquipmentDetail = async (index: string, userId?: string): Promise<EquipmentDetail | null> => {
+    const custom = await loadHomebrew('custom_equipment', userId);
+    const item = [...ALL_ITEMS, ...custom].find(i => i.index === index);
+    if (item && custom.some((i: any) => i.index === index)) {
+        return { ...item, name: `${item.name} (HB)` };
+    }
+    return item || null;
 };
 
-export const fetchBackgrounds = async (): Promise<APIReference[]> => {
-    const custom = await loadHomebrew('custom_backgrounds');
-    const combined = [...BACKGROUNDS, ...custom];
+export const fetchBackgrounds = async (userId?: string): Promise<APIReference[]> => {
+    const custom = await loadHomebrew('custom_backgrounds', userId);
+    const combined = [...BACKGROUNDS, ...custom.map((b: any) => ({ ...b, name: `${b.name} (HB)` }))];
     return combined.map(b => ({ index: b.index, name: b.name, url: "", isCustom: b.isCustom }));
 };
 
-export const fetchBackgroundDetail = async (index: string): Promise<BackgroundDetail | null> => {
-    const custom = await loadHomebrew('custom_backgrounds');
-    return [...BACKGROUNDS, ...custom].find(b => b.index === index) || null;
+export const fetchBackgroundDetail = async (index: string, userId?: string): Promise<BackgroundDetail | null> => {
+    const custom = await loadHomebrew('custom_backgrounds', userId);
+    const bg = [...BACKGROUNDS, ...custom].find(b => b.index === index);
+    if (bg && custom.some((b: any) => b.index === index)) {
+        return { ...bg, name: `${bg.name} (HB)` };
+    }
+    return bg || null;
 };
 
-export const fetchSpellsByClassAndLevel = async (classIndex: string, level: number): Promise<SpellDetail[]> => {
-    const custom = await loadHomebrew('custom_spells');
+export const fetchSpellsByClass = async (classIndex: string, userId?: string): Promise<SpellDetail[]> => {
+    const custom = await loadHomebrew('custom_spells', userId);
+    const local = getLocalSpells(classIndex);
+    const customSpells = custom.map((s: any) => ({ ...s, name: `${s.name} (HB)` }));
+    return [...local, ...customSpells];
+};
+
+export const fetchSpellsByClassAndLevel = async (classIndex: string, level: number, userId?: string): Promise<SpellDetail[]> => {
+    const custom = await loadHomebrew('custom_spells', userId);
     const local = getLocalSpells(classIndex).filter(s => s.level === level);
-    // Include custom spells in selection if they are marked for 'all' or specifically for this class
-    return [...local, ...custom.filter(s => s.level === level)];
+    const customSpells = custom.filter((s: any) => s.level === level).map((s: any) => ({ ...s, name: `${s.name} (HB)` }));
+    return [...local, ...customSpells];
 };
 
-export const fetchAllSpells = async (): Promise<SpellDetail[]> => {
-    const custom = await loadHomebrew('custom_spells');
+export const fetchAllSpells = async (userId?: string): Promise<SpellDetail[]> => {
+    const custom = await loadHomebrew('custom_spells', userId);
+    const customSpells = custom.map((s: any) => ({ ...s, name: `${s.name} (HB)` }));
     const all = [
         ...BARD_SPELLS, ...CLERIC_SPELLS, ...DRUID_SPELLS, ...PALADIN_SPELLS, 
         ...RANGER_SPELLS, ...SORCERER_SPELLS, ...WARLOCK_SPELLS, ...WIZARD_SPELLS,
-        ...ARTIFICER_SPELLS, ...custom
+        ...ARTIFICER_SPELLS, ...customSpells
     ];
     return Array.from(new Map(all.map(s => [s.index, s])).values());
 };
@@ -161,7 +194,7 @@ export const fetchFeatsList = async (): Promise<ExtendedFeatDetail[]> => {
     return FEATS; 
 };
 
-export const fetchFeatureDetail = async (index: string): Promise<any | null> => {
+export const fetchFeatureDetail = async (index: string, userId?: string): Promise<any | null> => {
     const cleanName = index.replace(/\s*\(.*?\)/g, '').trim();
     const cleanIndex = cleanName.toLowerCase().replace(/\s+/g, '-');
 
@@ -174,14 +207,14 @@ export const fetchFeatureDetail = async (index: string): Promise<any | null> => 
         });
     };
 
-    const homebrewClasses = await loadHomebrew('custom_classes');
+    const homebrewClasses = await loadHomebrew('custom_classes', userId);
     for (const c of [...CLASSES, ...homebrewClasses]) {
         if (c.feature_details) {
             const f = findInList(c.feature_details);
             if (f) return f;
         }
     }
-    const homebrewSubclasses = await loadHomebrew('custom_subclasses');
+    const homebrewSubclasses = await loadHomebrew('custom_subclasses', userId);
     for (const s of [...SUBCLASSES, ...homebrewSubclasses]) {
         if (s.feature_details) {
             const f = findInList(s.feature_details);
@@ -194,26 +227,26 @@ export const fetchFeatureDetail = async (index: string): Promise<any | null> => 
     return null;
 };
 
-export const fetchFeatureDetailBySource = async (index: string, source: string): Promise<any | null> => {
-    const customClasses = await loadHomebrew('custom_classes');
+export const fetchFeatureDetailBySource = async (index: string, source: string, userId?: string): Promise<any | null> => {
+    const customClasses = await loadHomebrew('custom_classes', userId);
     const cls = [...CLASSES, ...customClasses].find(c => c.name === source);
     if (cls && cls.feature_details) {
         const feat = cls.feature_details.find((f: any) => f.index === index);
         if (feat) return feat;
     }
     
-    const customSubclasses = await loadHomebrew('custom_subclasses');
+    const customSubclasses = await loadHomebrew('custom_subclasses', userId);
     const sub = [...SUBCLASSES, ...customSubclasses].find(s => s.name === source);
     if (sub && sub.feature_details) {
         const feat = sub.feature_details.find((f: any) => f.index === index);
         if (feat) return feat;
     }
     
-    return fetchFeatureDetail(index);
+    return fetchFeatureDetail(index, userId);
 };
 
-export const fetchTraitDetail = async (index: string): Promise<TraitDetail | null> => {
-    const customRaces = await loadHomebrew('custom_races');
+export const fetchTraitDetail = async (index: string, userId?: string): Promise<TraitDetail | null> => {
+    const customRaces = await loadHomebrew('custom_races', userId);
     for (const r of [...RACES, ...customRaces]) {
         const t = r.traits.find((tr: any) => tr.index === index);
         if (t) return t;
@@ -227,8 +260,8 @@ export const fetchTraitDetail = async (index: string): Promise<TraitDetail | nul
     return null;
 };
 
-export const fetchLevelFeatures = async (classIndex: string, level: number): Promise<any[]> => {
-    const customClasses = await loadHomebrew('custom_classes');
+export const fetchLevelFeatures = async (classIndex: string, level: number, userId?: string): Promise<any[]> => {
+    const customClasses = await loadHomebrew('custom_classes', userId);
     const cls = [...CLASSES, ...customClasses].find(c => c.index === classIndex);
     if (!cls) return [];
     
@@ -247,8 +280,8 @@ export const fetchLevelFeatures = async (classIndex: string, level: number): Pro
     });
 };
 
-export const fetchClassLevels = async (classIndex: string): Promise<any[]> => {
-    const customClasses = await loadHomebrew('custom_classes');
+export const fetchClassLevels = async (classIndex: string, userId?: string): Promise<any[]> => {
+    const customClasses = await loadHomebrew('custom_classes', userId);
     const cls = [...CLASSES, ...customClasses].find(c => c.index === classIndex);
     if (!cls) return [];
     return (cls.level_table || []).map((row: any) => ({
@@ -265,8 +298,8 @@ export const fetchClassLevels = async (classIndex: string): Promise<any[]> => {
     }));
 };
 
-export const fetchSubclassLevels = async (subclassIndex: string): Promise<any[]> => {
-    const customSubs = await loadHomebrew('custom_subclasses');
+export const fetchSubclassLevels = async (subclassIndex: string, userId?: string): Promise<any[]> => {
+    const customSubs = await loadHomebrew('custom_subclasses', userId);
     const sub = [...SUBCLASSES, ...customSubs].find(s => s.index === subclassIndex);
     if (!sub) return [];
     
@@ -280,8 +313,10 @@ export const fetchSubclassLevels = async (subclassIndex: string): Promise<any[]>
     return Array.from(levelMap.values());
 };
 
-export const fetchBeasts = async (): Promise<BeastDetail[]> => {
-    return COMMON_BEASTS;
+export const fetchCreatures = async (userId?: string): Promise<CreatureDetail[]> => {
+    const custom = await loadHomebrew('custom_beasts', userId);
+    const all = [...COMMON_CREATURES, ...STANDARD_FAMILIARS, ...custom];
+    return Array.from(new Map(all.map(c => [c.index, c])).values());
 };
 
 export default Library;

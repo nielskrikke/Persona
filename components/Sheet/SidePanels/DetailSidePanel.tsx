@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { Sparkles, CheckSquare, Square } from 'lucide-react';
 import SidePanelLayout from '../Shared/SidePanelLayout';
 import { SpellDetail, InventoryItem, APIReference, RuleEntry, CharacterState } from '../../../types';
+import { isSpell } from '../../../utils/rules';
 import { fetchEquipmentDetail, fetchFeatureDetail, fetchTraitDetail } from '../../../data/index';
 
 // Heuristic maps for proficiency checking
@@ -79,7 +81,31 @@ const DetailSidePanel = ({
                             cost: detail.cost ? `${detail.cost.quantity} ${detail.cost.unit}` : undefined,
                             weight: detail.weight,
                             properties: detail.properties?.map((p: any) => p.name),
-                            range: detail.range ? `${detail.range.normal}${detail.range.long ? `/${detail.range.long}` : ''} ft.` : undefined,
+                            range: (() => {
+                                const props = detail.properties?.map((p: any) => p.name) || [];
+                                const isThrown = item.isThrown || props.includes('Thrown') || (detail.range && detail.weapon_range !== 'Ranged' && !detail.weapon_category?.toLowerCase().includes('ranged'));
+                                const isReach = props.includes('Reach');
+                                const isRanged = detail.weapon_range === 'Ranged' || detail.weapon_category?.toLowerCase().includes('ranged') || props.includes('Ammunition');
+                                const baseRange = isRanged ? (detail.range ? (typeof detail.range === 'string' ? detail.range : `${detail.range.normal}${detail.range.long ? `/${detail.range.long}` : ''} ft.`) : '') : (isReach ? '10 ft.' : '5 ft.');
+                                if (isThrown) {
+                                    let tr = '';
+                                    if (item.thrownRange) {
+                                        tr = item.thrownRange.includes('ft') ? item.thrownRange : `${item.thrownRange} ft.`;
+                                    } else if (detail.range) {
+                                        if (typeof detail.range === 'string') {
+                                            if (detail.range !== '5 ft.' && detail.range !== '10 ft.') {
+                                                tr = detail.range;
+                                            }
+                                        } else if (detail.range.normal) {
+                                            tr = `${detail.range.normal}${detail.range.long ? `/${detail.range.long}` : ''} ft.`;
+                                        }
+                                    }
+                                    if (tr && tr !== baseRange) {
+                                        return isRanged ? tr : `${baseRange} (${tr})`;
+                                    }
+                                }
+                                return baseRange || (detail.range ? (typeof detail.range === 'string' ? detail.range : `${detail.range.normal}${detail.range.long ? `/${detail.range.long}` : ''} ft.`) : undefined);
+                            })(),
                             armor_class: detail.armor_class,
                             equipment_category: detail.equipment_category,
                             requires_attunement: detail.requires_attunement,
@@ -127,7 +153,6 @@ const DetailSidePanel = ({
         load();
     }, [item]);
 
-    const isSpell = (i: any): i is SpellDetail => i && 'school' in i;
     // Helper to check if it looks like an equipment detail (has cost/weight/category) or is an InventoryItem
     const isItemLike = (i: any) => i && ('quantity' in i || 'equipment_category' in i || 'weight' in i || 'cost' in i);
     const isRule = (i: any): i is RuleEntry => i && 'category' in i;
@@ -138,15 +163,26 @@ const DetailSidePanel = ({
     const titleNode = (
         <div className="flex items-center gap-3">
             <span className="truncate">{itemName}</span>
-            {onToggleFavorite && (
-                <button 
-                    onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
-                    className={`text-lg transition-transform hover:scale-110 leading-none ${isFavorite ? 'text-dnd-gold' : 'text-gray-600 hover:text-gray-400'}`}
-                    title={isFavorite ? "Remove from Favorites" : "Add to Favorites"}
-                >
-                    {isFavorite ? '★' : '☆'}
-                </button>
-            )}
+            <div className="flex items-center gap-2">
+                {onToggleFavorite && (
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
+                        className={`text-lg transition-transform hover:scale-110 leading-none ${isFavorite ? 'text-dnd-gold' : 'text-gray-600 hover:text-gray-400'}`}
+                        title={isFavorite ? "Remove from Favorites" : "Add to Favorites"}
+                    >
+                        {isFavorite ? '★' : '☆'}
+                    </button>
+                )}
+                {onAction && (isItemLike(fullDetail) || isSpell(fullDetail)) && (
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onAction('duplicate', item); }}
+                        className="text-gray-600 hover:text-purple-400 transition-colors p-1"
+                        title="Duplicate to Homebrew"
+                    >
+                        <Sparkles size={16} />
+                    </button>
+                )}
+            </div>
         </div>
     );
 
@@ -165,7 +201,14 @@ const DetailSidePanel = ({
     };
 
     let subtitle = 'Detail';
-    if (isSpell(fullDetail)) {
+    if (fullDetail?.index?.includes('feature') || fullDetail?.type === 'Class') {
+        const levelStr = fullDetail.level ? `Level ${fullDetail.level} ` : '';
+        if (fullDetail.casting_time) {
+            subtitle = `${levelStr}Spell Feature • ${fullDetail.school?.name || 'Class'}`;
+        } else {
+            subtitle = `${levelStr}Class Feature` + (fullDetail.school ? ` • ${fullDetail.school.name}` : '');
+        }
+    } else if (isSpell(fullDetail)) {
         subtitle = `${fullDetail.level === 0 ? 'Cantrip' : `Level ${fullDetail.level} Spell`} • ${fullDetail.school.name}`;
     } else if (isItemLike(fullDetail)) {
         subtitle = getDetailedCategory(fullDetail);
@@ -288,32 +331,61 @@ const DetailSidePanel = ({
             isPinned={isPinned}
             onTogglePin={onTogglePin}
             footer={onAction && (
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-wrap gap-2">
                      {isItemLike(fullDetail) && fullDetail.requires_attunement && (
                         <button 
                             onClick={() => onAction('toggleAttune', item)}
-                            className={`w-full py-2 border rounded font-bold uppercase text-sm transition-colors ${fullDetail.attuned ? 'border-cyan-500 text-cyan-500 bg-cyan-900/20 hover:bg-cyan-900/40' : 'border-gray-500 text-gray-400 hover:text-white hover:border-white'}`}
+                            className="flex-1 min-w-[100px] py-1.5 border border-gray-700 bg-gray-800/40 text-gray-400 hover:text-white hover:bg-gray-700/60 rounded font-bold uppercase text-[10px] tracking-wider transition-colors"
                         >
-                            {fullDetail.attuned ? 'End Attunement' : 'Attune to Item'}
+                            {fullDetail.attuned ? 'End Attunement' : 'Attune'}
                         </button>
                     )}
 
-                    {isItemLike(fullDetail) && (
+                    {isSpell(fullDetail) && (
                         <button 
-                            onClick={() => onAction('toggleEquip', item)}
-                            className={`w-full py-2 border rounded font-bold uppercase text-sm transition-colors ${fullDetail.equipped ? 'border-dnd-gold text-dnd-gold bg-dnd-gold/10' : 'border-emerald-600 text-emerald-600 bg-emerald-600/10'}`}
+                            onClick={() => onAction('cast', item)}
+                            className="flex-1 min-w-[100px] py-1.5 border border-gray-700 bg-gray-800/40 text-gray-400 hover:text-white hover:bg-gray-700/60 rounded font-bold uppercase text-[10px] tracking-wider transition-colors flex items-center justify-center gap-2"
                         >
-                            {fullDetail.equipped ? 'Unequip' : 'Equip'}
+                            Cast Spell
                         </button>
                     )}
-                    {(isSpell(fullDetail) || (fullDetail && 'quantity' in fullDetail)) && (
+
+                    {fullDetail?.name === 'Pick a Card' && (
                         <button 
-                           onClick={() => onAction('remove', item)}
-                           className="w-full py-2 border border-red-500 text-red-500 hover:bg-red-500/10 rounded font-bold uppercase text-sm transition-colors"
-                       >
-                           Remove from Sheet
-                       </button>
+                            onClick={() => onAction('pickCard')}
+                            className="flex-1 min-w-[100px] py-1.5 border border-gray-700 bg-gray-800/40 text-gray-400 hover:text-white hover:bg-gray-700/60 rounded font-bold uppercase text-[10px] tracking-wider transition-colors flex items-center justify-center gap-2"
+                        >
+                            Pick a Card
+                        </button>
                     )}
+
+                    {fullDetail?.name === 'Chiromancy' && (
+                        <button 
+                            onClick={() => onAction('chiromancy')}
+                            className="flex-1 min-w-[100px] py-1.5 border border-gray-700 bg-gray-800/40 text-gray-400 hover:text-white hover:bg-gray-700/60 rounded font-bold uppercase text-[10px] tracking-wider transition-colors flex items-center justify-center gap-2"
+                        >
+                            Use Chiromancy
+                        </button>
+                    )}
+
+                    <div className="flex gap-2 w-full">
+                        {isItemLike(fullDetail) && (
+                            <button 
+                                onClick={() => onAction('toggleEquip', item)}
+                                className="flex-1 py-1.5 bg-gray-800/40 text-gray-400 hover:text-white hover:bg-gray-700/60 rounded font-bold uppercase text-[10px] tracking-wider transition-colors"
+                            >
+                                {fullDetail.equipped ? 'Unequip' : 'Equip'}
+                            </button>
+                        )}
+                        {(isSpell(fullDetail) || (fullDetail && 'quantity' in fullDetail)) && (
+                            <button 
+                               onClick={() => onAction('remove', item)}
+                               className="flex-1 py-1.5 bg-gray-800/40 text-gray-400 hover:text-white hover:bg-gray-700/60 rounded font-bold uppercase text-[10px] tracking-wider transition-colors"
+                           >
+                               Delete
+                           </button>
+                        )}
+                    </div>
                 </div>
             )}
         >
@@ -322,7 +394,7 @@ const DetailSidePanel = ({
             {!loading && fullDetail && (
                 <>
                 {/* SPELL LAYOUT */}
-                {isSpell(fullDetail) && (
+                {(isSpell(fullDetail) || fullDetail.casting_time) && (
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4 text-sm bg-gray-800 p-3 rounded border border-gray-600">
                             <div>
@@ -330,13 +402,53 @@ const DetailSidePanel = ({
                                 {fullDetail.casting_time}{fullDetail.ritual && !fullDetail.casting_time.toLowerCase().includes('ritual') ? ' (Ritual)' : ''}
                             </div>
                             <div><span className="text-[10px] font-bold text-gray-500 uppercase block">Range</span> {fullDetail.range}</div>
-                            <div><span className="text-[10px] font-bold text-gray-500 uppercase block">Components</span> {fullDetail.components.join(', ')}</div>
+                            <div><span className="text-[10px] font-bold text-gray-500 uppercase block">Components</span> {fullDetail.components?.join(', ') || 'V, S'}</div>
                             <div><span className="text-[10px] font-bold text-gray-500 uppercase block">Duration</span> {fullDetail.duration}</div>
+                            {fullDetail.damage && (
+                                <div><span className="text-[10px] font-bold text-gray-500 uppercase block">Damage</span> {typeof fullDetail.damage === 'string' ? fullDetail.damage : fullDetail.damage.damage_dice}</div>
+                            )}
+                            {fullDetail.save && (
+                                <div><span className="text-[10px] font-bold text-gray-500 uppercase block">Save</span> {fullDetail.save.type || fullDetail.save.dc_type?.name}{fullDetail.save.dc ? ` DC ${fullDetail.save.dc}` : ''}</div>
+                            )}
                         </div>
                         
                         <div className="prose prose-invert prose-sm max-w-none text-gray-300">
                             {renderDescription(fullDetail.desc)}
                         </div>
+
+                        {character?.featureUsage?.[fullDetail.name] && (
+                            <div className="bg-[#1b1c20] border border-dnd-gold/30 rounded p-4 mt-4">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Limited Uses</span>
+                                        <span className="text-xs text-dnd-gold font-bold">
+                                            {character.featureUsage[fullDetail.name].current} / {character.featureUsage[fullDetail.name].max} remaining
+                                        </span>
+                                    </div>
+                                    <div className="text-[9px] font-bold text-gray-500 uppercase bg-black/40 px-2 py-1 rounded border border-gray-800">
+                                        Resets on {character.featureUsage[fullDetail.name].reset === 'short' ? 'Short or Long Rest' : 'Long Rest'}
+                                    </div>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {Array.from({ length: character.featureUsage[fullDetail.name].max }).map((_, i) => {
+                                        const isUsed = i >= character.featureUsage[fullDetail.name].current;
+                                        return (
+                                            <button
+                                                key={i}
+                                                onClick={() => onAction && onAction('toggleFeatureUsage', { name: fullDetail.name, delta: isUsed ? 1 : -1 })}
+                                                className={`w-6 h-6 flex items-center justify-center rounded border transition-all ${
+                                                    isUsed 
+                                                        ? 'bg-gray-800/50 border-gray-700 text-gray-600' 
+                                                        : 'bg-dnd-gold/10 border-dnd-gold/40 text-dnd-gold hover:bg-dnd-gold/20'
+                                                }`}
+                                            >
+                                                {isUsed ? <Square size={12} /> : <CheckSquare size={12} />}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
 
                         {fullDetail.higher_level && fullDetail.higher_level.length > 0 && (
                             <div className="mt-4 border-t border-gray-700 pt-3">
@@ -377,6 +489,75 @@ const DetailSidePanel = ({
                                 </div>
                             )}
 
+                            {/* Special Properties Toggles */}
+                            {isItemLike(fullDetail) && 'quantity' in fullDetail && character && (
+                                (() => {
+                                    const classes = character.classes.map(c => c.definition.index);
+                                    const subclasses = character.classes.map(c => c.subclass?.index).filter(Boolean);
+                                    
+                                    const isMonk = classes.includes('monk');
+                                    const isWarlock = classes.includes('warlock');
+                                    const isArtificer = classes.includes('artificer');
+                                    const isDruid = classes.includes('druid');
+                                    const isSpellcaster = classes.some(c => ['bard', 'cleric', 'druid', 'paladin', 'ranger', 'sorcerer', 'warlock', 'wizard', 'artificer'].includes(c));
+                                    
+                                    const availableFlags = [
+                                        { id: 'isMonkWeapon', label: 'Monk Weapon', visible: isMonk },
+                                        { id: 'isKenseiWeapon', label: 'Kensei Weapon', visible: isMonk && subclasses.includes('kensei') },
+                                        { id: 'isPactWeapon', label: 'Pact Weapon', visible: isWarlock },
+                                        { id: 'isHexWeapon', label: 'Hex Weapon', visible: isWarlock && subclasses.includes('hexblade') },
+                                        { id: 'isSpellFocus', label: 'Spell Focus', visible: isSpellcaster },
+                                        { id: 'isInfusion', label: 'Artificer Infusion', visible: isArtificer },
+                                        { id: 'isShillelagh', label: 'Shillelagh', visible: isDruid || classes.includes('cleric') },
+                                        { id: 'isBattleReady', label: 'Battle Ready', visible: isArtificer && subclasses.includes('battle-smith') },
+                                    ].filter(f => f.visible);
+
+                                    if (availableFlags.length === 0) return null;
+
+                                    return (
+                                        <div className="space-y-2 pt-2 border-t border-gray-700">
+                                            <span className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Special Designations</span>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {availableFlags.map(flag => (
+                                                    <button
+                                                        key={flag.id}
+                                                        onClick={() => onAction && onAction('toggleFlag', { id: fullDetail.id, flag: flag.id })}
+                                                        className={`text-[10px] px-2 py-1 rounded border transition-colors text-left flex items-center justify-between ${fullDetail[flag.id] ? 'bg-dnd-gold/20 border-dnd-gold text-dnd-gold' : 'bg-gray-800 border-gray-600 text-gray-400 hover:border-gray-400'}`}
+                                                    >
+                                                        {flag.label}
+                                                        {fullDetail[flag.id] && <span className="w-1.5 h-1.5 rounded-full bg-dnd-gold shadow-[0_0_3px_#c1a052]" />}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            {fullDetail.isThrown && (
+                                                <div className="grid grid-cols-2 gap-2 mt-2 animate-in slide-in-from-top-1 duration-200">
+                                                    <div className="space-y-1">
+                                                        <label className="text-[9px] font-bold text-gray-500 uppercase">Thrown Range</label>
+                                                        <input 
+                                                            type="text"
+                                                            value={fullDetail.thrownRange || ''}
+                                                            onChange={(e) => onAction && onAction('updateItem', { id: fullDetail.id, updates: { thrownRange: e.target.value } })}
+                                                            placeholder="20/60"
+                                                            className="w-full bg-black/40 border border-gray-700 rounded px-2 py-1 text-[10px] text-white outline-none focus:border-dnd-gold/50"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <label className="text-[9px] font-bold text-gray-500 uppercase">Thrown Damage</label>
+                                                        <input 
+                                                            type="text"
+                                                            value={fullDetail.thrownDamage || ''}
+                                                            onChange={(e) => onAction && onAction('updateItem', { id: fullDetail.id, updates: { thrownDamage: e.target.value } })}
+                                                            placeholder="1d4"
+                                                            className="w-full bg-black/40 border border-gray-700 rounded px-2 py-1 text-[10px] text-white outline-none focus:border-dnd-gold/50"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })()
+                            )}
+
                             {(fullDetail.range || (fullDetail.properties && fullDetail.properties.length > 0)) && (
                                 <div>
                                     {fullDetail.range && <div className="mb-2"><span className="text-[10px] font-bold text-gray-500 uppercase mr-2">Range</span> <span className="text-white">{fullDetail.range}</span></div>}
@@ -394,6 +575,39 @@ const DetailSidePanel = ({
                 {/* FEATURE / TRAIT LAYOUT */}
                 {(!isSpell(fullDetail) && !isItemLike(fullDetail)) && (
                     <div className="space-y-4">
+                        {character?.featureUsage?.[fullDetail.name] && (
+                            <div className="bg-[#1b1c20] border border-dnd-gold/30 rounded p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Limited Uses</span>
+                                        <span className="text-xs text-dnd-gold font-bold">
+                                            {character.featureUsage[fullDetail.name].current} / {character.featureUsage[fullDetail.name].max} remaining
+                                        </span>
+                                    </div>
+                                    <div className="text-[9px] font-bold text-gray-500 uppercase bg-black/40 px-2 py-1 rounded border border-gray-800">
+                                        Resets on {character.featureUsage[fullDetail.name].reset === 'short' ? 'Short or Long Rest' : 'Long Rest'}
+                                    </div>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {Array.from({ length: character.featureUsage[fullDetail.name].max }).map((_, i) => {
+                                        const isUsed = i >= character.featureUsage[fullDetail.name].current;
+                                        return (
+                                            <button
+                                                key={i}
+                                                onClick={() => onAction && onAction('toggleFeatureUsage', { name: fullDetail.name, delta: isUsed ? 1 : -1 })}
+                                                className={`w-6 h-6 flex items-center justify-center rounded border transition-all ${
+                                                    isUsed 
+                                                        ? 'bg-gray-800/50 border-gray-700 text-gray-600' 
+                                                        : 'bg-dnd-gold/10 border-dnd-gold/40 text-dnd-gold hover:bg-dnd-gold/20'
+                                                }`}
+                                            >
+                                                {isUsed ? <Square size={12} /> : <CheckSquare size={12} />}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
                         <div className="prose prose-invert prose-sm max-w-none text-gray-300">
                             {renderDescription(fullDetail.desc || fullDetail.description)}
                         </div>

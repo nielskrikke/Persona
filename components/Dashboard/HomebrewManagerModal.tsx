@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { saveHomebrew, loadHomebrew, deleteHomebrew } from '../../services/supabase';
-import { ABILITY_NAMES, ABILITY_LABELS, APIReference, SpellDetail, EquipmentDetail, BeastDetail } from '../../types';
+import { ABILITY_NAMES, ABILITY_LABELS, APIReference, SpellDetail, EquipmentDetail, CreatureDetail } from '../../types';
 import { SKILL_LIST } from '../../utils/rules';
 import { SPELL_SCHOOLS } from '../../data/constants';
 import { X, Search, Filter, Sparkles, Save, Coins, Link, Trash2, Info, ChevronUp, Plus, PawPrint } from 'lucide-react';
@@ -9,7 +9,8 @@ interface HomebrewManagerModalProps {
     isOpen: boolean;
     onClose: () => void;
     currentUser: any;
-    initialTab?: 'race' | 'class' | 'subclass' | 'background' | 'spell' | 'item' | 'wildshape' | 'familiar' | 'feat';
+    initialTab?: 'race' | 'class' | 'subclass' | 'background' | 'spell' | 'item' | 'creature' | 'feat';
+    initialData?: any;
 }
 
 // Sub-component for adding "Mechanics" to any feature or trait
@@ -73,17 +74,13 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
     );
 };
 
-const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onClose, currentUser, initialTab }) => {
-    const [activeTab, setActiveTab] = useState<'race' | 'class' | 'subclass' | 'background' | 'spell' | 'item' | 'wildshape' | 'familiar' | 'feat'>(initialTab || 'race');
+const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onClose, currentUser, initialTab, initialData }) => {
+    const [activeTab, setActiveTab] = useState<'race' | 'class' | 'subclass' | 'background' | 'spell' | 'item' | 'creature' | 'feat'>(initialTab || 'race');
     const [loading, setLoading] = useState(false);
     const [showForm, setShowForm] = useState(false);
-    const [showImportArea, setShowImportArea] = useState(false);
-    const [importType, setImportType] = useState<'json' | 'url'>('json');
-    const [importJson, setImportJson] = useState('');
-    const [importUrl, setImportUrl] = useState('');
-    const [isScraping, setIsScraping] = useState(false);
     const [list, setList] = useState<any[]>([]);
     const [isSharedGlobally, setIsSharedGlobally] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
     const modalRef = useRef<HTMLDivElement>(null);
 
     // Track the last opened state to handle initialTab correctly without glitching
@@ -126,6 +123,9 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     const [itemAcBase, setItemAcBase] = useState(0);
     const [itemAcDexBonus, setItemAcDexBonus] = useState(false);
     const [itemAcMaxBonus, setItemAcMaxBonus] = useState<number | null>(null);
+    const [itemIsThrown, setItemIsThrown] = useState(false);
+    const [itemThrownRange, setItemThrownRange] = useState('');
+    const [itemThrownDamage, setItemThrownDamage] = useState('');
     const [itemProperties, setItemProperties] = useState<string[]>([]);
     const [itemModifiers, setItemModifiers] = useState<any[]>([]);
 
@@ -146,18 +146,19 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     const [spellSaveType, setSpellSaveType] = useState('DEX');
     const [spellDmgFormula, setSpellDmgFormula] = useState('');
     const [spellDmgType, setSpellDmgType] = useState('Force');
+    const [spellClasses, setSpellClasses] = useState<string[]>([]);
 
-    // Wild Shape / Familiar Forge (Shared state but separate tabs)
-    const [beastSize, setBeastSize] = useState('Medium');
-    const [beastType, setBeastType] = useState('Beast');
-    const [beastAc, setBeastAc] = useState(10);
-    const [beastHp, setBeastHp] = useState(10);
-    const [beastSpeed, setBeastSpeed] = useState('30 ft.');
-    const [beastAbilities, setBeastAbilities] = useState({ str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 });
-    const [beastSenses, setBeastSenses] = useState('');
-    const [beastLanguages, setBeastLanguages] = useState('');
-    const [beastCr, setBeastCr] = useState(0);
-    const [beastActions, setBeastActions] = useState<{ name: string, desc: string, attack_bonus?: number, damage_dice?: string, damage_type?: string }[]>([]);
+    // Creature Forge
+    const [creatureSize, setCreatureSize] = useState('Medium');
+    const [creatureType, setCreatureType] = useState('Creature');
+    const [creatureAc, setCreatureAc] = useState(10);
+    const [creatureHp, setCreatureHp] = useState(10);
+    const [creatureSpeed, setCreatureSpeed] = useState('30 ft.');
+    const [creatureAbilities, setCreatureAbilities] = useState({ str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 });
+    const [creatureSenses, setCreatureSenses] = useState('');
+    const [creatureLanguages, setCreatureLanguages] = useState('');
+    const [creatureCr, setCreatureCr] = useState(0);
+    const [creatureActions, setCreatureActions] = useState<{ name: string, desc: string, attack_bonus?: number, damage_dice?: string, damage_type?: string }[]>([]);
 
     // Background Forge
     const [bgSkills, setBgSkills] = useState<string[]>([]);
@@ -183,6 +184,50 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
         prevOpenRef.current = isOpen;
     }, [isOpen, activeTab]); // Removed initialTab from dependencies to prevent glitching back when switching tabs
 
+    // Handle initialData pre-filling
+    useEffect(() => {
+        if (isOpen && initialData) {
+            setShowForm(true);
+            if (initialTab === 'item') {
+                setName(initialData.name);
+                setDescription(initialData.desc?.join('\n') || '');
+                setItemCategory(initialData.equipment_category?.name || 'Other');
+                setItemRarity(initialData.rarity || 'Common');
+                setItemWeight(initialData.weight?.toString() || '0');
+                setItemCost(initialData.cost ? `${initialData.cost.quantity} ${initialData.cost.unit}` : '0 gp');
+                setItemAttunement(!!initialData.requires_attunement);
+                setItemIsWondrous(!!initialData.is_wondrous);
+                setItemProperties(initialData.properties?.map((p: any) => typeof p === 'string' ? p : p.name).join(', ') || '');
+                setItemModifiers(initialData.modifiers || []);
+                
+                if (initialData.damage) {
+                    setItemDmgDice(initialData.damage.damage_dice || '');
+                    setItemDmgType(typeof initialData.damage.damage_type === 'string' ? initialData.damage.damage_type : initialData.damage.damage_type?.name || 'Piercing');
+                }
+                
+                if (initialData.armor_class) {
+                    setItemAcBase(initialData.armor_class.base?.toString() || '');
+                    setItemAcDexBonus(!!initialData.armor_class.dex_bonus);
+                    setItemAcMaxBonus(initialData.armor_class.max_bonus || null);
+                }
+            } else if (initialTab === 'spell') {
+                setName(initialData.name);
+                setDescription(initialData.desc?.join('\n') || '');
+                setSpellLevel(initialData.level || 0);
+                setSpellSchool(initialData.school?.name || 'Abjuration');
+                setSpellCastTime(initialData.casting_time || '1 Action');
+                setSpellRange(initialData.range || 'Self');
+                setSpellDuration(initialData.duration || 'Instantaneous');
+                setSpellComponents(initialData.components || ['V']);
+                setSpellMaterial(initialData.material || '');
+                setSpellRitual(!!initialData.ritual);
+                setSpellConcentration(!!initialData.concentration);
+                setSpellHigherLevel(initialData.higher_level?.join('\n') || '');
+                setSpellClasses(initialData.classes?.map((c: any) => c.name) || []);
+            }
+        }
+    }, [isOpen, initialData, initialTab]);
+
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
@@ -206,8 +251,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
             background: 'custom_backgrounds',
             spell: 'custom_spells',
             item: 'custom_equipment',
-            wildshape: 'custom_beasts',
-            familiar: 'custom_familiars',
+            creature: 'custom_beasts',
             feat: 'custom_feats'
         };
         const data = await loadHomebrew(tableMap[activeTab] as any, currentUser.id);
@@ -218,7 +262,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     if (!isOpen) return null;
 
     const resetForm = () => {
-        setName(''); setDescription(''); setIsSharedGlobally(false);
+        setName(''); setDescription(''); setIsSharedGlobally(false); setEditingId(null);
         setSpeeds({ walk: 30, fly: 0, swim: 0, climb: 0 });
         setAbilityBonuses([]); setTraits([]); setSize('Medium');
         setSaves([]); setLevelFeatures([]); setHitDie(8);
@@ -228,136 +272,147 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
         setSpellLevel(0); setSpellSchool('Evocation'); setSpellCastTime('1 Action'); setSpellRange('60 feet'); setSpellDuration('Instantaneous'); setSpellRitual(false); setSpellConcentration(false);
         setSpellComponents(['V', 'S']); setSpellMaterial(''); setSpellHigherLevel(''); setSpellHasAttack(false); setSpellHasSave(false); setSpellDmgFormula('');
         setItemCategory('Other'); setItemSubtype(''); setItemIsWondrous(false); setItemWeight(0); setItemCost('0 gp'); setItemAttunement(false); setItemDmgDice(''); setItemAcBase(0); setItemAcDexBonus(false); setItemModifiers([]);
-        setBeastSize('Medium'); setBeastType('Beast'); setBeastAc(10); setBeastHp(10); setBeastSpeed('30 ft.'); setBeastAbilities({ str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 }); setBeastSenses(''); setBeastLanguages(''); setBeastCr(0); setBeastActions([]);
+        setItemIsThrown(false); setItemThrownRange(''); setItemThrownDamage('');
+        setCreatureSize('Medium'); setCreatureType('Creature'); setCreatureAc(10); setCreatureHp(10); setCreatureSpeed('30 ft.'); setCreatureAbilities({ str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 }); setCreatureSenses(''); setCreatureLanguages(''); setCreatureCr(0); setCreatureActions([]);
         setFeatPrerequisite(''); setFeatEffects([]);
         setShowForm(false);
-        setShowImportArea(false);
-        setImportJson('');
-        setImportUrl('');
-        setIsScraping(false);
     };
 
-    const handleImportUrl = async () => {
-        if (!importUrl) return;
-        setIsScraping(true);
-        try {
-            const response = await fetch('/api/scrape', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: importUrl, type: activeTab })
+    const handleEdit = (item: any) => {
+        resetForm();
+        setEditingId(item.id);
+        setName(item.name || '');
+        setDescription(Array.isArray(item.desc) ? item.desc.join('\n') : (item.description || ''));
+        setIsSharedGlobally(item.is_public || false);
+
+        if (activeTab === 'race') {
+            setSpeeds({ 
+                walk: item.speed || 30, 
+                fly: item.fly_speed || 0, 
+                swim: item.swim_speed || 0, 
+                climb: item.climb_speed || 0 
             });
-            const data = await response.json();
-            if (data.error) throw new Error(data.error);
-
-            // Populate fields based on scraped data
-            if (data.name) setName(data.name);
-            if (data.description) setDescription(data.description);
-
-            if (activeTab === 'spell') {
-                if (data.level !== undefined) setSpellLevel(data.level);
-                if (data.school) setSpellSchool(data.school);
-                if (data.casting_time) setSpellCastTime(data.casting_time);
-                if (data.range) setSpellRange(data.range);
-                if (data.components) setSpellComponents(data.components);
-                if (data.duration) setSpellDuration(data.duration);
-            } else if (activeTab === 'item') {
-                if (data.rarity) setItemRarity(data.rarity);
-                if (data.weight !== undefined) setItemWeight(data.weight);
-                if (data.requires_attunement !== undefined) setItemAttunement(data.requires_attunement);
-            } else if (activeTab === 'race') {
-                if (data.size) setSize(data.size);
-                if (data.speed) setSpeeds(prev => ({ ...prev, walk: data.speed }));
+            setSize(item.size || 'Medium');
+            if (item.ability_bonuses) {
+                setAbilityBonuses(item.ability_bonuses.map((ab: any) => ({
+                    stat: ab.ability_score?.index || ab.stat,
+                    bonus: ab.bonus
+                })));
             }
-
-            setShowImportArea(false);
-            setImportUrl('');
-            setShowForm(true);
-            alert("Data extracted from URL! Please review and complete the missing fields.");
-        } catch (err: any) {
-            alert(err.message || "Failed to extract data from URL.");
-        } finally {
-            setIsScraping(false);
-        }
-    };
-
-    const handleImportJson = () => {
-        try {
-            const data = JSON.parse(importJson);
-            if (!data || typeof data !== 'object') throw new Error("Invalid JSON");
-
-            // Basic fields
-            if (data.name) setName(data.name);
-            if (data.description) setDescription(data.description);
-            if (data.desc && Array.isArray(data.desc)) setDescription(data.desc.join('\n'));
-
-            if (activeTab === 'race') {
-                if (data.speed) setSpeeds(prev => ({ ...prev, walk: typeof data.speed === 'number' ? data.speed : data.speed.walk || 30 }));
-                if (data.size) setSize(data.size);
-                if (data.ability_bonuses) {
-                    setAbilityBonuses(data.ability_bonuses.map((ab: any) => ({
-                        stat: ab.ability_score?.index || ab.stat,
-                        bonus: ab.bonus
-                    })));
-                }
-                if (data.traits) {
-                    setTraits(data.traits.map((t: any) => ({
-                        name: t.name,
-                        desc: Array.isArray(t.desc) ? t.desc.join('\n') : t.desc,
-                        effects: t.modifiers || t.effects || []
-                    })));
-                }
-            } else if (activeTab === 'spell') {
-                if (data.level !== undefined) setSpellLevel(data.level);
-                if (data.school) setSpellSchool(data.school.name || data.school);
-                if (data.casting_time) setSpellCastTime(data.casting_time);
-                if (data.range) setSpellRange(data.range);
-                if (data.duration) setSpellDuration(data.duration.replace("Concentration, ", ""));
-                if (data.concentration !== undefined) setSpellConcentration(data.concentration);
-                if (data.ritual !== undefined) setSpellRitual(data.ritual);
-                if (data.components) setSpellComponents(data.components);
-                if (data.material) setSpellMaterial(data.material);
-                if (data.higher_level) setSpellHigherLevel(Array.isArray(data.higher_level) ? data.higher_level.join('\n') : data.higher_level);
-            } else if (activeTab === 'item') {
-                if (data.equipment_category) setItemCategory(data.equipment_category.name || data.equipment_category);
-                if (data.rarity) setItemRarity(data.rarity);
-                if (data.weight !== undefined) setItemWeight(data.weight);
-                if (data.cost) setItemCost(`${data.cost.quantity || 0} ${data.cost.unit || 'gp'}`);
-                if (data.requires_attunement !== undefined) setItemAttunement(data.requires_attunement);
-            } else if (activeTab === 'background') {
-                if (data.skill_proficiencies) setBgSkills(data.skill_proficiencies);
-                if (data.feature) {
-                    setBgFeatureName(data.feature.name);
-                    if (!description && data.feature.desc) setDescription(Array.isArray(data.feature.desc) ? data.feature.desc.join('\n') : data.feature.desc);
-                }
-                if (data.equipment) setBgEquipment(Array.isArray(data.equipment) ? data.equipment.join(', ') : data.equipment);
-            } else if (activeTab === 'feat') {
-                if (data.prerequisite) setFeatPrerequisite(data.prerequisite);
-                if (data.effects) setFeatEffects(data.effects);
-            } else if (activeTab === 'wildshape' || activeTab === 'familiar') {
-                if (data.size) setBeastSize(data.size);
-                if (data.type) setBeastType(data.type);
-                if (data.ac) setBeastAc(data.ac);
-                if (data.hp) setBeastHp(data.hp);
-                if (data.speed) setBeastSpeed(data.speed);
-                if (data.str) setBeastAbilities(prev => ({ ...prev, str: data.str }));
-                if (data.dex) setBeastAbilities(prev => ({ ...prev, dex: data.dex }));
-                if (data.con) setBeastAbilities(prev => ({ ...prev, con: data.con }));
-                if (data.int) setBeastAbilities(prev => ({ ...prev, int: data.int }));
-                if (data.wis) setBeastAbilities(prev => ({ ...prev, wis: data.wis }));
-                if (data.cha) setBeastAbilities(prev => ({ ...prev, cha: data.cha }));
-                if (data.senses) setBeastSenses(data.senses);
-                if (data.languages) setBeastLanguages(data.languages);
-                if (data.challenge_rating !== undefined) setBeastCr(data.challenge_rating);
-                if (data.actions) setBeastActions(data.actions);
+            if (item.traits) {
+                setTraits(item.traits.map((t: any) => ({
+                    name: t.name,
+                    desc: Array.isArray(t.desc) ? t.desc.join('\n') : t.desc,
+                    effects: t.modifiers || t.effects || []
+                })));
             }
-
-            setShowImportArea(false);
-            setImportJson('');
-            setShowForm(true);
-            alert("Data imported successfully! Please review the fields.");
-        } catch (err) {
-            alert("Failed to parse JSON. Please ensure it is a valid object.");
+        } else if (activeTab === 'class') {
+            setHitDie(item.hit_die || 8);
+            setSaves(item.saving_throws?.map((s: any) => s.index) || []);
+            setCasterType(item.spellcasting ? 'full' : 'none'); // Simplified
+            setCasterAbility(item.spellcasting?.spellcasting_ability?.index || 'int');
+            if (item.feature_details) {
+                setLevelFeatures(item.feature_details.map((f: any) => ({
+                    level: f.level,
+                    name: f.name,
+                    desc: Array.isArray(f.desc) ? f.desc.join('\n') : f.desc,
+                    effects: f.effects || []
+                })));
+            }
+            // Proficiencies
+            const armor = item.proficiencies?.filter((p: any) => ['Light Armor', 'Medium Armor', 'Heavy Armor', 'Shields'].includes(p.name)).map((p: any) => p.name) || [];
+            setArmorProfs(armor);
+            const weapons = item.proficiencies?.filter((p: any) => !['Light Armor', 'Medium Armor', 'Heavy Armor', 'Shields'].includes(p.name)).map((p: any) => p.name) || [];
+            setWeaponProfs(weapons);
+        } else if (activeTab === 'subclass') {
+            setParentClass(item.class?.index || 'fighter');
+            if (item.feature_details) {
+                setLevelFeatures(item.feature_details.map((f: any) => ({
+                    level: f.level,
+                    name: f.name,
+                    desc: Array.isArray(f.desc) ? f.desc.join('\n') : f.desc,
+                    effects: f.effects || []
+                })));
+            }
+        } else if (activeTab === 'spell') {
+            setSpellLevel(item.level || 0);
+            setSpellSchool(item.school?.name || 'Evocation');
+            setSpellCastTime(item.casting_time || '1 Action');
+            setSpellRange(item.range || '60 feet');
+            setSpellDuration(item.duration?.replace("Concentration, ", "") || 'Instantaneous');
+            setSpellConcentration(item.concentration || false);
+            setSpellRitual(item.ritual || false);
+            setSpellComponents(item.components || ['V', 'S']);
+            setSpellMaterial(item.material || '');
+            setSpellHigherLevel(Array.isArray(item.higher_level) ? item.higher_level.join('\n') : (item.higher_level || ''));
+            setSpellHasAttack(!!item.attack_type);
+            setSpellAttackType(item.attack_type ? item.attack_type.charAt(0).toUpperCase() + item.attack_type.slice(1) : 'Ranged');
+            setSpellHasSave(!!item.dc);
+            setSpellSaveType(item.dc?.dc_type?.name?.toUpperCase() || 'DEX');
+            if (item.damage) {
+                const dmgAtLevel = item.damage.damage_at_slot_level || item.damage.damage_at_character_level;
+                if (dmgAtLevel) {
+                    const firstKey = Object.keys(dmgAtLevel)[0];
+                    setSpellDmgFormula(dmgAtLevel[firstKey]);
+                }
+                setSpellDmgType(item.damage.damage_type?.name || 'Force');
+            }
+        } else if (activeTab === 'item') {
+            setItemCategory(item.equipment_category?.name || 'Other');
+            setItemSubtype(item.subtype || '');
+            setItemIsWondrous(item.is_wondrous || false);
+            setItemRarity(item.rarity || 'Common');
+            setItemWeight(item.weight || 0);
+            setItemCost(`${item.cost?.quantity || 0} ${item.cost?.unit || 'gp'}`);
+            setItemAttunement(item.requires_attunement || false);
+            setItemDmgDice(item.damage?.damage_dice || '');
+            setItemDmgType(item.damage?.damage_type?.name || 'Piercing');
+            setItemWeaponType(item.weapon_category || 'Simple');
+            setItemArmorType(item.armor_category || 'Light');
+            setItemAcBase(item.armor_class?.base || 0);
+            setItemAcDexBonus(item.armor_class?.dex_bonus || false);
+            setItemAcMaxBonus(item.armor_class?.max_bonus || null);
+            setItemIsThrown(item.isThrown || false);
+            setItemThrownRange(item.thrownRange || '');
+            setItemThrownDamage(item.thrownDamage || '');
+            setItemProperties(item.properties?.map((p: any) => p.name) || []);
+            setItemModifiers(item.modifiers || []);
+        } else if (activeTab === 'background') {
+            setBgSkills(item.skill_proficiencies || []);
+            setBgTools(item.tool_proficiencies || []);
+            setBgFeatureName(item.feature?.name || '');
+            setBgEquipment(Array.isArray(item.equipment) ? item.equipment.join(', ') : (item.equipment || ''));
+        } else if (activeTab === 'feat') {
+            setFeatPrerequisite(item.prerequisite || '');
+            setFeatEffects(item.effects || []);
+        } else if (activeTab === 'creature') {
+            setCreatureSize(item.size || 'Medium');
+            setCreatureType(item.type || 'Creature');
+            setCreatureAc(item.ac || 10);
+            setCreatureHp(item.hp || 10);
+            setCreatureSpeed(item.speed || '30 ft.');
+            setCreatureAbilities({
+                str: item.str || 10,
+                dex: item.dex || 10,
+                con: item.con || 10,
+                int: item.int || 10,
+                wis: item.wis || 10,
+                cha: item.cha || 10
+            });
+            setCreatureSenses(item.senses || '');
+            setCreatureLanguages(item.languages || '');
+            setCreatureCr(item.challenge_rating || 0);
+            setCreatureActions(item.actions || []);
+            if (item.traits) {
+                setTraits(item.traits.map((t: any) => ({
+                    name: t.name,
+                    desc: Array.isArray(t.desc) ? t.desc.join('\n') : t.desc,
+                    effects: t.effects || []
+                })));
+            }
         }
+
+        setShowForm(true);
     };
 
     const handleDelete = async (id: string) => {
@@ -371,8 +426,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                 background: 'custom_backgrounds',
                 spell: 'custom_spells',
                 item: 'custom_equipment',
-                wildshape: 'custom_beasts',
-                familiar: 'custom_familiars',
+                creature: 'custom_beasts',
                 feat: 'custom_feats'
             };
             await deleteHomebrew(tableMap[activeTab] as any, id, currentUser.id);
@@ -396,8 +450,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                 background: 'custom_backgrounds',
                 spell: 'custom_spells',
                 item: 'custom_equipment',
-                wildshape: 'custom_beasts',
-                familiar: 'custom_familiars',
+                creature: 'custom_beasts',
                 feat: 'custom_feats'
             };
             
@@ -448,6 +501,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     components: spellComponents, material: spellComponents.includes('M') ? spellMaterial : undefined, 
                     ritual: spellRitual, concentration: spellConcentration,
                     higher_level: spellHigherLevel ? [spellHigherLevel] : undefined,
+                    classes: spellClasses.map(c => ({ name: c, index: c.toLowerCase() })),
                     attack_type: spellHasAttack ? spellAttackType.toLowerCase() : undefined,
                     damage: spellDmgFormula ? { 
                         damage_type: { name: spellDmgType, index: spellDmgType.toLowerCase() },
@@ -465,6 +519,9 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     weight: itemWeight, 
                     cost: { quantity: parseInt(itemCost) || 0, unit: itemCost.includes('gp') ? 'gp' : 'sp' },
                     requires_attunement: itemAttunement,
+                    isThrown: itemIsThrown,
+                    thrownRange: itemThrownRange,
+                    thrownDamage: itemThrownDamage,
                     weapon_category: itemCategory === 'Weapon' ? itemWeaponType : undefined,
                     armor_category: itemCategory === 'Armor' ? itemArmorType : undefined,
                     damage: itemDmgDice ? { damage_dice: itemDmgDice, damage_type: { name: itemDmgType, index: itemDmgType.toLowerCase() } } : undefined,
@@ -472,19 +529,20 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     properties: itemProperties.map(p => ({ name: p, index: p.toLowerCase() })),
                     modifiers: itemModifiers
                 };
-            } else if (activeTab === 'wildshape' || activeTab === 'familiar') {
+            } else if (activeTab === 'creature') {
                 payload = {
                     ...payload,
-                    size: beastSize,
-                    type: beastType,
-                    ac: beastAc,
-                    hp: beastHp,
-                    speed: beastSpeed,
-                    ...beastAbilities,
-                    senses: beastSenses,
-                    languages: beastLanguages,
-                    challenge_rating: beastCr,
-                    actions: beastActions
+                    size: creatureSize,
+                    type: creatureType,
+                    ac: creatureAc,
+                    hp: creatureHp,
+                    speed: creatureSpeed,
+                    ...creatureAbilities,
+                    senses: creatureSenses,
+                    languages: creatureLanguages,
+                    challenge_rating: creatureCr,
+                    actions: creatureActions,
+                    traits: traits.map(t => ({ name: t.name, desc: [t.desc], effects: t.effects }))
                 };
             }
 
@@ -496,8 +554,8 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                 };
             }
 
-            await saveHomebrew(tableMap[activeTab] as any, currentUser.id, payload, isSharedGlobally);
-            alert(`${name} has been added to the Persona network.`);
+            await saveHomebrew(tableMap[activeTab] as any, currentUser.id, payload, isSharedGlobally, editingId || undefined);
+            alert(`${name} has been ${editingId ? 'updated in' : 'added to'} the Persona network.`);
             resetForm();
             fetchList();
         } catch (err) {
@@ -529,13 +587,13 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                 </div>
 
                 <div className="flex border-b border-gray-800 bg-[#1b1c20] shrink-0 overflow-x-auto no-scrollbar">
-                    {(['race', 'class', 'subclass', 'background', 'spell', 'item', 'wildshape', 'familiar', 'feat'] as const).map(t => (
+                    {(['race', 'class', 'subclass', 'background', 'spell', 'item', 'creature', 'feat'] as const).map(t => (
                         <button 
                             key={t}
                             onClick={() => { setActiveTab(t); setShowForm(false); }}
                             className={`px-8 py-4 font-bold uppercase text-xs tracking-[0.2em] transition-all border-b-2 whitespace-nowrap ${activeTab === t ? 'text-dnd-gold border-dnd-gold bg-dnd-gold/5' : 'text-gray-600 border-transparent hover:text-gray-400'}`}
                         >
-                            {t === 'class' ? 'Classes' : t === 'subclass' ? 'Subclasses' : t === 'wildshape' ? 'Wild Shapes' : t === 'familiar' ? 'Familiars' : t === 'feat' ? 'Feats' : `${t}s`}
+                            {t === 'class' ? 'Classes' : t === 'subclass' ? 'Subclasses' : t === 'creature' ? 'Creatures' : t === 'feat' ? 'Feats' : `${t}s`}
                         </button>
                     ))}
                 </div>
@@ -547,15 +605,18 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                         <div className="p-4 border-b border-gray-800 flex justify-between items-center">
                             <h3 className="text-[10px] font-black uppercase text-gray-500 tracking-widest">The Archives</h3>
                             <div className="flex gap-2">
-                                <button onClick={() => setShowImportArea(true)} className="text-[10px] text-indigo-400 hover:underline font-bold uppercase">Import</button>
                                 <button onClick={() => setShowForm(true)} className="text-[10px] text-dnd-gold hover:underline font-bold uppercase">+ Forge New</button>
                             </div>
                         </div>
                         <div className="flex-grow overflow-y-auto custom-scrollbar p-2 space-y-1">
                             {loading && list.length === 0 ? <div className="p-4 text-xs text-gray-600 animate-pulse">Browsing scrolls...</div> : (
                                 list.map(item => (
-                                    <div key={item.id} className="p-3 bg-gray-800/20 rounded-lg border border-gray-700/50 hover:border-dnd-gold transition-colors group relative">
-                                        <div className="font-bold text-sm text-gray-300 group-hover:text-white">{item.name}</div>
+                                    <div 
+                                        key={item.id} 
+                                        onClick={() => handleEdit(item)}
+                                        className="p-3 bg-gray-800/20 rounded-lg border border-gray-700/50 hover:border-dnd-gold transition-colors group relative cursor-pointer"
+                                    >
+                                        <div className="font-bold text-sm text-gray-300 group-hover:text-white">{item.name} (HB)</div>
                                         <div className="flex justify-between items-center mt-1">
                                             <div className="text-[8px] text-gray-600 uppercase font-black">By {item.user_id === currentUser.id ? 'You' : item.user_id?.substring(0,8)}</div>
                                             <div className="flex items-center gap-2">
@@ -583,88 +644,6 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
 
                     {/* Main Content Area */}
                     <div className="flex-grow overflow-y-auto custom-scrollbar bg-[#1b1c20] relative">
-                        {showImportArea && (
-                            <div className="absolute inset-0 z-50 bg-[#1b1c20] p-8 flex flex-col animate-in fade-in duration-300">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h3 className="text-2xl font-serif text-dnd-gold uppercase tracking-tighter">Import Homebrew</h3>
-                                    <button onClick={() => setShowImportArea(false)} className="text-gray-500 hover:text-white">&times;</button>
-                                </div>
-                                
-                                <div className="flex gap-4 mb-6">
-                                    <button 
-                                        onClick={() => setImportType('json')}
-                                        className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${importType === 'json' ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-500'}`}
-                                    >
-                                        JSON Object
-                                    </button>
-                                    <button 
-                                        onClick={() => setImportType('url')}
-                                        className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${importType === 'url' ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-500'}`}
-                                    >
-                                        Web URL
-                                    </button>
-                                </div>
-
-                                {importType === 'json' ? (
-                                    <>
-                                        <p className="text-gray-500 text-xs mb-4 font-serif italic">Paste a JSON object matching the D&D 5e schema to populate the forge fields.</p>
-                                        <textarea 
-                                            value={importJson}
-                                            onChange={e => setImportJson(e.target.value)}
-                                            className="flex-grow bg-[#0b0c0e] border border-gray-800 rounded-xl p-4 text-xs font-mono text-indigo-300 outline-none focus:border-indigo-500 mb-6 resize-none"
-                                            placeholder='{ "name": "My Homebrew", ... }'
-                                        />
-                                        <div className="flex gap-4">
-                                            <button 
-                                                onClick={() => setShowImportArea(false)}
-                                                className="px-8 py-3 bg-gray-800 text-gray-400 rounded-lg font-black uppercase text-[10px] tracking-widest"
-                                            >
-                                                Cancel
-                                            </button>
-                                            <button 
-                                                onClick={handleImportJson}
-                                                className="flex-grow py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-black uppercase text-[10px] tracking-widest shadow-xl transition-all"
-                                            >
-                                                Process JSON
-                                            </button>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <>
-                                        <p className="text-gray-500 text-xs mb-4 font-serif italic">Enter a URL from a D&D wiki or database. We'll try our best to extract the data without AI.</p>
-                                        <input 
-                                            type="url"
-                                            value={importUrl}
-                                            onChange={e => setImportUrl(e.target.value)}
-                                            className="w-full bg-[#0b0c0e] border border-gray-800 rounded-xl p-4 text-sm text-white outline-none focus:border-indigo-500 mb-6"
-                                            placeholder="https://www.dandwiki.com/wiki/..."
-                                        />
-                                        <div className="flex-grow"></div>
-                                        <div className="flex gap-4">
-                                            <button 
-                                                onClick={() => setShowImportArea(false)}
-                                                className="px-8 py-3 bg-gray-800 text-gray-400 rounded-lg font-black uppercase text-[10px] tracking-widest"
-                                            >
-                                                Cancel
-                                            </button>
-                                            <button 
-                                                onClick={handleImportUrl}
-                                                disabled={isScraping || !importUrl}
-                                                className="flex-grow py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-800 disabled:text-gray-600 text-white rounded-lg font-black uppercase text-[10px] tracking-widest shadow-xl transition-all flex items-center justify-center gap-2"
-                                            >
-                                                {isScraping ? (
-                                                    <>
-                                                        <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                                        Scraping...
-                                                    </>
-                                                ) : "Extract Data"}
-                                            </button>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        )}
-
                         {!showForm ? (
                             <div className="h-full flex flex-col items-center justify-center text-center p-10 max-w-lg mx-auto">
                                 <div className="w-24 h-24 bg-dnd-gold/5 border border-dnd-gold/20 rounded-full flex items-center justify-center text-5xl mb-8 opacity-20 shadow-[0_0_50px_rgba(201,173,106,0.1)]">📜</div>
@@ -714,41 +693,41 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
 
                                  {/* TAB SPECIFIC CONFIGS */}
 
-                                 {(activeTab === 'wildshape' || activeTab === 'familiar') && (
+                                 {activeTab === 'creature' && (
                                     <div className="space-y-12 animate-in slide-in-from-bottom-4 duration-500">
                                         <section className="grid grid-cols-1 md:grid-cols-4 gap-6">
                                             <div>
                                                 <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Size</label>
-                                                <select value={beastSize} onChange={e => setBeastSize(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-3 text-white">
+                                                <select value={creatureSize} onChange={e => setCreatureSize(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-3 text-white">
                                                     <option value="Tiny">Tiny</option><option value="Small">Small</option><option value="Medium">Medium</option><option value="Large">Large</option><option value="Huge">Huge</option><option value="Gargantuan">Gargantuan</option>
                                                 </select>
                                             </div>
                                             <div>
                                                 <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Type</label>
-                                                <input type="text" value={beastType} onChange={e => setBeastType(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-3 text-white" placeholder="e.g. Beast, Monstrosity" />
+                                                <input type="text" value={creatureType} onChange={e => setCreatureType(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-3 text-white" placeholder="e.g. Creature, Monstrosity" />
                                             </div>
                                             <div>
                                                 <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Armor Class</label>
-                                                <input type="number" value={beastAc} onChange={e => setBeastAc(parseInt(e.target.value)||0)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-3 text-white" />
+                                                <input type="number" value={creatureAc} onChange={e => setCreatureAc(parseInt(e.target.value)||0)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-3 text-white" />
                                             </div>
                                             <div>
                                                 <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Hit Points</label>
-                                                <input type="number" value={beastHp} onChange={e => setBeastHp(parseInt(e.target.value)||0)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-3 text-white" />
+                                                <input type="number" value={creatureHp} onChange={e => setCreatureHp(parseInt(e.target.value)||0)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-3 text-white" />
                                             </div>
                                         </section>
 
                                         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                             <div>
                                                 <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Speed</label>
-                                                <input type="text" value={beastSpeed} onChange={e => setBeastSpeed(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-3 text-white" placeholder="e.g. 30 ft., fly 60 ft." />
+                                                <input type="text" value={creatureSpeed} onChange={e => setCreatureSpeed(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-3 text-white" placeholder="e.g. 30 ft., fly 60 ft." />
                                             </div>
                                             <div>
                                                 <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">CR</label>
-                                                <input type="number" step="0.125" value={beastCr} onChange={e => setBeastCr(parseFloat(e.target.value)||0)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-3 text-white" />
+                                                <input type="number" step="0.125" value={creatureCr} onChange={e => setCreatureCr(parseFloat(e.target.value)||0)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-3 text-white" />
                                             </div>
                                             <div>
                                                 <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Senses</label>
-                                                <input type="text" value={beastSenses} onChange={e => setBeastSenses(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-3 text-white" placeholder="e.g. Darkvision 60 ft." />
+                                                <input type="text" value={creatureSenses} onChange={e => setCreatureSenses(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-3 text-white" placeholder="e.g. Darkvision 60 ft." />
                                             </div>
                                         </section>
 
@@ -756,29 +735,45 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                             {ABILITY_NAMES.map(s => (
                                                 <div key={s}>
                                                     <label className="text-[9px] uppercase font-black text-gray-600 tracking-widest block mb-1 text-center">{s.toUpperCase()}</label>
-                                                    <input type="number" value={beastAbilities[s as keyof typeof beastAbilities]} onChange={e => setBeastAbilities({...beastAbilities, [s]: parseInt(e.target.value)||0})} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-white text-center text-sm" />
+                                                    <input type="number" value={creatureAbilities[s as keyof typeof creatureAbilities]} onChange={e => setCreatureAbilities({...creatureAbilities, [s]: parseInt(e.target.value)||0})} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-white text-center text-sm" />
                                                 </div>
                                             ))}
                                         </section>
 
                                         <section className="space-y-6">
                                             <div className="flex justify-between items-center border-b border-gray-800 pb-2">
-                                                <h4 className="text-[10px] uppercase font-black text-dnd-gold tracking-[0.2em]">Actions</h4>
-                                                <button type="button" onClick={() => setBeastActions([...beastActions, { name: '', desc: '' }])} className="text-[10px] bg-gray-800 px-3 py-1 rounded text-white">+ Add Action</button>
+                                                <h4 className="text-[10px] uppercase font-black text-dnd-gold tracking-[0.2em]">Special Traits & Abilities</h4>
+                                                <button type="button" onClick={() => setTraits([...traits, { name: '', desc: '', effects: [] }])} className="text-[10px] bg-gray-800 px-3 py-1 rounded text-white">+ Add Trait</button>
                                             </div>
                                             <div className="space-y-4">
-                                                {beastActions.map((action, i) => (
+                                                {traits.map((t, i) => (
                                                     <div key={i} className="bg-black/20 p-5 rounded-xl border border-gray-800 space-y-4 relative group">
-                                                        <button type="button" onClick={() => setBeastActions(beastActions.filter((_, idx) => idx !== i))} className="absolute top-2 right-4 text-red-500 hover:text-red-400">&times;</button>
+                                                        <button type="button" onClick={() => setTraits(traits.filter((_, idx) => idx !== i))} className="absolute top-2 right-4 text-red-500 hover:text-red-400">&times;</button>
+                                                        <input type="text" value={t.name} onChange={e => { const n = [...traits]; n[i].name = e.target.value; setTraits(n); }} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-sm text-white font-bold" placeholder="Trait Name (e.g. Keen Smell)" />
+                                                        <textarea value={t.desc} onChange={e => { const n = [...traits]; n[i].desc = e.target.value; setTraits(n); }} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-gray-400 h-20 resize-none font-serif" placeholder="Description..." />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </section>
+
+                                        <section className="space-y-6">
+                                            <div className="flex justify-between items-center border-b border-gray-800 pb-2">
+                                                <h4 className="text-[10px] uppercase font-black text-dnd-gold tracking-[0.2em]">Actions</h4>
+                                                <button type="button" onClick={() => setCreatureActions([...creatureActions, { name: '', desc: '' }])} className="text-[10px] bg-gray-800 px-3 py-1 rounded text-white">+ Add Action</button>
+                                            </div>
+                                            <div className="space-y-4">
+                                                {creatureActions.map((action, i) => (
+                                                    <div key={i} className="bg-black/20 p-5 rounded-xl border border-gray-800 space-y-4 relative group">
+                                                        <button type="button" onClick={() => setCreatureActions(creatureActions.filter((_, idx) => idx !== i))} className="absolute top-2 right-4 text-red-500 hover:text-red-400">&times;</button>
                                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                            <input type="text" value={action.name} onChange={e => { const n = [...beastActions]; n[i].name = e.target.value; setBeastActions(n); }} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-sm text-white font-bold" placeholder="Action Name" />
-                                                            <input type="number" value={action.attack_bonus} onChange={e => { const n = [...beastActions]; n[i].attack_bonus = parseInt(e.target.value); setBeastActions(n); }} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-white" placeholder="Atk Bonus" />
+                                                            <input type="text" value={action.name} onChange={e => { const n = [...creatureActions]; n[i].name = e.target.value; setCreatureActions(n); }} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-sm text-white font-bold" placeholder="Action Name" />
+                                                            <input type="number" value={action.attack_bonus} onChange={e => { const n = [...creatureActions]; n[i].attack_bonus = parseInt(e.target.value); setCreatureActions(n); }} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-white" placeholder="Atk Bonus" />
                                                             <div className="flex gap-2">
-                                                                <input type="text" value={action.damage_dice} onChange={e => { const n = [...beastActions]; n[i].damage_dice = e.target.value; setBeastActions(n); }} className="flex-grow bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-white" placeholder="Dmg Dice" />
-                                                                <input type="text" value={action.damage_type} onChange={e => { const n = [...beastActions]; n[i].damage_type = e.target.value; setBeastActions(n); }} className="w-24 bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-white" placeholder="Type" />
+                                                                <input type="text" value={action.damage_dice} onChange={e => { const n = [...creatureActions]; n[i].damage_dice = e.target.value; setCreatureActions(n); }} className="flex-grow bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-white" placeholder="Dmg Dice" />
+                                                                <input type="text" value={action.damage_type} onChange={e => { const n = [...creatureActions]; n[i].damage_type = e.target.value; setCreatureActions(n); }} className="w-24 bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-white" placeholder="Type" />
                                                             </div>
                                                         </div>
-                                                        <textarea value={action.desc} onChange={e => { const n = [...beastActions]; n[i].desc = e.target.value; setBeastActions(n); }} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-gray-400 h-20 resize-none font-serif" placeholder="Description..." />
+                                                        <textarea value={action.desc} onChange={e => { const n = [...creatureActions]; n[i].desc = e.target.value; setCreatureActions(n); }} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-gray-400 h-20 resize-none font-serif" placeholder="Description..." />
                                                     </div>
                                                 ))}
                                             </div>
@@ -848,6 +843,21 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                     <input type="checkbox" checked={spellRitual} onChange={e => setSpellRitual(e.target.checked)} className="accent-yellow-500 w-4 h-4" />
                                                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Ritual</span>
                                                 </label>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block">Available for Classes</label>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {['Bard', 'Cleric', 'Druid', 'Paladin', 'Ranger', 'Sorcerer', 'Warlock', 'Wizard', 'Artificer'].map(cls => (
+                                                        <button 
+                                                            key={cls} type="button"
+                                                            onClick={() => setSpellClasses(prev => prev.includes(cls) ? prev.filter(x => x !== cls) : [...prev, cls])}
+                                                            className={`px-3 py-1.5 rounded border text-[10px] font-bold transition-all ${spellClasses.includes(cls) ? 'bg-blue-600 text-white border-blue-600' : 'bg-black/20 text-gray-500 border-gray-700 hover:border-gray-500'}`}
+                                                        >
+                                                            {cls}
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             </div>
 
                                             <div className="space-y-4">
@@ -1006,6 +1016,46 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                     <select value={itemDmgType} onChange={e => setItemDmgType(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-white">
                                                         {['Piercing', 'Slashing', 'Bludgeoning', 'Fire', 'Cold', 'Lightning', 'Force', 'Necrotic', 'Radiant', 'Psychic'].map(t => <option key={t} value={t}>{t}</option>)}
                                                     </select>
+                                                </div>
+
+                                                <div className="md:col-span-3 pt-4 border-t border-red-900/20">
+                                                    <div className="flex items-center justify-between mb-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                id="itemIsThrown"
+                                                                checked={itemIsThrown} 
+                                                                onChange={e => setItemIsThrown(e.target.checked)} 
+                                                                className="accent-red-500 w-4 h-4" 
+                                                            />
+                                                            <label htmlFor="itemIsThrown" className="text-[10px] font-bold text-gray-400 uppercase tracking-widest cursor-pointer">Thrown Weapon</label>
+                                                        </div>
+                                                    </div>
+
+                                                    {itemIsThrown && (
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-top-2 duration-200">
+                                                            <div>
+                                                                <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Thrown Range</label>
+                                                                <input 
+                                                                    type="text" 
+                                                                    value={itemThrownRange} 
+                                                                    onChange={e => setItemThrownRange(e.target.value)} 
+                                                                    className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-sm text-white font-mono" 
+                                                                    placeholder="e.g. 20/60" 
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Thrown Damage (Optional)</label>
+                                                                <input 
+                                                                    type="text" 
+                                                                    value={itemThrownDamage} 
+                                                                    onChange={e => setItemThrownDamage(e.target.value)} 
+                                                                    className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-sm text-white font-mono" 
+                                                                    placeholder="e.g. 1d4" 
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </section>
                                         )}

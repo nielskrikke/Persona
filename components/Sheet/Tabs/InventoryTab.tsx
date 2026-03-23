@@ -11,7 +11,7 @@ interface InventoryTabProps {
     toggleAttunement: (id: string) => void;
     setSelectedDetail: (item: any) => void;
     setShowItemSearchModal: (val: boolean, mode?: 'search' | 'custom') => void;
-    setShowHomebrewModal: (val: boolean, tab?: 'race' | 'class' | 'subclass' | 'background' | 'spell' | 'item' | 'wildshape' | 'familiar' | 'feat') => void;
+    setShowHomebrewModal: (val: boolean, tab?: 'race' | 'class' | 'subclass' | 'background' | 'spell' | 'item' | 'creature' | 'feat') => void;
     setCharacter: React.Dispatch<React.SetStateAction<CharacterState>>;
 }
 

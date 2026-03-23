@@ -10,9 +10,10 @@ interface RaceStepProps {
   onSelect: (race: RaceDetail, subrace: SubraceDetail | null, extraData?: any) => void;
   selectedRace: RaceDetail | null;
   onBack: () => void;
+  userId?: string;
 }
 
-const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack }) => {
+const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, userId }) => {
   const [races, setRaces] = useState<APIReference[]>([]);
   const [loading, setLoading] = useState(true);
   const [previewRace, setPreviewRace] = useState<any | null>(null);
@@ -36,7 +37,7 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack }) =
 
   useEffect(() => {
     const load = async () => {
-      const results = await fetchRaces();
+      const results = await fetchRaces(userId);
       setRaces(results);
       setLoading(false);
       
@@ -44,7 +45,7 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack }) =
       setWizardCantrips(spells);
     };
     load();
-  }, []);
+  }, [userId]);
 
   const handlePreview = async (index: string) => {
     setPreviewRace(null);
@@ -57,20 +58,20 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack }) =
     setChosenLanguages([]);
     setTraitSelections({});
     
-    const detail = await fetchRaceDetail(index);
+    const detail = await fetchRaceDetail(index, userId);
     setPreviewRace(detail);
     setValidationError(null);
     
     if (detail) {
         setLoadingSubraces(true);
-        const subs = await fetchSubraces(index);
+        const subs = await fetchSubraces(index, userId);
         setSubraces(subs);
         setLoadingSubraces(false);
     }
   };
 
   const handleSubraceSelect = async (index: string) => {
-      const detail = await fetchSubraceDetail(index);
+      const detail = await fetchSubraceDetail(index, userId);
       setSelectedSubrace(detail);
       setHighElfCantrip(null);
       setValidationError(null);
@@ -187,13 +188,182 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack }) =
         }
 
         setValidationError(null);
+        
+        const choices: any[] = [];
         const extraData: any = { ...traitSelections };
-        if (ancestry) extraData.ancestry = ancestry;
-        if (halfElfSkills.length > 0) extraData.skills = halfElfSkills;
-        if (halfElfAsi.length > 0) extraData.halfElfAsi = halfElfAsi;
-        if (highElfCantrip) extraData.cantrip = highElfCantrip;
-        if (chosenLanguages.length > 0) extraData.languages = chosenLanguages;
+        
+        if (ancestry) {
+            extraData.ancestry = ancestry;
+            choices.push({
+                id: `race-ancestry-${previewRace.index}`,
+                level: 1,
+                source: previewRace.name,
+                type: 'ancestry',
+                label: 'Draconic Ancestry',
+                value: ancestry,
+                options: ['Black', 'Blue', 'Brass', 'Bronze', 'Copper', 'Gold', 'Green', 'Red', 'Silver', 'White']
+            });
+        }
+        
+        if (halfElfSkills.length > 0) {
+            extraData.skills = halfElfSkills;
+            choices.push({
+                id: 'race-half-elf-skills',
+                level: 1,
+                source: 'Half-Elf',
+                type: 'skill',
+                label: 'Skill Versatility',
+                value: halfElfSkills,
+                options: SKILL_LIST.map(s => s.name),
+                count: 2
+            });
+        }
+        
+        if (halfElfAsi.length > 0) {
+            extraData.halfElfAsi = halfElfAsi;
+            choices.push({
+                id: 'race-half-elf-asi',
+                level: 1,
+                source: 'Half-Elf',
+                type: 'asi',
+                label: 'Ability Score Increase',
+                value: halfElfAsi,
+                options: ABILITY_NAMES.filter(a => a !== 'cha'),
+                count: 2
+            });
+        }
+        
+        if (highElfCantrip) {
+            extraData.cantrip = highElfCantrip;
+            choices.push({
+                id: 'race-high-elf-cantrip',
+                level: 1,
+                source: 'High Elf',
+                type: 'spell',
+                label: 'High Elf Cantrip',
+                value: highElfCantrip.name,
+                options: wizardCantrips.map(s => s.name)
+            });
+        }
+        
+        if (chosenLanguages.length > 0) {
+            extraData.languages = chosenLanguages;
+            choices.push({
+                id: `race-languages-${previewRace.index}`,
+                level: 1,
+                source: previewRace.name,
+                type: 'language',
+                label: 'Extra Languages',
+                value: chosenLanguages,
+                options: LANGUAGE_LIST,
+                count: previewRace.language_options
+            });
+        }
 
+        // Trait Selections to Choices
+        if (traitSelections['kenku-training']) {
+            choices.push({
+                id: 'race-kenku-training',
+                level: 1,
+                source: 'Kenku',
+                type: 'skill',
+                label: 'Kenku Training',
+                value: traitSelections['kenku-training'],
+                options: ["Acrobatics", "Deception", "Stealth", "Sleight of Hand"],
+                count: 2
+            });
+        }
+        if (traitSelections['changeling-instincts']) {
+            choices.push({
+                id: 'race-changeling-instincts',
+                level: 1,
+                source: 'Changeling',
+                type: 'skill',
+                label: 'Changeling Instincts',
+                value: traitSelections['changeling-instincts'],
+                options: ["Deception", "Insight", "Intimidation", "Persuasion"],
+                count: 2
+            });
+        }
+        if (traitSelections['specialized-design-skill']) {
+            choices.push({
+                id: 'race-warforged-skill',
+                level: 1,
+                source: 'Warforged',
+                type: 'skill',
+                label: 'Specialized Design: Skill',
+                value: traitSelections['specialized-design-skill'],
+                options: SKILL_LIST.map(s => s.name)
+            });
+        }
+        if (traitSelections['specialized-design-tool']) {
+            choices.push({
+                id: 'race-warforged-tool',
+                level: 1,
+                source: 'Warforged',
+                type: 'tool',
+                label: 'Specialized Design: Tool',
+                value: traitSelections['specialized-design-tool'],
+                options: ["Alchemist's Supplies", "Brewer's Supplies", "Calligrapher's Supplies", "Carpenter's Tools", "Cartographer's Tools", "Cobbler's Tools", "Cook's Utensils", "Glassblower's Tools", "Jeweler's Tools", "Leatherworker's Tools", "Mason's Tools", "Painter's Supplies", "Potter's Tools", "Smith's Tools", "Tinker's Tools", "Weaver's Tools", "Woodcarver's Tools", "Disguise Kit", "Forgery Kit", "Herbalism Kit", "Navigator's Tools", "Poisoner's Kit", "Thieves' Tools"]
+            });
+        }
+        if (traitSelections['survivor']) {
+            choices.push({
+                id: 'race-centaur-survivor',
+                level: 1,
+                source: 'Centaur',
+                type: 'skill',
+                label: 'Survivor',
+                value: traitSelections['survivor'],
+                options: ["Animal Handling", "Medicine", "Nature", "Survival"]
+            });
+        }
+        if (traitSelections['imposing-presence']) {
+            choices.push({
+                id: 'race-minotaur-presence',
+                level: 1,
+                source: 'Minotaur',
+                type: 'skill',
+                label: 'Imposing Presence',
+                value: traitSelections['imposing-presence'],
+                options: ["Intimidation", "Persuasion"]
+            });
+        }
+        if (traitSelections['hunter-instincts']) {
+            choices.push({
+                id: 'race-leonin-instincts',
+                level: 1,
+                source: 'Leonin',
+                type: 'skill',
+                label: 'Hunter Instincts',
+                value: traitSelections['hunter-instincts'],
+                options: ["Athletics", "Intimidation", "Perception", "Survival"]
+            });
+        }
+        if (traitSelections['decadent-mastery-skill-tool']) {
+            choices.push({
+                id: 'race-githyanki-mastery-skill-tool',
+                level: 1,
+                source: 'Githyanki',
+                type: 'skill', // or tool, but we'll use skill for simplicity in overview for now
+                label: 'Decadent Mastery: Skill/Tool',
+                value: traitSelections['decadent-mastery-skill-tool'],
+                options: [...SKILL_LIST.map(s => s.name), "Alchemist's Supplies", "Brewer's Supplies", "Calligrapher's Supplies", "Carpenter's Tools", "Cartographer's Tools", "Cobbler's Tools", "Cook's Utensils", "Glassblower's Tools", "Jeweler's Tools", "Leatherworker's Tools", "Mason's Tools", "Painter's Supplies", "Potter's Tools", "Smith's Tools", "Tinker's Tools", "Weaver's Tools", "Woodcarver's Tools", "Disguise Kit", "Forgery Kit", "Herbalism Kit", "Navigator's Tools", "Poisoner's Kit", "Thieves' Tools"]
+            });
+        }
+        if (traitSelections['decadent-mastery-language']) {
+            choices.push({
+                id: 'race-githyanki-mastery-language',
+                level: 1,
+                source: 'Githyanki',
+                type: 'language',
+                label: 'Decadent Mastery: Language',
+                value: traitSelections['decadent-mastery-language'],
+                options: LANGUAGE_LIST
+            });
+        }
+
+        extraData.choices = choices;
         onSelect(previewRace, selectedSubrace, extraData);
     }
   };

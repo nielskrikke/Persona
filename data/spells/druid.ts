@@ -40,6 +40,55 @@ export const DRUID_SPELLS: SpellDetail[] = [
         desc: ["You create a long, vine-like whip covered in thorns that lashes out at your command toward a creature in range. Make a melee spell attack against the target. If the attack hits, the creature takes 1d6 piercing damage, and if the creature is Large or smaller, you pull the creature up to 10 feet closer to you."],
         damage: { damage_type: {name:"Piercing", index:"piercing"}, damage_at_character_level: {"1":"1d6", "5":"2d6", "11":"3d6", "17":"4d6"} } 
     },
+    {
+        index: "control-flames", name: "Control Flames", level: 0, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "60 feet", components: ["S"], duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["You choose nonmagical flame that you can see within range and that fits within a 5-foot cube. You affect it in one of the following ways:", "• You instantaneously expand the flame 5 feet in one direction, provided that flammable material is present in the new location.", "• You instantaneously extinguish the flames within the cube.", "• You double or halve the area of bright light and dim light shed by the flame, change its color, or both. This change lasts for 1 hour.", "• You cause simple shapes—such as the vague form of a creature, an inanimate object, or a location—to appear within the flames and animate as you like. These shapes last for 1 hour."]
+    },
+    {
+        index: "gust", name: "Gust", level: 0, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "30 feet", components: ["V", "S"], duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["You seize the air and compel it to create one of the following effects at a point you can see within range:", "• One Medium or smaller creature that you choose must succeed on a Strength saving throw or be pushed up to 5 feet away from you.", "• You create a small blast of air capable of moving one object that is neither held nor carried and that weighs no more than 5 pounds. The object is pushed up to 10 feet away from you. It isn’t pushed with enough force to cause damage.", "• You create a harmless sensory effect using air, such as causing leaves to rustle, wind to slam shutters shut, or your clothing to ripple in a breeze."]
+    },
+    {
+        index: "magic-stone", name: "Magic Stone", level: 0, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 bonus action", range: "Touch", components: ["V", "S"], duration: "1 minute", ritual: false, concentration: false, classes: [],
+        desc: ["You touch one to three pebbles and imbue them with magic. You or someone else can make a ranged spell attack with one of the pebbles by throwing it or hurling it with a sling. If thrown, it has a range of 60 feet. If someone else attacks with the pebble, that attacker adds your spellcasting ability modifier, rather than the attacker’s modifier, to the attack roll. On a hit, the target takes bludgeoning damage equal to 1d6 + your spellcasting ability modifier. Hit or miss, the spell then ends on the stone. If you cast this spell again, the spell ends on any pebbles still affected by your previous casting."],
+        damage: { damage_type: { name: "Bludgeoning", index: "bludgeoning" }, damage_at_character_level: { "1": "1d6" } }
+    },
+    {
+        index: "mold-earth", name: "Mold Earth", level: 0, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "30 feet", components: ["S"], duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["You choose a portion of dirt or stone that you can see within range and that fits within a 5-foot cube. You manipulate it in one of the following ways:", "• If you target an area of loose earth, you can instantaneously excavate it, move it along the ground, and deposit it up to 5 feet away. This movement doesn’t have enough force to cause damage.", "• You cause shapes, colors, or both to appear on the dirt or stone, spelling out words, creating images, or shaping patterns. The changes last for 1 hour.", "• If the dirt or stone you target is difficult terrain, you can cause it to become normal terrain. Alternatively, you can cause normal terrain to become difficult terrain. This change lasts for 1 hour."]
+    },
+    {
+        index: "primal-savagery", name: "Primal Savagery", level: 0, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "Self", components: ["S"], duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["You channel primal magic to cause your teeth or fingernails to sharpen, ready to deliver a corrosive attack. Make a melee spell attack against one creature within 5 feet of you. On a hit, the target takes 1d10 acid damage. After you make the attack, your teeth or fingernails return to normal."],
+        damage: { damage_type: { name: "Acid", index: "acid" }, damage_at_character_level: { "1": "1d10", "5": "2d10", "11": "3d10", "17": "4d10" } }
+    },
+    {
+        index: "shape-water", name: "Shape Water", level: 0, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "30 feet", components: ["S"], duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["You choose an area of water that you can see within range and that fits within a 5-foot cube. You manipulate it in one of the following ways:", "• You instantaneously move or otherwise change the flow of the water as you direct, up to 5 feet in any direction. This movement doesn’t have enough force to cause damage.", "• You cause the water to form into simple shapes and animate at your direction. This change lasts for 1 hour.", "• You change the water’s color or opacity. The water must be changed in the same way throughout. This change lasts for 1 hour.", "• You freeze the water, provided that there are no creatures in it. The water unfreezes in 1 hour."]
+    },
+
+    // Level 1
+    {
+        index: "absorb-elements", name: "Absorb Elements", level: 1, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 reaction", range: "Self", components: ["S"], duration: "1 round", ritual: false, concentration: false, classes: [],
+        desc: ["The spell captures some of the incoming energy, lessening its effect on you and storing it for your next melee attack. You have resistance to the triggering energy type until the start of your next turn. Also, the first time you hit with a melee attack on your next turn, the target takes an extra 1d6 damage of the triggering type, and the spell ends."],
+        higher_level: ["When you cast this spell using a spell slot of 2nd level or higher, the extra damage increases by 1d6 for each slot level above 1st."]
+    },
+    {
+        index: "earth-tremor", name: "Earth Tremor", level: 1, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "Self (10-foot radius)", components: ["V", "S"], duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["You cause a tremor in the ground within range. Each creature other than you in that area must make a Dexterity saving throw. On a failed save, a creature takes 1d6 bludgeoning damage and is knocked prone. If the ground in that area is loose earth or stone, it becomes difficult terrain until it is cleared, with each 5-foot-diameter portion requiring at least 1 minute to clear by hand."],
+        damage: { damage_type: { name: "Bludgeoning", index: "bludgeoning" }, damage_at_slot_level: { "1": "1d6", "2": "2d6", "3": "3d6", "4": "4d6", "5": "5d6", "6": "6d6", "7": "7d6", "8": "8d6", "9": "9d6" } },
+        dc: { dc_type: { name: "DEX", index: "dex" }, dc_success: "half" }
+    },
+    {
+        index: "ice-knife", name: "Ice Knife", level: 1, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "60 feet", components: ["S", "M"], material: "a drop of water or piece of ice", duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["You create a shard of ice and fling it at one creature within range. Make a ranged spell attack against the target. On a hit, the target takes 1d10 piercing damage. Hit or miss, the shard then explodes. The target and each creature within 5 feet of it must succeed on a Dexterity saving throw or take 2d6 cold damage."],
+        damage: { damage_type: { name: "Cold", index: "cold" }, damage_at_slot_level: { "1": "2d6", "2": "3d6", "3": "4d6", "4": "5d6", "5": "6d6", "6": "7d6", "7": "8d6", "8": "9d6", "9": "10d6" } },
+        dc: { dc_type: { name: "DEX", index: "dex" }, dc_success: "none" }
+    },
+    {
+        index: "snare", name: "Snare", level: 1, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 minute", range: "Touch", components: ["V", "S", "M"], material: "25 feet of rope, which the spell consumes", duration: "Until dispelled or triggered", ritual: false, concentration: false, classes: [],
+        desc: ["As you cast this spell, you use the rope to create a circle with a 5-foot radius on the ground or the floor. When you finish casting, the circle becomes nearly invisible and requires a successful Intelligence (Investigation) check against your spell save DC to be found. The trap triggers when a Small, Medium, or Large creature moves onto the ground or the floor in the spell’s radius. That creature must succeed on a Dexterity saving throw or be magically hoisted into the air, leaving it hanging upside down 3 feet above the ground or the floor. The creature is restrained until the spell ends."]
+    },
 
     // Level 1
     { 
@@ -107,6 +156,7 @@ export const DRUID_SPELLS: SpellDetail[] = [
         damage: { damage_type: { name: "Thunder", index: "thunder" }, damage_at_slot_level: { "1": "2d8", "2": "3d8", "3": "4d8", "4": "5d8" } },
         dc: { dc_type: { name: "CON", index: "con" }, dc_success: "half" }
     },
+    { index: "protection-from-evil-and-good", name: "Protection from Evil and Good", level: 1, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 action", range: "Touch", components: ["V", "S", "M"], material: "Holy water or powdered silver and iron.", duration: "Concentration, up to 10 minutes", ritual: false, concentration: true, classes: [], desc: ["Until the spell ends, one willing creature you touch is protected against certain types of creatures: aberrations, celestials, elementals, fey, fiends, and undead."] },
 
     // Level 2
     { 
@@ -159,9 +209,38 @@ export const DRUID_SPELLS: SpellDetail[] = [
         index: "pass-without-trace", name: "Pass Without Trace", level: 2, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 action", range: "Self", components: ["V", "S", "M"], material: "Ashes from a burned leaf of mistletoe and a sprig of spruce.", duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [], 
         desc: ["A veil of shadows and silence radiates from you, masking you and your companions from detection. For the duration, each creature you choose within 30 feet of you (including you) has a +10 bonus to Dexterity (Stealth) checks and can't be tracked except by magical means. A creature that receives this bonus leaves behind no tracks or other traces of its passage."] 
     },
+    {
+        index: "healing-spirit", name: "Healing Spirit", level: 2, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 bonus action", range: "60 feet", components: ["V", "S"], duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["You call forth a nature spirit to soothe the wounded. The spirit occupies a 5-foot cube within range. Until the spell ends, whenever you or a creature you can see moves into the spirit’s space for the first time on a turn or starts its turn there, you can cause the spirit to restore 1d6 hit points to that creature (no action required). The spirit can’t heal constructs or undead. The spirit can heal a number of times equal to 1 + your spellcasting ability modifier (minimum of twice). After it heals that many times, the spirit disappears."],
+        higher_level: ["When you cast this spell using a spell slot of 3rd level or higher, the healing increases by 1d6 for each slot level above 2nd."]
+    },
+    {
+        index: "dust-devil", name: "Dust Devil", level: 2, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "60 feet", components: ["V", "S", "M"], material: "a pinch of dust", duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["Choose an unoccupied 5-foot cube of air that you can see within range. An elemental force that resembles a dust devil appears in the cube and lasts for the spell’s duration. Any creature that ends its turn within 5 feet of the dust devil must make a Strength saving throw. On a failed save, the creature takes 1d8 bludgeoning damage and is pushed 10 feet away. On a successful save, the creature takes half as much damage and isn’t pushed."],
+        damage: { damage_type: { name: "Bludgeoning", index: "bludgeoning" }, damage_at_slot_level: { "2": "1d8" } },
+        dc: { dc_type: { name: "STR", index: "str" }, dc_success: "half" }
+    },
     { 
         index: "spike-growth", name: "Spike Growth", level: 2, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "150 feet", components: ["V", "S", "M"], material: "Seven sharp thorns or seven small twigs, each sharpened to a point.", duration: "Concentration, up to 10 minutes", ritual: false, concentration: true, classes: [], 
         desc: ["The ground in a 20-foot radius centered on a point within range twists and sprouts hard spikes and thorns. The area becomes difficult terrain for the duration. When a creature moves into or within the area, it takes 2d4 piercing damage for every 5 feet it travels."] 
+    },
+    { index: "augury", name: "Augury", level: 2, school: { name: "Divination", index: "divination" }, casting_time: "1 minute", range: "Self", components: ["V", "S", "M"], material: "Specially marked sticks, bones, or similar tokens worth at least 25 gp.", duration: "Instantaneous", ritual: true, concentration: false, classes: [], desc: ["You receive an omen from an otherworldly entity about the results of a specific course of action that you plan to take within the next 30 minutes."] },
+    { index: "continual-flame", name: "Continual Flame", level: 2, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "Touch", components: ["V", "S", "M"], material: "50 gp worth of ruby dust, which the spell consumes.", duration: "Until dispelled", ritual: false, concentration: false, classes: [], desc: ["A flame, equivalent in brightness to a torch, springs forth from an object that you touch. The effect looks like a regular flame, but it creates no heat and doesn't consume oxygen."] },
+    { index: "enlarge-reduce", name: "Enlarge/Reduce", level: 2, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "30 feet", components: ["V", "S", "M"], material: "A pinch of powdered iron.", duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [], desc: ["You cause a creature or an object you can see within range to grow larger or smaller for the duration."], dc: { dc_type: { name: "CON", index: "con" }, dc_success: "none" } },
+    { index: "summon-beast", name: "Summon Beast", level: 2, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "90 feet", components: ["V", "S", "M"], material: "A feather, tuft of fur, and fish tail inside a gilded acorn worth at least 200 gp.", duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [], desc: ["You call forth a bestial spirit to fight for you."] },
+
+    // Level 3
+    {
+        index: "erupting-earth", name: "Erupting Earth", level: 3, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "120 feet", components: ["V", "S", "M"], material: "a piece of obsidian", duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["Choose a point you can see on the ground within range. A fountain of churned earth and stone erupts in a 20-foot cube centered on that point. Each creature in that area must make a Dexterity saving throw. A creature takes 3d12 bludgeoning damage on a failed save, or half as much damage on a successful one. Additionally, the ground in that area becomes difficult terrain until cleared. Each 5-foot-square portion of the area requires at least 1 minute to clear by hand."],
+        damage: { damage_type: { name: "Bludgeoning", index: "bludgeoning" }, damage_at_slot_level: { "3": "3d12", "4": "4d12", "5": "5d12", "6": "6d12", "7": "7d12", "8": "8d12", "9": "9d12" } },
+        dc: { dc_type: { name: "DEX", index: "dex" }, dc_success: "half" }
+    },
+    {
+        index: "tidal-wave", name: "Tidal Wave", level: 3, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "120 feet", components: ["V", "S", "M"], material: "a drop of water", duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["You conjure up a large wave of water that crashes down on an area within range. The area can be up to 30 feet long, up to 10 feet wide, and up to 10 feet tall. Each creature in that area must make a Dexterity saving throw. On a failed save, a creature takes 4d8 bludgeoning damage and is knocked prone. On a successful save, a creature takes half as much damage and isn’t knocked prone. The water then spreads out as it extinguishes unprotected flames in its area and within 30 feet of it, and then it vanishes."],
+        damage: { damage_type: { name: "Bludgeoning", index: "bludgeoning" }, damage_at_slot_level: { "3": "4d8" } },
+        dc: { dc_type: { name: "DEX", index: "dex" }, dc_success: "half" }
     },
 
     // Level 3
@@ -212,6 +291,8 @@ export const DRUID_SPELLS: SpellDetail[] = [
         index: "water-walk", name: "Water Walk", level: 3, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "30 feet", components: ["V", "S", "M"], material: "A piece of cork.", duration: "1 hour", ritual: true, concentration: false, classes: [], 
         desc: ["This spell grants the ability to move across any liquid surface—such as water, acid, mud, snow, quicksand, or lava—as if it were harmless solid ground."] 
     },
+    { index: "revivify", name: "Revivify", level: 3, school: { name: "Necromancy", index: "necromancy" }, casting_time: "1 action", range: "Touch", components: ["V", "S", "M"], material: "Diamonds worth 300 gp, which the spell consumes.", duration: "Instantaneous", ritual: false, concentration: false, classes: [], desc: ["You touch a creature that has died within the last minute. That creature returns to life with 1 hit point."] },
+    { index: "summon-fey", name: "Summon Fey", level: 3, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "90 feet", components: ["V", "S", "M"], material: "A gilded flower worth at least 300 gp.", duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [], desc: ["You call forth a fey spirit to fight for you."] },
     { 
         index: "wind-wall", name: "Wind Wall", level: 3, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "120 feet", components: ["V", "S", "M"], material: "A tiny fan and a feather of exotic origin.", duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [], 
         desc: ["A wall of strong wind rises from the ground at a point you choose within range. The strong wind keeps fog, smoke, and other gases at bay. Small or smaller flying creatures or objects can't pass through the wall. Loose, lightweight materials brought into the wall fly upward. Arrows, bolts, and other ordinary projectiles launched at targets behind the wall are deflected upward and automatically miss."] 
@@ -286,6 +367,35 @@ export const DRUID_SPELLS: SpellDetail[] = [
         desc: ["You create a wall of fire on a solid surface within range. You can make the wall up to 60 feet long, 20 feet high, and 1 foot thick, or a ringed wall up to 20 feet in diameter, 20 feet high, and 1 foot thick. When the wall appears, each creature within its area must make a Dexterity saving throw. On a failed save, a creature takes 5d8 fire damage, or half as much damage on a successful save."],
         damage: { damage_type: { name: "Fire", index: "fire" }, damage_at_slot_level: { "4": "5d8", "5": "6d8", "6": "7d8" } }
     },
+    { index: "divination", name: "Divination", level: 4, school: { name: "Divination", index: "divination" }, casting_time: "1 action", range: "Self", components: ["V", "S", "M"], material: "Incense and a sacrificial offering worth at least 25 gp, which the spell consumes.", duration: "Instantaneous", ritual: true, concentration: false, classes: [], desc: ["Your magic and an offering put you in contact with a god or a god's servants. You ask a single question concerning a specific goal, event, or activity to occur within 7 days."] },
+    { index: "fire-shield", name: "Fire Shield", level: 4, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "Self", components: ["V", "S", "M"], material: "A bit of phosphorus or a firefly.", duration: "10 minutes", ritual: false, concentration: false, classes: [], desc: ["Thin and wispy flames wreathe your body for the duration, shedding bright light in a 10-foot radius and dim light for an additional 10 feet. You can choose a warm shield or a cold shield."] },
+    { index: "summon-elemental", name: "Summon Elemental", level: 4, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "90 feet", components: ["V", "S", "M"], material: "A crystal vial filled with air, earth, fire, or water worth at least 400 gp.", duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [], desc: ["You call forth an elemental spirit to fight for you."] },
+    {
+        index: "guardian-of-nature", name: "Guardian of Nature", level: 4, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 bonus action", range: "Self", components: ["V"], duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["A primal spirit animates you. Until the spell ends, you gain one of the following benefits of your choice: Primal Beast or Great Tree."]
+    },
+    {
+        index: "watery-sphere", name: "Watery Sphere", level: 4, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "90 feet", components: ["V", "S", "M"], material: "a droplet of water", duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["You conjure up a sphere of water with a 10-foot radius on a point you can see within range. The sphere can hover but no more than 10 feet off the ground. The sphere remains for the spell’s duration. Any creature in the sphere’s space must make a Strength saving throw. On a successful save, a creature is ejected from that space to the nearest unoccupied space of the creature’s choice outside the sphere. A Huge or larger creature succeeds on the saving throw automatically, and a Large or smaller creature can choose to fail it. On a failed save, a creature is restrained by the sphere and is engulfed by the water. At the end of each of its turns, a restrained target can repeat the saving throw, ending the effect on itself on a success."]
+    },
+    {
+        index: "maelstrom", name: "Maelstrom", level: 5, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "120 feet", components: ["V", "S", "M"], material: "five paper birds", duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["A swirling mass of 5-foot-deep water appears in a 30-foot radius centered on a point you can see within range. The point must be on the ground or in a body of water. Until the spell ends, that area is difficult terrain, and any creature that starts its turn there must succeed on a Strength saving throw or take 6d6 bludgeoning damage and be pulled 10 feet toward the center."],
+        damage: { damage_type: { name: "Bludgeoning", index: "bludgeoning" }, damage_at_slot_level: { "5": "6d6" } },
+        dc: { dc_type: { name: "STR", index: "str" }, dc_success: "none" }
+    },
+    {
+        index: "wrath-of-nature", name: "Wrath of Nature", level: 5, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "120 feet", components: ["V", "S"], duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["You call out to the spirits of nature to rouse them against your enemies. Choose a point you can see on the ground within range. A 60-foot cube of nature’s fury lashes out from that point for the duration. The area is difficult terrain for your enemies. At the start of each of your turns, you can cause the following effects: Grass and Undergrowth, Trees, Rocks, or Roots and Vines."]
+    },
+    {
+        index: "transmute-rock", name: "Transmute Rock", level: 5, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "120 feet", components: ["V", "S", "M"], material: "clay and water", duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["You choose an area of stone or mud that you can see within range and that fits within a 40-foot cube. You can transmute stone to mud, or mud to stone."]
+    },
+    {
+        index: "control-winds", name: "Control Winds", level: 5, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "300 feet", components: ["V", "S"], duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [],
+        desc: ["You take control of the air in a 100-foot cube that you can see within range. Choose one of the following effects for the duration: Gusts, Downdraft, or Updraft."]
+    },
 
     // Level 5
     { 
@@ -342,6 +452,7 @@ export const DRUID_SPELLS: SpellDetail[] = [
         index: "tree-stride", name: "Tree Stride", level: 5, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "Self", components: ["V", "S"], duration: "Concentration, up to 1 minute", ritual: false, concentration: false, classes: [], 
         desc: ["You gain the ability to enter a tree and move from inside it to inside another tree of the same kind within 500 feet. Both trees must be living and at least the same size as you. You must use 5 feet of movement to enter a tree."] 
     },
+    { index: "cone-of-cold", name: "Cone of Cold", level: 5, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "Self (60-foot cone)", components: ["V", "S", "M"], material: "A small crystal or glass cone.", duration: "Instantaneous", ritual: false, concentration: false, classes: [], desc: ["A blast of cold air emits from your hands. Each creature in a 60-foot cone must make a Con save or take 8d8 cold damage."], damage: { damage_type: {name:"Cold", index:"cold"}, damage_at_slot_level: {"5":"8d8"} }, dc: { dc_type: {name:"CON", index:"con"}, dc_success: "half" } },
     { 
         index: "wall-of-stone", name: "Wall of Stone", level: 5, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "120 feet", components: ["V", "S", "M"], material: "A small block of granite.", duration: "Concentration, up to 10 minutes", ritual: false, concentration: true, classes: [], 
         desc: ["A nonmagical wall of solid stone springs into existence at a point you choose within range. The wall is 6 inches thick and is composed of ten 10-foot-by-10-foot panels. Each panel must be contiguous with at least one other panel. Alternatively, you can create 10-foot-by-20-foot panels that are only 3 inches thick."] 
@@ -385,6 +496,7 @@ export const DRUID_SPELLS: SpellDetail[] = [
         damage: { damage_type: { name: "Piercing", index: "piercing" }, damage_at_slot_level: { "6": "7d8", "7": "8d8", "8": "9d8", "9": "10d8" } },
         dc: { dc_type: { name: "DEX", index: "dex" }, dc_success: "half" }
     },
+    { index: "summon-draconic-spirit", name: "Summon Draconic Spirit", level: 6, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "60 feet", components: ["V", "S", "M"], material: "An object with the image of a dragon engraved on it, worth at least 500 gp.", duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [], desc: ["You call forth a draconic spirit to fight for you."] },
     { 
         index: "wind-walk", name: "Wind Walk", level: 6, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 minute", range: "30 feet", components: ["V", "S", "M"], material: "Fire and holy water.", duration: "8 hours", ritual: false, concentration: false, classes: [], 
         desc: ["You and up to ten willing creatures you can see within range assume a gaseous form for the duration, appearing as wisps of cloud. While in this cloud form, a creature has a flying speed of 300 feet and has resistance to damage from nonmagical weapons. The only actions a creature can take in this form are the Dash action or to revert to its normal form."] 
@@ -414,6 +526,7 @@ export const DRUID_SPELLS: SpellDetail[] = [
         index: "reverse-gravity", name: "Reverse Gravity", level: 7, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "100 feet", components: ["V", "S", "M"], material: "A lodestone and iron filings.", duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [], 
         desc: ["This spell reverses gravity in a 50-foot-radius, 100-foot-high cylinder centered on a point within range. All creatures and objects that aren't somehow anchored to the ground in the area fall upward and reach the top of the area when you cast this spell. A creature can make a Dexterity saving throw to grab onto a fixed object it can reach, thus avoiding the fall."] 
     },
+    { index: "symbol", name: "Symbol", level: 7, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 minute", range: "Touch", components: ["V", "S", "M"], material: "Mercury, phosphorus, and powdered diamond and opal worth at least 1,000 gp, which the spell consumes.", duration: "Until dispelled or triggered", ritual: false, concentration: false, classes: [], desc: ["You scribe a harmful glyph either on a surface or within an object that can be closed to conceal the glyph. If you choose a surface, the glyph can cover an area of the surface no larger than 10 feet in diameter."] },
 
     // Level 8
     { 
@@ -450,6 +563,7 @@ export const DRUID_SPELLS: SpellDetail[] = [
         damage: { damage_type: { name: "Bludgeoning", index: "bludgeoning" }, damage_at_slot_level: { "8": "6d10" } },
         dc: { dc_type: { name: "STR", index: "str" }, dc_success: "half" }
     },
+    { index: "incendiary-cloud", name: "Incendiary Cloud", level: 8, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "150 feet", components: ["V", "S"], duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [], desc: ["A swirling cloud of smoke shot through with white-hot embers appears in a 20-foot-radius sphere centered on a point within range. The cloud spreads around corners and is heavily obscured. It lasts for the duration or until a wind of moderate or greater speed (at least 10 miles per hour) disperses it."] },
 
     // Level 9
     { 
@@ -467,5 +581,6 @@ export const DRUID_SPELLS: SpellDetail[] = [
     { 
         index: "true-resurrection", name: "True Resurrection", level: 9, school: { name: "Necromancy", index: "necromancy" }, casting_time: "1 hour", range: "Touch", components: ["V", "S", "M"], material: "A sprinkle of holy water and diamonds worth at least 25,000 gp, which the spell consumes.", duration: "Instantaneous", ritual: false, concentration: false, classes: [], 
         desc: ["You touch a creature that has been dead for no longer than 200 years and that died for any reason except old age. If the creature's soul is free and willing, the creature is restored to life with all its hit points."] 
-    }
+    },
+    { index: "mass-resurrection", name: "Mass Resurrection", level: 9, school: { name: "Necromancy", index: "necromancy" }, casting_time: "1 hour", range: "60 feet", components: ["V", "S", "M"], material: "Diamonds worth at least 5,000 gp, which the spell consumes.", duration: "Instantaneous", ritual: false, concentration: false, classes: [], desc: ["You touch a creature that has been dead for no longer than 200 years and that died for any reason except old age. If the creature's soul is free and willing, the creature is restored to life with all its hit points."] }
 ];

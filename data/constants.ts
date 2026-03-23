@@ -1,4 +1,4 @@
-import { calculateModifier } from '@/utils/rules';
+import { calculateModifier, calculateProficiency } from '@/utils/rules';
 import { RuleEntry } from '@/types';
 
 export const WIDGET_LABELS: Record<string, string> = {
@@ -17,8 +17,11 @@ export const WIDGET_LABELS: Record<string, string> = {
     hitDice: 'Hit Dice Tracker',
     concentration: 'Concentration',
     familiar: 'Familiar',
+    wildshape: 'Wild Shape',
+    polymorph: 'Polymorph',
     eldritchCannon: 'Eldritch Cannon',
-    steelDefender: 'Steel Defender'
+    steelDefender: 'Steel Defender',
+    activeCards: 'Active Cards'
 };
 
 export const WIDGET_METADATA: Record<string, { icon: string, desc: string, color: string }> = {
@@ -37,8 +40,11 @@ export const WIDGET_METADATA: Record<string, { icon: string, desc: string, color
     hitDice: { icon: '❤️', desc: 'Track and spend Hit Dice during short rests.', color: 'text-red-400' },
     concentration: { icon: '🧠', desc: 'Track active concentration spell and roll CON saves.', color: 'text-blue-500' },
     familiar: { icon: '🐈', desc: 'Manage and view your active familiar companion.', color: 'text-pink-400' },
+    wildshape: { icon: '🐾', desc: 'Transform into beasts using your Druid Wild Shape feature.', color: 'text-dnd-gold' },
+    polymorph: { icon: '🧬', desc: 'Transform yourself or others using the Polymorph spell.', color: 'text-purple-400' },
     eldritchCannon: { icon: '⚙️', desc: 'Artillerist Artificer companion with specific weapon modes.', color: 'text-cyan-400' },
-    steelDefender: { icon: '🐺', desc: 'Battle Smith companion that protects and attacks.', color: 'text-orange-400' }
+    steelDefender: { icon: '🐺', desc: 'Battle Smith companion that protects and attacks.', color: 'text-orange-400' },
+    activeCards: { icon: '🃏', desc: 'Track active tarot card effects for Card Masters.', color: 'text-purple-400' }
 };
 
 export const DEFAULT_LAYOUT: { left: string[], right: string[], mobile: string[] } = {
@@ -76,6 +82,14 @@ export const CLASS_FEATURES: Record<string, {name: string, formula: (level: numb
     'Rogue': { name: 'Stroke of Luck', reset: 'short', formula: (l) => l < 20 ? 0 : 1 },
     'Gunslinger': { name: 'Grit', reset: 'short', formula: (l, s) => Math.max(1, calculateModifier(s.wis)) },
     'Commander': { name: 'Influence', reset: 'long', formula: (l) => 2 },
+    'Card Master': { name: 'Choice Points', reset: 'long', formula: (l, s) => {
+        // Based on the level_table in classes.ts
+        const pointsMap: Record<number, number> = {
+            1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10,
+            11: 10, 12: 11, 13: 12, 14: 13, 15: 13, 16: 14, 17: 14, 18: 15, 19: 15, 20: 16
+        };
+        return pointsMap[l] || l;
+    }},
     'Arrowsmith': { name: 'Arrow Crafting', reset: 'short', formula: (l) => {
         // Correct progression for Crafting Capacity (column "Custom Arrows")
         const craftMap: Record<number, number> = {
@@ -84,7 +98,39 @@ export const CLASS_FEATURES: Record<string, {name: string, formula: (level: numb
         };
         return craftMap[l] || 0;
     }},
+    'Fighter-AS': { name: 'Action Surge', reset: 'short', formula: (l) => l < 17 ? 1 : 2 },
+    'Artificer-EC': { name: 'Eldritch Cannon', reset: 'long', formula: (l) => 1 },
+    'Artificer-FG': { name: 'Flash of Genius', reset: 'long', formula: (l, s) => Math.max(1, calculateModifier(s.int)) },
+    'Fighter-Indomitable': { name: 'Indomitable', reset: 'long', formula: (l) => l < 9 ? 0 : l < 13 ? 1 : l < 17 ? 2 : 3 },
+    'Monk-UM': { name: 'Uncanny Metabolism', reset: 'long', formula: (l) => l < 2 ? 0 : 1 },
+    'Ranger-Tireless': { name: 'Tireless', reset: 'long', formula: (l, s) => l < 10 ? 0 : calculateProficiency(l) },
+    'Ranger-NV': { name: 'Nature\'s Veil', reset: 'long', formula: (l) => l < 14 ? 0 : calculateProficiency(l) },
+    'Sorcerer-IS': { name: 'Innate Sorcery', reset: 'long', formula: (l) => 2 },
 };
+
+export const PICK_A_CARD_TABLE = [
+    { roll: 1, name: "The Fool", desc: "You lose your next bonus action.", duration: "Instantaneous" },
+    { roll: 2, name: "The Magician", desc: "You gain a +2 bonus to spell attack rolls and your spell save DC increases by 1 for 1 minute.", duration: "1 minute" },
+    { roll: 3, name: "The High Priestess", desc: "You can cast one 1st-level spell from any spell list without expending a spell slot.", duration: "Instantaneous" },
+    { roll: 4, name: "The Empress", desc: "You gain temporary hit points equal to twice your Card Master level.", duration: "Instantaneous" },
+    { roll: 5, name: "The Emperor", desc: "You gain a +2 bonus to AC for 1 minute.", duration: "1 minute" },
+    { roll: 6, name: "The Hierophant", desc: "You can cast the Bless spell once without expending a spell slot.", duration: "Instantaneous" },
+    { roll: 7, name: "The Lovers", desc: "You can cast the Charm Person spell once without expending a spell slot.", duration: "Instantaneous" },
+    { roll: 8, name: "The Chariot", desc: "Your movement speed increases by 10 feet for 1 minute.", duration: "1 minute" },
+    { roll: 9, name: "Strength", desc: "You have advantage on Strength checks and saving throws for 1 minute.", duration: "1 minute" },
+    { roll: 10, name: "The Hermit", desc: "You can cast the Invisibility spell once without expending a spell slot.", duration: "Instantaneous" },
+    { roll: 11, name: "Wheel of Fortune", desc: "For 1 minute, whenever you or a creature you can see within 60 feet makes an attack roll, an ability check, or a saving throw, you can use your reaction to roll a d20 and choose which of the d20s is used.", duration: "1 minute" },
+    { roll: 12, name: "Justice", desc: "For 1 minute, you can cast Zone of Truth at will. Additionally, any creature that deals damage to you takes 2d10 radiant damage. You have advantage on Insight checks.", duration: "1 minute" },
+    { roll: 13, name: "The Hanged Man", desc: "You gain resistance to all damage for 1 minute. While this is active, you can use your reaction to halve the damage another creature within 30 feet takes.", duration: "1 minute" },
+    { roll: 14, name: "Death", desc: "Your attacks deal an additional 4d10 necrotic damage for 1 minute. If a creature is reduced to 0 hit points by this damage, you regain 2d10 hit points.", duration: "1 minute" },
+    { roll: 15, name: "Temperance", desc: "For 1 minute, you regain 2d10 hit points at the start of each of your turns. You can also cast Lesser Restoration as a bonus action without expending a spell slot.", duration: "1 minute" },
+    { roll: 16, name: "The Devil", desc: "For 1 minute, you can cast Hex at 3rd level without expending a spell slot. While a creature is hexed by you, it has disadvantage on all saving throws and you have advantage on attacks against it.", duration: "1 minute" },
+    { roll: 17, name: "The Tower", desc: "A bolt of divine energy strikes. Each creature of your choice within 30 feet must make a Dexterity saving throw or take 8d10 lightning damage and be stunned until the end of your next turn. On a success, they take half damage and aren't stunned.", duration: "Instantaneous" },
+    { roll: 18, name: "The Star", desc: "For 1 minute, you and all allies within 30 feet have advantage on all saving throws and gain 10 temporary hit points at the start of each of their turns.", duration: "1 minute" },
+    { roll: 19, name: "The Moon", desc: "For 1 minute, you can cast Mirror Image at will. You gain truesight out to 60 feet and can see through magical darkness.", duration: "1 minute" },
+    { roll: 20, name: "The Sun", desc: "You regain hit points equal to 8d10 + your Charisma modifier. For 1 minute, you emit bright light in a 60-foot radius. Enemies in the light have disadvantage on all rolls, and you and your allies deal an extra 1d10 radiant damage on all attacks.", duration: "1 minute" },
+    { roll: 21, name: "The World", desc: "For 1 minute, you can take an additional action on each of your turns. Additionally, the damage of your Fool Spell is doubled, and you gain double stacks when sacrificing cards.", duration: "1 minute" }
+];
 
 export const STANDARD_ACTIONS = [
     { name: 'Attack', desc: 'Perform one attack with a weapon or unarmed strike. If you have the Extra Attack feature, you can attack more than once.' },

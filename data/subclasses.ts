@@ -1949,5 +1949,92 @@ export const SUBCLASSES: ExtendedSubclassDetail[] = [
                 desc: ["You can now use your Hybrid Transformation an unlimited number of times. Additionally, you gain the Bloodlust feature."] 
             }
         ]
+    },
+    {
+        index: "destiny-caster",
+        name: "Destiny Caster",
+        source: "Card Master Path",
+        class: { index: "card-master", name: "Card Master", url: "" },
+        desc: ["An more offensive path, your spells will do lots of damage, but you will lose support potential."],
+        feature_details: [
+            {
+                index: "spell-cards",
+                name: "Spell Cards",
+                level: 4,
+                source: "Destiny Caster",
+                url: "",
+                desc: ["When you cast a spell, you can opt to spend 10 feet of movement to put the spell inside a damage booster special card to obtain the following effects: The spell DC is increased by your proficiency. The spell damage dice are increased by 6. If you have to roll an attack for the spell you do not have to, all your spells cards only need a saving throw of Charisma to take half of the damage. Your spells area gain your Charisma multiplied by your arcana ability of area of effect."]
+            },
+            {
+                index: "more-powerful-card",
+                name: "More Powerful Card",
+                level: 8,
+                source: "Destiny Caster",
+                url: "",
+                desc: ["The Devil extra dice are increased by your Charisma and your Intelligence now. You can pick the Devil card without having to spend 1 choice point as a free action one time per long rest."],
+                effects: [{ type: 'feature', name: 'Free Devil Card', description: 'Pick the Devil card as a free action 1/long rest without spending choice points.' }]
+            },
+            {
+                index: "the-powerfool",
+                name: "The Powerfool",
+                level: 12,
+                source: "Destiny Caster",
+                url: "",
+                desc: ["When you sacrifice an activated card to make a Fool Stack, you can cast a spell without spending a spell slot. The Fool Spell damage is now maximized."]
+            },
+            {
+                index: "sharp-cards",
+                name: "Sharp Cards",
+                level: 16,
+                source: "Destiny Caster",
+                url: "",
+                desc: ["When you use Spell Cards you deal maximum damage. If the enemy rolls a 1 in the saving throw of your card, the damage is tripled."]
+            }
+        ]
+    },
+    {
+        index: "support-cards",
+        name: "Support Cards",
+        source: "Card Master Path",
+        class: { index: "card-master", name: "Card Master", url: "" },
+        desc: ["Focuses on supporting allies with powerful card effects and enhanced healing."],
+        feature_details: [
+            {
+                index: "more-cards",
+                name: "More Cards",
+                level: 4,
+                source: "Support Cards",
+                url: "",
+                desc: ["You can use pick a card twice in one bonus action. You can have 2 cards that buff allies stacking. Your maximum cards of the same duration is 3."],
+                effects: [{ type: 'bonus_action', name: 'Pick a Card (x2)', description: 'Use Pick a Card twice in one bonus action.' }]
+            },
+            {
+                index: "powerful-support",
+                name: "Powerful Support",
+                level: 8,
+                source: "Support Cards",
+                url: "",
+                desc: ["The Cards The Star, The Moon and The Temperance now heal a number of d12 equivalent to your CHA + INT, and give allies a damage boost of the same amount. You have extra choice points equal to your CHA modifier."],
+                effects: [{ type: 'feature', name: 'Powerful Support', description: 'Star, Moon, Temperance boosted. Extra Choice Points = CHA mod.' }]
+            },
+            {
+                index: "give-card",
+                name: "Give Card",
+                level: 12,
+                source: "Support Cards",
+                url: "",
+                desc: ["You can use pick a card and transfer the card to another person. Your heal and buff dice are always maxed. The Fool spell damage now heals your allies."],
+                effects: [{ type: 'feature', name: 'Give Card', description: 'Transfer cards to others. Max heal/buff dice. Fool spell heals allies.' }]
+            },
+            {
+                index: "armored-allies",
+                name: "Armored Allies",
+                level: 16,
+                source: "Support Cards",
+                url: "",
+                desc: ["When you use the Moon, the Star or the Hermit, you increase the AC of your allies by your CHA + INT. Allies have 12d12 damage reduction if buffed. The heal of the Fool spell is doubled. When you buff an ally, they gain 1 extra attack. Max cards of same duration is 5."],
+                effects: [{ type: 'feature', name: 'Armored Allies', description: 'AC bonus = CHA+INT. 12d12 damage reduction. Doubled Fool spell heal. Extra attack for buffed allies.' }]
+            }
+        ]
     }
 ];

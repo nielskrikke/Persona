@@ -14,11 +14,12 @@ interface SpellsTabProps {
     spellAttackStr: string;
     spellMod: number;
     setShowSpellManager: (val: boolean) => void;
-    setShowHomebrewModal: (val: boolean, tab?: 'race' | 'class' | 'subclass' | 'background' | 'spell' | 'item' | 'wildshape' | 'familiar' | 'feat') => void;
+    setShowHomebrewModal: (val: boolean, tab?: 'race' | 'class' | 'subclass' | 'background' | 'spell' | 'item' | 'creature' | 'feat') => void;
+    onPolymorphCast?: () => void;
 }
 
 const SpellsTab: React.FC<SpellsTabProps> = ({ 
-    character, setCharacter, roll, triggerRollMenu, setSelectedDetail, spellSave, spellAttackStr, spellMod, setShowSpellManager, setShowHomebrewModal 
+    character, setCharacter, roll, triggerRollMenu, setSelectedDetail, spellSave, spellAttackStr, spellMod, setShowSpellManager, setShowHomebrewModal, onPolymorphCast 
 }) => {
     const [spellFilter, setSpellFilter] = useState<number | 'all'>('all');
     const [spellSearch, setSpellSearch] = useState('');
@@ -142,7 +143,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                             </div>
                                         </div>
                                     )}
-                                    <span className="text-[10px] text-gray-500 uppercase border-l border-gray-700/50 pl-4 py-2 shrink-0">{spells.length} known</span>
+                                    <span className="text-[10px] text-gray-500 uppercase border-l border-gray-700/50 pl-4 py-2 shrink-0">{spells.length} known / prepared</span>
                                 </div>
                             </div>
                             <div className="overflow-x-auto custom-scrollbar">
@@ -200,6 +201,9 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                             }
                                                             const descText = spell.desc?.join(' ').toLowerCase() || ''; 
                                                             if (descText.includes('spell attack')) roll(`1d20${spellAttackStr}`, `Attack: ${spell.name}`); 
+                                                            if (spell.name.toLowerCase() === 'polymorph' && onPolymorphCast) {
+                                                                onPolymorphCast();
+                                                            }
                                                         }} 
                                                         onContextMenu={(e) => { 
                                                             e.preventDefault(); 

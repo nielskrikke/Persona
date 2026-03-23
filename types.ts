@@ -36,6 +36,14 @@ export interface ClassFeature {
     source: string;
     desc: string[];
     url: string;
+    school?: APIReference;
+    casting_time?: string;
+    range?: string;
+    components?: string[];
+    duration?: string;
+    ritual?: boolean;
+    damage?: string | { damage_dice: string; damage_type?: any };
+    save?: { type?: string; dc?: number; dc_type?: any };
 }
 
 export interface SpellDetail extends APIReference {
@@ -123,6 +131,7 @@ export interface ClassDetail extends APIReference {
     };
     feature_details?: any[];
     level_table?: any[];
+    subclasses?: APIReference[];
 }
 
 export interface SubclassDetail extends APIReference {
@@ -170,7 +179,7 @@ export interface BaseEquipment extends APIReference {
         damage_dice: string;
         damage_type: string | APIReference;
     };
-    range?: {
+    range?: string | {
         normal: number;
         long: number | null;
     };
@@ -181,6 +190,7 @@ export interface BaseEquipment extends APIReference {
     subtype?: string;
     is_wondrous?: boolean;
     weapon_category?: string;
+    weapon_range?: string;
     armor_category?: string;
 }
 
@@ -190,6 +200,17 @@ export interface InventoryItem extends Partial<BaseEquipment> {
     quantity: number;
     equipped: boolean;
     attuned?: boolean;
+    isMonkWeapon?: boolean;
+    isPactWeapon?: boolean;
+    isKenseiWeapon?: boolean;
+    isHexWeapon?: boolean;
+    isSpellFocus?: boolean;
+    isInfusion?: boolean;
+    isShillelagh?: boolean;
+    isBattleReady?: boolean;
+    isThrown?: boolean;
+    thrownRange?: string;
+    thrownDamage?: string;
 }
 
 export interface EquipmentDetail extends BaseEquipment {
@@ -241,7 +262,7 @@ export interface RollResult {
     modifier?: number;
 }
 
-export interface BeastDetail extends APIReference {
+export interface CreatureDetail extends APIReference {
     size: string;
     type: string;
     ac: number;
@@ -300,6 +321,18 @@ export interface SteelDefenderDetail {
     active?: boolean;
 }
 
+export interface LevelChoice {
+    id: string;
+    level: number;
+    source: string;
+    type: 'language' | 'skill' | 'expertise' | 'asi' | 'feat' | 'subclass' | 'feature_choice' | 'spell' | 'other' | 'level_up';
+    label: string;
+    value: any;
+    options?: any[];
+    count?: number;
+    revertData?: any;
+}
+
 export interface CharacterState {
     id?: string;
     user_id?: string;
@@ -326,7 +359,7 @@ export interface CharacterState {
     spellSlots: Record<number, { max: number, current: number }>;
     hitDiceUsage: Record<string, number>;
     feats: any[];
-    featureUsage: Record<string, { max: number, current: number, reset?: 'short' | 'long' }>;
+    featureUsage: Record<string, { max: number, current: number, reset?: 'short' | 'long', hidden?: boolean }>;
     classFeatures: ClassFeature[];
     xp: number;
     equipment: string[];
@@ -348,14 +381,25 @@ export interface CharacterState {
     backgroundColor?: string;
     backgroundImageUrl?: string;
     fontScale?: number;
-    activeWildShape?: { beast: BeastDetail, currentHp: number } | null;
+    activeWildShape?: { creature: CreatureDetail, currentHp: number, maxHp: number } | null;
     activeConcentration?: { name: string, duration?: string } | null;
-    activeFamiliar?: BeastDetail | null;
-    familiars?: BeastDetail[];
+    activeFamiliar?: { creature: CreatureDetail, currentHp: number, maxHp: number } | null;
+    activePolymorph?: { creature: CreatureDetail, currentHp: number, maxHp: number } | null;
+    creatures?: CreatureDetail[];
+    customCreatures?: CreatureDetail[];
     activeEldritchCannon?: EldritchCannonDetail | null;
     eldritchCannonFreebieUsed?: boolean;
     activeSteelDefender?: SteelDefenderDetail | null;
-    customBeasts?: BeastDetail[];
+    choices: LevelChoice[];
+    activeCards?: { roll: number, name: string, duration: string, timestamp: number }[];
+    exhaustion?: number;
+    foolStacks?: number;
+    combatOverrides?: {
+        hitBonus?: number;
+        damageBonus?: number;
+        hitOverride?: number;
+        damageOverride?: number;
+    };
 }
 
 export interface FeatureEffect {
@@ -368,6 +412,7 @@ export interface FeatureEffect {
     count?: number;
     attributes?: string[];
     amount?: number;
+    reset?: 'short' | 'long';
 }
 
 export interface SkillDefinition {

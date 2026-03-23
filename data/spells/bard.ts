@@ -171,6 +171,26 @@ export const BARD_SPELLS: SpellDetail[] = [
         damage: { damage_type: {name:"Psychic", index:"psychic"}, damage_at_character_level: {"1":"1d4", "5":"2d4", "11":"3d4", "17":"4d4"} }, 
         dc: { dc_type: {name:"WIS", index:"wis"}, dc_success: "none" } 
     },
+    {
+        index: "thunderclap", name: "Thunderclap", level: 0, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "5 feet", components: ["S"], duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["You create a burst of thunderous sound that can be heard up to 100 feet away. Each creature within range, other than you, must succeed on a Constitution saving throw or take 1d6 thunder damage."],
+        damage: { damage_type: { name: "Thunder", index: "thunder" }, damage_at_character_level: { "1": "1d6", "5": "2d6", "11": "3d6", "17": "4d6" } },
+        dc: { dc_type: { name: "CON", index: "con" }, dc_success: "none" }
+    },
+    {
+        index: "blade-ward", name: "Blade Ward", level: 0, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 action", range: "Self", components: ["V", "S"], duration: "1 round", ritual: false, concentration: false, classes: [],
+        desc: ["You extend your hand and trace a sigil of warding in the air. Until the end of your next turn, you have resistance against bludgeoning, piercing, and slashing damage dealt by weapon attacks."]
+    },
+    {
+        index: "friends", name: "Friends", level: 0, school: { name: "Enchantment", index: "enchantment" }, casting_time: "1 action", range: "Self", components: ["S", "M"], material: "a small amount of makeup applied to the face as this spell is cast", duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["For the duration, you have advantage on all Charisma checks directed at one creature of your choice that isn't hostile toward you. When the spell ends, the creature realizes that you used magic to influence its mood and becomes hostile toward you. A creature prone to violence might attack you. Another creature might seek retribution in other ways (at the DM's discretion), depending on the nature of your interaction with it."]
+    },
+
+    // Level 1
+    {
+        index: "silvery-barbs", name: "Silvery Barbs", level: 1, school: { name: "Enchantment", index: "enchantment" }, casting_time: "1 reaction", range: "60 feet", components: ["V"], duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["You magically distract the triggering creature and turn its momentary uncertainty into encouragement for another creature. The triggering creature must reroll the d20 and use the lower roll. You can then choose a different creature you can see within range (you can choose yourself). The chosen creature has advantage on the next attack roll, ability check, or saving throw it makes within 1 minute. A creature can be empowered by only one use of this spell at a time."]
+    },
     
     // Level 1
     { 
@@ -483,6 +503,30 @@ export const BARD_SPELLS: SpellDetail[] = [
         higher_level: ["When you cast this spell using a spell slot of 2nd level or higher, roll an additional 2d8 for each slot level above 1st."],
         damage: { damage_type: {name:"None", index:"none"}, damage_at_slot_level: {"1":"5d8", "2":"7d8", "3":"9d8", "4":"11d8", "5":"13d8", "6":"15d8", "7":"17d8", "8":"19d8", "9":"21d8"} }
     },
+    {
+        index: "speak-with-animals", name: "Speak with Animals", level: 1, school: { name: "Divination", index: "divination" }, casting_time: "1 action", range: "Self", components: ["V", "S"], duration: "10 minutes", ritual: true, concentration: false, classes: [],
+        desc: ["You gain the ability to comprehend and verbally communicate with beasts for the duration. The knowledge and awareness of many beasts is limited by their intelligence, but at minimum, beasts can give you information about nearby locations and monsters, including whatever they can perceive or have perceived within the past day."]
+    },
+    {
+        index: "tashas-hideous-laughter", name: "Tasha's Hideous Laughter", level: 1, school: { name: "Enchantment", index: "enchantment" }, casting_time: "1 action", range: "30 feet", components: ["V", "S", "M"], material: "tiny tarts and a feather that is waved in the air", duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["A creature of your choice that you can see within range perceives everything as hilariously funny and falls into fits of laughter if this spell affects it. The target must succeed on a Wisdom saving throw or fall prone, becoming incapacitated and unable to stand up for the duration. A creature with an Intelligence score of 4 or less isn't affected."],
+        dc: { dc_type: { name: "WIS", index: "wis" }, dc_success: "none" }
+    },
+    {
+        index: "unseen-servant", name: "Unseen Servant", level: 1, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "60 feet", components: ["V", "S", "M"], material: "a piece of string and a bit of wood", duration: "1 hour", ritual: true, concentration: false, classes: [],
+        desc: ["This spell creates an invisible, mindless, shapeless force that performs simple tasks at your command until the spell ends. The servant springs into existence in an unoccupied space on the ground within range. It has AC 10, 1 hit point, and a Strength of 2, and it can't attack. If it drops to 0 hit points, the spell ends."]
+    },
+    {
+        index: "color-spray", name: "Color Spray", level: 1, school: { name: "Illusion", index: "illusion" }, casting_time: "1 action", range: "Self (15-foot cone)", components: ["V", "S", "M"], material: "a pinch of powder or sand that is colored red, yellow, and blue", duration: "1 round", ritual: false, concentration: false, classes: [],
+        desc: ["A dazzling array of flashing, colored lights springs from your hand. Roll 6d10; the total is how many hit points of creatures this spell can affect. Creatures in a 15-foot cone originating from you are affected in ascending order of their current hit points (ignoring unconscious creatures and creatures that can't see)."],
+        higher_level: ["When you cast this spell using a spell slot of 2nd level or higher, roll an additional 2d10 for each slot level above 1st."]
+    },
+    {
+        index: "command", name: "Command", level: 1, school: { name: "Enchantment", index: "enchantment" }, casting_time: "1 action", range: "60 feet", components: ["V"], duration: "1 round", ritual: false, concentration: false, classes: [],
+        desc: ["You speak a one-word command to a creature you can see within range. The target must succeed on a Wisdom saving throw or follow the command on its next turn. The spell has no effect if the target is undead, if it doesn't understand your language, or if your command is directly harmful to it."],
+        higher_level: ["When you cast this spell using a spell slot of 2nd level or higher, you can affect one additional creature for each slot level above 1st. The creatures must be within 30 feet of each other when you target them."],
+        dc: { dc_type: { name: "WIS", index: "wis" }, dc_success: "none" }
+    },
     { 
         index: "thunderwave", 
         name: "Thunderwave", 
@@ -594,6 +638,20 @@ export const BARD_SPELLS: SpellDetail[] = [
         damage: { damage_type: { name: "Thunder", index: "thunder" }, damage_at_slot_level: { "2": "3d8", "3": "4d8", "4": "5d8", "5": "6d8" } },
         dc: { dc_type: { name: "CON", index: "con" }, dc_success: "half" }
     },
+    {
+        index: "pyrotechnics", name: "Pyrotechnics", level: 2, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "60 feet", components: ["V", "S"], duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["Choose an area of nonmagical flame that you can see within range and that fits within a 5-foot cube. You can extinguish the fire in that area, and you create either fireworks or smoke."]
+    },
+    {
+        index: "catnap", name: "Catnap", level: 3, school: { name: "Enchantment", index: "enchantment" }, casting_time: "1 action", range: "30 feet", components: ["S", "M"], material: "a pinch of sand", duration: "10 minutes", ritual: false, concentration: false, classes: [],
+        desc: ["You make a calming gesture, and up to three willing creatures of your choice that you can see within range fall unconscious for the spell’s duration. The spell ends on a self-chosen creature early if it takes damage or someone uses an action to shake or slap it awake. If a creature remains unconscious for the full duration, that creature gains all the benefits of a short rest, and it can’t be affected by this spell again until it finishes a long rest."],
+        higher_level: ["When you cast this spell using a spell slot of 4th level or higher, you can target one additional willing creature for each slot level above 3rd."]
+    },
+    {
+        index: "enemies-abound", name: "Enemies Abound", level: 3, school: { name: "Enchantment", index: "enchantment" }, casting_time: "1 action", range: "120 feet", components: ["V", "S"], duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["You reach into the mind of one creature you can see and force it to make an Intelligence saving throw. A creature automatically succeeds if it is immune to being charmed. On a failed save, the target loses the ability to distinguish friend from foe, regarding all creatures it can see as enemies until the spell ends. Each time the target takes damage, it can repeat the saving throw, ending the effect on itself on a success."],
+        dc: { dc_type: { name: "INT", index: "int" }, dc_success: "none" }
+    },
     { 
         index: "silence", name: "Silence", level: 2, school: { name: "Illusion", index: "illusion" }, casting_time: "1 action", range: "120 feet", components: ["V", "S"], duration: "Concentration, up to 10 minutes", ritual: true, concentration: true, classes: [], 
         desc: ["For the duration, no sound can be created within or pass through a 20-foot-radius sphere centered on a point you choose within range. Any creature or object entirely inside the sphere is immune to thunder damage, and creatures are deafened while entirely inside it. Casting a spell that includes a verbal component is impossible there."]
@@ -605,8 +663,35 @@ export const BARD_SPELLS: SpellDetail[] = [
     },
     { 
         index: "zone-of-truth", name: "Zone of Truth", level: 2, school: { name: "Enchantment", index: "enchantment" }, casting_time: "1 action", range: "60 feet", components: ["V", "S"], duration: "10 minutes", ritual: false, concentration: false, classes: [], 
-        desc: ["You create a magical zone that guards against deception in a 15-foot-radius sphere centered on a point of your choice within range. Until the spell ends, a creature that enters the spell's area for the first time on a turn or starts its turn there must make a Charisma saving throw. On a failed save, a creature can't speak a deliberate lie while in the radius."],
+        desc: ["You create a magical zone that guards against deception in a 15-foot-radius sphere centered on a point of your choice within range. Until the spell ends, a creature that enters the spell's area for the first time on a turn or starts its turn there must make a Charisma saving throw. On a failed save, a creature can't speak a deliberate lie while in the radius. You know whether each creature succeeds or fails on its saving throw."],
         dc: { dc_type: { name: "CHA", index: "cha" }, dc_success: "none" }
+    },
+    {
+        index: "aid", name: "Aid", level: 2, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 action", range: "30 feet", components: ["V", "S", "M"], material: "a tiny strip of white cloth", duration: "8 hours", ritual: false, concentration: false, classes: [],
+        desc: ["Your spell bolsters your allies with toughness and resolve. Choose up to three creatures within range. Each target's hit point maximum and current hit points increase by 5 for the duration."],
+        higher_level: ["When you cast this spell using a spell slot of 3rd level or higher, a target's hit points increase by an additional 5 for each slot level above 2nd."]
+    },
+    {
+        index: "enlarge-reduce", name: "Enlarge/Reduce", level: 2, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "30 feet", components: ["V", "S", "M"], material: "a pinch of powdered iron", duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["You cause a creature or an object you can see within range to grow larger or smaller for the duration. Choose either a creature or an object that is neither worn nor carried. If the target is unwilling, it can make a Constitution saving throw. On a success, the spell has no effect."],
+        dc: { dc_type: { name: "CON", index: "con" }, dc_success: "none" }
+    },
+    {
+        index: "mirror-image", name: "Mirror Image", level: 2, school: { name: "Illusion", index: "illusion" }, casting_time: "1 action", range: "Self", components: ["V", "S"], duration: "1 minute", ritual: false, concentration: false, classes: [],
+        desc: ["Three illusory duplicates of yourself appear in your space. Until the spell ends, the duplicates move with you and mimic your actions, shifting position so it's impossible to track which image is real. You can use your action to dismiss the illusory duplicates."]
+    },
+    {
+        index: "phantasmal-force", name: "Phantasmal Force", level: 2, school: { name: "Illusion", index: "illusion" }, casting_time: "1 action", range: "60 feet", components: ["V", "S", "M"], material: "a bit of fleece", duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["You craft an illusion that settles in the mind of a creature that you can see within range. The target must make an Intelligence saving throw. On a failed save, you create a phantasmal object, creature, or other visible phenomenon of your choice that is no larger than a 10-foot cube and that is perceivable only to the target for the duration. This spell has no effect on undead or constructs."],
+        dc: { dc_type: { name: "INT", index: "int" }, dc_success: "none" }
+    },
+    {
+        index: "skywrite", name: "Skywrite", level: 2, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "Sight", components: ["V", "S"], duration: "Concentration, up to 1 hour", ritual: true, concentration: true, classes: [],
+        desc: ["You cause up to ten words to form in a part of the sky you can see. The words appear to be made of clouds and remain in place for the duration. The words dissipate when the spell ends. A strong wind disperses the clouds and ends the spell early."]
+    },
+    {
+        index: "warding-wind", name: "Warding Wind", level: 2, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "Self", components: ["V"], duration: "Concentration, up to 10 minutes", ritual: false, concentration: true, classes: [],
+        desc: ["A strong wind (20 miles per hour) blows around you in a 10-foot radius and moves with you, remaining centered on you. The wind lasts for the spell's duration."]
     },
 
     // Level 3
@@ -675,6 +760,26 @@ export const BARD_SPELLS: SpellDetail[] = [
         index: "tongues", name: "Tongues", level: 3, school: { name: "Divination", index: "divination" }, casting_time: "1 action", range: "Touch", components: ["V", "M"], duration: "1 hour", ritual: false, concentration: false, classes: [], 
         desc: ["This spell grants the creature you touch the ability to understand any spoken language it hears. Moreover, when the target speaks, any creature that knows at least one language and can hear the target understands what it says."]
     },
+    {
+        index: "intellect-fortress", name: "Intellect Fortress", level: 3, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 action", range: "30 feet", components: ["V", "S", "M"], duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [],
+        desc: ["You create a telepathic barrier around yourself or a willing creature you can see within range. Until the spell ends, the creature has resistance to psychic damage, and it has advantage on Intelligence, Wisdom, and Charisma saving throws."],
+        higher_level: ["When you cast this spell using a spell slot of 4th level or higher, you can target one additional creature for each slot level above 3rd. The creatures must be within 30 feet of each other when you target them."]
+    },
+    {
+        index: "leomunds-tiny-hut", name: "Leomund's Tiny Hut", level: 3, school: { name: "Evocation", index: "evocation" }, casting_time: "1 minute", range: "Self (10-foot-radius hemisphere)", components: ["V", "S", "M"], material: "a small crystal bead", duration: "8 hours", ritual: true, concentration: false, classes: [],
+        desc: ["A 10-foot-radius, immobile dome of force springs into existence around and above you and remains stationary for the duration. The spell ends if you leave its area."]
+    },
+    {
+        index: "mass-healing-word", name: "Mass Healing Word", level: 3, school: { name: "Evocation", index: "evocation" }, casting_time: "1 bonus action", range: "60 feet", components: ["V"], duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["As you call out words of restoration, up to six creatures of your choice that you can see within range regain hit points equal to 1d4 + your spellcasting ability modifier. This spell has no effect on undead or constructs."],
+        higher_level: ["When you cast this spell using a spell slot of 4th level or higher, the healing increases by 1d4 for each slot level above 3rd."],
+        damage: { damage_type: { name: "Healing", index: "healing" }, damage_at_slot_level: { "3": "1d4", "4": "2d4", "5": "3d4", "6": "4d4", "7": "5d4", "8": "6d4", "9": "7d4" } }
+    },
+    {
+        index: "slow", name: "Slow", level: 3, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "120 feet", components: ["V", "S", "M"], material: "a drop of molasses", duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["You alter time around up to six creatures of your choice in a 40-foot cube within range. Each target must succeed on a Wisdom saving throw or be affected by this spell for the duration."],
+        dc: { dc_type: { name: "WIS", index: "wis" }, dc_success: "none" }
+    },
 
     // Level 4
     { 
@@ -711,6 +816,19 @@ export const BARD_SPELLS: SpellDetail[] = [
     { 
         index: "polymorph", name: "Polymorph", level: 4, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "60 feet", components: ["V", "S", "M"], duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [], 
         desc: ["This spell transforms a creature that you can see within range into a new form. An unwilling creature must make a Wisdom saving throw to avoid the effect. The spell has no effect on a shapechanger or a creature with 0 hit points."],
+        dc: { dc_type: { name: "WIS", index: "wis" }, dc_success: "none" }
+    },
+    {
+        index: "charm-monster", name: "Charm Monster", level: 4, school: { name: "Enchantment", index: "enchantment" }, casting_time: "1 action", range: "30 feet", components: ["V", "S"], duration: "1 hour", ritual: false, concentration: false, classes: [],
+        desc: ["You attempt to charm a creature you can see within range. It must make a Wisdom saving throw, and it does so with advantage if you or your companions are fighting it. If it fails the saving throw, it is charmed by you until the spell ends or until you or your companions do anything harmful to it."],
+        higher_level: ["When you cast this spell using a spell slot of 5th level or higher, you can target one additional creature for each slot level above 4th. The creatures must be within 30 feet of each other when you target them."],
+        dc: { dc_type: { name: "WIS", index: "wis" }, dc_success: "none" }
+    },
+    {
+        index: "phantasmal-killer", name: "Phantasmal Killer", level: 4, school: { name: "Illusion", index: "illusion" }, casting_time: "1 action", range: "120 feet", components: ["V", "S"], duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["You tap into the nightmares of a creature you can see within range and create an illusory manifestation of its deepest fears, visible only to that creature. The target must make a Wisdom saving throw. On a failed save, the target becomes frightened for the duration."],
+        higher_level: ["When you cast this spell using a spell slot of 5th level or higher, the damage increases by 1d10 for each slot level above 4th."],
+        damage: { damage_type: { name: "Psychic", index: "psychic" }, damage_at_slot_level: { "4": "4d10", "5": "5d10", "6": "6d10", "7": "7d10", "8": "8d10", "9": "9d10" } },
         dc: { dc_type: { name: "WIS", index: "wis" }, dc_success: "none" }
     },
 
@@ -795,6 +913,20 @@ export const BARD_SPELLS: SpellDetail[] = [
         index: "teleportation-circle", name: "Teleportation Circle", level: 5, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 minute", range: "10 feet", components: ["V", "M"], duration: "1 round", ritual: false, concentration: false, classes: [], 
         desc: ["As you cast the spell, you draw a 10-foot-diameter circle on the ground inscribed with sigils that link your location to a permanent teleportation circle of your choice whose sigil sequence you know and that is on the same plane of existence as you."]
     },
+    {
+        index: "rarys-telepathic-bond", name: "Rary's Telepathic Bond", level: 5, school: { name: "Divination", index: "divination" }, casting_time: "1 action", range: "30 feet", components: ["V", "S", "M"], material: "pieces of eggshell from two different kinds of creatures", duration: "1 hour", ritual: true, concentration: false, classes: [],
+        desc: ["You forge a telepathic link among up to eight willing creatures of your choice within range, psychically linking each creature to all the others for the duration. Creatures with Intelligence scores of 2 or less aren't affected by this spell. Until the spell ends, the targets can communicate telepathically through the bond whether or not they have a common language. The communication is possible over any distance, though it can't extend to other planes of existence."]
+    },
+    {
+        index: "skill-empowerment", name: "Skill Empowerment", level: 5, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "Touch", components: ["V", "S"], duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [],
+        desc: ["Your magic deepens a creature's understanding of its own talent. You touch one willing creature and give it expertise in one skill of your choice; until the spell ends, the creature doubles its proficiency bonus for any ability check it makes that uses the chosen skill. You must choose a skill in which the creature is already proficient and that isn't already benefiting from an effect, such as Expertise, that doubles its proficiency bonus."]
+    },
+    {
+        index: "synaptic-static", name: "Synaptic Static", level: 5, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "120 feet", components: ["V", "S"], duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["You cause a psychic explosion to erupt at a point of your choice within range. Each creature in a 20-foot-radius sphere centered on that point must make an Intelligence saving throw. A creature with an Intelligence score of 2 or less is unaffected. A target takes 8d6 psychic damage on a failed save, or half as much damage on a successful one."],
+        damage: { damage_type: { name: "Psychic", index: "psychic" }, damage_at_slot_level: { "5": "8d6" } },
+        dc: { dc_type: { name: "INT", index: "int" }, dc_success: "half" }
+    },
 
     // Level 6
     { 
@@ -828,6 +960,10 @@ export const BARD_SPELLS: SpellDetail[] = [
     { 
         index: "true-seeing", name: "True Seeing", level: 6, school: { name: "Divination", index: "divination" }, casting_time: "1 action", range: "Touch", components: ["V", "S", "M"], duration: "1 hour", ritual: false, concentration: false, classes: [], 
         desc: ["This spell gives the willing creature you touch the ability to see things as they actually are. For the duration, the creature has truesight, notices secret doors hidden by magic, and can see into the Ethereal Plane, all out to a range of 120 feet."]
+    },
+    {
+        index: "heroes-feast", name: "Heroes' Feast", level: 6, school: { name: "Conjuration", index: "conjuration" }, casting_time: "10 minutes", range: "30 feet", components: ["V", "S", "M"], material: "a gem-encrusted bowl worth at least 1,000 gp, which the spell consumes", duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["You bring forth a great feast, including magnificent food and drink. The feast takes 1 hour to consume and disappears at the end of that time, and the beneficial effects don't charm until they have finished the feast. Up to twelve creatures can partake of the feast. A creature that partakes of the feast gains several benefits: immunity to poison and being frightened, and all saving throws are made with advantage. Its hit point maximum also increases by 2d10, and it gains the same number of hit points. These benefits last for 24 hours."]
     },
 
     // Level 7
@@ -874,6 +1010,16 @@ export const BARD_SPELLS: SpellDetail[] = [
         index: "teleport", name: "Teleport", level: 7, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "10 feet", components: ["V"], duration: "Instantaneous", ritual: false, concentration: false, classes: [], 
         desc: ["This spell instantly transports you and up to eight willing creatures of your choice that you can see within range, or a single object, to a destination you select. If you target an object, it must be able to fit entirely inside a 10-foot cube, and it can't be held or carried by an unwilling creature."]
     },
+    {
+        index: "dream-of-the-blue-veil", name: "Dream of the Blue Veil", level: 7, school: { name: "Conjuration", index: "conjuration" }, casting_time: "10 minutes", range: "20 feet", components: ["V", "S", "M"], material: "a magic item or a willing creature from the destination world", duration: "6 hours", ritual: false, concentration: false, classes: [],
+        desc: ["You and up to eight willing creatures within range fall into a deep sleep and dream of a journey to another world on the Material Plane. You must have an item or a creature from that world to serve as a beacon. At the end of the sleep, you and the other creatures wake up in that world, in a location you choose. If you don't choose a location, you arrive in a random location."]
+    },
+    {
+        index: "prismatic-spray", name: "Prismatic Spray", level: 7, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "Self (60-foot cone)", components: ["V", "S"], duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["Eight multicolored rays of light flash from your hand. Each ray is a different color and has a different power and purpose. Each creature in a 60-foot cone must make a Dexterity saving throw. For each target, roll a d8 to determine which color ray affects it."],
+        damage: { damage_type: { name: "Varies", index: "varies" }, damage_at_slot_level: { "7": "10d6" } },
+        dc: { dc_type: { name: "DEX", index: "dex" }, dc_success: "half" }
+    },
 
     // Level 8
     { 
@@ -900,6 +1046,11 @@ export const BARD_SPELLS: SpellDetail[] = [
         index: "power-word-stun", name: "Power Word Stun", level: 8, school: { name: "Enchantment", index: "enchantment" }, casting_time: "1 action", range: "60 feet", components: ["V"], duration: "Instantaneous", ritual: false, concentration: false, classes: [], 
         desc: ["You speak a word of power that can overwhelm the mind of one creature you can see within range. If the target has 150 hit points or fewer, it is stunned. Otherwise, the spell has no effect."]
     },
+    {
+        index: "antipathy-sympathy", name: "Antipathy/Sympathy", level: 8, school: { name: "Enchantment", index: "enchantment" }, casting_time: "1 hour", range: "60 feet", components: ["V", "S", "M"], material: "either a lump of alum soaked in vinegar for the antipathy effect or a drop of honey for the sympathy effect", duration: "10 days", ritual: false, concentration: false, classes: [],
+        desc: ["This spell attracts or repels creatures of your choice. You target something within range, either a Huge or smaller object or creature or an area that is no larger than a 20-foot cube. Then specify a kind of intelligent creature, such as red dragons, goblins, or vampires. You invest the target with an aura that either attracts or repels the specified creatures for the duration. Choose antipathy or sympathy as the aura's effect."],
+        dc: { dc_type: { name: "WIS", index: "wis" }, dc_success: "none" }
+    },
 
     // Level 9
     { 
@@ -914,5 +1065,9 @@ export const BARD_SPELLS: SpellDetail[] = [
         index: "true-polymorph", name: "True Polymorph", level: 9, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "30 feet", components: ["V", "S", "M"], duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [], 
         desc: ["Choose one creature or nonmagical object that you can see within range. You transform the creature into a different creature, the creature into an object, or the object into a creature (the object must be neither worn nor carried by another creature). The transformation lasts for the duration, or until the target drops to 0 hit points or dies. If you concentrate on this spell for the full duration, the transformation becomes permanent."],
         dc: { dc_type: { name: "WIS", index: "wis" }, dc_success: "none" }
+    },
+    {
+        index: "prismatic-wall", name: "Prismatic Wall", level: 9, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 action", range: "60 feet", components: ["V", "S"], duration: "10 minutes", ritual: false, concentration: false, classes: [],
+        desc: ["A shimmering, multicolored plane of light forms a vertical opaque wall—up to 90 feet long, 30 feet high, and 1 inch thick—centered on a point you can see within range. Alternatively, you can shape the wall into a sphere up to 30 feet in diameter centered on a point you choose within range. The wall remains in place for the duration. If you position the wall so that it passes through a space occupied by a creature, the spell fails, and your action is lost."]
     }
 ];

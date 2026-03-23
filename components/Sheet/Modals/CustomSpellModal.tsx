@@ -1,33 +1,66 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SpellDetail, ABILITY_NAMES } from '@/types';
 import { SPELL_SCHOOLS } from '../../../data/constants';
 import { Save, Sparkles, X, Wand2, Shield, Sword, Zap } from 'lucide-react';
 import { saveHomebrew } from '../../../services/supabase';
 
-const CustomSpellModal = ({ isOpen, onClose, onSave, currentUser }: { isOpen: boolean, onClose: () => void, onSave: (spell: SpellDetail) => void, currentUser?: any }) => {
-    const [name, setName] = useState('');
-    const [level, setLevel] = useState(0);
-    const [school, setSchool] = useState('Evocation');
-    const [castingTime, setCastingTime] = useState('1 Action');
-    const [isRitual, setIsRitual] = useState(false);
-    const [range, setRange] = useState('60 feet');
-    const [duration, setDuration] = useState('Instantaneous');
-    const [components, setComponents] = useState<string[]>(['V', 'S']);
-    const [material, setMaterial] = useState('');
-    const [concentration, setConcentration] = useState(false);
-    const [description, setDescription] = useState('');
-    const [higherLevel, setHigherLevel] = useState('');
+const CustomSpellModal = ({ isOpen, onClose, onSave, currentUser, initialSpell }: { isOpen: boolean, onClose: () => void, onSave: (spell: SpellDetail) => void, currentUser?: any, initialSpell?: SpellDetail | null }) => {
+    const [name, setName] = useState(initialSpell?.name || '');
+    const [level, setLevel] = useState(initialSpell?.level || 0);
+    const [school, setSchool] = useState(initialSpell?.school?.name || 'Evocation');
+    const [castingTime, setCastingTime] = useState(initialSpell?.casting_time || '1 Action');
+    const [isRitual, setIsRitual] = useState(initialSpell?.ritual || false);
+    const [range, setRange] = useState(initialSpell?.range || '60 feet');
+    const [duration, setDuration] = useState(initialSpell?.duration || 'Instantaneous');
+    const [components, setComponents] = useState<string[]>(initialSpell?.components || ['V', 'S']);
+    const [material, setMaterial] = useState(initialSpell?.material || '');
+    const [concentration, setConcentration] = useState(initialSpell?.concentration || false);
+    const [description, setDescription] = useState(Array.isArray(initialSpell?.desc) ? initialSpell.desc.join('\n') : initialSpell?.desc || '');
+    const [higherLevel, setHigherLevel] = useState(Array.isArray(initialSpell?.higher_level) ? initialSpell.higher_level.join('\n') : initialSpell?.higher_level || '');
     const [isSavingToHomebrew, setIsSavingToHomebrew] = useState(false);
     const [isSharedGlobally, setIsSharedGlobally] = useState(false);
     
     // Mechanics
-    const [hasAttack, setHasAttack] = useState(false);
-    const [attackType, setAttackType] = useState('ranged');
-    const [hasSave, setHasSave] = useState(false);
-    const [saveType, setSaveType] = useState('DEX');
-    const [damageFormula, setDamageFormula] = useState('');
-    const [damageType, setDamageType] = useState('Force');
+    const [hasAttack, setHasAttack] = useState(!!initialSpell?.attack_type);
+    const [attackType, setAttackType] = useState(initialSpell?.attack_type || 'ranged');
+    const [hasSave, setHasSave] = useState(!!initialSpell?.dc);
+    const [saveType, setSaveType] = useState(initialSpell?.dc?.dc_type?.name?.toUpperCase() || 'DEX');
+    
+    const getInitialDamage = () => {
+        if (!initialSpell?.damage) return '';
+        const damageAtLevel = initialSpell.level === 0 ? initialSpell.damage.damage_at_character_level : initialSpell.damage.damage_at_slot_level;
+        if (!damageAtLevel) return '';
+        const levelKey = initialSpell.level === 0 ? '1' : initialSpell.level.toString();
+        return damageAtLevel[levelKey] || '';
+    };
+
+    const [damageFormula, setDamageFormula] = useState(getInitialDamage());
+    const [damageType, setDamageType] = useState(initialSpell?.damage?.damage_type?.name || 'Force');
+
+    // Reset state when initialSpell changes or modal opens
+    useEffect(() => {
+        if (isOpen) {
+            setName(initialSpell?.name || '');
+            setLevel(initialSpell?.level || 0);
+            setSchool(initialSpell?.school?.name || 'Evocation');
+            setCastingTime(initialSpell?.casting_time || '1 Action');
+            setIsRitual(initialSpell?.ritual || false);
+            setRange(initialSpell?.range || '60 feet');
+            setDuration(initialSpell?.duration || 'Instantaneous');
+            setComponents(initialSpell?.components || ['V', 'S']);
+            setMaterial(initialSpell?.material || '');
+            setConcentration(initialSpell?.concentration || false);
+            setDescription(Array.isArray(initialSpell?.desc) ? initialSpell.desc.join('\n') : initialSpell?.desc || '');
+            setHigherLevel(Array.isArray(initialSpell?.higher_level) ? initialSpell.higher_level.join('\n') : initialSpell?.higher_level || '');
+            setHasAttack(!!initialSpell?.attack_type);
+            setAttackType(initialSpell?.attack_type || 'ranged');
+            setHasSave(!!initialSpell?.dc);
+            setSaveType(initialSpell?.dc?.dc_type?.name?.toUpperCase() || 'DEX');
+            setDamageFormula(getInitialDamage());
+            setDamageType(initialSpell?.damage?.damage_type?.name || 'Force');
+        }
+    }, [isOpen, initialSpell]);
 
     if (!isOpen) return null;
 

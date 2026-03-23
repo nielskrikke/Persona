@@ -8,9 +8,10 @@ import { Search, Globe } from 'lucide-react';
 interface EquipmentStepProps {
     onComplete: (equipment: InventoryItem[]) => void;
     onBack: () => void;
+    userId?: string;
 }
 
-const EquipmentStep: React.FC<EquipmentStepProps> = ({ onComplete, onBack }) => {
+const EquipmentStep: React.FC<EquipmentStepProps> = ({ onComplete, onBack, userId }) => {
     const [allEquipment, setAllEquipment] = useState<EquipmentDetail[]>([]);
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
@@ -26,12 +27,12 @@ const EquipmentStep: React.FC<EquipmentStepProps> = ({ onComplete, onBack }) => 
 
     useEffect(() => {
         const load = async () => {
-            const results = await fetchEquipment();
+            const results = await fetchEquipment(userId);
             setAllEquipment(results);
             setLoading(false);
         };
         load();
-    }, []);
+    }, [userId]);
 
     const toggleItem = (name: string) => {
         if (selectedItems.includes(name)) {
@@ -62,7 +63,7 @@ const EquipmentStep: React.FC<EquipmentStepProps> = ({ onComplete, onBack }) => 
             );
 
             if (match) {
-                const detail = await fetchEquipmentDetail(match.index);
+                const detail = await fetchEquipmentDetail(match.index, userId);
                 if (detail) {
                     finalInventory.push({
                         id: `start-item-${match.index}-${Date.now()}`,

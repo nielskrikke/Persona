@@ -8,6 +8,10 @@ export const PALADIN_SPELLS: SpellDetail[] = [
         desc: ["You bless up to three creatures of your choice within range. Whenever a target makes an attack roll or a saving throw before the spell ends, the target can roll a d4 and add the number rolled to the attack roll or saving throw."],
         higher_level: ["When you cast this spell using a spell slot of 2nd level or higher, you can target one additional creature for each slot level above 1st."]
     },
+    {
+        index: "ceremony", name: "Ceremony", level: 1, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 hour", range: "Touch", components: ["V", "S", "M"], material: "25 gp worth of powdered silver, which the spell consumes", duration: "Instantaneous", ritual: true, concentration: false, classes: [],
+        desc: ["You perform a special religious ceremony that is infused with magic. When you cast the spell, choose one of the following rites, the target of which must be within 10 feet of you throughout the casting: Atonement, Bless Water, Coming of Age, Dedication, Funeral Rite, Wedding."]
+    },
     { 
         index: "command", name: "Command", level: 1, school: { name: "Enchantment", index: "enchantment" }, casting_time: "1 action", range: "60 feet", components: ["V"], duration: "1 round", ritual: false, concentration: false, classes: [], 
         desc: ["You speak a one-word command to a creature you can see within range. The target must succeed on a Wisdom saving throw or follow the command on its next turn. The spell has no effect if the target is undead, if it doesn't understand your language, or if your command is directly harmful to it.", "Some typical commands and their effects follow. You might issue a command other than one described here. If you do so, the DM determines how the target behaves. If the target can't follow your command, the spell ends.", "Approach, Drop, Flee, Grovel, Halt."],
@@ -167,6 +171,11 @@ export const PALADIN_SPELLS: SpellDetail[] = [
         index: "revivify", name: "Revivify", level: 3, school: { name: "Necromancy", index: "necromancy" }, casting_time: "1 action", range: "Touch", components: ["V", "S", "M"], material: "Diamonds worth 300 gp, which the spell consumes.", duration: "Instantaneous", ritual: false, concentration: false, classes: [], 
         desc: ["You touch a creature that has died within the last minute. That creature returns to life with 1 hit point. This spell can't return to life a creature that has died of old age, nor can it restore any missing body parts."]
     },
+    {
+        index: "spirit-shroud", name: "Spirit Shroud", level: 3, school: { name: "Necromancy", index: "necromancy" }, casting_time: "1 bonus action", range: "Self", components: ["V", "S"], duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["You call forth spirits of the dead, which flit around you for the duration. Until the spell ends, any attack you make deals 1d8 extra damage when you hit a creature within 10 feet of you. The damage is radiant, necrotic, or cold (your choice when you cast the spell). Any creature that takes this damage can’t regain hit points until the start of your next turn. Also, any creature of your choice that you can see that starts its turn within 10 feet of you has its speed reduced by 10 feet until the start of your next turn."],
+        higher_level: ["When you cast this spell using a spell slot of 4th level or higher, the extra damage increases by 1d8 for every two slot levels above 3rd."]
+    },
 
     // Level 4
     { 
@@ -197,6 +206,10 @@ export const PALADIN_SPELLS: SpellDetail[] = [
         damage: { damage_type: { name: "Psychic", index: "psychic" }, damage_at_slot_level: { "4": "4d6" } },
         dc: { dc_type: { name: "WIS", index: "wis" }, dc_success: "none" }
     },
+    {
+        index: "find-greater-steed", name: "Find Greater Steed", level: 4, school: { name: "Conjuration", index: "conjuration" }, casting_time: "10 minutes", range: "30 feet", components: ["V", "S"], duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["You summon a spirit that assumes the form of a loyal, majestic mount. Appearing in an unoccupied space within range, the spirit takes on a form you choose: a griffon, a pegasus, a peryton, a dire wolf, a rhinoceros, or a saber-toothed tiger."]
+    },
 
     // Level 5
     { 
@@ -213,6 +226,15 @@ export const PALADIN_SPELLS: SpellDetail[] = [
         desc: ["You strike the ground, creating a burst of divine energy that ripples outward from you. Each creature you choose within 30 feet of you must succeed on a Constitution saving throw or take 5d6 thunder damage, as well as 5d6 radiant or necrotic damage (your choice), and be knocked prone. A creature that succeeds on its saving throw takes half as much damage and isn't knocked prone."],
         damage: { damage_type: { name: "Thunder/Radiant/Necrotic", index: "thunder" }, damage_at_slot_level: { "5": "10d6" } },
         dc: { dc_type: { name: "CON", index: "con" }, dc_success: "half" }
+    },
+    {
+        index: "holy-weapon", name: "Holy Weapon", level: 5, school: { name: "Evocation", index: "evocation" }, casting_time: "1 bonus action", range: "Touch", components: ["V", "S"], duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [],
+        desc: ["You imbue a weapon you touch with holy power. Until the spell ends, the weapon emits bright light in a 30-foot radius and dim light for an additional 30 feet. In addition, weapon attacks made with it deal an extra 2d8 radiant damage on a hit. As a bonus action, you can dismiss this spell and cause the weapon to emit a burst of radiance. Each creature of your choice that you can see within 30 feet of the weapon must make a Constitution saving throw. On a failed save, a creature takes 4d8 radiant damage and is blinded for 1 minute. On a successful save, a creature takes half as much damage and isn’t blinded. At the end of each of its turns, a blinded creature can make a Constitution saving throw, ending the effect on itself on a success."]
+    },
+    {
+        index: "summon-celestial", name: "Summon Celestial", level: 5, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "90 feet", components: ["V", "S", "M"], material: "a golden reliquary worth at least 500 gp", duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [],
+        desc: ["You call forth a celestial spirit. It manifests in an unoccupied space that you can see within range. This corporeal form uses the Celestial Spirit stat block. When you cast the spell, choose a manifestation: Avenger or Defender. The creature resembles a celestial of your choice which determines certain traits in its stat block. The creature disappears when it drops to 0 hit points or when the spell ends."],
+        higher_level: ["When you cast this spell using a spell slot of 6th level or higher, use the higher level wherever the spell’s level appears in the stat block."]
     },
     { 
         index: "dispel-evil-and-good", name: "Dispel Evil and Good", level: 5, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 action", range: "Self", components: ["V", "S", "M"], material: "Holy water.", duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [], 

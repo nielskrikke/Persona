@@ -14,7 +14,9 @@ interface ItemSearchModalProps {
     items: EquipmentDetail[];
     onSelectItem: (item: EquipmentDetail) => void;
     initialMode?: 'search' | 'custom';
+    initialItem?: EquipmentDetail | null;
     currentUser?: any;
+    onDuplicateToHomebrew?: (item: any) => void;
 }
 
 const CATEGORIES = [
@@ -29,7 +31,7 @@ const CATEGORIES = [
 
 const RARITIES = ['Common', 'Uncommon', 'Rare', 'Very Rare', 'Legendary', 'Artifact'];
 
-const ItemSearchModal: React.FC<ItemSearchModalProps> = ({ isOpen, onClose, items, onSelectItem, initialMode = 'search', currentUser }) => {
+const ItemSearchModal: React.FC<ItemSearchModalProps> = ({ isOpen, onClose, items, onSelectItem, initialMode = 'search', initialItem, currentUser, onDuplicateToHomebrew }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [expandedItem, setExpandedItem] = useState<string | null>(null);
@@ -38,12 +40,42 @@ const ItemSearchModal: React.FC<ItemSearchModalProps> = ({ isOpen, onClose, item
     const [isSavingToHomebrew, setIsSavingToHomebrew] = useState(false);
     const [isSharedGlobally, setIsSharedGlobally] = useState(false);
 
+    // Customization state
+    const [selectedCustomization, setSelectedCustomization] = useState<string | null>(null);
+
     // Reset isAddingCustom when modal opens
     React.useEffect(() => {
         if (isOpen) {
             setIsAddingCustom(initialMode === 'custom');
+            if (initialItem && initialMode === 'custom') {
+                setCustomName(initialItem.name);
+                setCustomWeight(initialItem.weight?.toString() || '');
+                setCustomCost(initialItem.cost ? `${initialItem.cost.quantity} ${initialItem.cost.unit}` : '');
+                setCustomQuantity(initialItem.quantity?.toString() || '1');
+                setCustomDesc(initialItem.desc?.join('\n') || '');
+                setCustomRarity(initialItem.rarity || 'Common');
+                setCustomCategory(initialItem.equipment_category?.name || 'Other');
+                setCustomSubtype(initialItem.subtype || '');
+                setCustomIsWondrous(!!initialItem.is_wondrous);
+                setCustomAttunement(!!initialItem.requires_attunement);
+                setCustomDmgDice(initialItem.damage?.damage_dice || '');
+                const dmgType = initialItem.damage?.damage_type;
+                setCustomDmgType(typeof dmgType === 'object' ? dmgType.name : (dmgType || 'Piercing'));
+                setCustomWeaponType(initialItem.weapon_category || 'Simple');
+                setCustomArmorType(initialItem.armor_category || 'Light');
+                setCustomAcBase(initialItem.armor_class?.base?.toString() || '');
+                setCustomAcDexBonus(!!initialItem.armor_class?.dex_bonus);
+                setCustomAcMaxBonus(initialItem.armor_class?.max_bonus?.toString() || '');
+                setCustomModifiers(initialItem.modifiers || []);
+                setCustomProperties(initialItem.properties?.map(p => typeof p === 'string' ? p : p.name).join(', ') || '');
+            } else if (!initialItem) {
+                // Reset form if no initial item
+                setCustomName(''); setCustomWeight(''); setCustomCost(''); setCustomQuantity('1'); setCustomDesc('');
+                setCustomCategory('Other'); setCustomAttunement(false); setCustomModifiers([]);
+                setCustomDmgDice(''); setCustomAcBase(''); setCustomProperties('');
+            }
         }
-    }, [isOpen, initialMode]);
+    }, [isOpen, initialMode, initialItem]);
 
     // Advanced Filters
     const [rarityFilter, setRarityFilter] = useState<string[]>([]);
@@ -186,7 +218,7 @@ const ItemSearchModal: React.FC<ItemSearchModalProps> = ({ isOpen, onClose, item
         }
 
         if (customModifiers.length > 0) {
-            newItem.modifiers = customModifiers;
+            newItem.modifiers = [...customModifiers];
         }
 
         // Save to Homebrew Forge if toggled
@@ -202,9 +234,48 @@ const ItemSearchModal: React.FC<ItemSearchModalProps> = ({ isOpen, onClose, item
         
         // Reset form
         setCustomName(''); setCustomWeight(''); setCustomCost(''); setCustomQuantity('1'); setCustomDesc('');
-        setCustomCategory('Wondrous Item'); setCustomAttunement(false); setCustomModifiers([]);
+        setCustomCategory('Other'); setCustomAttunement(false); setCustomModifiers([]);
         setCustomDmgDice(''); setCustomAcBase(''); setCustomProperties('');
         setIsAddingCustom(false);
+    };
+
+    const DRAGON_TYPES = [
+        { name: 'Black', resistance: 'Acid' },
+        { name: 'Blue', resistance: 'Lightning' },
+        { name: 'Brass', resistance: 'Fire' },
+        { name: 'Bronze', resistance: 'Lightning' },
+        { name: 'Copper', resistance: 'Acid' },
+        { name: 'Gold', resistance: 'Fire' },
+        { name: 'Green', resistance: 'Poison' },
+        { name: 'Red', resistance: 'Fire' },
+        { name: 'Silver', resistance: 'Cold' },
+        { name: 'White', resistance: 'Cold' },
+    ];
+
+    const handleSelectItemWithCustomization = (item: EquipmentDetail) => {
+        if (item.name === 'Dragon Scale Mail' && !selectedCustomization) {
+            setExpandedItem(item.index);
+            return;
+        }
+
+        if (item.name === 'Dragon Scale Mail' && selectedCustomization) {
+            const dragon = DRAGON_TYPES.find(d => d.name === selectedCustomization);
+            if (dragon) {
+                const customizedItem = {
+                    ...item,
+                    name: `${dragon.name} Dragon Scale Mail`,
+                    modifiers: [
+                        ...(item.modifiers || []),
+                        { type: 'resistance' as const, target: dragon.resistance.toLowerCase(), value: dragon.resistance }
+                    ]
+                };
+                onSelectItem(customizedItem);
+                setSelectedCustomization(null);
+                return;
+            }
+        }
+
+        onSelectItem(item);
     };
 
     return (
@@ -743,11 +814,18 @@ const ItemSearchModal: React.FC<ItemSearchModalProps> = ({ isOpen, onClose, item
                                                     </div>
 
                                                     <div className="flex items-center gap-2">
+                                                        <div 
+                                                            onClick={(e) => { e.stopPropagation(); onDuplicateToHomebrew?.(item); }}
+                                                            className="p-2 rounded-lg text-gray-500 hover:bg-gray-800 hover:text-dnd-gold transition-colors"
+                                                            title="Duplicate to Homebrew Forge"
+                                                        >
+                                                            <Sparkles size={18} />
+                                                        </div>
                                                         <div className={`p-2 rounded-lg transition-colors ${isExpanded ? 'bg-gray-800 text-white' : 'text-gray-500 hover:bg-gray-800 hover:text-white'}`}>
                                                             <Info size={18} />
                                                         </div>
                                                         <button 
-                                                            onClick={(e) => { e.stopPropagation(); onSelectItem(item); }}
+                                                            onClick={(e) => { e.stopPropagation(); handleSelectItemWithCustomization(item); }}
                                                             className="flex items-center gap-2 px-4 py-2 bg-dnd-gold text-black rounded-lg text-xs font-black uppercase hover:bg-white transition-all shadow-lg shadow-dnd-gold/10"
                                                         >
                                                             <Plus size={14} />
@@ -766,6 +844,20 @@ const ItemSearchModal: React.FC<ItemSearchModalProps> = ({ isOpen, onClose, item
                                                             )}
                                                             
                                                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
+                                                                {item.name === 'Dragon Scale Mail' && (
+                                                                    <div className="col-span-2 bg-orange-900/20 p-3 rounded border border-orange-800/50">
+                                                                        <div className="text-[10px] text-orange-400 uppercase font-black mb-2">Select Dragon Type</div>
+                                                                        <select 
+                                                                            value={selectedCustomization || ''}
+                                                                            onChange={(e) => setSelectedCustomization(e.target.value)}
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                            className="w-full bg-black/40 border border-gray-700 rounded p-2 text-xs text-white outline-none"
+                                                                        >
+                                                                            <option value="">Choose a type...</option>
+                                                                            {DRAGON_TYPES.map(d => <option key={d.name} value={d.name}>{d.name} ({d.resistance})</option>)}
+                                                                        </select>
+                                                                    </div>
+                                                                )}
                                                                 {item.armor_class && (
                                                                     <div className="bg-gray-900/50 p-2 rounded border border-gray-800">
                                                                         <div className="text-[8px] text-gray-500 uppercase font-black">Armor Class</div>

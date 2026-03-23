@@ -1,18 +1,18 @@
 
 import React, { useState } from 'react';
-import { BeastDetail, ABILITY_NAMES } from '@/types';
+import { CreatureDetail, ABILITY_NAMES } from '@/types';
 
-interface CustomBeastModalProps {
+interface CustomCreatureModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (beast: BeastDetail) => void;
+    onSave: (creature: CreatureDetail) => void;
 }
 
-const CustomBeastModal: React.FC<CustomBeastModalProps> = ({ isOpen, onClose, onSave }) => {
+const CustomCreatureModal: React.FC<CustomCreatureModalProps> = ({ isOpen, onClose, onSave }) => {
     const [name, setName] = useState('');
     const [cr, setCr] = useState('0');
     const [size, setSize] = useState('Medium');
-    const [type, setType] = useState('Beast');
+    const [type, setType] = useState('Creature');
     const [ac, setAc] = useState('');
     const [hp, setHp] = useState('');
     const [hitDice, setHitDice] = useState('');
@@ -37,8 +37,8 @@ const CustomBeastModal: React.FC<CustomBeastModalProps> = ({ isOpen, onClose, on
     const handleSubmit = () => {
         if (!name) return;
 
-        const beast: BeastDetail = {
-            index: `custom-beast-${Date.now()}`,
+        const creature: CreatureDetail = {
+            index: `custom-creature-${Date.now()}`,
             name,
             size,
             type,
@@ -62,7 +62,7 @@ const CustomBeastModal: React.FC<CustomBeastModalProps> = ({ isOpen, onClose, on
             isCustom: true
         };
 
-        onSave(beast);
+        onSave(creature);
         // Reset form
         setName(''); setCr('0'); setAc(''); setHp(''); setHitDice(''); setSpeed('');
         setActions([]);
@@ -84,7 +84,7 @@ const CustomBeastModal: React.FC<CustomBeastModalProps> = ({ isOpen, onClose, on
         <div className="fixed inset-0 bg-black/90 z-[600] flex items-center justify-center p-4 backdrop-blur-sm">
             <div className="bg-[#1b1c20] border-2 border-dnd-gold rounded-xl w-full max-w-3xl shadow-2xl flex flex-col max-h-[90vh]">
                 <div className="p-6 border-b border-gray-700 bg-[#121316] rounded-t-xl shrink-0 flex justify-between items-center">
-                    <h2 className="text-2xl font-serif text-dnd-gold">Create Custom Wild Shape</h2>
+                    <h2 className="text-2xl font-serif text-dnd-gold">Create Custom Creature</h2>
                     <button onClick={onClose} className="text-gray-500 hover:text-white text-2xl transition-colors">&times;</button>
                 </div>
 
@@ -196,7 +196,7 @@ const CustomBeastModal: React.FC<CustomBeastModalProps> = ({ isOpen, onClose, on
                         onClick={handleSubmit}
                         className="bg-dnd-gold hover:bg-yellow-600 text-black px-8 py-3 rounded font-bold uppercase text-sm shadow-lg transition-colors"
                     >
-                        Save Beast
+                        Save Creature
                     </button>
                 </div>
             </div>
@@ -204,4 +204,4 @@ const CustomBeastModal: React.FC<CustomBeastModalProps> = ({ isOpen, onClose, on
     );
 };
 
-export default CustomBeastModal;
+export default CustomCreatureModal;

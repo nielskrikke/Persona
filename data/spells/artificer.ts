@@ -118,6 +118,44 @@ export const ARTIFICER_SPELLS: SpellDetail[] = [
         desc: ["You touch a living creature that has 0 hit points. The creature becomes stable."] 
     },
     { 
+        index: "booming-blade", name: "Booming Blade", level: 0, school: { name: "Evocation", index: "evocation" }, 
+        casting_time: "1 action", range: "Self (5-foot radius)", components: ["S", "M"], material: "A melee weapon worth at least 1 sp.", 
+        duration: "1 round", ritual: false, concentration: false, classes: [], 
+        desc: ["You brandish the weapon used in the spell’s casting and make a melee attack with it against one creature within 5 feet of you. On a hit, the target suffers the weapon attack’s normal effects and then becomes sheathed in booming energy until the start of your next turn. If the target willingly moves 5 feet or more before then, the target takes 1d8 thunder damage, and the spell ends."],
+        damage: { damage_type: {name:"Thunder", index:"thunder"}, damage_at_character_level: {"5":"1d8", "11":"2d8", "17":"3d8"} }
+    },
+    { 
+        index: "green-flame-blade", name: "Green-Flame Blade", level: 0, school: { name: "Evocation", index: "evocation" }, 
+        casting_time: "1 action", range: "Self (5-foot radius)", components: ["S", "M"], material: "A melee weapon worth at least 1 sp.", 
+        duration: "Instantaneous", ritual: false, concentration: false, classes: [], 
+        desc: ["You brandish the weapon used in the spell’s casting and make a melee attack with it against one creature within 5 feet of you. On a hit, the target suffers the weapon attack’s normal effects, and you can cause green fire to leap from the target to a different creature of your choice that you can see within 5 feet of it. The second creature takes fire damage equal to your spellcasting ability modifier."],
+        damage: { damage_type: {name:"Fire", index:"fire"}, damage_at_character_level: {"5":"1d8", "11":"2d8", "17":"3d8"} }
+    },
+    { 
+        index: "lightning-lure", name: "Lightning Lure", level: 0, school: { name: "Evocation", index: "evocation" }, 
+        casting_time: "1 action", range: "15 feet", components: ["V"], duration: "Instantaneous", 
+        ritual: false, concentration: false, classes: [], 
+        desc: ["You create a lash of lightning energy that strikes at one creature of your choice that you can see within range. The target must succeed on a Strength saving throw or be pulled up to 10 feet in a straight line toward you and then take 1d8 lightning damage if it is within 5 feet of you."],
+        damage: { damage_type: {name:"Lightning", index:"lightning"}, damage_at_character_level: {"1":"1d8", "5":"2d8", "11":"3d8", "17":"4d8"} },
+        dc: { dc_type: {name:"STR", index:"str"}, dc_success: "none" }
+    },
+    { 
+        index: "mind-sliver", name: "Mind Sliver", level: 0, school: { name: "Enchantment", index: "enchantment" }, 
+        casting_time: "1 action", range: "60 feet", components: ["V"], duration: "1 round", 
+        ritual: false, concentration: false, classes: [], 
+        desc: ["You drive a disorienting spike of psychic energy into the mind of one creature you can see within range. The target must succeed on an Intelligence saving throw or take 1d6 psychic damage and subtract 1d4 from the next saving throw it makes before the end of your next turn."],
+        damage: { damage_type: {name:"Psychic", index:"psychic"}, damage_at_character_level: {"1":"1d6", "5":"2d6", "11":"3d6", "17":"4d6"} },
+        dc: { dc_type: {name:"INT", index:"int"}, dc_success: "none" }
+    },
+    { 
+        index: "sword-burst", name: "Sword Burst", level: 0, school: { name: "Conjuration", index: "conjuration" }, 
+        casting_time: "1 action", range: "Self (5-foot radius)", components: ["V"], duration: "Instantaneous", 
+        ritual: false, concentration: false, classes: [], 
+        desc: ["You create a circle of spectral blades that sweep around you. Each creature within range, other than you, must succeed on a Dexterity saving throw or take 1d6 force damage."],
+        damage: { damage_type: {name:"Force", index:"force"}, damage_at_character_level: {"1":"1d6", "5":"2d6", "11":"3d6", "17":"4d6"} },
+        dc: { dc_type: {name:"DEX", index:"dex"}, dc_success: "none" }
+    },
+    { 
         index: "thorn-whip", name: "Thorn Whip", level: 0, school: { name: "Transmutation", index: "transmutation" }, 
         casting_time: "1 action", range: "30 feet", components: ["V", "S", "M"], material: "The stem of a plant with thorns.", 
         duration: "Instantaneous", ritual: false, concentration: false, classes: [], 
@@ -151,6 +189,8 @@ export const ARTIFICER_SPELLS: SpellDetail[] = [
     { index: "longstrider", name: "Longstrider", level: 1, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "Touch", components: ["V", "S", "M"], duration: "1 hour", ritual: false, concentration: false, classes: [], desc: ["+10ft speed for 1 hour."] },
     { index: "sanctuary", name: "Sanctuary", level: 1, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 bonus action", range: "30 feet", components: ["V", "S", "M"], duration: "1 minute", ritual: false, concentration: false, classes: [], desc: ["Creatures must save to attack warded target."] },
     { index: "snare", name: "Snare", level: 1, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 minute", range: "Touch", components: ["V", "S", "M"], duration: "8 hours", ritual: false, concentration: false, classes: [], desc: ["Create a hidden magical trap on the ground."] },
+    { index: "purify-food-and-drink", name: "Purify Food and Drink", level: 1, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "10 feet", components: ["V", "S"], duration: "Instantaneous", ritual: true, concentration: false, classes: [], desc: ["Purify all nonmagical food and drink within a 5-foot radius."] },
+    { index: "tashas-caustic-brew", name: "Tasha's Caustic Brew", level: 1, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "Self (30-foot line)", components: ["V", "S", "M"], material: "A bit of rotten food.", duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [], desc: ["A stream of acid deals 2d4 acid damage at start of each turn until washed off."], damage: { damage_type: {name:"Acid", index:"acid"}, damage_at_slot_level: {"1":"2d4"} } },
 
     // --- LEVEL 2 ---
     { index: "aid", name: "Aid", level: 2, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 action", range: "30 feet", components: ["V", "S", "M"], duration: "8 hours", ritual: false, concentration: false, classes: [], desc: ["Increase max and current HP for 3 allies by 5."] },
@@ -172,6 +212,8 @@ export const ARTIFICER_SPELLS: SpellDetail[] = [
     { index: "see-invisibility", name: "See Invisibility", level: 2, school: { name: "Divination", index: "divination" }, casting_time: "1 action", range: "Self", components: ["V", "S", "M"], duration: "1 hour", ritual: false, concentration: false, classes: [], desc: ["See invisible things."] },
     { index: "skywrite", name: "Skywrite", level: 2, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "Sight", components: ["V", "S"], duration: "Concentration, up to 1 hour", ritual: true, concentration: true, classes: [], desc: ["Write messages in the clouds."] },
     { index: "spider-climb", name: "Spider Climb", level: 2, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "Touch", components: ["V", "S", "M"], duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [], desc: ["Walk on walls and ceilings."] },
+    { index: "pyrotechnics", name: "Pyrotechnics", level: 2, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "60 feet", components: ["V", "S"], duration: "Instantaneous", ritual: false, concentration: false, classes: [], desc: ["Extinguish a flame to create fireworks or smoke."] },
+    { index: "web", name: "Web", level: 2, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "60 feet", components: ["V", "S", "M"], material: "A bit of spiderweb.", duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [], desc: ["Create a 20-foot cube of sticky webs."] },
 
     // --- LEVEL 3 ---
     { index: "blink", name: "Blink", level: 3, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "Self", components: ["V", "S"], duration: "1 minute", ritual: false, concentration: false, classes: [], desc: ["Vanish to the Ethereal Plane each turn on 11+."] },
@@ -188,6 +230,9 @@ export const ARTIFICER_SPELLS: SpellDetail[] = [
     { index: "tiny-servant", name: "Tiny Servant", level: 3, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 minute", range: "Touch", components: ["V", "S"], duration: "8 hours", ritual: false, concentration: false, classes: [], desc: ["Animate a tiny object to serve you."] },
     { index: "water-breathing", name: "Water Breathing", level: 3, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "30 feet", components: ["V", "S", "M"], duration: "24 hours", ritual: true, concentration: false, classes: [], desc: ["Up to 10 creatures can breathe underwater."] },
     { index: "water-walk", name: "Water Walk", level: 3, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "30 feet", components: ["V", "S", "M"], duration: "1 hour", ritual: true, concentration: false, classes: [], desc: ["Walk on liquid surfaces."] },
+    { index: "ashardalons-stride", name: "Ashardalon's Stride", level: 3, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 bonus action", range: "Self", components: ["V", "S"], duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [], desc: ["Increase speed by 20ft and deal 1d6 fire damage to creatures you pass."], damage: { damage_type: {name:"Fire", index:"fire"}, damage_at_slot_level: {"3":"1d6"} } },
+    { index: "create-food-and-water", name: "Create Food and Water", level: 3, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "30 feet", components: ["V", "S"], duration: "Instantaneous", ritual: false, concentration: false, classes: [], desc: ["Create 45 pounds of food and 30 gallons of water."] },
+    { index: "intellect-fortress", name: "Intellect Fortress", level: 3, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 action", range: "30 feet", components: ["V"], duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [], desc: ["Grant resistance to psychic damage and adv on mental saves."] },
 
     // --- LEVEL 4 ---
     { index: "arcane-eye", name: "Arcane Eye", level: 4, school: { name: "Divination", index: "divination" }, casting_time: "1 action", range: "30 feet", components: ["V", "S", "M"], duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [], desc: ["Create an invisible, floating eye sensor."] },
@@ -201,6 +246,7 @@ export const ARTIFICER_SPELLS: SpellDetail[] = [
     { index: "stone-shape", name: "Stone Shape", level: 4, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "Touch", components: ["V", "S", "M"], duration: "Instantaneous", ritual: false, concentration: false, classes: [], desc: ["Reshape stone to any form."] },
     { index: "stoneskin", name: "Stoneskin", level: 4, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 action", range: "Touch", components: ["V", "S", "M"], duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [], desc: ["Resistance to nonmagical physical damage."] },
     { index: "vitreolic-sphere", name: "Vitreolic Sphere", level: 4, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "150 feet", components: ["V", "S", "M"], duration: "Instantaneous", ritual: false, concentration: false, classes: [], desc: ["Acid explosion deals heavy dmg over time."] },
+    { index: "summon-construct", name: "Summon Construct", level: 4, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "90 feet", components: ["V", "S", "M"], material: "A lock and key worth at least 400 gp.", duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [], desc: ["Summon a construct spirit to fight for you."] },
 
     // --- LEVEL 5 ---
     { index: "animate-objects", name: "Animate Objects", level: 5, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "120 feet", components: ["V", "S"], duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [], desc: ["Animate nonmagical objects to fight for you."] },

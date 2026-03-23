@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { CharacterState, FeatDetail, SpellDetail, AbilityScores, ABILITY_NAMES, ABILITY_LABELS, APIReference, ClassFeature, SubclassDetail, FeatureEffect, AbilityName } from '../../types';
+import { CharacterState, FeatDetail, SpellDetail, AbilityScores, ABILITY_NAMES, ABILITY_LABELS, APIReference, ClassFeature, SubclassDetail, FeatureEffect, AbilityName, LevelChoice } from '../../types';
 import { fetchLevelFeatures, fetchFeatsList, fetchAllSpells, getLocalSpells, fetchClassDetail, fetchSubclasses, fetchSubclassDetail, fetchSubclassLevels, fetchClassLevels } from '../../data/index';
-import { calculateModifier, getSpellsKnownCount, getSpellSlots, calculateProficiency, SKILL_LIST } from '../../utils/rules';
+import { STANDARD_LANGUAGES, CLASS_FEATURES } from '../../data/constants';
+import { calculateModifier, getSpellsKnownCount, getSpellSlots, calculateProficiency, SKILL_LIST, getEffectiveAbilities } from '../../utils/rules';
 
 interface LevelUpWizardProps {
     character: CharacterState;
@@ -57,7 +58,7 @@ const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, on
             feats.forEach((f: any) => {
                 if (f.effects) {
                     f.effects.forEach((eff: FeatureEffect) => {
-                        if (eff.type === 'expertise_choice' || eff.type === 'proficiency_choice') {
+                        if (eff.type === 'expertise_choice' || eff.type === 'proficiency_choice' || eff.type === 'feature_choice') {
                             choices.push({ featureName: f.name, effect: eff, selection: [] });
                         }
                     });
@@ -68,9 +69,9 @@ const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, on
             // Check if we need to choose a subclass at this level
             const subs = await fetchSubclasses(classIndex);
             if (subs.length > 0) {
-                // Expanded regex to catch "Fight Club", "Artificer Specialist" and other variant archetypes
+                // Expanded regex to catch "Fight Club", "Artificer Specialist", "Choose your Path" and other variant archetypes
                 const needsSub = feats.some((f: any) => 
-                    /archetype|domain|origin|college|circle|oath|tradition|patron|specialist|club/i.test(f.name)
+                    /archetype|domain|origin|college|circle|oath|tradition|patron|specialist|club|path/i.test(f.name)
                 ) || (isInitiation && ['cleric', 'warlock', 'sorcerer'].includes(classIndex));
 
                 if (needsSub) {
@@ -122,11 +123,12 @@ const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, on
         }
 
         const className = classDefinition.name;
+        const effectiveAbilities = getEffectiveAbilities(character);
         const currentLevel = isInitiation ? 0 : (existingClass?.level || 0);
         const currKnown = currentLevel > 0 
-            ? getSpellsKnownCount({ definition: classDefinition, level: currentLevel, subclass: existingClass?.subclass || null }, character.abilities)
+            ? getSpellsKnownCount({ definition: classDefinition, level: currentLevel, subclass: existingClass?.subclass || null }, effectiveAbilities)
             : { cantrips: 0, spells: 0 };
-        const nextKnown = getSpellsKnownCount({ definition: classDefinition, level: nextLevel, subclass: existingClass?.subclass || null }, character.abilities);
+        const nextKnown = getSpellsKnownCount({ definition: classDefinition, level: nextLevel, subclass: existingClass?.subclass || null }, effectiveAbilities);
 
         const newCantrips = Math.max(0, nextKnown.cantrips - currKnown.cantrips);
         const newSpells = Math.max(0, nextKnown.spells - currKnown.spells);
@@ -224,9 +226,27 @@ const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, on
             }
         });
 
-        // 4. Process Choices (Expertise, etc)
+        // 4. Update Resource Tracking (featureUsage)
+        const newFeatureUsage = { ...character.featureUsage };
+        updatedClasses.forEach(c => {
+            const feat = CLASS_FEATURES[c.definition.name];
+            if (feat) {
+                const max = feat.formula(c.level, character.abilities);
+                if (!newFeatureUsage[feat.name] || newFeatureUsage[feat.name].max !== max) {
+                    newFeatureUsage[feat.name] = {
+                        max,
+                        current: newFeatureUsage[feat.name] ? Math.min(newFeatureUsage[feat.name].current, max) : max,
+                        reset: feat.reset
+                    };
+                }
+            }
+        });
+        updates.featureUsage = newFeatureUsage;
+
+        // 5. Process Choices (Expertise, etc)
         let finalSkills = [...character.skills];
         let finalExpertise = [...(character.expertise || [])];
+        let finalLanguages = [...(character.languages || [])];
         
         pendingChoices.forEach(choice => {
             const effect = choice.effect;
@@ -238,6 +258,8 @@ const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, on
                  choice.selection.forEach(prof => {
                      if (effect.category === 'skill') {
                          if (!finalSkills.includes(prof)) finalSkills.push(prof);
+                     } else if (effect.category === 'language') {
+                         if (!finalLanguages.includes(prof)) finalLanguages.push(prof);
                      }
                  });
             }
@@ -245,6 +267,7 @@ const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, on
         
         updates.skills = finalSkills;
         updates.expertise = finalExpertise;
+        updates.languages = finalLanguages;
 
         if (selectedSubclass) {
             const subLvlData = await fetchSubclassLevels(selectedSubclass.index);
@@ -264,35 +287,95 @@ const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, on
         let finalAbilities = { ...character.abilities };
         let finalFeats = [...character.feats];
         let extraSpells: SpellDetail[] = [];
+        const levelChoices: LevelChoice[] = [];
 
         if (isAsiLevel) {
             if (asiChoice === 'ability') {
+                const increases: Record<string, number> = {};
                 ABILITY_NAMES.forEach(stat => {
-                    finalAbilities[stat] += abilityIncreases[stat];
+                    if (abilityIncreases[stat] > 0) {
+                        finalAbilities[stat] += abilityIncreases[stat];
+                        increases[stat] = abilityIncreases[stat];
+                    }
+                });
+                levelChoices.push({
+                    id: `asi-${nextLevel}`,
+                    level: nextLevel,
+                    source: 'Ability Score Improvement',
+                    type: 'asi',
+                    label: 'ASI Selection',
+                    value: Object.entries(increases).map(([s, a]) => `${ABILITY_LABELS[s as AbilityName]} +${a}`).join(', '),
+                    revertData: { abilities: increases }
                 });
             } else if (selectedFeat) {
                 finalFeats.push(selectedFeat);
+                const featRevertData: any = { featIndex: selectedFeat.index, abilities: {}, spells: [], skills: [], expertise: [], tools: [], languages: [] };
+                
+                levelChoices.push({
+                    id: `feat-${nextLevel}`,
+                    level: nextLevel,
+                    source: 'Ability Score Improvement',
+                    type: 'feat',
+                    label: 'Feat Selection',
+                    value: selectedFeat.name,
+                    options: availableFeats,
+                    revertData: featRevertData
+                });
+
                 selectedFeat.effects?.forEach((eff: any, idx: number) => {
                     const choice = featChoices[idx];
                     if (eff.type === 'asi') {
                         eff.attributes.forEach((attr: string) => {
                             finalAbilities[attr as keyof AbilityScores] += eff.amount;
+                            featRevertData.abilities[attr] = (featRevertData.abilities[attr] || 0) + eff.amount;
                         });
                     } else if (eff.type === 'asi_choice' && choice) {
-                        // Choice can be array or string
                          if (Array.isArray(choice)) {
-                             choice.forEach(c => finalAbilities[c as keyof AbilityScores] += eff.amount);
+                             choice.forEach(c => {
+                                 finalAbilities[c as keyof AbilityScores] += eff.amount;
+                                 featRevertData.abilities[c] = (featRevertData.abilities[c] || 0) + eff.amount;
+                             });
                          } else {
                              finalAbilities[choice as keyof AbilityScores] += eff.amount;
+                             featRevertData.abilities[choice] = (featRevertData.abilities[choice] || 0) + eff.amount;
                          }
                     } else if (eff.type === 'spell_access') {
                         if (eff.spell) {
                              const found = allSpells.find(s => s.name === eff.spell || s.index === eff.spell.toLowerCase().replace(/\s+/g, '-'));
-                             if (found) extraSpells.push({ ...found, sourceClassIndex: classIndex });
+                             if (found) {
+                                 const spellWithSource = { ...found, sourceClassIndex: classIndex };
+                                 extraSpells.push(spellWithSource);
+                                 featRevertData.spells.push(found.index);
+                             }
+                        } else if (choice) {
+                            const selections = Array.isArray(choice) ? choice : [choice];
+                            selections.forEach(sel => {
+                                const found = allSpells.find(s => s.index === sel || s.name === sel);
+                                if (found) {
+                                    const spellWithSource = { ...found, sourceClassIndex: classIndex };
+                                    extraSpells.push(spellWithSource);
+                                    featRevertData.spells.push(found.index);
+                                }
+                            });
                         }
-                    } else if (eff.type === 'proficiency_choice' && choice && eff.category === 'skill') {
-                        if (Array.isArray(choice)) finalSkills = [...finalSkills, ...choice];
-                        else finalSkills.push(choice);
+                    } else if (eff.type === 'proficiency_choice' && choice) {
+                        const selections = Array.isArray(choice) ? choice : [choice];
+                        if (eff.category === 'skill') {
+                            finalSkills = [...finalSkills, ...selections];
+                            featRevertData.skills.push(...selections);
+                        } else if (eff.category === 'tool') {
+                            // Tools are usually stored in proficiencies or similar, but for now we'll just track them
+                            featRevertData.tools.push(...selections);
+                        } else if (eff.category === 'language') {
+                            featRevertData.languages.push(...selections);
+                        }
+                    } else if (eff.type === 'expertise_choice' && choice) {
+                        const selections = Array.isArray(choice) ? choice : [choice];
+                        finalExpertise = [...finalExpertise, ...selections];
+                        featRevertData.expertise.push(...selections);
+                    } else if (eff.type === 'proficiency' && eff.category === 'skill') {
+                        finalSkills.push(eff.target);
+                        featRevertData.skills.push(eff.target);
                     }
                 });
             }
@@ -307,6 +390,63 @@ const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, on
             const existingIndices = new Set(character.spells.map(s => s.index));
             updates.spells = [...character.spells, ...extraSpells.filter(s => !existingIndices.has(s.index))];
         }
+
+        // 6. Record Choices
+        const newChoices: LevelChoice[] = [...(character.choices || [])];
+        
+        // Record Level Up
+        newChoices.push({
+            id: `level-${nextLevel}-${classIndex}`,
+            level: nextLevel,
+            source: sourceName,
+            type: 'other',
+            label: `Level ${nextLevel} Advancement`,
+            value: `${sourceName} Level ${nextLevel}`,
+            revertData: { classIndex, hpIncrease }
+        });
+
+        // Record Subclass
+        if (selectedSubclass) {
+            newChoices.push({
+                id: `subclass-${classIndex}`,
+                level: nextLevel,
+                source: sourceName,
+                type: 'subclass',
+                label: 'Subclass Selection',
+                value: selectedSubclass.name,
+                revertData: { classIndex, subclassIndex: selectedSubclass.index }
+            });
+        }
+
+        // Add ASI/Feat choices
+        newChoices.push(...levelChoices);
+
+        // Record Feature Choices
+        pendingChoices.forEach((choice, idx) => {
+            const revertData: any = {};
+            if (choice.effect.type === 'expertise_choice') {
+                revertData.expertise = choice.selection;
+            } else if (choice.effect.type === 'proficiency_choice') {
+                if (choice.effect.category === 'skill') revertData.skills = choice.selection;
+                else if (choice.effect.category === 'tool') revertData.tools = choice.selection;
+                else if (choice.effect.category === 'language') revertData.languages = choice.selection;
+            }
+
+            newChoices.push({
+                id: `choice-${nextLevel}-${idx}`,
+                level: nextLevel,
+                source: choice.featureName,
+                type: choice.effect.type === 'expertise_choice' ? 'expertise' : 
+                      (choice.effect.category === 'language' ? 'language' : 'skill'),
+                label: choice.featureName,
+                value: choice.selection,
+                options: choice.effect.options || (choice.effect.category === 'language' ? STANDARD_LANGUAGES : []),
+                count: (choice.effect as any).count || 1,
+                revertData
+            });
+        });
+
+        updates.choices = newChoices;
 
         // Auto-add companion widgets to layout
         if (classIndex === 'artificer' && nextLevel === 3) {
@@ -370,6 +510,7 @@ const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, on
         if (name === 'Warlock') return 'Otherworldly Patron';
         if (name === 'Sorcerer') return 'Sorcerous Origin';
         if (name === 'Wizard') return 'Arcane Tradition';
+        if (name === 'Card Master') return 'Path';
         return 'Archetype';
     };
 
@@ -435,7 +576,9 @@ const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, on
                                         {newFeatures.map((f, i) => (
                                             <div key={i} className="bg-gray-800/30 p-4 rounded border-l-4 border-dnd-gold">
                                                 <h4 className="font-bold text-white text-lg">{f.name}</h4>
-                                                <p className="text-sm text-gray-400 mt-1 leading-relaxed line-clamp-2">{f.desc?.[0]}</p>
+                                                <p className="text-sm text-gray-400 mt-1 leading-relaxed line-clamp-2">
+                                                    {f.desc && f.desc.length > 0 ? f.desc[0] : "No description available."}
+                                                </p>
                                             </div>
                                         ))}
                                     </div>
@@ -449,7 +592,7 @@ const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, on
                              <h3 className="text-2xl font-serif text-dnd-gold text-center">Feature Choices</h3>
                              {pendingChoices.map((choice, idx) => {
                                  const count = (choice.effect as any).count || 1;
-                                 let options: string[] = [];
+                                 let options: any[] = [];
 
                                  if (choice.effect.type === 'expertise_choice') {
                                      // Filter for skills the character IS proficient in but NOT expert in
@@ -459,25 +602,36 @@ const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, on
                                       const pool = choice.effect.options || SKILL_LIST.map(s => s.name);
                                       // Filter out skills character already has
                                       options = pool.filter(s => !character.skills.includes(s));
+                                 } else if (choice.effect.type === 'feature_choice') {
+                                     options = choice.effect.options || [];
                                  }
 
                                  return (
                                      <div key={idx} className="bg-gray-800/50 p-6 rounded border border-gray-700">
                                          <h4 className="text-lg font-bold text-white mb-2">{choice.featureName}</h4>
                                          <p className="text-sm text-gray-400 mb-4">Choose {count} option{count > 1 ? 's' : ''}:</p>
-                                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                             {options.map(opt => (
-                                                 <label key={opt} className={`flex items-center gap-3 p-2 rounded cursor-pointer border transition-colors ${choice.selection.includes(opt) ? 'bg-dnd-gold/20 border-dnd-gold text-white' : 'bg-black/20 border-transparent hover:bg-gray-500'}`}>
-                                                     <input 
-                                                        type="checkbox" 
-                                                        checked={choice.selection.includes(opt)}
-                                                        onChange={() => handleChoiceSelection(idx, opt)}
-                                                        disabled={!choice.selection.includes(opt) && choice.selection.length >= count}
-                                                        className="accent-dnd-gold"
-                                                     />
-                                                     <span className="text-sm font-bold">{opt}</span>
-                                                 </label>
-                                             ))}
+                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                             {options.map(opt => {
+                                                 const optName = typeof opt === 'string' ? opt : opt.name;
+                                                 const optDesc = typeof opt === 'string' ? null : opt.desc;
+                                                 const isSelected = choice.selection.includes(optName);
+                                                 
+                                                 return (
+                                                     <label key={optName} className={`flex flex-col gap-1 p-3 rounded cursor-pointer border transition-colors ${isSelected ? 'bg-dnd-gold/20 border-dnd-gold text-white' : 'bg-black/20 border-transparent hover:bg-gray-700'}`}>
+                                                         <div className="flex items-center gap-3">
+                                                             <input 
+                                                                type="checkbox" 
+                                                                checked={isSelected}
+                                                                onChange={() => handleChoiceSelection(idx, optName)}
+                                                                disabled={!isSelected && choice.selection.length >= count}
+                                                                className="accent-dnd-gold"
+                                                             />
+                                                             <span className="text-sm font-bold">{optName}</span>
+                                                         </div>
+                                                         {optDesc && <p className="text-[10px] text-gray-500 ml-7 leading-tight">{optDesc}</p>}
+                                                     </label>
+                                                 );
+                                             })}
                                          </div>
                                      </div>
                                  );
@@ -560,6 +714,86 @@ const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, on
                                                                                 <option value="">Select Ability...</option>
                                                                                 {eff.options.map((opt: string) => (
                                                                                     <option key={opt} value={opt}>{ABILITY_LABELS[opt as AbilityName]}</option>
+                                                                                ))}
+                                                                             </select>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        } else if (eff.type === 'spell_access' && !eff.spell) {
+                                                            const count = eff.count || 1;
+                                                            const level = eff.level || 0;
+                                                            const filteredSpells = allSpells.filter(s => {
+                                                                if (s.level !== level) return false;
+                                                                if (eff.filter_class && s.classes && !s.classes.some((c: any) => c.index === eff.filter_class)) return false;
+                                                                if (eff.school && s.school.name !== eff.school) return false;
+                                                                return true;
+                                                            });
+
+                                                            return (
+                                                                <div key={idx} className="bg-gray-800 p-3 rounded border border-gray-700">
+                                                                    <span className="text-xs font-bold text-dnd-gold uppercase block mb-2">Choose {count} {level === 0 ? 'Cantrip' : `Level ${level} Spell`}{count > 1 ? 's' : ''}</span>
+                                                                    <div className="flex flex-col gap-2">
+                                                                        {Array.from({length: count}).map((_, i) => (
+                                                                             <select
+                                                                                key={i}
+                                                                                className="w-full bg-[#0b0c0e] border border-gray-600 rounded p-2 text-white text-sm focus:border-dnd-gold outline-none"
+                                                                                value={Array.isArray(featChoices[idx]) ? (featChoices[idx] as string[])[i] : (featChoices[idx] as string) || ''}
+                                                                                onChange={(e) => {
+                                                                                    const val = e.target.value;
+                                                                                    if (count > 1) {
+                                                                                        const current = (featChoices[idx] as string[]) || Array(count).fill('');
+                                                                                        const newArr = [...current];
+                                                                                        newArr[i] = val;
+                                                                                        setFeatChoices(prev => ({...prev, [idx]: newArr}));
+                                                                                    } else {
+                                                                                        setFeatChoices(prev => ({...prev, [idx]: val}));
+                                                                                    }
+                                                                                }}
+                                                                             >
+                                                                                <option value="">Select Spell...</option>
+                                                                                {filteredSpells.map(s => (
+                                                                                    <option key={s.index} value={s.index}>{s.name}</option>
+                                                                                ))}
+                                                                             </select>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        } else if (eff.type === 'proficiency_choice' || eff.type === 'expertise_choice') {
+                                                            const count = eff.count || 1;
+                                                            let options = eff.options || [];
+                                                            if (eff.category === 'skill') {
+                                                                options = SKILL_LIST.map(s => s.name);
+                                                                if (eff.type === 'expertise_choice') {
+                                                                    options = character.skills;
+                                                                }
+                                                            }
+
+                                                            return (
+                                                                <div key={idx} className="bg-gray-800 p-3 rounded border border-gray-700">
+                                                                    <span className="text-xs font-bold text-dnd-gold uppercase block mb-2">Choose {count} {eff.category} {eff.type === 'expertise_choice' ? 'Expertise' : 'Proficiency'}</span>
+                                                                    <div className="flex flex-col gap-2">
+                                                                        {Array.from({length: count}).map((_, i) => (
+                                                                             <select
+                                                                                key={i}
+                                                                                className="w-full bg-[#0b0c0e] border border-gray-600 rounded p-2 text-white text-sm focus:border-dnd-gold outline-none"
+                                                                                value={Array.isArray(featChoices[idx]) ? (featChoices[idx] as string[])[i] : (featChoices[idx] as string) || ''}
+                                                                                onChange={(e) => {
+                                                                                    const val = e.target.value;
+                                                                                    if (count > 1) {
+                                                                                        const current = (featChoices[idx] as string[]) || Array(count).fill('');
+                                                                                        const newArr = [...current];
+                                                                                        newArr[i] = val;
+                                                                                        setFeatChoices(prev => ({...prev, [idx]: newArr}));
+                                                                                    } else {
+                                                                                        setFeatChoices(prev => ({...prev, [idx]: val}));
+                                                                                    }
+                                                                                }}
+                                                                             >
+                                                                                <option value="">Select {eff.category}...</option>
+                                                                                {options.map((opt: any) => (
+                                                                                    <option key={opt.index || opt} value={opt.index || opt}>{opt.name || opt}</option>
                                                                                 ))}
                                                                              </select>
                                                                         ))}

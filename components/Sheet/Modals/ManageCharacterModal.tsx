@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, GraduationCap, Activity, Shield, Settings, Plus, Trash2, Save, Languages, Palette, Type, Dice5, Eye, Info, Sparkles } from 'lucide-react';
-import { CharacterState, APIReference, RaceDetail, SubraceDetail, BackgroundDetail, FeatDetail, ABILITY_NAMES, ABILITY_LABELS, AbilityScores, SpellDetail } from '@/types';
+import { X, User, GraduationCap, Activity, Shield, Settings, Plus, Trash2, Save, Languages, Palette, Type, Dice5, Eye, EyeOff, Info, Sparkles, AlertTriangle, RotateCcw } from 'lucide-react';
+import { CharacterState, APIReference, RaceDetail, SubraceDetail, BackgroundDetail, FeatDetail, ABILITY_NAMES, ABILITY_LABELS, AbilityScores, SpellDetail, LevelChoice, AbilityName } from '@/types';
 import { fetchClasses, fetchRaces, fetchSubraces, fetchBackgrounds, fetchFeatsList, fetchRaceDetail, fetchSubraceDetail, fetchBackgroundDetail, fetchSubclasses, fetchSubclassDetail, fetchSubclassLevels, fetchClassLevels, getLocalSpells } from '@/data/index';
 import { getSpellSlots, calculateModifier, SKILL_LIST } from '@/utils/rules';
 import { CLASS_FEATURES, STANDARD_LANGUAGES } from '../../../data/constants';
@@ -26,7 +26,7 @@ const ManageCharacterModal = ({
     onUpdate: (data: any) => void, 
     onLevelUp: (classIndex: string, updates: Partial<CharacterState>) => Promise<void> 
 }) => {
-    const [tab, setTab] = useState<'identity' | 'classes' | 'abilities' | 'proficiencies' | 'trackers' | 'theme'>('identity');
+    const [tab, setTab] = useState<'identity' | 'classes' | 'abilities' | 'proficiencies' | 'trackers' | 'choices' | 'theme' | 'combat'>('identity');
     
     // Identity State
     const [name, setName] = useState(character.name);
@@ -35,6 +35,14 @@ const ManageCharacterModal = ({
     const [alignment, setAlignment] = useState(character.alignment);
     const [languages, setLanguages] = useState<string[]>(character.languages || []);
     const [newLangInput, setNewLangInput] = useState('');
+    
+    // Choices State
+    const [localChoices, setLocalChoices] = useState<LevelChoice[]>(character.choices || []);
+    const [localFeats, setLocalFeats] = useState<FeatDetail[]>(character.feats);
+    const [localSpells, setLocalSpells] = useState<SpellDetail[]>(character.spells);
+    const [localClasses, setLocalClasses] = useState(character.classes);
+    const [localMaxHp, setLocalMaxHp] = useState(character.maxHp);
+    const [levelDownConfirm, setLevelDownConfirm] = useState<number | null>(null);
     
     // Lists
     const [allRaces, setAllRaces] = useState<APIReference[]>([]);
@@ -78,6 +86,14 @@ const ManageCharacterModal = ({
     const [diceColor, setDiceColor] = useState(character.diceColor || '#c9ad6a');
     const [show3DDice, setShow3DDice] = useState(character.show3DDice !== false); // Default to true
 
+    // Combat Overrides State
+    const [combatOverrides, setCombatOverrides] = useState(character.combatOverrides || {
+        hitBonus: 0,
+        damageBonus: 0,
+        hitOverride: null,
+        damageOverride: null
+    });
+
     // Initialization
     useEffect(() => {
         if (isOpen) {
@@ -93,6 +109,11 @@ const ManageCharacterModal = ({
                 setAllBackgrounds(b);
                 setAllFeats(f);
                 setAllClasses(c);
+
+                if (character.race) {
+                    const subs = await fetchSubraces(character.race.index);
+                    setAllSubraces(subs);
+                }
 
                 // Load wizard cantrips for racial spell swapping
                 const spells = getLocalSpells('wizard', 0);
@@ -121,6 +142,21 @@ const ManageCharacterModal = ({
             setThemeColorSecondary(character.themeColorSecondary || '#8a0b0b');
             setDiceColor(character.diceColor || '#c9ad6a');
             setShow3DDice(character.show3DDice !== false);
+            setCombatOverrides(character.combatOverrides || {
+                hitBonus: 0,
+                damageBonus: 0,
+                hitOverride: null,
+                damageOverride: null
+            });
+
+            setLocalChoices(character.choices || []);
+            setAbilities(character.abilities);
+            setLocalFeats(character.feats);
+            setLocalSpells(character.spells);
+            setSkills(character.skills);
+            setExpertise(character.expertise || []);
+            setLocalClasses(character.classes);
+            setLocalMaxHp(character.maxHp);
 
             // Preload subraces if race exists
             if (character.race) {
@@ -128,6 +164,117 @@ const ManageCharacterModal = ({
             }
         }
     }, [isOpen, character]);
+
+    // Backfill logic for existing characters
+    useEffect(() => {
+        const backfill = async () => {
+            if (isOpen && (!localChoices || localChoices.length === 0) && allRaces.length > 0 && allBackgrounds.length > 0) {
+                const backfilled: LevelChoice[] = [];
+                
+                // Race
+                if (character.race) {
+                    backfilled.push({
+                        id: 'initial-race',
+                        level: 0,
+                        source: 'Race',
+                        type: 'other',
+                        label: 'Race Selection',
+                        value: character.race.index,
+                        options: allRaces
+                    });
+                }
+                
+                // Subrace
+                if (character.subrace) {
+                    backfilled.push({
+                        id: 'initial-subrace',
+                        level: 0,
+                        source: 'Subrace',
+                        type: 'other',
+                        label: 'Subrace Selection',
+                        value: character.subrace.index,
+                        options: allSubraces
+                    });
+                }
+                
+                // Background
+                if (character.background) {
+                    const bgRef = allBackgrounds.find(b => b.name === character.background);
+                    if (bgRef) {
+                        backfilled.push({
+                            id: 'initial-background',
+                            level: 0,
+                            source: 'Background',
+                            type: 'other',
+                            label: 'Background Selection',
+                            value: bgRef.index,
+                            options: allBackgrounds
+                        });
+                    }
+                }
+
+                // Languages from Race
+                if (character.race?.languages) {
+                    const racialLangs = character.race.languages.map(l => l.name);
+                    backfilled.push({
+                        id: 'initial-languages',
+                        level: 0,
+                        source: 'Race',
+                        type: 'language',
+                        label: 'Racial Languages',
+                        value: racialLangs,
+                        options: STANDARD_LANGUAGES,
+                        count: racialLangs.length
+                    });
+                }
+
+                // Classes & Subclasses
+                for (const cls of character.classes) {
+                    for (let i = 1; i <= cls.level; i++) {
+                        backfilled.push({
+                            id: `level-${i}-${cls.definition.index}`,
+                            level: i,
+                            source: cls.definition.name,
+                            type: 'other',
+                            label: `Level ${i} Advancement`,
+                            value: `${cls.definition.name} Level ${i}`
+                        });
+                    }
+                    const subLvl = SUBCLASS_LEVELS[cls.definition.name] || 3;
+                    if (cls.level >= subLvl) {
+                        const subclasses = await fetchSubclasses(cls.definition.index);
+                        backfilled.push({
+                            id: `subclass-${cls.definition.index}`,
+                            level: subLvl,
+                            source: cls.definition.name,
+                            type: 'other',
+                            label: 'Subclass Selection',
+                            value: cls.subclass?.index || '',
+                            options: subclasses
+                        });
+                    }
+                }
+
+                // Feats
+                character.feats.forEach((feat, idx) => {
+                    backfilled.push({
+                        id: `feat-backfill-${idx}`,
+                        level: 0,
+                        source: 'Feat',
+                        type: 'feat',
+                        label: 'Feat Selection',
+                        value: feat.name,
+                        options: allFeats
+                    });
+                });
+
+                if (backfilled.length > 0) {
+                    setLocalChoices(backfilled);
+                }
+            }
+        };
+        backfill();
+    }, [isOpen, allRaces, allBackgrounds, allFeats, character.race, character.subrace, character.background, character.classes, character.feats]);
 
     // Handle Race Change
     const handleRaceChange = async (index: string) => {
@@ -319,40 +466,6 @@ const ManageCharacterModal = ({
             languages
         };
 
-        // Process Race Change if varied
-        if (selectedRaceIndex && selectedRaceIndex !== character.race?.index) {
-            const raceDetail = await fetchRaceDetail(selectedRaceIndex);
-            if (raceDetail) updates.race = raceDetail;
-        }
-
-        // Process Subrace Change
-        if (selectedSubraceIndex && selectedSubraceIndex !== character.subrace?.index) {
-            const subDetail = await fetchSubraceDetail(selectedSubraceIndex);
-            if (subDetail) updates.subrace = subDetail;
-        } else if (!selectedSubraceIndex && allSubraces.length === 0) {
-            updates.subrace = null;
-        }
-
-        // Process Background Change
-        const bgRef = allBackgrounds.find(b => b.index === selectedBackgroundIndex);
-        if (bgRef && bgRef.name !== character.background) {
-            const bgDetail = await fetchBackgroundDetail(bgRef.index);
-            if (bgDetail) {
-                updates.background = bgDetail.name;
-                // Swap features
-                const featsWithoutBg = character.classFeatures.filter(f => f.source !== 'Background');
-                const newBgFeat = {
-                    index: bgDetail.feature.name.toLowerCase().replace(/\s+/g, '-'),
-                    name: bgDetail.feature.name,
-                    level: 1,
-                    source: 'Background',
-                    desc: bgDetail.feature.desc,
-                    url: ''
-                };
-                updates.classFeatures = [...featsWithoutBg, newBgFeat];
-            }
-        }
-
         onUpdate(updates);
         onClose();
     };
@@ -375,17 +488,126 @@ const ManageCharacterModal = ({
         setAbilities(prev => ({ ...prev, [stat]: num }));
     };
 
-    const handleAddFeat = () => {
+    const handleAddFeat = async () => {
         if (!featToAdd) return;
         const feat = allFeats.find(f => f.index === featToAdd);
         if (feat) {
-            onUpdate({ feats: [...character.feats, feat] });
+            setLocalFeats(prev => [...prev, feat as any]);
             setFeatToAdd('');
         }
     };
 
+    const revertChoice = (choice: LevelChoice) => {
+        const data = choice.revertData;
+        if (!data) return;
+
+        if (choice.type === 'asi') {
+            setAbilities(prev => {
+                const next = { ...prev };
+                Object.entries(data.abilities as Record<string, number>).forEach(([stat, amount]) => {
+                    next[stat as keyof AbilityScores] -= amount;
+                });
+                return next;
+            });
+        } else if (choice.type === 'feat') {
+            setLocalFeats(prev => prev.filter(f => f.index !== data.featIndex));
+            if (data.abilities) {
+                setAbilities(prev => {
+                    const next = { ...prev };
+                    Object.entries(data.abilities as Record<string, number>).forEach(([stat, amount]) => {
+                        next[stat as keyof AbilityScores] -= amount;
+                    });
+                    return next;
+                });
+            }
+            if (data.spells) {
+                setLocalSpells(prev => prev.filter(s => !data.spells.includes(s.index)));
+            }
+            if (data.skills) {
+                setSkills(prev => prev.filter(s => !data.skills.includes(s)));
+            }
+            if (data.expertise) {
+                setExpertise(prev => prev.filter(s => !data.expertise.includes(s)));
+            }
+        } else if (choice.type === 'skill') {
+            if (data.skills) setSkills(prev => prev.filter(s => !data.skills.includes(s)));
+        } else if (choice.type === 'expertise') {
+            if (data.expertise) setExpertise(prev => prev.filter(s => !data.expertise.includes(s)));
+        } else if (choice.type === 'subclass') {
+            setLocalClasses(prev => prev.map(c => {
+                if (c.definition.index === data.classIndex) {
+                    return { ...c, subclass: undefined };
+                }
+                return c;
+            }));
+        } else if (choice.type === 'other' && choice.id.startsWith('level-')) {
+            setLocalClasses(prev => prev.map(c => {
+                if (c.definition.index === data.classIndex) {
+                    return { ...c, level: c.level - 1 };
+                }
+                return c;
+            }).filter(c => c.level > 0));
+            setLocalMaxHp(prev => prev - (data.hpIncrease || 0));
+        }
+    };
+
+    const handleRevertLevel = (level: number) => {
+        const choicesAtLevel = localChoices.filter(c => c.level === level);
+        // Revert in reverse order
+        [...choicesAtLevel].reverse().forEach(revertChoice);
+        setLocalChoices(prev => prev.filter(c => c.level !== level));
+        
+        // If we are reverting the current level, we should also decrement the level in classes
+        if (level === character.level) {
+            const levelUpChoice = choicesAtLevel.find(c => c.type === 'level_up');
+            if (levelUpChoice && levelUpChoice.revertData?.classIndex) {
+                const classIndex = levelUpChoice.revertData.classIndex;
+                setLocalClasses(prev => prev.map(c => {
+                    if (c.definition.index === classIndex) {
+                        return { ...c, level: Math.max(1, c.level - 1) };
+                    }
+                    return c;
+                }));
+            }
+        }
+
+        setLevelDownConfirm(null);
+    };
+
+    const handleAsiEdit = (choiceId: string, stat: string, delta: number) => {
+        setLocalChoices(prev => prev.map(c => {
+            if (c.id === choiceId) {
+                const currentAbilities = { ...(c.revertData?.abilities || {}) };
+                const currentVal = currentAbilities[stat] || 0;
+                const newVal = Math.max(0, currentVal + delta);
+                
+                // Total increases in this ASI choice should usually be 2
+                const total = Object.values(currentAbilities).reduce((a: any, b: any) => (a as number) + (b as number), 0) as number;
+                if (delta > 0 && total >= 2) return c;
+
+                const nextAbilities = { ...currentAbilities, [stat]: newVal };
+                
+                // Update character abilities too
+                setAbilities(prevAbs => ({
+                    ...prevAbs,
+                    [stat]: prevAbs[stat as keyof AbilityScores] + delta
+                }));
+
+                return {
+                    ...c,
+                    revertData: { ...c.revertData, abilities: nextAbilities },
+                    value: Object.entries(nextAbilities)
+                        .filter(([_, a]) => (a as number) > 0)
+                        .map(([s, a]) => `${ABILITY_LABELS[s as AbilityName]} +${a}`)
+                        .join(', ')
+                };
+            }
+            return c;
+        }));
+    };
+
     const handleRemoveFeat = (index: string) => {
-        onUpdate({ feats: character.feats.filter(f => f.index !== index) });
+        setLocalFeats(prev => prev.filter(f => f.index !== index));
     };
 
     const saveAbilities = () => {
@@ -430,6 +652,19 @@ const ManageCharacterModal = ({
         onClose();
     };
 
+    // Combat Overrides
+    const handleCombatOverrideChange = (field: keyof NonNullable<CharacterState['combatOverrides']>, value: any) => {
+        setCombatOverrides(prev => ({
+            ...prev,
+            [field]: value === '' ? (field.includes('Override') ? null : 0) : value
+        }));
+    };
+
+    const saveCombatOverrides = () => {
+        onUpdate({ combatOverrides });
+        onClose();
+    };
+
     // Trackers
     const handleSaveTrackers = () => {
         onUpdate({ featureUsage: localFeatures });
@@ -446,9 +681,233 @@ const ManageCharacterModal = ({
         if (!newFeatName) return;
         setLocalFeatures(prev => ({
             ...prev,
-            [newFeatName]: { max: newFeatMax, current: newFeatMax, reset: newFeatReset }
+            [newFeatName]: { max: newFeatMax, current: newFeatMax, reset: newFeatReset, hidden: false }
         }));
         setNewFeatName(''); setNewFeatMax(1);
+    };
+
+    const saveChoices = async () => {
+        const updates: any = { 
+            choices: localChoices,
+            abilities: abilities,
+            feats: localFeats,
+            spells: localSpells,
+            skills: skills,
+            expertise: expertise,
+            classes: localClasses,
+            maxHp: localMaxHp,
+            currentHp: Math.min(character.currentHp, localMaxHp)
+        };
+
+        // Process Race Change if varied
+        if (selectedRaceIndex && selectedRaceIndex !== character.race?.index) {
+            const raceDetail = await fetchRaceDetail(selectedRaceIndex);
+            if (raceDetail) {
+                updates.race = raceDetail;
+                
+                // Update racial features
+                const featuresWithoutRace = (updates.classFeatures || character.classFeatures).filter(f => f.source !== 'Race');
+                const newRacialFeatures = raceDetail.traits.map(t => ({
+                    index: t.index,
+                    name: t.name,
+                    level: 1,
+                    source: 'Race',
+                    desc: [], // We might need to fetch trait details for full desc, but for now name is good
+                    url: t.url
+                }));
+                updates.classFeatures = [...featuresWithoutRace, ...newRacialFeatures];
+                
+                // Update languages
+                const langsWithoutRace = (updates.languages || character.languages || []).filter(l => !character.race?.languages.some(rl => rl.name === l));
+                const newLangs = raceDetail.languages.map(l => l.name);
+                updates.languages = Array.from(new Set([...langsWithoutRace, ...newLangs]));
+                
+                // Update proficiencies
+                if (raceDetail.starting_proficiencies) {
+                    const profsWithoutRace = (updates.skills || character.skills || []).filter(s => !character.race?.starting_proficiencies?.some(rp => rp.name.includes(s)));
+                    const newProfs = raceDetail.starting_proficiencies
+                        .filter(p => p.index.startsWith('skill-'))
+                        .map(p => p.name.replace('Skill: ', ''));
+                    updates.skills = Array.from(new Set([...profsWithoutRace, ...newProfs]));
+                }
+            }
+        }
+
+        // Process Subrace Change
+        if (selectedSubraceIndex && selectedSubraceIndex !== character.subrace?.index) {
+            const subDetail = await fetchSubraceDetail(selectedSubraceIndex);
+            if (subDetail) {
+                updates.subrace = subDetail;
+                
+                // Update subrace features
+                const featuresWithoutSubrace = (updates.classFeatures || character.classFeatures).filter(f => f.source !== 'Subrace');
+                // Subraces might have traits too, though not explicitly in the type I saw earlier. 
+                // Let's check if SubraceDetail has traits.
+                const newSubFeatures = (subDetail as any).racial_traits?.map((t: any) => ({
+                    index: t.index,
+                    name: t.name,
+                    level: 1,
+                    source: 'Subrace',
+                    desc: [],
+                    url: t.url
+                })) || [];
+                updates.classFeatures = [...(updates.classFeatures || character.classFeatures).filter(f => f.source !== 'Subrace'), ...newSubFeatures];
+                
+                // Update subrace proficiencies
+                if (subDetail.starting_proficiencies) {
+                    const profsWithoutSubrace = (updates.skills || character.skills || []).filter(s => !character.subrace?.starting_proficiencies?.some(sp => sp.name.includes(s)));
+                    const newSubProfs = subDetail.starting_proficiencies
+                        .filter(p => p.index.startsWith('skill-'))
+                        .map(p => p.name.replace('Skill: ', ''));
+                    updates.skills = Array.from(new Set([...(updates.skills || character.skills || []), ...newSubProfs]));
+                }
+            }
+        } else if (!selectedSubraceIndex && character.subrace) {
+            updates.subrace = null;
+            updates.classFeatures = (updates.classFeatures || character.classFeatures).filter(f => f.source !== 'Subrace');
+        }
+
+        // Process Background Change
+        const bgRef = allBackgrounds.find(b => b.index === selectedBackgroundIndex);
+        if (bgRef && bgRef.name !== character.background) {
+            const bgDetail = await fetchBackgroundDetail(bgRef.index);
+            if (bgDetail) {
+                updates.background = bgDetail.name;
+                // Swap features
+                const featsWithoutBg = character.classFeatures.filter(f => f.source !== 'Background');
+                const newBgFeat = {
+                    index: bgDetail.feature.name.toLowerCase().replace(/\s+/g, '-'),
+                    name: bgDetail.feature.name,
+                    level: 1,
+                    source: 'Background',
+                    desc: bgDetail.feature.desc,
+                    url: ''
+                };
+                updates.classFeatures = [...featsWithoutBg, newBgFeat];
+            }
+        }
+
+        onUpdate(updates);
+        onClose();
+    };
+
+    const handleChoiceChange = async (choiceId: string, newValue: any) => {
+        const choice = localChoices.find(c => c.id === choiceId);
+        if (!choice) return;
+
+        const oldValue = choice.value;
+
+        // Update local state
+        setLocalChoices(prev => prev.map(c => 
+            c.id === choiceId ? { ...c, value: newValue } : c
+        ));
+
+        // Handle major initial choices side effects
+        if (choiceId === 'initial-race') {
+            const oldRaceDetail = await fetchRaceDetail(selectedRaceIndex);
+            const newRaceDetail = await fetchRaceDetail(newValue);
+            
+            if (newRaceDetail) {
+                // Adjust abilities
+                setAbilities(prev => {
+                    const next = { ...prev };
+                    
+                    // Subtract old racial bonuses
+                    if (oldRaceDetail?.ability_bonuses) {
+                        oldRaceDetail.ability_bonuses.forEach(b => {
+                            const stat = b.ability_score.index as keyof AbilityScores;
+                            next[stat] = Math.max(0, next[stat] - b.bonus);
+                        });
+                    }
+                    
+                    // Add new racial bonuses
+                    if (newRaceDetail.ability_bonuses) {
+                        newRaceDetail.ability_bonuses.forEach(b => {
+                            const stat = b.ability_score.index as keyof AbilityScores;
+                            next[stat] = (next[stat] || 0) + b.bonus;
+                        });
+                    }
+                    
+                    return next;
+                });
+
+                // Fetch subraces for the new race
+                const subs = await fetchSubraces(newValue);
+                setAllSubraces(subs);
+                setSelectedRaceIndex(newValue);
+                
+                // Reset subrace if it's not valid for the new race
+                if (selectedSubraceIndex) {
+                    const oldSubDetail = await fetchSubraceDetail(selectedSubraceIndex);
+                    if (oldSubDetail) {
+                        setAbilities(prev => {
+                            const next = { ...prev };
+                            oldSubDetail.ability_bonuses.forEach(b => {
+                                const stat = b.ability_score.index as keyof AbilityScores;
+                                next[stat] = Math.max(0, next[stat] - b.bonus);
+                            });
+                            return next;
+                        });
+                    }
+                    setSelectedSubraceIndex('');
+                    setLocalChoices(prev => prev.map(c => 
+                        c.id === 'initial-subrace' ? { ...c, value: '' } : c
+                    ));
+                }
+            }
+        } else if (choiceId === 'initial-subrace') {
+            const oldSubDetail = selectedSubraceIndex ? await fetchSubraceDetail(selectedSubraceIndex) : null;
+            const newSubDetail = newValue ? await fetchSubraceDetail(newValue) : null;
+            
+            setAbilities(prev => {
+                const next = { ...prev };
+                
+                // Subtract old subrace bonuses
+                if (oldSubDetail?.ability_bonuses) {
+                    oldSubDetail.ability_bonuses.forEach(b => {
+                        const stat = b.ability_score.index as keyof AbilityScores;
+                        next[stat] = Math.max(0, next[stat] - b.bonus);
+                    });
+                }
+                
+                // Add new subrace bonuses
+                if (newSubDetail?.ability_bonuses) {
+                    newSubDetail.ability_bonuses.forEach(b => {
+                        const stat = b.ability_score.index as keyof AbilityScores;
+                        next[stat] = (next[stat] || 0) + b.bonus;
+                    });
+                }
+                
+                return next;
+            });
+            
+            setSelectedSubraceIndex(newValue);
+        } else if (choiceId === 'initial-background') {
+            setSelectedBackgroundIndex(newValue);
+        } else if (choiceId.startsWith('subclass-')) {
+            const classIndex = choiceId.replace('subclass-', '');
+            handleSubclassChange(classIndex, newValue);
+        } else if (choice.type === 'feat') {
+            // Update localFeats
+            const oldFeatName = typeof oldValue === 'string' ? oldValue : oldValue?.name;
+            const newFeat = allFeats.find(f => f.index === newValue || f.name === newValue);
+            
+            if (oldFeatName) {
+                setLocalFeats(prev => prev.filter(f => f.name !== oldFeatName));
+            }
+            if (newFeat) {
+                setLocalFeats(prev => [...prev, newFeat]);
+            }
+        } else if (choice.type === 'language') {
+            // Update languages
+            const oldLangs = Array.isArray(oldValue) ? oldValue : [oldValue];
+            const newLangs = Array.isArray(newValue) ? newValue : [newValue];
+            
+            setLanguages(prev => {
+                const filtered = prev.filter(l => !oldLangs.includes(l));
+                return Array.from(new Set([...filtered, ...newLangs]));
+            });
+        }
     };
 
     // Render Logic
@@ -499,9 +958,11 @@ const ManageCharacterModal = ({
                     {[
                         { id: 'identity', label: 'Identity', icon: User },
                         { id: 'classes', label: 'Classes', icon: GraduationCap },
-                        { id: 'abilities', label: 'Abilities', icon: Activity },
+                        { id: 'abilities', label: 'Custom abilities', icon: Activity },
                         { id: 'proficiencies', label: 'Proficiencies', icon: Shield },
                         { id: 'trackers', label: 'Trackers', icon: Activity },
+                        { id: 'combat', label: 'Combat', icon: Shield },
+                        { id: 'choices', label: 'Choices', icon: Settings },
                         { id: 'theme', label: 'Theme', icon: Palette }
                     ].map(t => (
                         <button 
@@ -544,39 +1005,6 @@ const ManageCharacterModal = ({
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Race</label>
-                                    <select 
-                                        value={selectedRaceIndex} 
-                                        onChange={e => handleRaceChange(e.target.value)} 
-                                        className="w-full bg-black/40 border border-gray-800 rounded-xl p-3 text-white focus:border-dnd-gold/50 outline-none transition-all"
-                                    >
-                                        {allRaces.map(r => <option key={r.index} value={r.index}>{r.name}</option>)}
-                                    </select>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Subrace</label>
-                                    <select 
-                                        value={selectedSubraceIndex} 
-                                        onChange={e => setSelectedSubraceIndex(e.target.value)} 
-                                        className="w-full bg-black/40 border border-gray-800 rounded-xl p-3 text-white focus:border-dnd-gold/50 outline-none transition-all disabled:opacity-30"
-                                        disabled={loadingSubraces || allSubraces.length === 0}
-                                    >
-                                        <option value="">{allSubraces.length > 0 ? 'Select Subrace' : 'None Available'}</option>
-                                        {allSubraces.map(s => <option key={s.index} value={s.index}>{s.name}</option>)}
-                                    </select>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Background</label>
-                                    <select 
-                                        value={selectedBackgroundIndex} 
-                                        onChange={e => setSelectedBackgroundIndex(e.target.value)} 
-                                        className="w-full bg-black/40 border border-gray-800 rounded-xl p-3 text-white focus:border-dnd-gold/50 outline-none transition-all"
-                                    >
-                                        <option value="">Select Background</option>
-                                        {allBackgrounds.map(b => <option key={b.index} value={b.index}>{b.name}</option>)}
-                                    </select>
-                                </div>
-                                <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Alignment</label>
                                     <input 
                                         type="text" 
@@ -584,44 +1012,6 @@ const ManageCharacterModal = ({
                                         onChange={e => setAlignment(e.target.value)} 
                                         className="w-full bg-black/40 border border-gray-800 rounded-xl p-3 text-white focus:border-dnd-gold/50 outline-none transition-all" 
                                     />
-                                </div>
-                                <div className="md:col-span-2 bg-black/20 p-6 rounded-2xl border border-gray-800 space-y-4">
-                                    <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-500">
-                                        <Languages size={12} /> Languages Known
-                                    </label>
-                                    <div className="flex gap-2">
-                                        <div className="flex-grow relative">
-                                            <input 
-                                                type="text" 
-                                                list="standard-languages-manage"
-                                                value={newLangInput} 
-                                                onChange={e => setNewLangInput(e.target.value)} 
-                                                placeholder="Add custom language..."
-                                                className="w-full bg-black/40 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-dnd-gold/50 transition-all"
-                                                onKeyDown={e => e.key === 'Enter' && addManualLanguage()}
-                                            />
-                                            <datalist id="standard-languages-manage">
-                                                {STANDARD_LANGUAGES.map(l => <option key={l} value={l} />)}
-                                            </datalist>
-                                        </div>
-                                        <button 
-                                            onClick={addManualLanguage} 
-                                            className="px-6 bg-gray-800 hover:bg-gray-700 rounded-xl text-xs font-bold uppercase text-white transition-all"
-                                        >
-                                            Add
-                                        </button>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {languages.map(lang => (
-                                            <span key={lang} className="bg-dnd-gold/10 border border-dnd-gold/30 px-3 py-1.5 rounded-full text-[10px] font-black text-dnd-gold uppercase flex items-center gap-2 animate-in zoom-in duration-200">
-                                                {lang}
-                                                <button onClick={() => removeManualLanguage(lang)} className="hover:text-white transition-colors">
-                                                    <X size={12} />
-                                                </button>
-                                            </span>
-                                        ))}
-                                        {languages.length === 0 && <span className="text-gray-600 italic text-xs">No languages recorded. Add 'Common' or others.</span>}
-                                    </div>
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Experience Points</label>
@@ -633,6 +1023,27 @@ const ManageCharacterModal = ({
                                     />
                                 </div>
                             </div>
+
+                            <section className="space-y-6 pt-8 border-t border-gray-800">
+                                <div className="flex items-center gap-3">
+                                    <Activity size={18} className="text-dnd-gold" />
+                                    <h3 className="text-[10px] font-black text-dnd-gold uppercase tracking-[0.2em]">Base Ability Scores</h3>
+                                </div>
+                                <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
+                                    {ABILITY_NAMES.map(stat => (
+                                        <div key={stat} className="bg-black/20 p-4 rounded-2xl border border-gray-800 text-center space-y-3">
+                                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block">{ABILITY_LABELS[stat]}</label>
+                                            <input 
+                                                type="number" 
+                                                value={abilities[stat]} 
+                                                onChange={(e) => handleAbilityChange(stat, e.target.value)}
+                                                className="w-full bg-black/40 border border-gray-700 rounded-xl py-3 text-center text-2xl font-serif font-bold text-white focus:border-dnd-gold/50 outline-none transition-all" 
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+
                             <div className="pt-6 border-t border-gray-800 flex justify-start">
                                 <button 
                                     onClick={saveIdentity} 
@@ -660,27 +1071,10 @@ const ManageCharacterModal = ({
                                                     <h3 className="text-2xl font-serif text-white">{cls.definition.name}</h3>
                                                     <span className="bg-dnd-gold/10 px-3 py-1 rounded-full text-xs font-black text-dnd-gold border border-dnd-gold/20">Level {cls.level}</span>
                                                 </div>
-                                                {canPickSubclass && (
-                                                    <div className="flex items-center gap-3">
-                                                        <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Subclass</label>
-                                                        <select 
-                                                            className="bg-black/40 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-dnd-gold/50 transition-all"
-                                                            value={cls.subclass?.index || ''}
-                                                            onFocus={() => loadSubclasses(cls.definition.index)}
-                                                            onChange={(e) => handleSubclassChange(cls.definition.index, e.target.value)}
-                                                        >
-                                                            <option value="">{cls.subclass ? cls.subclass.name : 'Select Subclass'}</option>
-                                                            {(classSubclassOptions[cls.definition.index] || []).map(s => (
-                                                                <option key={s.index} value={s.index}>{s.name}</option>
-                                                            ))}
-                                                        </select>
+                                                {cls.subclass && (
+                                                    <div className="text-xs text-dnd-gold font-bold uppercase tracking-widest">
+                                                        {cls.subclass.name}
                                                     </div>
-                                                )}
-                                                {!canPickSubclass && (
-                                                     <div className="text-xs text-gray-500 italic flex items-center gap-2">
-                                                         <Info size={14} />
-                                                         Subclass available at level {requiredLevel}
-                                                     </div>
                                                 )}
                                             </div>
                                             <div className="flex flex-wrap gap-2 shrink-0">
@@ -729,81 +1123,124 @@ const ManageCharacterModal = ({
                         </div>
                     )}
 
-                    {/* ABILITIES TAB */}
-                    {tab === 'abilities' && (
-                        <div className="max-w-4xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                            <section className="space-y-6">
-                                <div className="flex items-center gap-3 border-b border-gray-800 pb-2">
-                                    <Activity size={18} className="text-dnd-gold" />
-                                    <h3 className="text-[10px] font-black text-dnd-gold uppercase tracking-[0.2em]">Ability Scores</h3>
-                                </div>
-                                <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
-                                    {ABILITY_NAMES.map(stat => (
-                                        <div key={stat} className="bg-black/20 p-4 rounded-2xl border border-gray-800 text-center space-y-3">
-                                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block">{ABILITY_LABELS[stat]}</label>
-                                            <input 
-                                                type="number" 
-                                                value={abilities[stat]} 
-                                                onChange={(e) => handleAbilityChange(stat, e.target.value)}
-                                                className="w-full bg-black/40 border border-gray-700 rounded-xl py-3 text-center text-2xl font-serif font-bold text-white focus:border-dnd-gold/50 outline-none transition-all" 
-                                            />
-                                        </div>
-                                    ))}
-                                </div>
-                            </section>
+                    {/* CUSTOM ABILITIES TAB */}
+                    {tab === 'abilities' && (() => {
+                        const choiceFeatNames = localChoices
+                            .filter(c => c.type === 'feat')
+                            .map(c => typeof c.value === 'string' ? c.value : c.value?.name);
 
-                            <section className="space-y-6">
-                                <div className="flex items-center gap-3 border-b border-gray-800 pb-2">
-                                    <Sparkles size={18} className="text-dnd-gold" />
-                                    <h3 className="text-[10px] font-black text-dnd-gold uppercase tracking-[0.2em]">Feats</h3>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    {character.feats.map((feat, i) => (
-                                        <div key={i} className="flex justify-between items-center bg-black/20 p-4 rounded-xl border border-gray-800 group hover:border-gray-700 transition-all">
-                                            <div className="min-w-0">
-                                                <div className="font-bold text-sm text-white truncate">{feat.name}</div>
-                                                <div className="text-[10px] text-gray-500 line-clamp-1 italic">{feat.desc[0]}</div>
+                        const customFeats = localFeats.filter(f => !choiceFeatNames.includes(f.name));
+
+                        const choiceLanguages = localChoices
+                            .filter(c => c.type === 'language')
+                            .flatMap(c => Array.isArray(c.value) ? c.value : [c.value]);
+
+                        const customLanguages = languages.filter(l => !choiceLanguages.includes(l));
+
+                        return (
+                            <div className="max-w-4xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <section className="bg-black/20 p-6 rounded-2xl border border-gray-800 space-y-4">
+                                        <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-500">
+                                            <Languages size={12} /> Custom Languages
+                                        </label>
+                                        <div className="flex gap-2">
+                                            <div className="flex-grow relative">
+                                                <input 
+                                                    type="text" 
+                                                    list="standard-languages-manage"
+                                                    value={newLangInput} 
+                                                    onChange={e => setNewLangInput(e.target.value)} 
+                                                    placeholder="Add custom language..."
+                                                    className="w-full bg-black/40 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-dnd-gold/50 transition-all"
+                                                    onKeyDown={e => e.key === 'Enter' && addManualLanguage()}
+                                                />
+                                                <datalist id="standard-languages-manage">
+                                                    {STANDARD_LANGUAGES.map(l => <option key={l} value={l} />)}
+                                                </datalist>
                                             </div>
                                             <button 
-                                                onClick={() => handleRemoveFeat(feat.index)} 
-                                                className="p-2 text-gray-600 hover:text-red-400 transition-colors"
+                                                onClick={addManualLanguage} 
+                                                className="px-6 bg-gray-800 hover:bg-gray-700 rounded-xl text-xs font-bold uppercase text-white transition-all"
                                             >
-                                                <Trash2 size={16} />
+                                                Add
                                             </button>
                                         </div>
-                                    ))}
-                                    {character.feats.length === 0 && <div className="col-span-2 text-gray-600 italic text-sm text-center py-8 border border-dashed border-gray-800 rounded-2xl">No feats acquired.</div>}
+                                        <div className="flex flex-wrap gap-2">
+                                            {customLanguages.map(lang => (
+                                                <span key={lang} className="bg-dnd-gold/10 border border-dnd-gold/30 px-3 py-1.5 rounded-full text-[10px] font-black text-dnd-gold uppercase flex items-center gap-2 animate-in zoom-in duration-200">
+                                                    {lang}
+                                                    <button onClick={() => removeManualLanguage(lang)} className="hover:text-white transition-colors">
+                                                        <X size={12} />
+                                                    </button>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </section>
+
+                                    <section className="bg-black/20 p-6 rounded-2xl border border-gray-800 space-y-4">
+                                        <div className="flex items-center gap-3 border-b border-gray-800 pb-2">
+                                            <Sparkles size={14} className="text-dnd-gold" />
+                                            <h4 className="text-dnd-gold font-black uppercase tracking-[0.2em] text-[10px]">
+                                                Additional Feats
+                                            </h4>
+                                        </div>
+                                        <div className="space-y-4">
+                                            <div className="grid grid-cols-1 gap-3">
+                                                {customFeats.map((feat, i) => (
+                                                    <div key={i} className="flex justify-between items-center bg-black/20 p-4 rounded-xl border border-gray-800 group hover:border-gray-700 transition-all">
+                                                        <div className="min-w-0">
+                                                            <div className="font-bold text-sm text-white truncate">{feat.name}</div>
+                                                            <div className="text-[10px] text-gray-500 line-clamp-1 italic">{feat.desc[0]}</div>
+                                                        </div>
+                                                        <button 
+                                                            onClick={() => handleRemoveFeat(feat.index)} 
+                                                            className="p-2 text-gray-600 hover:text-red-400 transition-colors"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                {customFeats.length === 0 && <div className="text-gray-600 italic text-sm text-center py-4 border border-dashed border-gray-800 rounded-xl">No custom feats.</div>}
+                                            </div>
+                                            <div className="flex gap-3 pt-2">
+                                                <select 
+                                                    value={featToAdd} 
+                                                    onChange={e => setFeatToAdd(e.target.value)} 
+                                                    className="flex-grow bg-black/40 border border-gray-700 rounded-xl p-3 text-white focus:border-dnd-gold/50 outline-none transition-all text-xs"
+                                                >
+                                                    <option value="">Add Feat...</option>
+                                                    {allFeats
+                                                        .filter(f => !localFeats.some(lf => lf.index === f.index))
+                                                        .map(f => (
+                                                            <option key={f.index} value={f.index}>{f.name}</option>
+                                                        ))
+                                                    }
+                                                </select>
+                                                <button 
+                                                    onClick={handleAddFeat} 
+                                                    disabled={!featToAdd}
+                                                    className="px-4 py-3 bg-gray-800 hover:bg-gray-700 text-white font-black uppercase tracking-widest rounded-xl text-[10px] disabled:opacity-30 transition-all"
+                                                >
+                                                    Add
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </section>
                                 </div>
-                                <div className="flex gap-3 pt-4">
-                                    <select 
-                                        value={featToAdd} 
-                                        onChange={e => setFeatToAdd(e.target.value)} 
-                                        className="flex-grow bg-black/40 border border-gray-700 rounded-xl p-3 text-white focus:border-dnd-gold/50 outline-none transition-all"
-                                    >
-                                        <option value="">Select Feat to Add...</option>
-                                        {allFeats.map(f => <option key={f.index} value={f.index}>{f.name}</option>)}
-                                    </select>
+
+                                <div className="pt-8 border-t border-gray-800 flex justify-start">
                                     <button 
-                                        onClick={handleAddFeat} 
-                                        disabled={!featToAdd}
-                                        className="px-8 py-3 bg-gray-800 hover:bg-gray-700 text-white font-black uppercase tracking-widest rounded-xl text-xs disabled:opacity-30 transition-all"
+                                        onClick={saveAbilities} 
+                                        className="px-8 py-2.5 bg-dnd-gold hover:bg-white text-black font-black uppercase tracking-widest rounded-xl shadow-lg shadow-dnd-gold/10 transition-all flex items-center justify-center gap-2 text-xs"
                                     >
-                                        Add
+                                        <Save size={14} />
+                                        Save Custom Settings
                                     </button>
                                 </div>
-                            </section>
-
-                            <div className="pt-8 border-t border-gray-800 flex justify-start">
-                                <button 
-                                    onClick={saveAbilities} 
-                                    className="px-8 py-2.5 bg-dnd-gold hover:bg-white text-black font-black uppercase tracking-widest rounded-xl shadow-lg shadow-dnd-gold/10 transition-all flex items-center justify-center gap-2 text-xs"
-                                >
-                                    <Save size={14} />
-                                    Save Stats & Feats
-                                </button>
                             </div>
-                        </div>
-                    )}
+                        );
+                    })()}
                     
                     {/* PROFICIENCIES TAB */}
                     {tab === 'proficiencies' && (
@@ -850,43 +1287,6 @@ const ManageCharacterModal = ({
                                 </div>
                             </section>
 
-                            {/* Racial Spell Choice */}
-                            {character.spells.some(s => s.sourceClassIndex === 'racial') && (
-                                <section className="space-y-6">
-                                    <div className="flex items-center gap-3 border-b border-gray-800 pb-2">
-                                        <Sparkles size={18} className="text-dnd-gold" />
-                                        <h3 className="text-[10px] font-black text-dnd-gold uppercase tracking-[0.2em]">Racial Spells</h3>
-                                    </div>
-                                    <div className="space-y-3">
-                                        {character.spells.filter(s => s.sourceClassIndex === 'racial').map(spell => (
-                                            <div key={spell.index} className="flex items-center justify-between bg-black/20 p-5 rounded-2xl border border-gray-800">
-                                                <div>
-                                                    <div className="font-bold text-white text-lg font-serif">{spell.name}</div>
-                                                    <div className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Source: Race</div>
-                                                </div>
-                                                <div className="flex items-center gap-4">
-                                                    <span className="text-xs text-gray-500 font-bold italic">Change to:</span>
-                                                    <select 
-                                                        className="bg-black/40 border border-gray-700 rounded-xl px-4 py-2 text-xs text-white outline-none focus:border-dnd-gold/50 transition-all w-48"
-                                                        onChange={(e) => replaceRacialSpell(spell.index, e.target.value)}
-                                                        value=""
-                                                    >
-                                                        <option value="">Select...</option>
-                                                        {wizardCantrips.map(s => (
-                                                            <option key={s.index} value={s.index}>{s.name}</option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <p className="text-[10px] text-gray-600 italic flex items-center gap-2">
-                                        <Info size={14} />
-                                        Note: Changing a racial spell here will replace the existing one in your spellbook.
-                                    </p>
-                                </section>
-                            )}
-
                             <div className="pt-8 border-t border-gray-800 flex justify-start">
                                 <button 
                                     onClick={saveProficiencies} 
@@ -894,6 +1294,100 @@ const ManageCharacterModal = ({
                                 >
                                     <Save size={14} />
                                     Save Proficiencies
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* COMBAT TAB */}
+                    {tab === 'combat' && (
+                        <div className="max-w-3xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                            <div className="flex items-center gap-3 border-b border-gray-800 pb-2 mb-6">
+                                <Shield size={18} className="text-dnd-gold" />
+                                <h3 className="text-[10px] font-black text-dnd-gold uppercase tracking-[0.2em]">Combat Modifiers & Overrides</h3>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                {/* To-Hit Modifiers */}
+                                <section className="bg-black/20 p-6 rounded-2xl border border-gray-800 space-y-6">
+                                    <div className="flex items-center gap-3 border-b border-gray-800 pb-2">
+                                        <Dice5 size={14} className="text-dnd-gold" />
+                                        <h4 className="text-dnd-gold font-black uppercase tracking-[0.2em] text-[10px]">
+                                            To-Hit Modifiers
+                                        </h4>
+                                    </div>
+                                    
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Global To-Hit Bonus</label>
+                                            <input 
+                                                type="number" 
+                                                value={combatOverrides.hitBonus} 
+                                                onChange={e => handleCombatOverrideChange('hitBonus', parseInt(e.target.value) || 0)} 
+                                                className="w-full bg-black/40 border border-gray-700 rounded-xl p-3 text-white focus:border-dnd-gold/50 outline-none transition-all" 
+                                                placeholder="e.g. +1 from a magical effect"
+                                            />
+                                            <p className="text-[9px] text-gray-500 italic">Added to all attack rolls.</p>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">To-Hit Override (Fixed Value)</label>
+                                            <input 
+                                                type="number" 
+                                                value={combatOverrides.hitOverride ?? ''} 
+                                                onChange={e => handleCombatOverrideChange('hitOverride', e.target.value === '' ? null : parseInt(e.target.value))} 
+                                                className="w-full bg-black/40 border border-gray-700 rounded-xl p-3 text-white focus:border-dnd-gold/50 outline-none transition-all" 
+                                                placeholder="Leave empty for auto-calculate"
+                                            />
+                                            <p className="text-[9px] text-gray-500 italic">If set, this replaces the entire to-hit calculation (Ability + Prof + Bonus).</p>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                {/* Damage Modifiers */}
+                                <section className="bg-black/20 p-6 rounded-2xl border border-gray-800 space-y-6">
+                                    <div className="flex items-center gap-3 border-b border-gray-800 pb-2">
+                                        <Activity size={14} className="text-red-400" />
+                                        <h4 className="text-red-400 font-black uppercase tracking-[0.2em] text-[10px]">
+                                            Damage Modifiers
+                                        </h4>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Global Damage Bonus</label>
+                                            <input 
+                                                type="number" 
+                                                value={combatOverrides.damageBonus} 
+                                                onChange={e => handleCombatOverrideChange('damageBonus', parseInt(e.target.value) || 0)} 
+                                                className="w-full bg-black/40 border border-gray-700 rounded-xl p-3 text-white focus:border-dnd-gold/50 outline-none transition-all" 
+                                                placeholder="e.g. +2 from Dueling style"
+                                            />
+                                            <p className="text-[9px] text-gray-500 italic">Added to all damage rolls.</p>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Damage Override (Fixed Value)</label>
+                                            <input 
+                                                type="number" 
+                                                value={combatOverrides.damageOverride ?? ''} 
+                                                onChange={e => handleCombatOverrideChange('damageOverride', e.target.value === '' ? null : parseInt(e.target.value))} 
+                                                className="w-full bg-black/40 border border-gray-700 rounded-xl p-3 text-white focus:border-dnd-gold/50 outline-none transition-all" 
+                                                placeholder="Leave empty for auto-calculate"
+                                            />
+                                            <p className="text-[9px] text-gray-500 italic">If set, this replaces the ability modifier in damage calculations.</p>
+                                        </div>
+                                    </div>
+                                </section>
+                            </div>
+
+                            <div className="pt-8 border-t border-gray-800 flex justify-start">
+                                <button 
+                                    onClick={saveCombatOverrides} 
+                                    className="px-8 py-2.5 bg-dnd-gold hover:bg-white text-black font-black uppercase tracking-widest rounded-xl shadow-lg shadow-dnd-gold/10 transition-all flex items-center justify-center gap-2 text-xs"
+                                >
+                                    <Save size={14} />
+                                    Save Combat Settings
                                 </button>
                             </div>
                         </div>
@@ -910,7 +1404,19 @@ const ManageCharacterModal = ({
                                     {Object.entries(localFeatures).map(([featName, usage]: [string, any]) => (
                                         <div key={featName} className="flex flex-col sm:flex-row items-center gap-6 bg-black/20 p-6 rounded-2xl border border-gray-800 group hover:border-gray-700 transition-all">
                                             <div className="flex-grow">
-                                                <div className="font-bold text-lg text-white font-serif">{featName}</div>
+                                                <div className="flex items-center gap-3">
+                                                    <div className="font-bold text-lg text-white font-serif">{featName}</div>
+                                                    <button 
+                                                        onClick={() => setLocalFeatures((prev: any) => ({
+                                                            ...prev,
+                                                            [featName]: { ...prev[featName], hidden: !prev[featName].hidden }
+                                                        }))}
+                                                        className={`p-1.5 rounded-lg transition-all ${usage.hidden ? 'text-gray-600 hover:text-gray-400' : 'text-dnd-gold hover:text-white'}`}
+                                                        title={usage.hidden ? "Show in widget column" : "Hide from widget column"}
+                                                    >
+                                                        {usage.hidden ? <EyeOff size={14} /> : <Eye size={14} />}
+                                                    </button>
+                                                </div>
                                                 <div className="flex items-center gap-4 mt-2">
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Max Uses:</span>
@@ -1006,6 +1512,316 @@ const ManageCharacterModal = ({
                                     Save All Trackers
                                 </button>
                              </div>
+                        </div>
+                    )}
+
+                    {/* CHOICES TAB */}
+                    {tab === 'choices' && (
+                        <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                            <div className="flex justify-between items-center mb-4">
+                                <div>
+                                    <h3 className="text-xl font-serif text-white">Character Choices</h3>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Review and modify decisions made during character creation and leveling</p>
+                                </div>
+                            </div>
+
+                            {/* Core Identity Section */}
+                            <section className="bg-black/40 border border-gray-800 rounded-3xl p-8 space-y-6">
+                                <div className="flex items-center gap-3 border-b border-gray-800 pb-2">
+                                    <User size={18} className="text-dnd-gold" />
+                                    <h3 className="text-[10px] font-black text-dnd-gold uppercase tracking-[0.2em]">Core Identity</h3>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Race</label>
+                                        <select 
+                                            value={selectedRaceIndex}
+                                            onChange={(e) => handleChoiceChange('initial-race', e.target.value)}
+                                            className="w-full bg-black/40 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-dnd-gold/50 transition-all"
+                                        >
+                                            <option value="">Select Race...</option>
+                                            {allRaces.map(r => (
+                                                <option key={r.index} value={r.index}>{r.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Subrace</label>
+                                        <select 
+                                            value={selectedSubraceIndex}
+                                            onChange={(e) => handleChoiceChange('initial-subrace', e.target.value)}
+                                            disabled={allSubraces.length === 0}
+                                            className="w-full bg-black/40 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-dnd-gold/50 transition-all disabled:opacity-30"
+                                        >
+                                            <option value="">{allSubraces.length === 0 ? 'No Subraces Available' : 'Select Subrace...'}</option>
+                                            {allSubraces.map(s => (
+                                                <option key={s.index} value={s.index}>{s.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            </section>
+
+                            {/* Racial Spell Choice */}
+                            {character.spells.some(s => s.sourceClassIndex === 'racial') && (
+                                <section className="bg-black/40 border border-gray-800 rounded-3xl p-8 space-y-6">
+                                    <div className="flex items-center gap-3 border-b border-gray-800 pb-2">
+                                        <Sparkles size={18} className="text-dnd-gold" />
+                                        <h3 className="text-[10px] font-black text-dnd-gold uppercase tracking-[0.2em]">Racial Spells</h3>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {character.spells.filter(s => s.sourceClassIndex === 'racial').map(spell => (
+                                            <div key={spell.index} className="flex items-center justify-between bg-black/20 p-5 rounded-2xl border border-gray-800">
+                                                <div>
+                                                    <div className="font-bold text-white text-lg font-serif">{spell.name}</div>
+                                                    <div className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Source: Race</div>
+                                                </div>
+                                                <div className="flex items-center gap-4">
+                                                    <span className="text-xs text-gray-500 font-bold italic">Change to:</span>
+                                                    <select 
+                                                        className="bg-black/40 border border-gray-700 rounded-xl px-4 py-2 text-xs text-white outline-none focus:border-dnd-gold/50 transition-all w-48"
+                                                        onChange={(e) => replaceRacialSpell(spell.index, e.target.value)}
+                                                        value=""
+                                                    >
+                                                        <option value="">Select...</option>
+                                                        {wizardCantrips.map(s => (
+                                                            <option key={s.index} value={s.index}>{s.name}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <p className="text-[10px] text-gray-600 italic flex items-center gap-2">
+                                        <Info size={14} />
+                                        Note: Changing a racial spell here will replace the existing one in your spellbook.
+                                    </p>
+                                </section>
+                            )}
+
+                            {/* Ability Score Totals & Breakdown */}
+                            <section className="bg-black/40 border border-gray-800 rounded-3xl p-8 space-y-6">
+                                <div className="flex items-center gap-3 border-b border-gray-800 pb-2">
+                                    <Activity size={18} className="text-dnd-gold" />
+                                    <h3 className="text-[10px] font-black text-dnd-gold uppercase tracking-[0.2em]">Ability Score Totals</h3>
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                                    {ABILITY_NAMES.map(stat => {
+                                        const total = abilities[stat];
+                                        const mod = calculateModifier(total);
+                                        
+                                        const contributors = [];
+                                        if (character.race) {
+                                            const raceBonus = character.race.ability_bonuses?.find(b => b.ability_score.index === stat);
+                                            if (raceBonus) contributors.push({ name: character.race.name, bonus: raceBonus.bonus });
+                                        }
+                                        if (character.subrace) {
+                                            const subraceBonus = character.subrace.ability_bonuses?.find(b => b.ability_score.index === stat);
+                                            if (subraceBonus) contributors.push({ name: character.subrace.name, bonus: subraceBonus.bonus });
+                                        }
+                                        localChoices.forEach(c => {
+                                            if (c.type === 'asi' && c.revertData?.abilities?.[stat]) {
+                                                contributors.push({ name: `ASI (Lvl ${c.level === 0 ? 'Init' : c.level})`, bonus: c.revertData.abilities[stat] });
+                                            }
+                                            if (c.type === 'feat' && c.value?.ability_bonuses) {
+                                                const featBonus = c.value.ability_bonuses.find((b: any) => b.ability_score.index === stat);
+                                                if (featBonus) contributors.push({ name: c.value.name, bonus: featBonus.bonus });
+                                            }
+                                        });
+                                        localFeats.forEach(f => {
+                                            if ((f as any).ability_bonuses) {
+                                                const featBonus = (f as any).ability_bonuses.find((b: any) => b.ability_score.index === stat);
+                                                if (featBonus) contributors.push({ name: f.name, bonus: featBonus.bonus });
+                                            }
+                                        });
+
+                                        return (
+                                            <div key={stat} className="bg-black/20 p-4 rounded-2xl border border-gray-800 flex flex-col items-center">
+                                                <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">{ABILITY_LABELS[stat]}</span>
+                                                <div className="text-3xl font-serif font-bold text-white leading-none">{total}</div>
+                                                <div className={`text-[10px] font-black uppercase mt-1 ${mod >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                    {mod >= 0 ? `+${mod}` : mod}
+                                                </div>
+                                                <div className="mt-3 w-full space-y-1 border-t border-gray-800/50 pt-2">
+                                                    {contributors.map((c, i) => (
+                                                        <div key={i} className="flex justify-between items-center text-[8px] text-gray-500">
+                                                            <span className="truncate max-w-[50px]">{c.name}</span>
+                                                            <span className="font-bold text-gray-400">+{c.bonus}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </section>
+
+                            {(!localChoices || localChoices.length === 0) ? (
+                                <div className="bg-black/20 border border-dashed border-gray-800 rounded-2xl p-12 text-center">
+                                    <div className="text-4xl mb-4 opacity-20">📋</div>
+                                    <p className="text-gray-500 italic">No recorded choices found for this character.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-6">
+                                    {/* Group by level */}
+                                    {Array.from(new Set(localChoices.map(c => c.level))).sort((a, b) => a - b).map(level => (
+                                        <div key={level} className="bg-black/20 border border-gray-800 rounded-2xl overflow-hidden">
+                                            <div className="bg-black/40 px-6 py-3 border-b border-gray-800 flex justify-between items-center">
+                                                <h4 className="text-dnd-gold font-black uppercase tracking-[0.2em] text-[10px]">
+                                                    {level === 0 ? 'Initial Creation' : `Level ${level}`}
+                                                </h4>
+                                                {level > 0 && level === Math.max(...localChoices.map(c => c.level)) && (
+                                                    <button 
+                                                        onClick={() => setLevelDownConfirm(level)}
+                                                        className="flex items-center gap-2 px-3 py-1 bg-red-900/20 border border-red-800 hover:bg-red-900/40 text-red-400 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all"
+                                                    >
+                                                        <RotateCcw size={12} />
+                                                        Level Down
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div className="p-6 space-y-6">
+                                                {localChoices.filter(c => c.level === level).map(choice => (
+                                                    <div key={choice.id} className="border-l-2 border-gray-800 pl-6 py-1">
+                                                        <div className="flex justify-between items-start mb-2">
+                                                            <div>
+                                                                <span className="text-[9px] text-gray-500 uppercase font-black tracking-widest">{choice.source}</span>
+                                                                <h5 className="text-white font-bold text-sm">{choice.label}</h5>
+                                                            </div>
+                                                            <div className="text-[8px] bg-gray-800/50 text-gray-400 px-2 py-0.5 rounded uppercase font-black tracking-tighter border border-gray-700">
+                                                                {choice.type}
+                                                            </div>
+                                                        </div>
+                                                        <div className="mt-3">
+                                                            {/* Choice Input Logic */}
+                                                            {choice.type === 'asi' ? (
+                                                                <div className="grid grid-cols-3 gap-2 max-w-md">
+                                                                    {ABILITY_NAMES.map(stat => {
+                                                                        const currentVal = choice.revertData?.abilities?.[stat] || 0;
+                                                                        return (
+                                                                            <div key={stat} className="flex flex-col items-center bg-black/40 border border-gray-800 rounded-xl p-2">
+                                                                                <span className="text-[8px] font-black text-gray-500 uppercase mb-1">{ABILITY_LABELS[stat].substring(0, 3)}</span>
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <button 
+                                                                                        onClick={() => handleAsiEdit(choice.id, stat, -1)}
+                                                                                        className="w-5 h-5 flex items-center justify-center bg-gray-800 rounded text-xs hover:bg-gray-700"
+                                                                                    >-</button>
+                                                                                    <span className="text-sm font-bold text-white">{currentVal}</span>
+                                                                                    <button 
+                                                                                        onClick={() => handleAsiEdit(choice.id, stat, 1)}
+                                                                                        className="w-5 h-5 flex items-center justify-center bg-gray-800 rounded text-xs hover:bg-gray-700"
+                                                                                    >+</button>
+                                                                                </div>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            ) : choice.type === 'other' && choice.id.startsWith('level-') ? (
+                                                                <div className="space-y-3">
+                                                                    <div className="flex flex-wrap gap-2">
+                                                                        {character.classFeatures
+                                                                            .filter(f => f.level === choice.level && f.source === choice.source)
+                                                                            .map(f => (
+                                                                                <div key={f.name} className="group relative">
+                                                                                    <span className="bg-blue-900/20 text-blue-400 px-2 py-1 rounded text-[10px] font-bold border border-blue-800/50 cursor-help">
+                                                                                        {f.name}
+                                                                                    </span>
+                                                                                    <div className="absolute bottom-full left-0 mb-2 w-64 p-3 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 pointer-events-none transition-all z-50 text-[10px] text-gray-300 leading-relaxed">
+                                                                                        {f.desc}
+                                                                                    </div>
+                                                                                </div>
+                                                                            ))
+                                                                        }
+                                                                    </div>
+                                                                    {(() => {
+                                                                        const cls = character.classes.find(c => c.definition.name === choice.source);
+                                                                        if (cls && cls.definition.spellcasting) {
+                                                                            // We can't easily show "newly unlocked" without the full table, 
+                                                                            // but we can show the class features which often include spellcasting improvements.
+                                                                            return null;
+                                                                        }
+                                                                        return null;
+                                                                    })()}
+                                                                </div>
+                                                            ) : (!choice.options || choice.options.length === 0) ? (
+                                                                <span className="text-white font-bold text-sm">{String(choice.value)}</span>
+                                                            ) : (
+                                                                <>
+                                                                    {choice.count && choice.count > 1 ? (
+                                                                        <div className="flex flex-wrap gap-2">
+                                                                            {choice.options.map((opt: any) => {
+                                                                                const optValue = opt.index || opt.name || opt;
+                                                                                const optLabel = opt.name || opt;
+                                                                                const selectedValues = Array.isArray(choice.value) ? choice.value : [choice.value];
+                                                                                const isSelected = selectedValues.includes(optValue);
+                                                                                
+                                                                                return (
+                                                                                    <button
+                                                                                        key={optValue}
+                                                                                        onClick={() => {
+                                                                                            let nextValues;
+                                                                                            if (isSelected) {
+                                                                                                nextValues = selectedValues.filter(v => v !== optValue);
+                                                                                            } else {
+                                                                                                if (selectedValues.length < (choice.count || 1)) {
+                                                                                                    nextValues = [...selectedValues, optValue];
+                                                                                                } else {
+                                                                                                    nextValues = [...selectedValues.slice(1), optValue];
+                                                                                                }
+                                                                                            }
+                                                                                            handleChoiceChange(choice.id, nextValues);
+                                                                                        }}
+                                                                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase border transition-all ${
+                                                                                            isSelected 
+                                                                                                ? 'bg-dnd-gold border-dnd-gold text-black shadow-lg shadow-dnd-gold/10' 
+                                                                                                : 'bg-black/40 border-gray-800 text-gray-500 hover:border-gray-600 hover:text-gray-300'
+                                                                                        }`}
+                                                                                    >
+                                                                                        {optLabel}
+                                                                                    </button>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    ) : (
+                                                                        <select
+                                                                            value={Array.isArray(choice.value) ? (choice.value[0]?.index || choice.value[0]?.name || (typeof choice.value[0] === 'object' ? '' : choice.value[0]) || '') : (choice.value?.index || choice.value?.name || (typeof choice.value === 'object' ? '' : choice.value) || '')}
+                                                                            onChange={(e) => {
+                                                                                const val = e.target.value;
+                                                                                const selectedOpt = choice.options?.find(o => (o.index || o.name || o) === val);
+                                                                                handleChoiceChange(choice.id, selectedOpt || val);
+                                                                            }}
+                                                                            className="w-full max-w-md bg-black/40 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-dnd-gold/50 transition-all"
+                                                                        >
+                                                                            <option value="">Select...</option>
+                                                                            {choice.options.map((opt: any) => (
+                                                                                <option key={opt.index || opt.name || opt} value={opt.index || opt.name || opt}>
+                                                                                    {opt.name || opt}
+                                                                                </option>
+                                                                            ))}
+                                                                        </select>
+                                                                    )}
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    {/* Additional Feats Section Removed from here */}
+                                </div>
+                            )}
+
+                            <div className="pt-8 border-t border-gray-800 flex justify-start">
+                                <button 
+                                    onClick={saveChoices} 
+                                    className="px-8 py-2.5 bg-dnd-gold hover:bg-white text-black font-black uppercase tracking-widest rounded-xl shadow-lg shadow-dnd-gold/10 transition-all flex items-center justify-center gap-2 text-xs"
+                                >
+                                    <Save size={14} />
+                                    Save Choices
+                                </button>
+                            </div>
                         </div>
                     )}
 
@@ -1130,6 +1946,38 @@ const ManageCharacterModal = ({
                     )}
                 </div>
             </div>
+            {/* Level Down Confirmation Modal */}
+            {levelDownConfirm !== null && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-gray-900 border border-red-900/50 rounded-3xl p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="flex flex-col items-center text-center space-y-6">
+                            <div className="w-16 h-16 bg-red-900/20 rounded-full flex items-center justify-center border border-red-900/30">
+                                <AlertTriangle size={32} className="text-red-500" />
+                            </div>
+                            <div className="space-y-2">
+                                <h3 className="text-2xl font-serif text-white">Revert Level {levelDownConfirm}?</h3>
+                                <p className="text-gray-400 text-sm">
+                                    This will permanently revert all choices made at level {levelDownConfirm}, including ability score increases, feats, and class features. This action cannot be undone.
+                                </p>
+                            </div>
+                            <div className="flex gap-4 w-full pt-4">
+                                <button 
+                                    onClick={() => setLevelDownConfirm(null)}
+                                    className="flex-1 px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white font-black uppercase tracking-widest rounded-xl text-xs transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    onClick={() => handleRevertLevel(levelDownConfirm)}
+                                    className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-black uppercase tracking-widest rounded-xl text-xs shadow-lg shadow-red-600/20 transition-all"
+                                >
+                                    Revert
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

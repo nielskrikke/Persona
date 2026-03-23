@@ -8,10 +8,11 @@ interface FeaturesTabProps {
     getAllFeatures: () => any[];
     setSelectedDetail: (item: any) => void;
     onTabChange?: (tab: any) => void;
-    setShowHomebrewModal: (val: boolean, tab?: 'race' | 'class' | 'subclass' | 'background' | 'spell' | 'item' | 'wildshape' | 'familiar' | 'feat') => void;
+    setShowHomebrewModal: (val: boolean, tab?: 'race' | 'class' | 'subclass' | 'background' | 'spell' | 'item' | 'creature' | 'feat') => void;
+    setShowCardOptionsModal?: (val: boolean) => void;
 }
 
-const FeaturesTab: React.FC<FeaturesTabProps> = ({ character, setCharacter, getAllFeatures, setSelectedDetail, onTabChange, setShowHomebrewModal }) => {
+const FeaturesTab: React.FC<FeaturesTabProps> = ({ character, setCharacter, getAllFeatures, setSelectedDetail, onTabChange, setShowHomebrewModal, setShowCardOptionsModal }) => {
     const [featureFilter, setFeatureFilter] = useState('All');
     const [featureSearch, setFeatureSearch] = useState('');
 
@@ -73,6 +74,15 @@ const FeaturesTab: React.FC<FeaturesTabProps> = ({ character, setCharacter, getA
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect width="20" height="14" x="2" y="6" rx="2"/></svg>
                                             Manage Quiver
+                                        </button>
+                                    )}
+                                    {name === 'Choice Points' && setShowCardOptionsModal && (
+                                        <button 
+                                            onClick={() => setShowCardOptionsModal(true)}
+                                            className="mt-3 text-[10px] text-dnd-gold hover:text-white uppercase font-black tracking-tighter flex items-center gap-1.5 transition-colors pt-2 border-t border-gray-800/50 w-full"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                                            View Deck of Destiny
                                         </button>
                                     )}
                                 </div>

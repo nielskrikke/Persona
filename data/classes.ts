@@ -1229,5 +1229,400 @@ export const CLASSES: ExtendedClassDetail[] = [
                 desc: ["When you are below half your max HP, you can reroll your hemocraft die once per turn and use either result. Additionally, when you score a critical hit with a weapon for which you have an active Crimson Rite, you regain one expended use of your Blood Maledict feature."] 
             }
         ]
+    },
+    {
+        index: "card-master",
+        name: "Card Master",
+        source: "Homebrew",
+        hit_die: 6,
+        spellcasting: {
+            level: 1,
+            spellcasting_ability: { index: "cha", name: "Charisma", url: "" },
+            info: [
+                {
+                    name: "Spellcasting Ability",
+                    desc: ["Charisma is your spellcasting ability for your Card Master spells. You use your Charisma whenever a spell refers to your spellcasting ability. In addition, you use your Charisma modifier when setting the saving throw DC for a Card Master spell you cast and when making an attack roll with one."],
+                },
+                {
+                    name: "Spellcasting Focus",
+                    desc: ["You can use tarot cards as a spellcasting focus for your Card Master spells."],
+                }
+            ]
+        },
+        proficiency_choices: [{
+            choose: 2,
+            type: "proficiencies",
+            from: {
+                options: [
+                    { item: { index: "acrobatics", name: "Acrobatics", url: "" } },
+                    { item: { index: "arcana", name: "Arcana", url: "" } },
+                    { item: { index: "insight", name: "Insight", url: "" } },
+                    { item: { index: "performance", name: "Performance", url: "" } },
+                    { item: { index: "persuasion", name: "Persuasion", url: "" } },
+                    { item: { index: "religion", name: "Religion", url: "" } }
+                ]
+            }
+        }],
+        proficiencies: [
+            { index: "light-armor", name: "Light Armor", url: "" },
+            { index: "simple-weapons", name: "Simple Weapons", url: "" },
+            { index: "tarot-cards", name: "Tarot Cards", url: "" }
+        ],
+        saving_throws: [
+            { index: "int", name: "INT", url: "" },
+            { index: "cha", name: "CHA", url: "" }
+        ],
+        subclasses: [
+            { index: "destiny-caster", name: "Destiny Caster", url: "" },
+            { index: "support-cards", name: "Support Cards", url: "" }
+        ],
+        multi_classing: {
+            prerequisites: [
+                { ability_score: { index: "cha", name: "CHA" }, minimum_score: 16 },
+                { ability_score: { index: "int", name: "INT" }, minimum_score: 14 }
+            ],
+            proficiencies: [
+                { index: "arcana", name: "Arcana", url: "" },
+                { index: "religion", name: "Religion", url: "" },
+                { index: "performance", name: "Performance", url: "" }
+            ]
+        },
+        level_table: [
+            { level: 1, prof_bonus: 2, features: ["Pick a Card", "Spellcasting", "Choice Points"], class_specific: { spell_slots: [2, 0, 0, 0, 0, 0, 0, 0, 0], choice_points: 1 } },
+            { level: 2, prof_bonus: 2, features: ["Trust the Destiny", "Chiromancy"], class_specific: { spell_slots: [3, 0, 0, 0, 0, 0, 0, 0, 0], choice_points: 2 } },
+            { level: 3, prof_bonus: 2, features: ["Share Destiny"], class_specific: { spell_slots: [4, 2, 0, 0, 0, 0, 0, 0, 0], choice_points: 3 } },
+            { level: 4, prof_bonus: 2, features: ["Ability Score Improvement", "The Fool", "Choose your Path", "Subclass Feature"], class_specific: { spell_slots: [4, 3, 0, 0, 0, 0, 0, 0, 0], choice_points: 4 } },
+            { level: 5, prof_bonus: 3, features: ["Secure the Vision"], class_specific: { spell_slots: [4, 3, 2, 0, 0, 0, 0, 0, 0], choice_points: 5 } },
+            { level: 6, prof_bonus: 3, features: ["Emergency Reserve"], class_specific: { spell_slots: [4, 3, 3, 0, 0, 0, 0, 0, 0], choice_points: 6 } },
+            { level: 7, prof_bonus: 3, features: ["Mystic Shuffle"], class_specific: { spell_slots: [4, 3, 3, 1, 0, 0, 0, 0, 0], choice_points: 7 } },
+            { level: 8, prof_bonus: 3, features: ["Ability Score Improvement", "Chiromancy – Lines of Fate", "Subclass Feature"], class_specific: { spell_slots: [4, 3, 3, 2, 0, 0, 0, 0, 0], choice_points: 8 } },
+            { level: 9, prof_bonus: 4, features: [], class_specific: { spell_slots: [4, 3, 3, 3, 1, 0, 0, 0, 0], choice_points: 9 } },
+            { level: 10, prof_bonus: 4, features: ["The Balance – Lines of Fate", "The World"], class_specific: { spell_slots: [4, 3, 3, 3, 2, 0, 0, 0, 0], choice_points: 10 } },
+            { level: 11, prof_bonus: 4, features: ["Secure the Vision - Improvement"], class_specific: { spell_slots: [4, 3, 3, 3, 2, 1, 0, 0, 0], choice_points: 10 } },
+            { level: 12, prof_bonus: 4, features: ["Ability Score Improvement", "Eternal Cards", "Subclass Feature"], class_specific: { spell_slots: [4, 3, 3, 3, 2, 1, 0, 0, 0], choice_points: 11 } },
+            { level: 13, prof_bonus: 5, features: ["Good Vision"], class_specific: { spell_slots: [4, 3, 3, 3, 2, 1, 1, 0, 0], choice_points: 12 } },
+            { level: 14, prof_bonus: 5, features: ["Fast Dealer", "Guided Pull"], class_specific: { spell_slots: [4, 3, 3, 3, 2, 1, 1, 0, 0], choice_points: 13 } },
+            { level: 15, prof_bonus: 5, features: ["Ask the Cards"], class_specific: { spell_slots: [4, 3, 3, 3, 2, 1, 1, 1, 0], choice_points: 13 } },
+            { level: 16, prof_bonus: 5, features: ["Ability Score Improvement", "Minor Arcana", "Subclass Feature"], class_specific: { spell_slots: [4, 3, 3, 3, 2, 1, 1, 1, 0], choice_points: 14 } },
+            { level: 17, prof_bonus: 6, features: ["The Balance"], class_specific: { spell_slots: [4, 3, 3, 3, 2, 1, 1, 1, 1], choice_points: 14 } },
+            { level: 18, prof_bonus: 6, features: ["Minor Arcana"], class_specific: { spell_slots: [4, 3, 3, 3, 3, 1, 1, 1, 1], choice_points: 15 } },
+            { level: 19, prof_bonus: 6, features: ["Ability Score Improvement", "Transcend the Charisma"], class_specific: { spell_slots: [4, 3, 3, 3, 3, 2, 1, 1, 1], choice_points: 15 } },
+            { level: 20, prof_bonus: 6, features: ["The cards will not Abandon Me"], class_specific: { spell_slots: [4, 3, 3, 3, 3, 2, 2, 1, 1], choice_points: 16 } }
+        ],
+        feature_details: [
+            {
+                index: "pick-a-card",
+                name: "Pick a Card",
+                level: 1,
+                source: "Card Master",
+                url: "",
+                desc: [
+                    "As a bonus action you can use pick a card, you will receive powerful abilities, but it is completely random (d20).",
+                    "Cards with effects requiring a saving throw use the DC of your spellcasting ability. Additionally, cards that deal damage allow you to apply buffs as if casting a spell.",
+                    "You cannot have more than 2 cards of the same duration activated at the same time or you will receive 1 level of exhaustion for each card above the limit.",
+                    "The card numbers reflect their power, with cards numbered above 10 granting significantly stronger effects."
+                ],
+                effects: [{ type: 'bonus_action', name: 'Pick a Card' }]
+            },
+            {
+                index: "spellcasting-cm",
+                name: "Spellcasting",
+                level: 1,
+                source: "Card Master",
+                url: "",
+                desc: ["Opening your soul to the cards has granted you the ability to wield this energy as spells. You can learn any spell that appears on the sorcerer spell list. Your spellcasting ability is Charisma."]
+            },
+            {
+                index: "choice-points",
+                name: "Choice Points",
+                level: 1,
+                source: "Card Master",
+                url: "",
+                desc: ["You have choice points that can control the destiny of the cards. When you use pick a card you can spend 1 choice point to pick a specific card."]
+            },
+            {
+                index: "trust-the-destiny",
+                name: "Trust the Destiny",
+                level: 2,
+                source: "Card Master",
+                url: "",
+                desc: [
+                    "As long you keep trusting in your cards they will guide you to the best result, at level 2 you have advantage and proficiency in Religion and Arcana.",
+                    "If you already have proficiency with both skills, you can consider expertise."
+                ],
+                effects: [
+                    { type: 'proficiency', target: 'Religion', category: 'skill' },
+                    { type: 'proficiency', target: 'Arcana', category: 'skill' },
+                    { type: 'advantage', target: 'religion', name: 'Religion' },
+                    { type: 'advantage', target: 'arcana', name: 'Arcana' }
+                ]
+            },
+            {
+                index: "chiromancy",
+                name: "Chiromancy",
+                level: 2,
+                source: "Card Master",
+                url: "",
+                desc: [
+                    "The cards always reveal the future with precision, but the lines on your hand also hold valuable secrets about destiny.",
+                    "At level 2, you gain the ability to read hands. As a bonus action, you can interpret the lines on your own hand or the hand of an ally within touch range. Performing this reading grants advantage on the next ability check, attack roll, or saving throw for you or your ally."
+                ],
+                effects: [{ type: 'bonus_action', name: 'Chiromancy' }]
+            },
+            {
+                index: "share-destiny",
+                name: "Share Destiny",
+                level: 3,
+                source: "Card Master",
+                url: "",
+                desc: [
+                    "The creatures that accompany you share the same destiny.",
+                    "At level 3, once per long rest, you can deal a card to an ally. The ally must use the 'Pick a Card' ability. The taken card is not activated immediately; instead, it is stored until the ally decides to use it. A person cannot hold more than one stored card at a time."
+                ],
+                effects: [{ type: 'action', name: 'Share Destiny', reset: 'long' }]
+            },
+            {
+                index: "the-fool",
+                name: "The Fool",
+                level: 4,
+                source: "Card Master",
+                url: "",
+                desc: [
+                    "As an action, you can sacrifice an active card to gain a Fool Stack. You can expend all stacks to cast the Fool Spell.",
+                    "The spell deals 3d8 necrotic damage in a 20-foot radius. For every Fool Stack consumed, the damage increases by 1d8 (or 2d8 at level 20). If 'The World' card is active, the total damage is doubled. Targets that pass a Wisdom Saving Throw take half damage."
+                ],
+                school: { index: "necromancy", name: "Necromancy" },
+                casting_time: "1 Action",
+                range: "20 ft radius",
+                components: ["V", "S"],
+                duration: "Instantaneous",
+                damage: "3d8 necrotic",
+                save: { type: "WIS" },
+                effects: [{ type: 'action', name: 'Fool Spell' }]
+            },
+            {
+                index: "choose-your-path",
+                name: "Choose your Path",
+                level: 4,
+                source: "Card Master",
+                url: "",
+                desc: ["Choose between Destiny Caster or Support Cards."],
+                effects: [{
+                    type: 'feature_choice',
+                    count: 1,
+                    options: [
+                        { name: "Destiny Caster", desc: "Focus on offensive spell cards." },
+                        { name: "Support Cards", desc: "Focus on supporting allies with cards." }
+                    ]
+                }]
+            },
+            {
+                index: "secure-the-vision",
+                name: "Secure the Vision",
+                level: 5,
+                source: "Card Master",
+                url: "",
+                desc: [
+                    "You envision a future where your spells always inflict their conditions, and your enemies fall before your power.",
+                    "At level 5, you gain the ability to ensure that a spell either automatically hits or automatically imposes its conditions Through immunities.",
+                    "To use this ability, you must spend 3 Choice Points."
+                ]
+            },
+            {
+                index: "emergency-reserve",
+                name: "Emergency Reserve",
+                level: 6,
+                source: "Card Master",
+                url: "",
+                desc: [
+                    "At level 6, you gain the ability to bind defensive and mobility spells to cards, creating an arsenal of strategic options.",
+                    "Binding a Spell: During a short or long rest, you can imbue a number of cards equal to your proficiency bonus with spells that you know. These spells must be defensive (e.g., Shield, Absorb Elements) or focused on mobility (e.g., Misty Step, Feather Fall).",
+                    "Casting from a Card: As a reaction, you can activate one of your imbued cards, casting the spell without expending a spell slot. Once a card is used, it loses its magic and becomes inert until recharged during another rest with the same or another spell.",
+                    "Enhanced Effects: At level 10, spells cast from these cards gain additional effects: Defensive spells provide the effect of the Temperance Card without counting to the limit of cards actived. Mobility spells provide the effect of the Chariot Card without counting to the limit of cards actived."
+                ],
+                effects: [{ type: 'reaction', name: 'Emergency Reserve' }]
+            },
+            {
+                index: "mystic-shuffle",
+                name: "Mystic Shuffle",
+                level: 7,
+                source: "Card Master",
+                url: "",
+                desc: [
+                    "Your connection to the arcane deck deepens, granting you the ability to manipulate the flow of magic and destiny itself, at level 7th you gain the following hability:",
+                    "As a bonus action, you can perform a Mystic Shuffle, reshuffling the energy of your active cards and spells. When you use this ability, choose one of the following effects:",
+                    "Redistribute Cards: You can deactivate one of your active cards and immediately activate a new card from your deck without rolling. You must spend 1 Choice Point to select a specific card or roll a d20 to activate a random card without spending a point.",
+                    "Recharge an Imbued Card: Restore the magic of one defensive or mobility card you previously imbued using Emergency Reserve, allowing it to be used again.",
+                    "Destiny Realignment: Choose one ally within 30 feet. That ally can reroll one failed saving throw or ability check they made within the last minute. You must decide whether to use this effect before the end of your turn."
+                ],
+                effects: [
+                    { type: 'bonus_action', name: 'Mystic Shuffle' }
+                ]
+            },
+            {
+                index: "chiromancy-lines-of-fate",
+                name: "Chiromancy – Lines of Fate",
+                level: 8,
+                source: "Card Master",
+                url: "",
+                desc: [
+                    "At Level 8, your mastery over reading the lines of destiny in hands becomes more profound, allowing you to uncover hidden truths and foresee imminent outcomes.",
+                    "Foresight Touch: As a bonus action, when you read the hand of an ally or yourself, you grant the target the ability to see a glimpse of the future. The target gains the following benefits for 1 minute: Advantage on Initiative rolls. Advantage on Perception and Insight checks.",
+                    "Destiny’s Warning: If you perform a hand reading during combat, the target gains the ability to predict danger. Until the start of your next turn, the target can impose disadvantage on one attack roll made against them as a reaction.",
+                    "Expanded Usage: You can now use Chiromancy on enemies as an action. Reading an enemy's hand reveals a weakness or vulnerability: You learn one of the creature's resistances, immunities, or weaknesses. If the target is resistant to a type of damage, you can nullify that resistance for 1 minute."
+                ],
+                effects: [
+                    { type: 'bonus_action', name: 'Foresight Touch' },
+                    { type: 'action', name: 'Chiromancy (Enemy)' }
+                ]
+            },
+            {
+                index: "the-balance-cm",
+                name: "The Balance",
+                level: 10,
+                source: "Card Master",
+                url: "",
+                desc: ["At level 10 you become stronger, but, your body not become any stronger from now on, passing the level 10 means that you will not receive Hit Points per level, and you cannot increase your constituition hability modifier."],
+                effects: [
+                    { type: 'bonus', target: 'hp_per_level', value: 0 }
+                ]
+            },
+            {
+                index: "the-world",
+                name: "The World",
+                level: 10,
+                source: "Card Master",
+                url: "",
+                desc: [
+                    "The Conclusion of the Fool's Path – The 21st Card of the Deck, the Most Powerful, at level 10 you can use The World.",
+                    "You can pick The World Card by spending 3 choice points with an bonus action.",
+                    "When you pick The World card, you surpass the active card limit for the duration of this ability. While active, Pick a Card no longer requires Choice Points to select cards. The damage of The Fool spell is doubled. Whenever you sacrifice cards to generate stacks of The Fool, the stacks created are doubled.",
+                    "The World possesses a unique power to extend time itself. All ongoing durations in the scene are made permanent until the end of the encounter. While The World is active, you and your allies are under the effects of a universal connection: All healing or damage bonuses applied to one ally also affect all others.",
+                    "You can utilize this card only once per day, the duration of this card is Scene."
+                ],
+                effects: [{ type: 'bonus_action', name: 'The World', reset: 'long' }]
+            },
+            {
+                index: "secure-the-vision-improvement",
+                name: "Secure the Vision - Improvement",
+                level: 11,
+                source: "Card Master",
+                url: "",
+                desc: [
+                    "The visions have to suceed, and for that you cannot die, in level 11 your 'Secure the Vision' hability now affect enemies, you can use this hability in various forms:",
+                    "Dodge: You can make an enemy miss an attack against you or against a creature within 30 feet.",
+                    "Target: You can reduces the CA of an enemy for a equivalent of an Medium Duration Card, the reduction is Charisma + Proficiency.",
+                    "Secure multiple Destinys: Now you can ultilize the base Secure Vision for attacks and spells of allies.",
+                    "The cost of the imrpoved form of Secure the Vision is 3 Choice Points."
+                ]
+            },
+            {
+                index: "eternal-cards",
+                name: "Eternal Cards",
+                level: 12,
+                source: "Card Master",
+                url: "",
+                desc: ["Sometimes the cards don't have the sufficient duration, but now in level 12 you can extend an card duration, you can spend 1 choice point to add 2 rounds to the duration of an card."]
+            },
+            {
+                index: "good-vision",
+                name: "Good Vision",
+                level: 13,
+                source: "Card Master",
+                url: "",
+                desc: ["Is a little bit dangerous approaching to an enemy in the mid of a combat to use the Chiromancy hability, but now, you don't have to, starting in level 13 you gain 30 feet to use Chiromancy, and you gain more 30 feet in the following levels: 15, 17, 19."]
+            },
+            {
+                index: "fast-dealer",
+                name: "Fast Dealer",
+                level: 14,
+                source: "Card Master",
+                url: "",
+                desc: ["Years of training made you an excelent and faster Dealer, in level 14 when you use pick a card instead of one you pick 2 Card, 3 at level 20."]
+            },
+            {
+                index: "guided-pull",
+                name: "Guided Pull",
+                level: 14,
+                source: "Card Master",
+                url: "",
+                desc: [
+                    "At level 14th your growing connection to the deck grants you better control over your cards.",
+                    "A number of times equivalent to your Charisma, when you use 'Pick a Card,' you can roll twice and choose which result to keep."
+                ]
+            },
+            {
+                index: "ask-the-cards",
+                name: "Ask the Cards",
+                level: 15,
+                source: "Card Master",
+                url: "",
+                desc: [
+                    "Starting at 15th level, your unshakable devotion to the tarot is met with equal loyalty from the cards.",
+                    "A number of times equivalent to your charisma per long rest, you can perform a personal card spread as an action, casting the Commune spell without expending a spell slot. This ability allows you to seek guidance directly through the cards, when you use Commune this way, the chance of no respost in nulified."
+                ],
+                effects: [{ type: 'action', name: 'Ask the Cards' }]
+            },
+            {
+                index: "minor-arcana",
+                name: "Minor Arcana",
+                level: 16,
+                source: "Card Master",
+                url: "",
+                desc: [
+                    "At level 16th you unleash an new set of cards, the minor arcana, doing specific actions will give you one type of card of the following:",
+                    "Suit of Cups: When an enemy passes an saving throw against you, the Cups roll is, roll 1d10 if the number is between 2 and 9 you increase your DC by this number, if is 1 you can cast again the spell without losing a spell slot, if its 10 you add 10+Charisma modifier in your DC. (Duration: Medium)",
+                    "Suit of Swords: When you attack an enemy with is not spells, if you miss the Swords roll is actived, roll 1d10 if the number is between 2 and 9 you gain the number of bonus in your next attack, if is 1 you gain an Extra Attack in the next roundo, if its 10 you add 10+Charisma modifier in your attack bonus. (Duration: Medium)"
+                ]
+            },
+            {
+                index: "the-balance-improvement",
+                name: "The Balance",
+                level: 17,
+                source: "Card Master",
+                url: "",
+                desc: [
+                    "You reached far didn't you? Your mind almost fully understand the cards, but your body is not prepared for so much information.",
+                    "You lose your modifier of Charisma of hit points for levels higher than 17th."
+                ]
+            },
+            {
+                index: "minor-arcana-full",
+                name: "Minor Arcana",
+                level: 18,
+                source: "Card Master",
+                url: "",
+                desc: [
+                    "At level 18th you unleash an new set of cards, the minor arcana, doing specific actions will give you one type of card of the following:",
+                    "Suit of Pentacles: When you heal an ally or buff an ally, the Pentacles roll is actived, roll 1d10 if the number is between 2 and 9 the allies gain the number in bonus in your next test, if its 1 the ally gain 1 Extra Attack and advantage in the next attack, if its 10 the ally gain 2 Extra attacks, and your charisma modifier and advantage in the next attacks. (Duration: Instantaneous)",
+                    "Suit of Wand: When you cast a spell, roll 1d10 if the number is between 2 and 9 you gain the following buff: If is an odd number: You deal 3d12 + Charisma extra damage. If is an even number: you deal 6d12 + Charisma extra damage. If is an 1 you deal maximum damage multiplied by half of your proficiency, if is an 10 you deal maximum damage multiplied by your charisma modifier. (Duration: Instantaneous)",
+                    "The minor arcana card don´t count for the limit of actived cards."
+                ]
+            },
+            {
+                index: "transcend-the-charisma",
+                name: "Transcend the Charisma",
+                level: 19,
+                source: "Card Master",
+                url: "",
+                desc: [
+                    "At level 19 you gain 6 points in charisma attribute, this 6 points can ultrapass 20, and now you can use any skill test with Charisma."
+                ],
+                effects: [
+                    { type: 'bonus', target: 'cha', value: 6 },
+                    { type: 'feature', name: 'Transcend the Charisma' }
+                ]
+            },
+            {
+                index: "the-cards-will-not-abandon-me",
+                name: "The cards will not Abandon Me",
+                level: 20,
+                source: "Card Master",
+                url: "",
+                desc: [
+                    "You reached the max of an card master, congrats, now all the long durantion cards are Scene duration, and the medium cards are long, your limit for cards of the same duration increases by 2 so now you can have 4 long cards and 4 Scene Cards, your The Fool card is upgraded, when you turn a card in a The Fool Stack, you can immediatily use pick a card, and the extra dice of The fool stacks are doubled."
+                ]
+            }
+        ]
     }
 ];

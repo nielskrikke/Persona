@@ -1,7 +1,7 @@
 
-import { BeastDetail } from '../types';
+import { CreatureDetail } from '../types';
 
-export const STANDARD_FAMILIARS: BeastDetail[] = [
+export const STANDARD_FAMILIARS: CreatureDetail[] = [
     {
         index: 'bat', name: 'Bat', size: 'Tiny', type: 'beast', challenge_rating: 0,
         ac: 12, hp: 1, hit_dice: '1d4-1', speed: '5 ft., fly 30 ft.',

@@ -34,6 +34,18 @@ export const CLERIC_SPELLS: SpellDetail[] = [
         index: "thaumaturgy", name: "Thaumaturgy", level: 0, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "30 feet", components: ["V"], duration: "1 minute", ritual: false, concentration: false, classes: [], 
         desc: ["You manifest a minor wonder, a sign of supernatural power, within range. You create one of the following magical effects within range:", "• Your voice booms up to three times as loud as normal for 1 minute.", "• You cause flames to flicker, brighten, dim, or change color for 1 minute.", "• You cause harmless tremors in the ground for 1 minute.", "• You create an instantaneous sound that originates from a point of your choice within range, such as a rumble of thunder, the cry of a raven, or ominous whispers.", "• You instantaneously cause an unlocked door or window to fly open or slam shut.", "• You alter the appearance of your eyes for 1 minute.", "If you cast this spell multiple times, you can have up to three of its 1-minute effects active at a time, and you can dismiss such an effect as an action."] 
     },
+    {
+        index: "toll-the-dead", name: "Toll the Dead", level: 0, school: { name: "Necromancy", index: "necromancy" }, casting_time: "1 action", range: "60 feet", components: ["V", "S"], duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["You point at one creature you can see within range, and the sound of a dolorous bell fills the air around it for a moment. The target must succeed on a Wisdom saving throw or take 1d8 necrotic damage. If the target is missing any of its hit points, it instead takes 1d12 necrotic damage."],
+        damage: { damage_type: { name: "Necrotic", index: "necrotic" }, damage_at_character_level: { "1": "1d8", "5": "2d8", "11": "3d8", "17": "4d8" } },
+        dc: { dc_type: { name: "WIS", index: "wis" }, dc_success: "none" }
+    },
+    {
+        index: "word-of-radiance", name: "Word of Radiance", level: 0, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "5 feet", components: ["V", "M"], material: "a holy symbol", duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["You utter a divine word, and burning radiance erupts from you. Each creature of your choice that you can see within range must succeed on a Constitution saving throw or take 1d6 radiant damage."],
+        damage: { damage_type: { name: "Radiant", index: "radiant" }, damage_at_character_level: { "1": "1d6", "5": "2d6", "11": "3d6", "17": "4d6" } },
+        dc: { dc_type: { name: "CON", index: "con" }, dc_success: "none" }
+    },
 
     // Level 1
     { 
@@ -97,6 +109,15 @@ export const CLERIC_SPELLS: SpellDetail[] = [
     { 
         index: "purify-food-and-drink", name: "Purify Food and Drink", level: 1, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "10 feet", components: ["V", "S"], duration: "Instantaneous", ritual: true, concentration: false, classes: [], 
         desc: ["All nonmagical food and drink within a 5-foot-radius sphere centered on a point of your choice within range is purified and rendered free of poison and disease."] 
+    },
+    {
+        index: "ceremony", name: "Ceremony", level: 1, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 hour", range: "Touch", components: ["V", "S", "M"], material: "25 gp worth of powdered silver, which the spell consumes", duration: "Instantaneous", ritual: true, concentration: false, classes: [],
+        desc: ["You perform a special religious ceremony that is infused with magic. When you cast the spell, choose one of the following rites, the target of which must be within 10 feet of you throughout the casting: Atonement, Bless Wedding, Coming of Age, Dedication, Funeral Rite, Investiture, or Magic Weapon."]
+    },
+    {
+        index: "life-transference", name: "Life Transference", level: 3, school: { name: "Necromancy", index: "necromancy" }, casting_time: "1 action", range: "30 feet", components: ["V", "S"], duration: "Instantaneous", ritual: false, concentration: false, classes: [],
+        desc: ["You sacrifice some of your health to mend another creature’s injuries. You take 4d8 necrotic damage, which can’t be reduced in any way, and one creature of your choice that you can see within range regains a number of hit points equal to twice the necrotic damage you take."],
+        higher_level: ["When you cast this spell using a spell slot of 4th level or higher, the damage increases by 1d8 for each slot level above 3rd."]
     },
     { 
         index: "sanctuary", name: "Sanctuary", level: 1, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 bonus action", range: "30 feet", components: ["V", "S", "M"], material: "A small silver mirror.", duration: "1 minute", ritual: false, concentration: false, classes: [], 
@@ -267,6 +288,8 @@ export const CLERIC_SPELLS: SpellDetail[] = [
         index: "water-walk", name: "Water Walk", level: 3, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "30 feet", components: ["V", "S", "M"], material: "A piece of cork.", duration: "1 hour", ritual: true, concentration: false, classes: [], 
         desc: ["This spell grants the ability to move across any liquid surface—such as water, acid, mud, snow, quicksand, or lava—as if it were harmless solid ground (creatures crossing molten lava can still take damage from the heat). Up to ten willing creatures you can see within range gain this ability for the duration."] 
     },
+    { index: "aura-of-vitality", name: "Aura of Vitality", level: 3, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "Self (30-foot radius)", components: ["V"], duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [], desc: ["Healing energy radiates from you. As a bonus action, you can cause a creature in the aura to regain 2d6 HP."] },
+    { index: "spirit-shroud", name: "Spirit Shroud", level: 3, school: { name: "Necromancy", index: "necromancy" }, casting_time: "1 bonus action", range: "Self", components: ["V", "S"], duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [], desc: ["You call forth spirits of the dead. Your attacks deal an extra 1d8 radiant, necrotic, or cold damage, and creatures hit can't regain HP."], damage: { damage_type: {name:"Radiant", index:"radiant"}, damage_at_slot_level: {"3":"1d8"} } },
 
     // Level 4
     { 
@@ -282,6 +305,26 @@ export const CLERIC_SPELLS: SpellDetail[] = [
     { 
         index: "death-ward", name: "Death Ward", level: 4, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 action", range: "Touch", components: ["V", "S"], duration: "8 hours", ritual: false, concentration: false, classes: [], 
         desc: ["You touch a creature and grant it a measure of protection from death. The first time the target would drop to 0 hit points as a result of taking damage, the target instead drops to 1 hit point, and the spell ends. If the spell is still in effect when the target is subjected to an effect that would kill it instantaneously without dealing damage, that effect is instead negated against the target, and the spell ends."] 
+    },
+    {
+        index: "aura-of-life", name: "Aura of Life", level: 4, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 action", range: "Self (30-foot radius)", components: ["V"], duration: "Concentration, up to 10 minutes", ritual: false, concentration: true, classes: [],
+        desc: ["Life-preserving energy radiates from you in an aura with a 30-foot radius. Until the spell ends, the aura moves with you, centered on you. Each nonhostile creature in the aura (including you) has resistance to necrotic damage, and its hit point maximum can't be reduced. In addition, a nonhostile creature regains 1 hit point when it starts its turn in the aura with 0 hit points."]
+    },
+    {
+        index: "aura-of-purity", name: "Aura of Purity", level: 4, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 action", range: "Self (30-foot radius)", components: ["V"], duration: "Concentration, up to 10 minutes", ritual: false, concentration: true, classes: [],
+        desc: ["Purifying energy radiates from you in an aura with a 30-foot radius. Until the spell ends, the aura moves with you, centered on you. Each nonhostile creature in the aura (including you) can’t become diseased, has resistance to poison damage, and has advantage on saving throws against effects that cause any of the following conditions: blinded, charmed, deafened, frightened, paralyzed, poisoned, and stunned."]
+    },
+    {
+        index: "holy-weapon", name: "Holy Weapon", level: 5, school: { name: "Evocation", index: "evocation" }, casting_time: "1 bonus action", range: "Touch", components: ["V", "S"], duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [],
+        desc: ["You imbue a weapon you touch with holy power. Until the spell ends, the weapon emits bright light in a 30-foot radius and dim light for an additional 30 feet. In addition, weapon attacks made with it deal an extra 2d8 radiant damage on a hit. As a bonus action on your turn, you can dismiss this spell and cause the weapon to emit a burst of radiance. Each creature of your choice that you can see within 30 feet of the weapon must make a Constitution saving throw. On a failed save, a creature takes 4d8 radiant damage, and it is blinded for 1 minute. On a successful save, a creature takes half as much damage and isn’t blinded. At the end of each of its turns, a blinded creature can make a Constitution saving throw, ending the effect on itself on a success."],
+        damage: { damage_type: { name: "Radiant", index: "radiant" }, damage_at_slot_level: { "5": "2d8" } },
+        dc: { dc_type: { name: "CON", index: "con" }, dc_success: "half" }
+    },
+    {
+        index: "dawn", name: "Dawn", level: 5, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "60 feet", components: ["V", "S", "M"], material: "a sunstone worth at least 100 gp", duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [],
+        desc: ["The light of dawn shines in a 30-foot-radius, 40-foot-high cylinder centered on a point within range. Until the spell ends, bright light fills the cylinder, and its area is sunlight. When the cylinder appears, each creature in it must make a Constitution saving throw, taking 4d10 radiant damage on a failed save, or half as much damage on a successful one. A creature must also make this saving throw when it ends its turn in the cylinder. If you’re within 60 feet of the cylinder, you can move it up to 60 feet as a bonus action on your turn."],
+        damage: { damage_type: { name: "Radiant", index: "radiant" }, damage_at_slot_level: { "5": "4d10" } },
+        dc: { dc_type: { name: "CON", index: "con" }, dc_success: "half" }
     },
     { 
         index: "divination", name: "Divination", level: 4, school: { name: "Divination", index: "divination" }, casting_time: "1 action", range: "Self", components: ["V", "S", "M"], material: "Incense and a sacrificial offering appropriate to the religion, together worth at least 25 gp, which the spell consumes.", duration: "Instantaneous", ritual: true, concentration: false, classes: [], 
@@ -304,6 +347,8 @@ export const CLERIC_SPELLS: SpellDetail[] = [
         index: "stone-shape", name: "Stone Shape", level: 4, school: { name: "Transmutation", index: "transmutation" }, casting_time: "1 action", range: "Touch", components: ["V", "S", "M"], material: "Soft clay to be worked into roughly the desired shape of the stone object.", duration: "Instantaneous", ritual: false, concentration: false, classes: [], 
         desc: ["You touch a stone object of Medium size or smaller or a section of stone no more than 5 feet in any dimension and form it into any shape that suits your purpose. So, for example, you could shape a large rock into a weapon, idol, or coffer, or make a small passage through a wall, as long as the wall is less than 5 feet thick. You can also shape a stone door or its frame to seal the door shut. The object you create can have up to two hinges and a latch, but finer mechanical detail isn't possible."] 
     },
+    { index: "aura-of-life", name: "Aura of Life", level: 4, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 action", range: "Self (30-foot radius)", components: ["V"], duration: "Concentration, up to 10 minutes", ritual: false, concentration: true, classes: [], desc: ["Life-preserving energy radiates from you. Non-hostile creatures in the aura have resistance to necrotic damage and their HP maximum can't be reduced."] },
+    { index: "aura-of-purity", name: "Aura of Purity", level: 4, school: { name: "Abjuration", index: "abjuration" }, casting_time: "1 action", range: "Self (30-foot radius)", components: ["V"], duration: "Concentration, up to 10 minutes", ritual: false, concentration: true, classes: [], desc: ["Purifying energy radiates from you. Non-hostile creatures in the aura can't become diseased and have advantage on saves against various conditions."] },
 
     // Level 5
     { 
@@ -372,6 +417,7 @@ export const CLERIC_SPELLS: SpellDetail[] = [
         desc: ["You can see and hear a particular creature you choose that is on the same plane of existence as you. The target must make a Wisdom saving throw, which is modified by how well you know the target and the sort of physical connection you have to it."],
         dc: { dc_type: { name: "WIS", index: "wis" }, dc_success: "none" }
     },
+    { index: "summon-celestial", name: "Summon Celestial", level: 5, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "90 feet", components: ["V", "S", "M"], material: "A golden reliquary worth at least 500 gp.", duration: "Concentration, up to 1 hour", ritual: false, concentration: true, classes: [], desc: ["You call forth a celestial spirit to fight for you."] },
 
     // Level 6
     { 
@@ -420,6 +466,7 @@ export const CLERIC_SPELLS: SpellDetail[] = [
         index: "word-of-recall", name: "Word of Recall", level: 6, school: { name: "Conjuration", index: "conjuration" }, casting_time: "1 action", range: "5 feet", components: ["V"], duration: "Instantaneous", ritual: false, concentration: false, classes: [], 
         desc: ["You and up to five willing creatures within 5 feet of you instantly teleport to a previously designated sanctuary. You and any creatures that teleport with you appear in the nearest unoccupied space to the spot you designated when you prepared your sanctuary (if you have not prepared a sanctuary, the spell has no effect)."] 
     },
+    { index: "sunbeam", name: "Sunbeam", level: 6, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "Self (60-foot line)", components: ["V", "S", "M"], material: "A magnifying glass.", duration: "Concentration, up to 1 minute", ritual: false, concentration: true, classes: [], desc: ["A beam of brilliant light flashes out from your hand. Each creature in the line must make a Con save or take 6d8 radiant damage and be blinded."], damage: { damage_type: {name:"Radiant", index:"radiant"}, damage_at_slot_level: {"6":"6d8"} }, dc: { dc_type: {name:"CON", index:"con"}, dc_success: "half" } },
 
     // Level 7
     { 
@@ -495,5 +542,6 @@ export const CLERIC_SPELLS: SpellDetail[] = [
     { 
         index: "true-resurrection", name: "True Resurrection", level: 9, school: { name: "Necromancy", index: "necromancy" }, casting_time: "1 hour", range: "Touch", components: ["V", "S", "M"], material: "A sprinkle of holy water and diamonds worth at least 25,000 gp, which the spell consumes.", duration: "Instantaneous", ritual: false, concentration: false, classes: [], 
         desc: ["You touch a creature that has been dead for no longer than 200 years and that died for any reason except old age. If the creature's soul is free and willing, the creature is restored to life with all its hit points."] 
-    }
+    },
+    { index: "power-word-heal", name: "Power Word Heal", level: 9, school: { name: "Evocation", index: "evocation" }, casting_time: "1 action", range: "Touch", components: ["V", "S"], duration: "Instantaneous", ritual: false, concentration: false, classes: [], desc: ["A wave of healing energy washes over a creature you touch. The target regains all its HP."] }
 ];
