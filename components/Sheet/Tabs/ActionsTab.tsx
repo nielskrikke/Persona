@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CharacterState, SpellDetail, CreatureDetail } from '../../../types';
-import { STANDARD_ACTIONS, WIDGET_BG } from '../../../data/constants';
+import { STANDARD_ACTIONS, WIDGET_BG, MASTERY_DESCRIPTIONS } from '../../../data/constants';
 import { formatModifier, getSpellDamageString } from '../../../utils/rules';
 
 interface ActionsTabProps {
@@ -198,7 +198,23 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                     </div>
                                     <div className="text-[10px] text-gray-500 lowercase line-clamp-2 leading-tight">
                                         {attack.type}
-                                        {attack.notes?.length ? ` • ${attack.notes.join(' • ')}` : ''}
+                                        {attack.notes?.map((note: string, idx: number) => {
+                                            const description = MASTERY_DESCRIPTIONS[note];
+                                            return (
+                                                <React.Fragment key={idx}>
+                                                    {' • '}
+                                                    {description ? (
+                                                        <span className="group/mastery relative cursor-help">
+                                                            {note}
+                                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-900 border border-gray-700 rounded shadow-xl opacity-0 group-hover/mastery:opacity-100 transition-opacity pointer-events-none z-50 text-[10px] normal-case text-gray-200">
+                                                                <div className="font-bold text-dnd-gold mb-1 uppercase tracking-wider">{note}</div>
+                                                                {description}
+                                                            </div>
+                                                        </span>
+                                                    ) : note}
+                                                </React.Fragment>
+                                            );
+                                        })}
                                         {attack.source?.maxUses && (
                                             <span className="ml-2 text-dnd-gold font-bold uppercase text-[8px]">
                                                 Limited: {character.featureUsage[attack.name]?.current || attack.source.maxUses}/{attack.source.maxUses}

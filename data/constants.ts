@@ -151,6 +151,17 @@ export const SPELL_SCHOOLS = [
     "Abjuration", "Conjuration", "Divination", "Enchantment", "Evocation", "Illusion", "Necromancy", "Transmutation"
 ];
 
+export const MASTERY_DESCRIPTIONS: Record<string, string> = {
+    'Cleave': 'If you hit a creature with a melee attack roll using this weapon, you can make a melee attack roll with the weapon against a second creature within 5 feet of the first that is also within your reach. On a hit, the second creature takes the weapon’s damage, but don’t add your ability modifier to that damage unless that modifier is negative. You can make this extra attack only once per turn.',
+    'Graze': 'If your attack roll with this weapon misses a creature, you can deal damage to that creature equal to the ability modifier you used to make the attack roll. This damage is the same type dealt by the weapon, and the damage can be increased only by increasing the ability modifier.',
+    'Nick': 'When you make the extra attack of the Light property, you can make it as part of the Attack action instead of as a Bonus Action. You can make this extra attack only once per turn.',
+    'Push': 'If you hit a creature with this weapon, you can push the creature up to 10 feet straight away from yourself if it is Large or smaller.',
+    'Sap': 'If you hit a creature with this weapon, that creature has Disadvantage on its next attack roll before the start of your next turn.',
+    'Slow': 'If you hit a creature with this weapon and deal damage to it, you can reduce its Speed by 10 feet until the start of your next turn. If the creature is hit more than once by weapons that have this property, the Speed reduction doesn’t exceed 10 feet.',
+    'Topple': 'If you hit a creature with this weapon, you can force the creature to make a Constitution saving throw (DC 8 plus the ability modifier used to make the attack roll and your Proficiency Bonus). On a failed save, the creature has the Prone condition.',
+    'Vex': 'If you hit a creature with this weapon and deal damage to the creature, you have Advantage on your next attack roll against that creature before the end of your next turn.'
+};
+
 export const STATIC_RULES: RuleEntry[] = [
     { name: 'Attack', category: 'Action', desc: 'Make a melee or ranged attack. See your equipment for details.' },
     { name: 'Cast a Spell', category: 'Action', desc: 'Cast a spell with a casting time of 1 action.' },
@@ -213,12 +224,5 @@ export const STATIC_RULES: RuleEntry[] = [
     { name: 'Two-Handed', category: 'Rules', desc: 'A Two-Handed weapon requires two hands when you attack with it.' },
     { name: 'Versatile', category: 'Rules', desc: 'A Versatile weapon can be used with one or two hands. A damage value in parentheses appears with the property. The weapon deals that damage when used with two hands to make a melee attack.' },
     { name: 'Improvised Weapons', category: 'Rules', desc: 'If you use an object—such as a table leg, frying pan, or bottle—as a makeshift weapon, see “Improvised Weapons” in "Rules Glossary". Also see those rules if you wield a weapon in an unusual way, such as using a Ranged weapon to make a melee attack.' },
-    { name: 'Cleave', category: 'Mastery', desc: 'If you hit a creature with a melee attack roll using this weapon, you can make a melee attack roll with the weapon against a second creature within 5 feet of the first that is also within your reach. On a hit, the second creature takes the weapon’s damage, but don’t add your ability modifier to that damage unless that modifier is negative. You can make this extra attack only once per turn.' },
-    { name: 'Graze', category: 'Mastery', desc: 'If your attack roll with this weapon misses a creature, you can deal damage to that creature equal to the ability modifier you used to make the attack roll. This damage is the same type dealt by the weapon, and the damage can be increased only by increasing the ability modifier.' },
-    { name: 'Nick', category: 'Mastery', desc: 'When you make the extra attack of the Light property, you can make it as part of the Attack action instead of as a Bonus Action. You can make this extra attack only once per turn.' },
-    { name: 'Push', category: 'Mastery', desc: 'If you hit a creature with this weapon, you can push the creature up to 10 feet straight away from yourself if it is Large or smaller.' },
-    { name: 'Sap', category: 'Mastery', desc: 'If you hit a creature with this weapon, that creature has Disadvantage on its next attack roll before the start of your next turn.' },
-    { name: 'Slow', category: 'Mastery', desc: 'If you hit a creature with this weapon and deal damage to it, you can reduce its Speed by 10 feet until the start of your next turn. If the creature is hit more than once by weapons that have this property, the Speed reduction doesn’t exceed 10 feet.' },
-    { name: 'Topple', category: 'Mastery', desc: 'If you hit a creature with this weapon, you can force the creature to make a Constitution saving throw (DC 8 plus the ability modifier used to make the attack roll and your Proficiency Bonus). On a failed save, the creature has the Prone condition.' },
-    { name: 'Vex', category: 'Mastery', desc: 'If you hit a creature with this weapon and deal damage to the creature, you have Advantage on your next attack roll against that creature before the end of your next turn.' },
+    ...Object.entries(MASTERY_DESCRIPTIONS).map(([name, desc]) => ({ name, category: 'Mastery', desc }))
 ];
