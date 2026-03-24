@@ -456,18 +456,43 @@ const ManageCharacterModal = ({
         }
     };
 
+    // Global Save Helper
+    const getGlobalUpdates = () => ({
+        name,
+        avatarUrl: avatar,
+        xp: parseInt(xp) || 0, 
+        alignment,
+        languages,
+        abilities,
+        feats: localFeats,
+        skills,
+        expertise,
+        featureUsage: localFeatures,
+        fontScale,
+        backgroundImageUrl,
+        backgroundColor,
+        themeColor,
+        themeColorSecondary,
+        diceColor,
+        show3DDice,
+        combatOverrides,
+        choices: localChoices,
+        spells: localSpells,
+        classes: localClasses,
+        maxHp: localMaxHp
+    });
+
+    const handleSave = () => {
+        onUpdate({
+            ...getGlobalUpdates(),
+            currentHp: Math.min(character.currentHp, localMaxHp)
+        });
+        onClose();
+    };
+
     // Save All Identity Changes
     const saveIdentity = async () => {
-        const updates: any = { 
-            name, 
-            avatarUrl: avatar, 
-            xp: parseInt(xp) || 0, 
-            alignment,
-            languages
-        };
-
-        onUpdate(updates);
-        onClose();
+        handleSave();
     };
 
     const addManualLanguage = () => {
@@ -611,8 +636,7 @@ const ManageCharacterModal = ({
     };
 
     const saveAbilities = () => {
-        onUpdate({ abilities });
-        onClose();
+        handleSave();
     };
 
     // Proficiencies
@@ -648,8 +672,7 @@ const ManageCharacterModal = ({
     };
 
     const saveProficiencies = () => {
-        onUpdate({ skills, expertise });
-        onClose();
+        handleSave();
     };
 
     // Combat Overrides
@@ -661,14 +684,12 @@ const ManageCharacterModal = ({
     };
 
     const saveCombatOverrides = () => {
-        onUpdate({ combatOverrides });
-        onClose();
+        handleSave();
     };
 
     // Trackers
     const handleSaveTrackers = () => {
-        onUpdate({ featureUsage: localFeatures });
-        onClose();
+        handleSave();
     };
     
     const handleDeleteFeature = (featName: string) => {
@@ -688,14 +709,7 @@ const ManageCharacterModal = ({
 
     const saveChoices = async () => {
         const updates: any = { 
-            choices: localChoices,
-            abilities: abilities,
-            feats: localFeats,
-            spells: localSpells,
-            skills: skills,
-            expertise: expertise,
-            classes: localClasses,
-            maxHp: localMaxHp,
+            ...getGlobalUpdates(),
             currentHp: Math.min(character.currentHp, localMaxHp)
         };
 
@@ -1924,18 +1938,7 @@ const ManageCharacterModal = ({
 
                             <div className="pt-8 border-t border-gray-800 flex justify-start">
                                 <button 
-                                    onClick={() => {
-                                        onUpdate({
-                                            fontScale,
-                                            backgroundImageUrl,
-                                            backgroundColor,
-                                            themeColor,
-                                            themeColorSecondary,
-                                            diceColor,
-                                            show3DDice
-                                        });
-                                        onClose();
-                                    }} 
+                                    onClick={handleSave} 
                                     className="px-8 py-2.5 bg-dnd-gold hover:bg-white text-black font-black uppercase tracking-widest rounded-xl shadow-lg shadow-dnd-gold/10 transition-all flex items-center justify-center gap-2 text-xs"
                                 >
                                     <Save size={14} />

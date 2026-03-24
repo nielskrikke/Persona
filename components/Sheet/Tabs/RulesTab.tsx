@@ -17,7 +17,7 @@ const RulesTab: React.FC<RulesTabProps> = ({ visibleRules, setSelectedDetail }) 
             <div className="flex flex-col md:flex-row justify-between items-end gap-4 mb-4">
                 <div className="flex flex-wrap gap-2 items-center w-full md:w-auto">
                     <div className="flex gap-2 items-center overflow-x-auto pb-1 no-scrollbar">
-                        {['All', 'Action', 'Condition', 'Rules'].map(cat => (
+                        {['All', 'Action', 'Condition', 'Rules', 'Mastery'].map(cat => (
                             <button 
                                 key={cat} 
                                 onClick={() => setRulesFilter(cat as any)} 
@@ -45,7 +45,7 @@ const RulesTab: React.FC<RulesTabProps> = ({ visibleRules, setSelectedDetail }) 
                     >
                         <div className="flex justify-between mb-2">
                             <h4 className="font-bold text-gray-200 text-sm">{rule.name}</h4>
-                            <span className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded ${rule.category === 'Action' ? 'bg-blue-900/30 text-blue-400' : rule.category === 'Condition' ? 'bg-dnd-red/30 text-dnd-red' : 'bg-gray-800 text-gray-500'}`}>
+                            <span className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded ${rule.category === 'Action' ? 'bg-blue-900/30 text-blue-400' : rule.category === 'Condition' ? 'bg-dnd-red/30 text-dnd-red' : rule.category === 'Mastery' ? 'bg-dnd-gold/30 text-dnd-gold' : 'bg-gray-800 text-gray-500'}`}>
                                 {rule.category}
                             </span>
                         </div>

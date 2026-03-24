@@ -442,6 +442,7 @@ export const MAGIC_WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 20000, unit: "gp" }, 
         weight: 4, 
         rarity: "Very Rare",
+        isSpellFocus: true,
         damage: { damage_dice: "1d6+3", damage_type: { index: "bludgeoning", name: "Bludgeoning" } }, 
         desc: ["You have a +3 bonus to attack and damage rolls made with this magic weapon.", "The staff has 10 charges. When you hit with a melee attack using it, you can expend up to 3 of its charges. For each charge you expend, the target takes an extra 1d6 force damage. The staff regains 1d6 + 4 expended charges daily at dawn. If you expend the last charge, roll a d20. On a 1, the staff becomes a nonmagical quarterstaff."],
         modifiers: [
@@ -456,6 +457,7 @@ export const MAGIC_WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 45000, unit: "gp" }, 
         weight: 4, 
         rarity: "Very Rare",
+        isSpellFocus: true,
         damage: { damage_dice: "1d6+2", damage_type: { index: "bludgeoning", name: "Bludgeoning" } }, 
         desc: ["You have a +2 bonus to attack and damage rolls made with this magic weapon. While holding it, you gain a +2 bonus to Armor Class, saving throws, and spell attack rolls.", "The staff has 20 charges for the following properties. It regains 2d8 + 4 expended charges daily at dawn.", "Power Strike. When you hit with a melee attack using the staff, you can expend 1 charge to deal an extra 1d6 force damage.", "Spells. Cone of Cold (5 charges), Fireball (5th-level version, 5 charges), Globe of Invulnerability (6 charges), Hold Monster (5 charges), Levitate (2 charges), Lightning Bolt (5th-level version, 5 charges), Magic Missile (1 charge), Ray of Enfeeblement (1 charge), Wall of Force (5 charges).", "Retributive Strike. You can break the staff to create an explosion."],
         modifiers: [
@@ -474,6 +476,7 @@ export const MAGIC_WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 200000, unit: "gp" }, 
         weight: 4, 
         rarity: "Legendary",
+        isSpellFocus: true,
         damage: { damage_dice: "1d6+2", damage_type: { index: "bludgeoning", name: "Bludgeoning" } }, 
         desc: ["You have a +2 bonus to attack and damage rolls made with this magic weapon. While holding it, you have a +2 bonus to spell attack rolls.", "The staff has 50 charges. It regains 4d6 + 2 expended charges daily at dawn.", "Spell Absorption. While holding the staff, you have advantage on saving throws against spells. In addition, you can use your reaction when another creature casts a spell that targets only you. If you do, the staff absorbs the magic of the spell, canceling its effect and gaining a number of charges equal to the absorbed spell's level.", "Spells. Conjure Elemental (7 charges), Dispel Magic (3 charges), Fireball (7th-level version, 7 charges), Flaming Sphere (2 charges), Ice Storm (4 charges), Invisibility (2 charges), Knock (2 charges), Lightning Bolt (7th-level version, 7 charges), Passwall (5 charges), Plane Shift (7 charges), Telekinesis (5 charges), Wall of Fire (4 charges), Web (2 charges).", "You can also use an action to cast one of the following spells from the staff without using any charges: Arcane Lock, Detect Magic, Enlarge/Reduce, Light, Mage Hand, or Protection from Evil and Good."],
         modifiers: [
@@ -490,6 +493,7 @@ export const MAGIC_WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 15000, unit: "gp" }, 
         weight: 4, 
         rarity: "Rare",
+        isSpellFocus: true,
         damage: { damage_dice: "1d6+2", damage_type: { index: "bludgeoning", name: "Bludgeoning" } }, 
         desc: ["You have a +2 bonus to attack and damage rolls made with this magic weapon. While holding it, you have a +2 bonus to spell attack rolls.", "The staff has 10 charges. It regains 1d6 + 4 expended charges daily at dawn.", "Spells. Animal Friendship (1 charge), Awaken (5 charges), Barkskin (2 charges), Locate Animals or Plants (1 charge), Speak with Animals (1 charge), Speak with Plants (3 charges), Wall of Thorns (6 charges).", "You can also use an action to cast the Pass Without Trace spell from the staff without using any charges.", "Tree Form. You can use an action to plant one end of the staff in the earth and turn it into a healthy tree. The tree is 60 feet tall and has a 5-foot-diameter trunk, and its branches at the top spread out in a 20-foot radius."],
         modifiers: [
@@ -506,6 +510,7 @@ export const MAGIC_WEAPONS: EquipmentDetail[] = [
         cost: { quantity: 20000, unit: "gp" }, 
         weight: 4, 
         rarity: "Rare",
+        isSpellFocus: true,
         damage: { damage_dice: "1d6", damage_type: { index: "bludgeoning", name: "Bludgeoning" } }, 
         desc: ["This staff has 3 charges and regains 1d3 expended charges daily at dawn.", "The staff can be wielded as a magic quarterstaff. On a hit, it deals damage as a normal quarterstaff, and you can expend 1 charge to deal an extra 2d10 necrotic damage to the target. In addition, the target must succeed on a DC 15 Constitution saving throw or have disadvantage for 1 hour on any ability check or saving throw that uses Strength or Constitution."],
         requires_attunement: true,

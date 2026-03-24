@@ -139,7 +139,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                                     <span className="text-[8px] bg-yellow-900/40 text-yellow-500 border border-yellow-800/60 px-1 rounded h-3 flex items-center">R</span>
                                                 )}
                                             </div>
-                                            <div className="text-[10px] text-gray-500 truncate lowercase">{attack.type}{attack.notes?.length ? ` • ${attack.notes.join(' • ')}` : ''}</div>
+                                            <div className="text-[10px] text-gray-500 lowercase line-clamp-2 leading-tight">{attack.type}{attack.notes?.length ? ` • ${attack.notes.join(' • ')}` : ''}</div>
                                         </div>
                                         <div className="text-center text-[10px] text-gray-400 font-bold">{attack.range}</div>
                                         <div className="flex justify-center"><button onClick={(e) => { e.stopPropagation(); roll(attack.damage, `Damage ${attack.name}`); }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex flex-col items-center justify-center text-center"><span className="text-sm font-bold text-white">{attack.damage}</span><span className="text-[8px] text-gray-500 uppercase">{attack.type}</span></button></div>
@@ -196,7 +196,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                             <span className="text-[8px] bg-yellow-900/40 text-yellow-500 border border-yellow-800/60 px-1 rounded h-3 flex items-center">R</span>
                                         )}
                                     </div>
-                                    <div className="text-[10px] text-gray-500 truncate lowercase">
+                                    <div className="text-[10px] text-gray-500 lowercase line-clamp-2 leading-tight">
                                         {attack.type}
                                         {attack.notes?.length ? ` • ${attack.notes.join(' • ')}` : ''}
                                         {attack.source?.maxUses && (

@@ -83,7 +83,7 @@ export const WONDROUS_ITEMS: EquipmentDetail[] = [
     },
     { index: "boots-of-levitation", name: "Boots of Levitation", equipment_category: { index: "wondrous-items", name: "Wondrous Items", url: "" }, cost: { quantity: 3000, unit: "gp" }, weight: 0, rarity: "Rare", desc: ["While you wear these boots, you can use an action to cast the levitate spell on yourself at will."], requires_attunement: true },
     { index: "boots-of-winterlands", name: "Boots of the Winterlands", equipment_category: { index: "wondrous-items", name: "Wondrous Items", url: "" }, cost: { quantity: 300, unit: "gp" }, weight: 0, rarity: "Uncommon", desc: ["These furred boots are snug and feel quite warm. While you wear them, you have resistance to cold damage. You ignore difficult terrain created by ice or snow. You can tolerate temperatures as low as -50 degrees Fahrenheit."], modifiers: [{type: 'resistance', target: 'resistance', filter: 'Cold', value: 1}], requires_attunement: true },
-    { index: "broom-of-flying", name: "Broom of Flying", equipment_category: { index: "wondrous-items", name: "Wondrous Items", url: "" }, cost: { quantity: 400, unit: "gp" }, weight: 3, rarity: "Uncommon", desc: ["This wooden broom can fly. You can use an action to speak its command word, causing the broom to hover. It has a flying speed of 50 feet. It can carry up to 400 pounds, but its flying speed becomes 30 feet if it carries over 200 pounds."] },
+    { index: "broom-of-flying", name: "Broom of Flying", equipment_category: { index: "wondrous-items", name: "Wondrous Items", url: "" }, cost: { quantity: 400, unit: "gp" }, weight: 3, rarity: "Uncommon", isSpellFocus: true, desc: ["This wooden broom can fly. You can use an action to speak its command word, causing the broom to hover. It has a flying speed of 50 feet. It can carry up to 400 pounds, but its flying speed becomes 30 feet if it carries over 200 pounds."] },
     { index: "cape-of-mountebank", name: "Cape of the Mountebank", equipment_category: { index: "wondrous-items", name: "Wondrous Items", url: "" }, cost: { quantity: 4000, unit: "gp" }, weight: 0, rarity: "Rare", desc: ["This cape smells faintly of brimstone. While wearing it, you can use it to cast the dimension door spell as an action. This property of the cape can't be used again until the next dawn."] },
     { index: "carpet-of-flying", name: "Carpet of Flying", equipment_category: { index: "wondrous-items", name: "Wondrous Items", url: "" }, cost: { quantity: 30000, unit: "gp" }, weight: 0, rarity: "Very Rare", desc: ["You can speak the carpet's command word as an action to make the carpet hover and fly. It moves according to your spoken directions, provided that you are within 30 feet of it."] },
     { index: "chime-of-opening", name: "Chime of Opening", equipment_category: { index: "wondrous-items", name: "Wondrous Items", url: "" }, cost: { quantity: 3000, unit: "gp" }, weight: 1, rarity: "Rare", desc: ["This hollow metal tube measures about 1 foot long and weighs 1 pound. You can strike it as an action, pointing it at an object within 120 feet of you that can be opened, such as a door, lid, or lock. The chime issues a clear tone, and one lock or latch on the object opens. The chime has 10 uses."] },
@@ -214,83 +214,115 @@ export const WONDROUS_ITEMS: EquipmentDetail[] = [
     
     // Wands
     { 
-        index: "wand-of-magic-missiles", name: "Wand of Magic Missiles", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 300, unit: "gp" }, weight: 1, 
+        index: "wand-of-magic-missiles", name: "Wand of Magic Missiles", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 300, unit: "gp" }, weight: 1, isSpellFocus: true,
         desc: ["This wand has 7 charges. While holding it, you can use an action to expend 1 or more of its charges to cast the magic missile spell from it. For 1 charge, you cast the 1st-level version of the spell. You can increase the spell slot level by one for each additional charge you expend."] 
     },
     { 
-        index: "wand-of-web", name: "Wand of Web", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 500, unit: "gp" }, weight: 1, 
+        index: "wand-of-web", name: "Wand of Web", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 500, unit: "gp" }, weight: 1, isSpellFocus: true,
         desc: ["This wand has 7 charges. While holding it, you can use an action to expend 1 of its charges to cast the web spell (save DC 15) from it."],
         requires_attunement: true,
         attunement_description: "by a spellcaster"
     },
     { 
-        index: "wand-of-fireballs", name: "Wand of Fireballs", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 12000, unit: "gp" }, weight: 1, 
+        index: "wand-of-fireballs", name: "Wand of Fireballs", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 12000, unit: "gp" }, weight: 1, isSpellFocus: true,
         desc: ["This wand has 7 charges. While holding it, you can use an action to expend 1 or more of its charges to cast the fireball spell (save DC 15) from it. For 1 charge, you cast the 3rd-level version of the spell. You can increase the spell slot level by one for each additional charge you expend."],
         requires_attunement: true,
         attunement_description: "by a spellcaster"
     },
     { 
-        index: "wand-of-lightning-bolts", name: "Wand of Lightning Bolts", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 12000, unit: "gp" }, weight: 1, 
+        index: "wand-of-lightning-bolts", name: "Wand of Lightning Bolts", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 12000, unit: "gp" }, weight: 1, isSpellFocus: true,
         desc: ["This wand has 7 charges. While holding it, you can use an action to expend 1 or more of its charges to cast the lightning bolt spell (save DC 15) from it. For 1 charge, you cast the 3rd-level version of the spell. You can increase the spell slot level by one for each additional charge you expend."],
         requires_attunement: true,
         attunement_description: "by a spellcaster"
     },
     { 
-        index: "wand-of-binding", name: "Wand of Binding", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 20000, unit: "gp" }, weight: 1, 
+        index: "wand-of-binding", name: "Wand of Binding", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 20000, unit: "gp" }, weight: 1, isSpellFocus: true,
         desc: ["This wand has 7 charges. While holding it, you can use an action to cast Hold Monster (5 charges) or Hold Person (2 charges). Save DC 17."],
         requires_attunement: true,
         attunement_description: "by a spellcaster"
     },
     { 
-        index: "wand-of-enemy-detection", name: "Wand of Enemy Detection", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 2000, unit: "gp" }, weight: 1, 
+        index: "wand-of-enemy-detection", name: "Wand of Enemy Detection", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 2000, unit: "gp" }, weight: 1, isSpellFocus: true,
         desc: ["This wand has 7 charges. While holding it, you can use an action to cast the detect magic spell from it."],
         requires_attunement: true
     },
     { 
-        index: "wand-of-fear", name: "Wand of Fear", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 15000, unit: "gp" }, weight: 1, 
+        index: "wand-of-fear", name: "Wand of Fear", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 15000, unit: "gp" }, weight: 1, isSpellFocus: true,
         desc: ["This wand has 7 charges. While holding it, you can use an action to expend 1 charge to command creatures to flee or drop items (Save DC 15)."],
         requires_attunement: true
     },
     { 
-        index: "wand-of-magic-detection", name: "Wand of Magic Detection", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 400, unit: "gp" }, weight: 1, 
+        index: "wand-of-magic-detection", name: "Wand of Magic Detection", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 400, unit: "gp" }, weight: 1, isSpellFocus: true,
         desc: ["This wand has 3 charges. While holding it, you can use an action to expend 1 of its charges to cast the detect magic spell from it."] 
     },
     { 
-        index: "wand-of-paralysis", name: "Wand of Paralysis", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 12000, unit: "gp" }, weight: 1, 
+        index: "wand-of-paralysis", name: "Wand of Paralysis", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 12000, unit: "gp" }, weight: 1, isSpellFocus: true,
         desc: ["This wand has 7 charges. While holding it, you can use an action to expend 1 of its charges to cause a thin blue ray to target a creature within 60 feet of you. The target must succeed on a DC 15 Constitution saving throw or be paralyzed for 1 minute."],
         requires_attunement: true,
         attunement_description: "by a spellcaster"
     },
     { 
-        index: "wand-of-polymorph", name: "Wand of Polymorph", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 50000, unit: "gp" }, weight: 1, 
+        index: "wand-of-polymorph", name: "Wand of Polymorph", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 50000, unit: "gp" }, weight: 1, isSpellFocus: true,
         desc: ["This wand has 7 charges. While holding it, you can use an action to expend 1 of its charges to cast the polymorph spell (save DC 15) from it."],
         requires_attunement: true,
         attunement_description: "by a spellcaster"
     },
     { 
-        index: "wand-of-secrets", name: "Wand of Secrets", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 500, unit: "gp" }, weight: 1, 
+        index: "wand-of-secrets", name: "Wand of Secrets", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 500, unit: "gp" }, weight: 1, isSpellFocus: true,
         desc: ["This wand has 3 charges. While holding it, you can use an action to expend 1 of its charges to detect secret doors/traps within 60 feet."] 
     },
     { 
-        index: "wand-of-the-war-mage-1", name: "Wand of the War Mage +1", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 500, unit: "gp" }, weight: 1, desc: ["You gain a +1 bonus to spell attack rolls. In addition, you ignore half cover when making a spell attack."],
+        index: "wand-of-the-war-mage-1", name: "Wand of the War Mage +1", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 500, unit: "gp" }, weight: 1, isSpellFocus: true, desc: ["You gain a +1 bonus to spell attack rolls. In addition, you ignore half cover when making a spell attack."],
         modifiers: [{ type: 'bonus', target: 'spell_attack', value: 1 }],
         requires_attunement: true,
         attunement_description: "by a spellcaster"
     },
     { 
-        index: "wand-of-the-war-mage-2", name: "Wand of the War Mage +2", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 4000, unit: "gp" }, weight: 1, desc: ["You gain a +2 bonus to spell attack rolls. In addition, you ignore half cover when making a spell attack."],
+        index: "wand-of-the-war-mage-2", name: "Wand of the War Mage +2", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 4000, unit: "gp" }, weight: 1, isSpellFocus: true, desc: ["You gain a +2 bonus to spell attack rolls. In addition, you ignore half cover when making a spell attack."],
         modifiers: [{ type: 'bonus', target: 'spell_attack', value: 2 }],
         requires_attunement: true,
         attunement_description: "by a spellcaster"
     },
     { 
-        index: "wand-of-the-war-mage-3", name: "Wand of the War Mage +3", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 20000, unit: "gp" }, weight: 1, desc: ["You gain a +3 bonus to spell attack rolls. In addition, you ignore half cover when making a spell attack."],
+        index: "wand-of-the-war-mage-3", name: "Wand of the War Mage +3", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 20000, unit: "gp" }, weight: 1, isSpellFocus: true, desc: ["You gain a +3 bonus to spell attack rolls. In addition, you ignore half cover when making a spell attack."],
         modifiers: [{ type: 'bonus', target: 'spell_attack', value: 3 }],
         requires_attunement: true,
         attunement_description: "by a spellcaster"
     },
-    { index: "wand-of-wonder", name: "Wand of Wonder", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 12000, unit: "gp" }, weight: 1, desc: ["This wand has 7 charges. While holding it, you can use an action to expend 1 of its charges and choose a target within 120 feet of you. The target can be a creature, an object, or a point in space. Roll d100 on the Wand of Wonder table to determine the effect."],
+    { index: "wand-of-wonder", name: "Wand of Wonder", equipment_category: { index: "wand", name: "Wand", url: "" }, cost: { quantity: 12000, unit: "gp" }, weight: 1, isSpellFocus: true, desc: ["This wand has 7 charges. While holding it, you can use an action to expend 1 of its charges and choose a target within 120 feet of you. The target can be a creature, an object, or a point in space. Roll d100 on the Wand of Wonder table to determine the effect."],
         requires_attunement: true,
         attunement_description: "by a spellcaster"
+    },
+    
+    // Arcane Grimoires
+    { 
+        index: "arcane-grimoire-1", name: "Arcane Grimoire +1", equipment_category: { index: "wondrous-items", name: "Wondrous Items", url: "" }, cost: { quantity: 500, unit: "gp" }, weight: 2, rarity: "Uncommon", isSpellFocus: true,
+        desc: ["While you are holding this leather-bound book, you can use it as a spellcasting focus for your wizard spells, and you gain a +1 bonus to spell attack rolls and to the saving throw DCs of your wizard spells.", "In addition, when you use your Arcane Recovery feature, you can increase the number of spell slot levels you regain by 1."],
+        modifiers: [
+            { type: 'bonus', target: 'spell_attack', value: 1 },
+            { type: 'bonus', target: 'spell_dc', value: 1 }
+        ],
+        requires_attunement: true,
+        attunement_description: "by a wizard"
+    },
+    { 
+        index: "arcane-grimoire-2", name: "Arcane Grimoire +2", equipment_category: { index: "wondrous-items", name: "Wondrous Items", url: "" }, cost: { quantity: 4000, unit: "gp" }, weight: 2, rarity: "Rare", isSpellFocus: true,
+        desc: ["While you are holding this leather-bound book, you can use it as a spellcasting focus for your wizard spells, and you gain a +2 bonus to spell attack rolls and to the saving throw DCs of your wizard spells.", "In addition, when you use your Arcane Recovery feature, you can increase the number of spell slot levels you regain by 1."],
+        modifiers: [
+            { type: 'bonus', target: 'spell_attack', value: 2 },
+            { type: 'bonus', target: 'spell_dc', value: 2 }
+        ],
+        requires_attunement: true,
+        attunement_description: "by a wizard"
+    },
+    { 
+        index: "arcane-grimoire-3", name: "Arcane Grimoire +3", equipment_category: { index: "wondrous-items", name: "Wondrous Items", url: "" }, cost: { quantity: 20000, unit: "gp" }, weight: 2, rarity: "Very Rare", isSpellFocus: true,
+        desc: ["While you are holding this leather-bound book, you can use it as a spellcasting focus for your wizard spells, and you gain a +3 bonus to spell attack rolls and to the saving throw DCs of your wizard spells.", "In addition, when you use your Arcane Recovery feature, you can increase the number of spell slot levels you regain by 1."],
+        modifiers: [
+            { type: 'bonus', target: 'spell_attack', value: 3 },
+            { type: 'bonus', target: 'spell_dc', value: 3 }
+        ],
+        requires_attunement: true,
+        attunement_description: "by a wizard"
     }
 ];

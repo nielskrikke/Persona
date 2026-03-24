@@ -44,9 +44,29 @@ const DetailSidePanel = ({
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        setFullDetail(null);
-        if (!item) return;
+        if (!item) {
+            setFullDetail(null);
+            return;
+        }
 
+        // If we already have a fullDetail for this item, just update it with latest item props
+        // This prevents resetting to null and re-fetching when only a flag or property changed
+        if (fullDetail && (
+            (item.id && fullDetail.id === item.id) || 
+            (item.index && fullDetail.index === item.index) ||
+            (item.name && fullDetail.name === item.name && !item.id && !item.index)
+        )) {
+            const propsToSync = ['equipped', 'attuned', 'quantity', 'wieldedTwoHanded', 'isMonkWeapon', 'isKenseiWeapon', 'isPactWeapon', 'isHexWeapon', 'isSpellFocus', 'isInfusion', 'isShillelagh', 'isBattleReady', 'thrownRange', 'thrownDamage'];
+            const hasChanged = propsToSync.some(key => (item as any)[key] !== (fullDetail as any)[key]);
+            
+            if (hasChanged) {
+                setFullDetail(prev => ({ ...prev, ...item }));
+            }
+            return;
+        }
+
+        setFullDetail(null);
+        
         // Standard Action / Rule Mock / Simple Objects without Index
         if (!item.index && !item.url && item.name && (item.desc || item.description)) {
             setFullDetail(item);
@@ -151,14 +171,15 @@ const DetailSidePanel = ({
             }
         };
         load();
-    }, [item]);
+    }, [item, fullDetail]);
 
     // Helper to check if it looks like an equipment detail (has cost/weight/category) or is an InventoryItem
     const isItemLike = (i: any) => i && ('quantity' in i || 'equipment_category' in i || 'weight' in i || 'cost' in i);
     const isRule = (i: any): i is RuleEntry => i && 'category' in i;
     
     // Determine title/subtitle
-    const itemName = fullDetail?.name || item?.name || 'Detail';
+    const itemNameRaw = fullDetail?.name || item?.name || 'Detail';
+    const itemName = typeof itemNameRaw === 'object' ? (itemNameRaw.name || itemNameRaw.label || 'Detail') : itemNameRaw;
     
     const titleNode = (
         <div className="flex items-center gap-3">
@@ -187,7 +208,7 @@ const DetailSidePanel = ({
     );
 
     const getDetailedCategory = (itm: any) => {
-        const rawName = itm.name.toLowerCase();
+        const rawName = (typeof itm.name === 'string' ? itm.name : (itm.name?.name || 'Item')).toLowerCase();
         
         // Check Shield first
         if (rawName.includes('shield')) return 'Shield';
@@ -197,7 +218,8 @@ const DetailSidePanel = ({
              if (items.some(i => rawName.includes(i))) return category.replace(/s$/, ''); // Singularize
         }
         
-        return itm.equipment_category?.name || (itm.type ? itm.type.toUpperCase() : (itm.quantity ? 'Item' : 'Equipment'));
+        const catName = itm.equipment_category?.name || (typeof itm.type === 'object' ? itm.type.name : itm.type);
+        return catName ? catName.toUpperCase() : (itm.quantity ? 'Item' : 'Equipment');
     };
 
     let subtitle = 'Detail';
@@ -220,22 +242,34 @@ const DetailSidePanel = ({
         subtitle = 'Racial Trait';
     }
 
-    const renderTags = (tags: string[]) => (
+    const renderTags = (tags: any[]) => (
         <div className="flex flex-wrap gap-1 mt-1">
-            {tags.map(t => <span key={t} className="px-2 py-0.5 bg-[#25262b] border border-gray-600 rounded text-[10px] uppercase text-gray-400 tracking-wider">{t}</span>)}
+            {tags.map((t, idx) => {
+                const label = typeof t === 'object' ? (t.name || t.label || JSON.stringify(t)) : t;
+                const key = typeof t === 'object' ? (t.index || t.id || idx) : t;
+                return (
+                    <span key={key} className="px-2 py-0.5 bg-[#25262b] border border-gray-600 rounded text-[10px] uppercase text-gray-400 tracking-wider">
+                        {label}
+                    </span>
+                );
+            })}
         </div>
     );
 
-    const renderDescription = (desc: string[] | string | undefined) => {
+    const renderDescription = (desc: string[] | string | any[] | undefined) => {
         if (!desc) return <p className="italic text-gray-500">The scrolls have no entry for this item's specific lore...</p>;
         const lines = Array.isArray(desc) ? desc : desc.split('\n');
-        return lines.map((line, i) => <p key={i} className="mb-3">{line}</p>);
+        return lines.map((line, i) => (
+            <p key={i} className="mb-3">
+                {typeof line === 'object' ? (line.name || line.label || JSON.stringify(line)) : line}
+            </p>
+        ));
     };
 
     const getProficiencyStatus = (): boolean | null => {
         if (!character || !isItemLike(fullDetail)) return null;
 
-        const rawName = fullDetail.name.toLowerCase();
+        const rawName = itemName.toLowerCase();
         const namesToCheck = [rawName];
         
         // Handle "Crossbow, Light" -> "light crossbow"
@@ -401,11 +435,21 @@ const DetailSidePanel = ({
                                 <span className="text-[10px] font-bold text-gray-500 uppercase block">Casting Time</span> 
                                 {fullDetail.casting_time}{fullDetail.ritual && !fullDetail.casting_time.toLowerCase().includes('ritual') ? ' (Ritual)' : ''}
                             </div>
-                            <div><span className="text-[10px] font-bold text-gray-500 uppercase block">Range</span> {fullDetail.range}</div>
+                            <div>
+                                <span className="text-[10px] font-bold text-gray-500 uppercase block">Range</span> 
+                                {typeof fullDetail.range === 'object' 
+                                    ? `${fullDetail.range.normal || 0}${fullDetail.range.long ? `/${fullDetail.range.long}` : ''} ft` 
+                                    : fullDetail.range}
+                            </div>
                             <div><span className="text-[10px] font-bold text-gray-500 uppercase block">Components</span> {fullDetail.components?.join(', ') || 'V, S'}</div>
                             <div><span className="text-[10px] font-bold text-gray-500 uppercase block">Duration</span> {fullDetail.duration}</div>
                             {fullDetail.damage && (
-                                <div><span className="text-[10px] font-bold text-gray-500 uppercase block">Damage</span> {typeof fullDetail.damage === 'string' ? fullDetail.damage : fullDetail.damage.damage_dice}</div>
+                                <div>
+                                    <span className="text-[10px] font-bold text-gray-500 uppercase block">Damage</span> 
+                                    {typeof fullDetail.damage === 'string' 
+                                        ? fullDetail.damage 
+                                        : (typeof fullDetail.damage.damage_dice === 'object' ? JSON.stringify(fullDetail.damage.damage_dice) : fullDetail.damage.damage_dice)}
+                                </div>
                             )}
                             {fullDetail.save && (
                                 <div><span className="text-[10px] font-bold text-gray-500 uppercase block">Save</span> {fullDetail.save.type || fullDetail.save.dc_type?.name}{fullDetail.save.dc ? ` DC ${fullDetail.save.dc}` : ''}</div>
@@ -467,17 +511,23 @@ const DetailSidePanel = ({
                         <div className="bg-[#1b1c20] border border-gray-700 rounded p-4 text-sm space-y-3">
                             <div className="grid grid-cols-2 gap-4 border-b border-gray-700 pb-3">
                                 <div><span className="text-[10px] font-bold text-gray-500 uppercase block">Type</span> <span className="text-white">{getDetailedCategory(fullDetail)}</span></div>
-                                <div><span className="text-[10px] font-bold text-gray-500 uppercase block">Cost</span> <span className="text-dnd-gold">{fullDetail.cost || '--'}</span></div>
-                                <div><span className="text-[10px] font-bold text-gray-500 uppercase block">Weight</span> <span className="text-white">{fullDetail.weight ? `${fullDetail.weight} lb` : '--'}</span></div>
-                                <div><span className="text-[10px] font-bold text-gray-500 uppercase block">Quantity</span> <span className="text-white">{fullDetail.quantity || 1}</span></div>
+                                <div><span className="text-[10px] font-bold text-gray-500 uppercase block">Cost</span> <span className="text-dnd-gold">{typeof fullDetail.cost === 'object' ? `${fullDetail.cost.quantity} ${fullDetail.cost.unit}` : (fullDetail.cost || '--')}</span></div>
+                                <div><span className="text-[10px] font-bold text-gray-500 uppercase block">Weight</span> <span className="text-white">{fullDetail.weight ? `${typeof fullDetail.weight === 'object' ? (fullDetail.weight.quantity || fullDetail.weight.value || JSON.stringify(fullDetail.weight)) : fullDetail.weight} lb` : '--'}</span></div>
+                                <div><span className="text-[10px] font-bold text-gray-500 uppercase block">Quantity</span> <span className="text-white">{typeof fullDetail.quantity === 'object' ? (fullDetail.quantity.value || JSON.stringify(fullDetail.quantity)) : (fullDetail.quantity || 1)}</span></div>
                             </div>
                             
                             {(fullDetail.damage || fullDetail.armor_class) && (
                                 <div className="grid grid-cols-2 gap-4 border-b border-gray-700 pb-3">
                                     {fullDetail.damage && (
                                         <>
-                                            <div><span className="text-[10px] font-bold text-gray-500 uppercase block">Damage</span> <span className="text-white font-bold">{fullDetail.damage.damage_dice}</span></div>
-                                            <div><span className="text-[10px] font-bold text-gray-500 uppercase block">Damage Type</span> <span className="text-white">{fullDetail.damage.damage_type?.name || fullDetail.damage.damage_type}</span></div>
+                                            <div><span className="text-[10px] font-bold text-gray-500 uppercase block">Damage</span> <span className="text-white font-bold">{typeof fullDetail.damage.damage_dice === 'object' ? JSON.stringify(fullDetail.damage.damage_dice) : fullDetail.damage.damage_dice}</span></div>
+                                            <div><span className="text-[10px] font-bold text-gray-500 uppercase block">Damage Type</span> <span className="text-white">{fullDetail.damage.damage_type?.name || (typeof fullDetail.damage.damage_type === 'object' ? fullDetail.damage.damage_type.name : fullDetail.damage.damage_type)}</span></div>
+                                        </>
+                                    )}
+                                    {fullDetail.versatileDamage && (
+                                        <>
+                                            <div><span className="text-[10px] font-bold text-gray-500 uppercase block">Versatile Damage</span> <span className="text-white font-bold">{typeof fullDetail.versatileDamage.damage_dice === 'object' ? JSON.stringify(fullDetail.versatileDamage.damage_dice) : fullDetail.versatileDamage.damage_dice}</span></div>
+                                            <div><span className="text-[10px] font-bold text-gray-500 uppercase block">Versatile Type</span> <span className="text-white">{fullDetail.versatileDamage.damage_type?.name || (typeof fullDetail.versatileDamage.damage_type === 'object' ? fullDetail.versatileDamage.damage_type.name : fullDetail.versatileDamage.damage_type)}</span></div>
                                         </>
                                     )}
                                     {fullDetail.armor_class && (
@@ -486,6 +536,29 @@ const DetailSidePanel = ({
                                             <div><span className="text-[10px] font-bold text-gray-500 uppercase block">Dex Bonus</span> <span className="text-white">{fullDetail.armor_class.dex_bonus ? 'Yes' : 'No'} {fullDetail.armor_class.max_bonus ? `(Max ${fullDetail.armor_class.max_bonus})` : ''}</span></div>
                                         </>
                                     )}
+                                </div>
+                            )}
+
+                            {isItemLike(fullDetail) && 'quantity' in fullDetail && fullDetail.versatileDamage && (
+                                <div className="space-y-2 pt-2 border-t border-gray-700">
+                                    <span className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Wielding Style</span>
+                                    <div className="flex bg-gray-900/60 p-1 rounded-lg border border-gray-700 relative h-8 items-center">
+                                        <div 
+                                            className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-dnd-gold rounded-md transition-all duration-300 shadow-[0_0_10px_rgba(193,160,82,0.3)] ${fullDetail.wieldedTwoHanded ? 'left-[calc(50%+2px)]' : 'left-1'}`}
+                                        />
+                                        <button 
+                                            onClick={() => !fullDetail.wieldedTwoHanded ? null : onAction && onAction('updateItem', { id: fullDetail.id, updates: { wieldedTwoHanded: false } })}
+                                            className={`flex-1 z-10 text-[10px] font-bold uppercase transition-colors text-center ${!fullDetail.wieldedTwoHanded ? 'text-black' : 'text-gray-500 hover:text-gray-300'}`}
+                                        >
+                                            One-Handed
+                                        </button>
+                                        <button 
+                                            onClick={() => fullDetail.wieldedTwoHanded ? null : onAction && onAction('updateItem', { id: fullDetail.id, updates: { wieldedTwoHanded: true } })}
+                                            className={`flex-1 z-10 text-[10px] font-bold uppercase transition-colors text-center ${fullDetail.wieldedTwoHanded ? 'text-black' : 'text-gray-500 hover:text-gray-300'}`}
+                                        >
+                                            Two-Handed
+                                        </button>
+                                    </div>
                                 </div>
                             )}
 
@@ -560,8 +633,25 @@ const DetailSidePanel = ({
 
                             {(fullDetail.range || (fullDetail.properties && fullDetail.properties.length > 0)) && (
                                 <div>
-                                    {fullDetail.range && <div className="mb-2"><span className="text-[10px] font-bold text-gray-500 uppercase mr-2">Range</span> <span className="text-white">{fullDetail.range}</span></div>}
+                                    {fullDetail.range && (
+                                        <div className="mb-2">
+                                            <span className="text-[10px] font-bold text-gray-500 uppercase mr-2">Range</span> 
+                                            <span className="text-white">
+                                                {typeof fullDetail.range === 'object' 
+                                                    ? `${fullDetail.range.normal || 0}${fullDetail.range.long ? `/${fullDetail.range.long}` : ''} ft` 
+                                                    : fullDetail.range}
+                                            </span>
+                                        </div>
+                                    )}
                                     {fullDetail.properties && <div><span className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Properties</span> {renderTags(fullDetail.properties)}</div>}
+                                    {fullDetail.mastery && (
+                                        <div className="mt-2">
+                                            <span className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Mastery</span>
+                                            <div className="inline-block px-2 py-0.5 rounded-full bg-dnd-gold/10 border border-dnd-gold/30 text-[10px] text-dnd-gold font-medium">
+                                                {typeof fullDetail.mastery === 'string' ? fullDetail.mastery : fullDetail.mastery.name}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -569,6 +659,15 @@ const DetailSidePanel = ({
                         <div className="prose prose-invert prose-sm max-w-none text-gray-300">
                             {renderDescription(fullDetail.description || fullDetail.desc)}
                         </div>
+
+                        {fullDetail.specialDescription && (
+                            <div className="mt-4 border-t border-gray-700 pt-3">
+                                <h4 className="text-dnd-red font-bold uppercase text-[10px] tracking-widest mb-2">Special Rules</h4>
+                                <div className="prose prose-invert prose-sm max-w-none text-gray-300 italic">
+                                    {renderDescription(fullDetail.specialDescription)}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 

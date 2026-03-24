@@ -536,6 +536,15 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
     const effectiveAbilities = useMemo(() => getEffectiveAbilities(character), [character]);
 
+    useEffect(() => {
+        if (selectedDetail && 'id' in selectedDetail) {
+            const latest = character.inventory.find(i => i.id === (selectedDetail as any).id);
+            if (latest && JSON.stringify(latest) !== JSON.stringify(selectedDetail)) {
+                setSelectedDetail(latest);
+            }
+        }
+    }, [character.inventory, selectedDetail?.id]);
+
     const getStat = (stat: AbilityName): number => {
         return effectiveAbilities[stat];
     };
@@ -568,6 +577,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const calculateAC = () => {
         const armor = character.inventory.find(i => i.equipped && i.armor_class && !i.name.toLowerCase().includes('shield'));
         const shield = character.inventory.find(i => i.equipped && i.armor_class && i.name.toLowerCase().includes('shield'));
+        const hasTwoHandedWeaponEquipped = character.inventory.some(i => 
+            i.equipped && (
+                i.properties?.some(p => (typeof p === 'string' ? p : p.name) === 'Two-Handed') ||
+                i.wieldedTwoHanded
+            )
+        );
         
         let baseAC = 10;
         let dexBonus = dexMod;
@@ -595,7 +610,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         }
 
         let total = baseAC + dexBonus;
-        if (shield && shield.armor_class) total += shield.armor_class.base;
+        // Shield bonus is ignored if a two-handed weapon is equipped
+        if (shield && shield.armor_class && !hasTwoHandedWeaponEquipped) {
+            total += shield.armor_class.base;
+        }
 
         // Item/Trait Bonuses
         activeModifiers.forEach(m => {
@@ -1972,15 +1990,20 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             item.modifiers?.forEach(mod => { if (mod.type === 'bonus') { if (mod.target === 'attack') hitBonus += Number(mod.value); if (mod.target === 'damage') damageBonus += Number(mod.value); } });
             
             const fightingStyles = character.classFeatures.filter(f => f.name.includes('Fighting Style'));
+            let hasGWF = false;
+            let hasDueling = false;
+            let archeryBonus = 0;
+            
             fightingStyles.forEach(fs => { 
                 const desc = fs.desc?.join(' ') || ''; 
-                if (desc.includes('Archery') && (properties.includes('Ammunition') || (isRanged && item.range))) hitBonus += 2; 
-                if (desc.includes('Dueling') && !properties.includes('Two-Handed')) damageBonus += 2; 
+                if (desc.includes('Archery') && (properties.includes('Ammunition') || (isRanged && item.range))) archeryBonus += 2; 
+                if (desc.includes('Dueling')) hasDueling = true;
+                if (desc.includes('Great Weapon Fighting')) hasGWF = true;
             });
             
             let damageDice = item.damage.damage_dice;
             if (item.isShillelagh) damageDice = '1d8';
-            if (isMonkWeapon && parseInt(unarmedDie.slice(2)) > (parseInt(damageDice.match(/d(\d+)/)?.[1] || '0'))) {
+            if (damageDice !== '0' && isMonkWeapon && parseInt(unarmedDie.slice(2)) > (parseInt(damageDice.match(/d(\d+)/)?.[1] || '0'))) {
                 damageDice = unarmedDie;
             }
 
@@ -2016,6 +2039,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
             const damageType = item.isShillelagh ? 'Bludgeoning' : (typeof item.damage.damage_type === 'string' ? item.damage.damage_type : item.damage.damage_type.name);
             const notes = [...(item.properties?.map(p => typeof p === 'string' ? p : p.name) || [])];
+            
+            // Heavy property check for small creatures
+            const isSmall = character.race?.size === 'Small' || character.race?.size === 'Tiny';
+            if (isSmall && notes.includes('Heavy')) {
+                notes.push('Disadv (Small)');
+            }
+
             if (item.isMonkWeapon) notes.push('Monk Weapon');
             if (item.isPactWeapon) notes.push('Pact Weapon');
             if (item.isKenseiWeapon) notes.push('Kensei Weapon');
@@ -2023,21 +2053,55 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             if (item.isShillelagh) notes.push('Shillelagh');
             if (item.isBattleReady) notes.push('Battle Ready');
             if (isThrown && !notes.includes('Thrown')) notes.push('Thrown');
+            const mastery = item.mastery ? (typeof item.mastery === 'string' ? item.mastery : item.mastery.name) : null;
+            if (mastery) {
+                const hasWeaponMastery = character.classFeatures.some(f => f.name.toLowerCase().includes('weapon mastery'));
+                if (hasWeaponMastery) {
+                    notes.push(mastery);
+                }
+            }
 
-            const baseHit = prof + statMod + hitBonus;
-            const baseDamage = `${damageDice}${formatModifier(statMod + damageBonus)}`;
+            let itemHitBonus = 0; let itemDamageBonus = 0;
+            item.modifiers?.forEach(mod => { if (mod.type === 'bonus') { if (mod.target === 'attack') itemHitBonus += Number(mod.value); if (mod.target === 'damage') itemDamageBonus += Number(mod.value); } });
+
+            const baseHit = prof + statMod + itemHitBonus + archeryBonus;
             
+            const isWieldingTwoHanded = item.wieldedTwoHanded || notes.includes('Two-Handed');
+            
+            let currentDamageDice = damageDice;
+            let currentDmgBonus = itemDamageBonus;
+
+            if (isWieldingTwoHanded && item.versatileDamage) {
+                currentDamageDice = item.versatileDamage.damage_dice;
+            }
+
+            if (hasDueling && !isWieldingTwoHanded) {
+                currentDmgBonus += 2;
+            }
+
+            const baseDamage = currentDamageDice === '0' ? '0' : `${currentDamageDice}${formatModifier(statMod + currentDmgBonus)}`;
             const { hit: finalHit, damage: finalDamage } = applyOverrides(baseHit, baseDamage);
 
-            // If thrown damage differs, show it in damage string or notes?
-            // User said: "and the damage roll (if it differs) + the thrown range"
-            let displayDamage = finalDamage;
-            if (isThrown && item.thrownDamage && item.thrownDamage !== damageDice) {
-                const { damage: finalThrownDamage } = applyOverrides(null, `${item.thrownDamage}${formatModifier(statMod + damageBonus)}`);
+            const finalNotes = [...notes];
+            if (hasGWF && isWieldingTwoHanded) {
+                finalNotes.push('GWF (Reroll 1-2)');
+            }
+            if (item.wieldedTwoHanded) {
+                finalNotes.push('Two-Handed');
+            }
+
+            let displayDamage = finalDamage === '0' ? 'None' : finalDamage;
+            if (isThrown && item.thrownDamage && item.thrownDamage !== currentDamageDice) {
+                const { damage: finalThrownDamage } = applyOverrides(null, `${item.thrownDamage}${formatModifier(statMod + currentDmgBonus)}`);
                 displayDamage = `${finalDamage} / ${finalThrownDamage}`;
             }
 
-            attacks.push({ id: item.id, name: item.name, range: rangeStr, hit: finalHit, damage: displayDamage, type: damageType, notes: notes, source: item });
+            let attackName = item.name;
+            if (item.wieldedTwoHanded && item.versatileDamage) {
+                attackName = `${item.name} (Two-Handed)`;
+            }
+
+            attacks.push({ id: item.id, name: attackName, range: rangeStr, hit: finalHit, damage: displayDamage, type: damageType, notes: finalNotes, source: item });
         });
 
         character.spells.forEach(spell => {

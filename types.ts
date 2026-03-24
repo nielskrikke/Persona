@@ -179,16 +179,23 @@ export interface BaseEquipment extends APIReference {
         damage_dice: string;
         damage_type: string | APIReference;
     };
+    versatileDamage?: {
+        damage_dice: string;
+        damage_type: string | APIReference;
+    };
     range?: string | {
         normal: number;
         long: number | null;
     };
     properties?: (string | APIReference)[];
+    mastery?: string | APIReference;
+    specialDescription?: string;
     modifiers?: ItemModifier[];
     requires_attunement?: boolean;
     attunement_description?: string;
     subtype?: string;
     is_wondrous?: boolean;
+    isSpellFocus?: boolean;
     weapon_category?: string;
     weapon_range?: string;
     armor_category?: string;
@@ -204,13 +211,13 @@ export interface InventoryItem extends Partial<BaseEquipment> {
     isPactWeapon?: boolean;
     isKenseiWeapon?: boolean;
     isHexWeapon?: boolean;
-    isSpellFocus?: boolean;
     isInfusion?: boolean;
     isShillelagh?: boolean;
     isBattleReady?: boolean;
     isThrown?: boolean;
     thrownRange?: string;
     thrownDamage?: string;
+    wieldedTwoHanded?: boolean;
 }
 
 export interface EquipmentDetail extends BaseEquipment {
