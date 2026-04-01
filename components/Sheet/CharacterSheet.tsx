@@ -344,6 +344,16 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const trackerPopupRef = useRef<HTMLDivElement>(null);
     const [newTrackerName, setNewTrackerName] = useState('');
     const [newTrackerValue, setNewTrackerValue] = useState('');
+    const [newTrackerColor, setNewTrackerColor] = useState('gray');
+
+    const TRACKER_COLORS = [
+        { id: 'gray', bg: 'bg-gray-800/60', border: 'border-gray-600', text: 'text-gray-200', dot: 'text-gray-400' },
+        { id: 'red', bg: 'bg-red-900/40', border: 'border-red-500', text: 'text-red-100', dot: 'text-red-400' },
+        { id: 'blue', bg: 'bg-blue-900/40', border: 'border-blue-500', text: 'text-blue-100', dot: 'text-blue-400' },
+        { id: 'green', bg: 'bg-green-900/40', border: 'border-green-500', text: 'text-green-100', dot: 'text-green-400' },
+        { id: 'purple', bg: 'bg-purple-900/40', border: 'border-purple-500', text: 'text-purple-100', dot: 'text-purple-400' },
+        { id: 'orange', bg: 'bg-orange-900/40', border: 'border-orange-500', text: 'text-orange-100', dot: 'text-orange-400' },
+    ];
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -2621,18 +2631,22 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                             </div>
                                         )}
 
-                                        {(character.customTrackers || []).map(tracker => (
-                                            <div key={tracker.id} className="flex items-center gap-2 bg-gray-800/60 border border-gray-600 rounded px-2 py-0.5 text-[10px] font-bold text-gray-200 uppercase animate-in fade-in duration-500 group/header-tracker">
-                                                <span>{tracker.name}{tracker.value ? `: ${tracker.value}` : ''}</span>
-                                                <button 
-                                                    onClick={() => setCharacter(prev => ({ ...prev, customTrackers: (prev.customTrackers || []).filter(t => t.id !== tracker.id) }))} 
-                                                    className="ml-1 text-gray-500 hover:text-red-400 transition-colors" 
-                                                    title="Remove Tracker"
-                                                >
-                                                    &times;
-                                                </button>
-                                            </div>
-                                        ))}
+                                        {(character.customTrackers || []).map(tracker => {
+                                            const colorCfg = TRACKER_COLORS.find(c => c.id === tracker.color) || TRACKER_COLORS[0];
+                                            return (
+                                                <div key={tracker.id} className={`flex items-center gap-2 ${colorCfg.bg} border ${colorCfg.border} rounded px-2 py-0.5 text-[10px] font-bold ${colorCfg.text} uppercase animate-in fade-in duration-500 group/header-tracker`}>
+                                                    <span className={`animate-pulse ${colorCfg.dot}`}>●</span>
+                                                    <span>{tracker.name}{tracker.value ? `: ${tracker.value}` : ''}</span>
+                                                    <button 
+                                                        onClick={() => setCharacter(prev => ({ ...prev, customTrackers: (prev.customTrackers || []).filter(t => t.id !== tracker.id) }))} 
+                                                        className={`ml-1 ${colorCfg.dot} hover:text-red-400 transition-colors`} 
+                                                        title="Remove Tracker"
+                                                    >
+                                                        &times;
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
 
                                         <button 
                                             onClick={() => setShowAddTracker(!showAddTracker)} 
@@ -2663,14 +2677,35 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                                 value={newTrackerValue}
                                                 onChange={(e) => setNewTrackerValue(e.target.value)}
                                             />
+                                            
+                                            <div className="space-y-2">
+                                                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Color</div>
+                                                <div className="flex gap-2">
+                                                    {TRACKER_COLORS.map(color => (
+                                                        <button 
+                                                            key={color.id}
+                                                            onClick={() => setNewTrackerColor(color.id)}
+                                                            className={`w-6 h-6 rounded-full border-2 transition-all ${color.bg} ${color.border} ${newTrackerColor === color.id ? 'scale-110 ring-2 ring-dnd-gold ring-offset-2 ring-offset-[#1b1c20]' : 'opacity-60 hover:opacity-100'}`}
+                                                            title={color.id.charAt(0).toUpperCase() + color.id.slice(1)}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </div>
+
                                             <div className="flex gap-2 pt-1">
                                                 <button 
                                                     onClick={() => {
                                                         if (!newTrackerName.trim()) return;
-                                                        const newTracker = { id: Date.now().toString(), name: newTrackerName, value: newTrackerValue };
+                                                        const newTracker = { 
+                                                            id: Date.now().toString(), 
+                                                            name: newTrackerName, 
+                                                            value: newTrackerValue,
+                                                            color: newTrackerColor
+                                                        };
                                                         setCharacter(prev => ({ ...prev, customTrackers: [...(prev.customTrackers || []), newTracker] }));
                                                         setNewTrackerName('');
                                                         setNewTrackerValue('');
+                                                        setNewTrackerColor('gray');
                                                         setShowAddTracker(false);
                                                     }}
                                                     className="flex-1 bg-dnd-gold text-black text-[10px] font-bold uppercase py-2 rounded-lg hover:bg-white transition-colors"

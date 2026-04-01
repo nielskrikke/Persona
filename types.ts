@@ -389,7 +389,7 @@ export interface CharacterState {
     fontScale?: number;
     activeWildShape?: { creature: CreatureDetail, currentHp: number, maxHp: number } | null;
     activeConcentration?: { name: string, duration?: string } | null;
-    customTrackers?: { id: string, name: string, value?: string }[];
+    customTrackers?: { id: string, name: string, value?: string, color?: string }[];
     activeFamiliar?: { creature: CreatureDetail, currentHp: number, maxHp: number } | null;
     activePolymorph?: { creature: CreatureDetail, currentHp: number, maxHp: number } | null;
     creatures?: CreatureDetail[];
