@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Plus, X } from 'lucide-react';
 import { CharacterState, ABILITY_NAMES, ABILITY_LABELS, RollResult, AbilityName, SpellDetail, InventoryItem, Currency, RuleEntry, CreatureDetail, EldritchCannonDetail, SteelDefenderDetail, EquipmentDetail, ItemModifier } from '../../types';
-import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities } from '../../utils/rules';
+import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount } from '../../utils/rules';
 import { rollDice } from '../../utils/dice';
 import CreatureManagerModal from './Modals/CreatureManagerModal';
 import { WIDGET_LABELS, DEFAULT_LAYOUT, STANDARD_CONDITIONS, CLASS_FEATURES, STANDARD_ACTIONS, STATIC_RULES, WIDGET_BG, PICK_A_CARD_TABLE } from '../../data/constants';
@@ -39,6 +39,7 @@ import FeaturesTab from './Tabs/FeaturesTab';
 import RulesTab from './Tabs/RulesTab';
 import LogTab from './Tabs/LogTab';
 import StatsTab from './Tabs/StatsTab';
+import ChoicesTab from './Tabs/ChoicesTab';
 
 const cleanProficiencyName = (name: string) => {
     return name.replace(/^(Skill|Musical Instrument|Gaming Set|Tool|Armor|Weapon|Other):\s*/i, '').trim();
@@ -339,6 +340,24 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const [viewingWildShape, setViewingWildShape] = useState<CreatureDetail | null>(null);
     const [viewingCompanion, setViewingCompanion] = useState<any | null>(null);
     const [concentrationCheck, setConcentrationCheck] = useState<{ dc: number; spellName: string } | null>(null);
+    const [showAddTracker, setShowAddTracker] = useState(false);
+    const trackerPopupRef = useRef<HTMLDivElement>(null);
+    const [newTrackerName, setNewTrackerName] = useState('');
+    const [newTrackerValue, setNewTrackerValue] = useState('');
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (trackerPopupRef.current && !trackerPopupRef.current.contains(event.target as Node)) {
+                setShowAddTracker(false);
+            }
+        };
+        if (showAddTracker) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showAddTracker]);
     const [selectedDetail, setSelectedDetail] = useState<any | null>(null);
     const [layout, setLayout] = useState(() => {
         const initial = character.layout || DEFAULT_LAYOUT;
@@ -464,6 +483,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const specialFeats = [];
             if (c.definition.name === 'Paladin' && c.level >= 3) specialFeats.push('Paladin-CD');
             if (c.definition.name === 'Fighter' && c.level >= 2) specialFeats.push('Fighter-AS');
+            if (c.definition.name === 'Fighter' && c.level >= 3 && c.subclass?.index === 'battle-master') specialFeats.push('Fighter-SD');
             if (c.definition.name === 'Fighter' && c.level >= 9) specialFeats.push('Fighter-Indomitable');
             if (c.definition.name === 'Monk' && c.level >= 2) specialFeats.push('Monk-UM');
             if (c.definition.name === 'Ranger' && c.level >= 10) specialFeats.push('Ranger-Tireless');
@@ -535,6 +555,21 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     }, [character.race, character.subrace, character.inventory, character.classes]);
 
     const effectiveAbilities = useMemo(() => getEffectiveAbilities(character), [character]);
+
+    const hasPendingChoices = useMemo(() => {
+        return character.choices.some(c => (c.value === null || c.value === undefined || (Array.isArray(c.value) && c.value.length === 0)) && c.type !== 'Level Advancement');
+    }, [character.choices]);
+
+    const hasPendingSpells = useMemo(() => {
+        return character.classes.some(cls => {
+            const knownCount = getSpellsKnownCount(cls, character.abilities);
+            const currentCantrips = character.spells.filter(s => s.level === 0 && s.sourceClassIndex === cls.definition.index).length;
+            const currentSpells = character.spells.filter(s => s.level > 0 && s.sourceClassIndex === cls.definition.index).length;
+            
+            return (knownCount.cantrips > 0 && currentCantrips < knownCount.cantrips) || 
+                   (knownCount.spells > 0 && currentSpells < knownCount.spells);
+        });
+    }, [character.classes, character.spells, character.abilities]);
 
     useEffect(() => {
         if (selectedDetail && 'id' in selectedDetail) {
@@ -1376,13 +1411,96 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                  const bonusStr = conSaveBonus >= 0 ? `+${conSaveBonus}` : `${conSaveBonus}`;
                  return (
                     <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3 relative overflow-hidden group`}>
-                        <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest mb-2 flex items-center gap-2">Concentration {character.activeConcentration && <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.8)]"/>}</h3>
-                        {character.activeConcentration ? (
-                            <div className="bg-blue-900/20 border-blue-500/30 rounded p-3">
-                                <div className="flex justify-between items-start mb-2"><div><div className="font-bold text-blue-100 text-sm">{character.activeConcentration.name}</div><div className="text-[10px] text-blue-300 italic">{character.activeConcentration.duration || 'Concentration'}</div></div><button onClick={() => setCharacter(prev => ({ ...prev, activeConcentration: null }))} className="text-gray-400 hover:text-red-400 p-1" title="Drop Concentration">&times;</button></div>
-                                <div className="flex items-center gap-2 mt-3"><div className="text-xs text-gray-400 font-bold uppercase">Con Save: <span className="text-white">{bonusStr}</span></div><button onClick={() => setConcentrationCheck({ dc: 10, spellName: character.activeConcentration!.name })} className="ml-auto px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold uppercase rounded shadow-sm transition-colors">Roll Check</button></div>
+                        <div className="flex justify-between items-center mb-2">
+                            <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest flex items-center gap-2">Trackers</h3>
+                            <button 
+                                onClick={() => setShowAddTracker(!showAddTracker)} 
+                                className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-dnd-gold border border-gray-700 hover:border-dnd-gold rounded transition-all"
+                                title="Add Custom Tracker"
+                            >
+                                +
+                            </button>
+                        </div>
+
+                        {showAddTracker && (
+                            <div className="mb-3 p-2 bg-black/40 border border-gray-700 rounded animate-in slide-in-from-top-2">
+                                <div className="space-y-2">
+                                    <input 
+                                        type="text" 
+                                        placeholder="Tracker Name (e.g. Rage)" 
+                                        className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:border-dnd-gold outline-none"
+                                        value={newTrackerName}
+                                        onChange={(e) => setNewTrackerName(e.target.value)}
+                                        autoFocus
+                                    />
+                                    <input 
+                                        type="text" 
+                                        placeholder="Value (optional)" 
+                                        className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:border-dnd-gold outline-none"
+                                        value={newTrackerValue}
+                                        onChange={(e) => setNewTrackerValue(e.target.value)}
+                                    />
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={() => {
+                                                if (!newTrackerName.trim()) return;
+                                                const newTracker = { id: Date.now().toString(), name: newTrackerName, value: newTrackerValue };
+                                                setCharacter(prev => ({ ...prev, customTrackers: [...(prev.customTrackers || []), newTracker] }));
+                                                setNewTrackerName('');
+                                                setNewTrackerValue('');
+                                                setShowAddTracker(false);
+                                            }}
+                                            className="flex-1 bg-dnd-gold text-black text-[10px] font-bold uppercase py-1 rounded"
+                                        >
+                                            Add
+                                        </button>
+                                        <button onClick={() => setShowAddTracker(false)} className="flex-1 bg-gray-800 text-gray-400 text-[10px] font-bold uppercase py-1 rounded">Cancel</button>
+                                    </div>
+                                </div>
                             </div>
-                        ) : <div className="text-xs text-gray-500 italic text-center py-2">Not concentrating on any spell.</div>}
+                        )}
+
+                        <div className="space-y-2">
+                            {character.activeConcentration && (
+                                <div className="bg-blue-900/20 border border-blue-500/30 rounded p-2">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_5px_rgba(59,130,246,0.8)]"/>
+                                                <div className="font-bold text-blue-100 text-[11px] leading-tight">{character.activeConcentration.name}</div>
+                                            </div>
+                                            <div className="text-[9px] text-blue-300 italic ml-3.5">{character.activeConcentration.duration || 'Concentration'}</div>
+                                        </div>
+                                        <button onClick={() => setCharacter(prev => ({ ...prev, activeConcentration: null }))} className="text-gray-400 hover:text-red-400 p-0.5 text-sm leading-none" title="Drop Concentration">&times;</button>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1.5 ml-3.5">
+                                        <div className="text-[9px] text-gray-400 font-bold uppercase">Con Save: <span className="text-white">{bonusStr}</span></div>
+                                        <button onClick={() => setConcentrationCheck({ dc: 10, spellName: character.activeConcentration!.name })} className="ml-auto px-2 py-0.5 bg-blue-600 hover:bg-blue-500 text-white text-[8px] font-bold uppercase rounded shadow-sm transition-colors">Roll</button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {(character.customTrackers || []).map(tracker => (
+                                <div key={tracker.id} className="bg-gray-800/40 border border-gray-700/50 rounded p-2 group/tracker">
+                                    <div className="flex justify-between items-center">
+                                        <div>
+                                            <div className="font-bold text-gray-200 text-[11px] leading-tight">{tracker.name}</div>
+                                            {tracker.value && <div className="text-[9px] text-gray-500 italic">{tracker.value}</div>}
+                                        </div>
+                                        <button 
+                                            onClick={() => setCharacter(prev => ({ ...prev, customTrackers: (prev.customTrackers || []).filter(t => t.id !== tracker.id) }))} 
+                                            className="text-gray-600 hover:text-red-400 opacity-0 group-hover/tracker:opacity-100 transition-opacity p-0.5 text-sm leading-none"
+                                        >
+                                            &times;
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+
+                            {!character.activeConcentration && (!character.customTrackers || character.customTrackers.length === 0) && !showAddTracker && (
+                                <div className="text-[10px] text-gray-600 italic text-center py-2">No active trackers.</div>
+                            )}
+                        </div>
                     </div>
                 );
             case 'features':
@@ -2345,7 +2463,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const getAllFeaturesSorted = () => {
          const list: any[] = [];
          
-        character.classFeatures.forEach((feat, idx) => list.push({ ...enrichFeature(feat), type: 'Class', uniqueId: `class-${feat.index}-${feat.level}-${idx}` }));
+        character.classFeatures
+            .filter(f => f.name !== "Subclass feature" && f.name !== "Subclass Feature")
+            .forEach((feat, idx) => list.push({ ...enrichFeature(feat), type: 'Class', uniqueId: `class-${feat.index}-${feat.level}-${idx}` }));
         character.feats.forEach((feat, idx) => list.push({ ...enrichFeature(feat), type: 'Feat', source: 'Feat', level: '-', uniqueId: `feat-${feat.index}-${idx}` }));
         character.race?.traits.forEach((trait, idx) => list.push({ ...enrichFeature(trait), type: 'Race', source: character.race?.name, level: '-', uniqueId: `race-${trait.index}-${idx}` }));
         character.subrace?.traits.forEach((trait, idx) => list.push({ ...enrichFeature(trait), type: 'Race', source: character.subrace?.name, level: '-', uniqueId: `subrace-${trait.index}-${idx}` }));
@@ -2478,22 +2598,96 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 </div>
             </div>
 
-            <header className="hidden md:block shrink-0 z-20 shadow-xl relative">
-                <div className="bg-[#121316]/80 backdrop-blur-md border-b border-[#3e4149]">
-                     <div className="max-w-[1400px] mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <header className="hidden md:block shrink-0 z-[100] shadow-xl relative">
+                <div className="bg-[#121316]/80 backdrop-blur-md border-b border-[#3e4149] relative z-40">
+                     <div className="max-w-[1400px] mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4 relative z-50">
                         <div className="flex items-center gap-6 w-full md:w-auto">
                             <div className={`w-20 h-20 bg-cover bg-center rounded-full border-2 shadow-[0_0_15px_rgba(201,173,106,0.3)] shrink-0 border-dnd-gold`} style={{backgroundImage: `url('${character.avatarUrl || 'https://www.dndbeyond.com/content/skins/waterdeep/images/character-placeholder.jpg'}')`}}>
                                 {!character.avatarUrl && <div className="w-full h-full flex items-center justify-center bg-black/50 text-3xl font-serif text-dnd-gold rounded-full">{character.name.charAt(0)}</div>}
                             </div>
                             <div>
-                                <div className="flex items-center gap-3"><h1 className="text-3xl font-bold text-white font-serif tracking-tight leading-none truncate max-w-[200px] sm:max-w-md">{character.name}</h1><div className="flex gap-2"><button onClick={() => setShowManageCharacterModal(true)} className="text-[10px] font-bold uppercase border border-gray-600 bg-black/40 text-gray-400 hover:text-white hover:border-dnd-gold px-2 py-0.5 rounded transition-colors">Manage</button><button onClick={() => setShowLayoutManager(true)} className="text-[10px] font-bold uppercase border border-gray-600 bg-black/40 text-gray-400 hover:text-white hover:border-dnd-gold px-2 py-0.5 rounded transition-colors">Layout</button><button onClick={onOpenVault} className="text-[10px] font-bold uppercase border border-gray-600 bg-black/40 text-gray-400 hover:text-dnd-gold hover:border-dnd-gold px-2 py-0.5 rounded transition-colors flex items-center gap-1">Vault</button></div></div>
-                                <div className="flex items-center gap-3 mt-1"><div className="text-sm text-gray-400 font-medium uppercase tracking-wide">{`${character.race?.name} | ${character.classes.map(c => `${c.definition.name} ${c.level}`).join(' / ')}`}</div>{character.activeConcentration && (<div className="flex items-center gap-2 bg-blue-900/40 border border-blue-500 rounded px-2 py-0.5 text-[10px] font-bold text-blue-100 uppercase animate-in fade-in duration-500"><span className="animate-pulse">●</span> Concentrating: {character.activeConcentration.name}<button onClick={() => setCharacter(p => ({ ...p, activeConcentration: null }))} className="ml-1 text-blue-400 hover:text-white transition-colors" title="Break Concentration">&times;</button></div>)}</div>
+                                <div className="flex items-center gap-3"><h1 className="text-3xl font-bold text-white font-serif tracking-tight leading-none truncate max-w-[200px] sm:max-w-md">{character.name}</h1><div className="flex gap-2"><button onClick={() => setShowManageCharacterModal(true)} className="text-[10px] font-bold uppercase border border-gray-600 bg-black/40 text-gray-400 hover:text-white hover:border-dnd-gold px-2 py-0.5 rounded transition-colors relative">Manage{hasPendingChoices && <span className="absolute -top-1 -right-1 w-2 h-2 bg-dnd-red rounded-full animate-pulse" />}</button><button onClick={() => setShowLayoutManager(true)} className="text-[10px] font-bold uppercase border border-gray-600 bg-black/40 text-gray-400 hover:text-white hover:border-dnd-gold px-2 py-0.5 rounded transition-colors">Layout</button><button onClick={onOpenVault} className="text-[10px] font-bold uppercase border border-gray-600 bg-black/40 text-gray-400 hover:text-dnd-gold hover:border-dnd-gold px-2 py-0.5 rounded transition-colors flex items-center gap-1">Vault</button></div></div>
+                                <div className="flex items-center gap-3 mt-1">
+                                    <div className="text-sm text-gray-400 font-medium uppercase tracking-wide">
+                                        {`${character.race?.name} | ${character.classes.map(c => `${c.definition.name} ${c.level}`).join(' / ')}`}
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-2">
+                                        {character.activeConcentration && (
+                                            <div className="flex items-center gap-2 bg-blue-900/40 border border-blue-500 rounded px-2 py-0.5 text-[10px] font-bold text-blue-100 uppercase animate-in fade-in duration-500">
+                                                <span className="animate-pulse text-blue-400">●</span> 
+                                                Concentrating: {character.activeConcentration.name}
+                                                <button onClick={() => setCharacter(p => ({ ...p, activeConcentration: null }))} className="ml-1 text-blue-400 hover:text-white transition-colors" title="Break Concentration">&times;</button>
+                                            </div>
+                                        )}
+
+                                        {(character.customTrackers || []).map(tracker => (
+                                            <div key={tracker.id} className="flex items-center gap-2 bg-gray-800/60 border border-gray-600 rounded px-2 py-0.5 text-[10px] font-bold text-gray-200 uppercase animate-in fade-in duration-500 group/header-tracker">
+                                                <span>{tracker.name}{tracker.value ? `: ${tracker.value}` : ''}</span>
+                                                <button 
+                                                    onClick={() => setCharacter(prev => ({ ...prev, customTrackers: (prev.customTrackers || []).filter(t => t.id !== tracker.id) }))} 
+                                                    className="ml-1 text-gray-500 hover:text-red-400 transition-colors" 
+                                                    title="Remove Tracker"
+                                                >
+                                                    &times;
+                                                </button>
+                                            </div>
+                                        ))}
+
+                                        <button 
+                                            onClick={() => setShowAddTracker(!showAddTracker)} 
+                                            className={`w-5 h-5 flex items-center justify-center rounded border transition-all ${showAddTracker ? 'bg-dnd-gold border-dnd-gold text-black' : 'bg-black/40 border-gray-600 text-gray-400 hover:text-white hover:border-gray-400'}`}
+                                            title="Add Tracker"
+                                        >
+                                            <Plus size={12} />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {showAddTracker && (
+                                    <div ref={trackerPopupRef} className="absolute top-full left-0 mt-2 z-[200] bg-[#1b1c20] border border-gray-700 rounded-xl p-3 shadow-2xl w-64 animate-in zoom-in-95 duration-200">
+                                        <div className="space-y-3">
+                                            <div className="text-[10px] font-black text-dnd-gold uppercase tracking-widest mb-1">New Tracker</div>
+                                            <input 
+                                                type="text" 
+                                                placeholder="Name (e.g. Rage)" 
+                                                className="w-full bg-black/40 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white focus:border-dnd-gold outline-none"
+                                                value={newTrackerName}
+                                                onChange={(e) => setNewTrackerName(e.target.value)}
+                                                autoFocus
+                                            />
+                                            <input 
+                                                type="text" 
+                                                placeholder="Value (optional)" 
+                                                className="w-full bg-black/40 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white focus:border-dnd-gold outline-none"
+                                                value={newTrackerValue}
+                                                onChange={(e) => setNewTrackerValue(e.target.value)}
+                                            />
+                                            <div className="flex gap-2 pt-1">
+                                                <button 
+                                                    onClick={() => {
+                                                        if (!newTrackerName.trim()) return;
+                                                        const newTracker = { id: Date.now().toString(), name: newTrackerName, value: newTrackerValue };
+                                                        setCharacter(prev => ({ ...prev, customTrackers: [...(prev.customTrackers || []), newTracker] }));
+                                                        setNewTrackerName('');
+                                                        setNewTrackerValue('');
+                                                        setShowAddTracker(false);
+                                                    }}
+                                                    className="flex-1 bg-dnd-gold text-black text-[10px] font-bold uppercase py-2 rounded-lg hover:bg-white transition-colors"
+                                                >
+                                                    Add Tracker
+                                                </button>
+                                                <button onClick={() => setShowAddTracker(false)} className="px-3 bg-gray-800 text-gray-400 text-[10px] font-bold uppercase py-2 rounded-lg hover:text-white transition-colors">Cancel</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <div className="flex gap-4 w-full md:w-auto overflow-x-auto pb-1"><button onClick={() => handleRest('short')} className="flex items-center gap-2 px-4 py-2 bg-[#1b1c20]/80 border border-gray-600 hover:border-dnd-gold text-gray-300 hover:text-white rounded transition-colors group shrink-0"><span className="text-lg group-hover:text-dnd-red">🪑</span><div className="text-left"><div className="text-[10px] font-bold uppercase leading-none">Short</div><div className="text-xs font-bold uppercase leading-none">Rest</div></div></button><button onClick={() => handleRest('long')} className="flex items-center gap-2 px-4 py-2 bg-[#1b1c20]/80 border border-gray-600 hover:border-dnd-gold text-gray-300 hover:text-white rounded transition-colors group shrink-0"><span className="text-lg group-hover:text-dnd-gold">🌙</span><div className="text-left"><div className="text-[10px] font-bold uppercase leading-none">Long</div><div className="text-xs font-bold uppercase leading-none">Rest</div></div></button></div>
                      </div>
                 </div>
-                <div className="bg-[#121316]/80 backdrop-blur-md border-b border-[#3e4149]/40 py-3 overflow-x-auto custom-scrollbar">
+                <div className="bg-[#121316]/80 backdrop-blur-md border-b border-[#3e4149]/40 py-3 overflow-x-auto custom-scrollbar relative z-10">
                     <div className="max-w-[1400px] mx-auto px-4 flex justify-between items-center min-w-max">
                         <div className="flex gap-3">{ABILITY_NAMES.map(stat => (<HeaderStatBox key={stat} label={stat} value={getStat(stat)} modifier={calculateModifier(getStat(stat))} onRoll={roll} onContextMenu={triggerRollMenu} />))}</div>
                         <div className="flex gap-3 border-l border-gray-700/50 pl-4 md:pl-8">
@@ -2559,9 +2753,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
             <footer className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#121316] border-t border-[#3e4149] px-4 py-2 flex items-center justify-between shadow-lg h-[64px]">
                 {['stats', 'actions', 'spells', 'inventory', 'log'].map((tab_btn) => (
-                    <button key={tab_btn} onClick={() => setActiveTab(tab_btn as any)} className={`flex flex-col items-center justify-center p-2 min-w-[60px] rounded-lg transition-colors ${activeTab === tab_btn ? 'text-dnd-gold' : 'text-gray-500'}`}>
+                    <button key={tab_btn} onClick={() => setActiveTab(tab_btn as any)} className={`flex flex-col items-center justify-center p-2 min-w-[60px] rounded-lg transition-colors relative ${activeTab === tab_btn ? 'text-dnd-gold' : 'text-gray-500'}`}>
                         <div className={`${activeTab === tab_btn ? 'scale-110' : 'scale-100'} transition-transform duration-200`}>{tabIcons[tab_btn]}</div>
                         <span className="text-[9px] font-bold uppercase mt-1 tracking-wider">{tab_btn === 'log' ? 'Journal' : tab_btn === 'inventory' ? 'Items' : tab_btn}</span>
+                        {tab_btn === 'spells' && hasPendingSpells && (
+                            <span className="absolute top-1 right-4 w-2 h-2 bg-dnd-red rounded-full animate-pulse" />
+                        )}
                     </button>
                 ))}
             </footer>
@@ -2582,7 +2779,21 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 </aside>
 
                 <section className={`flex-grow flex flex-col ${character.backgroundImageUrl ? "bg-[#121316]/50" : "bg-transparent"} overflow-hidden backdrop-blur-md`}>
-                    <nav className="hidden md:flex items-center gap-2 px-4 py-2 bg-[#121316]/50 shrink-0 overflow-x-auto custom-scrollbar border-b border-[#3e4149]/40">{['actions', 'spells', 'inventory', 'features', 'rules', 'log'].map(tab_key => (<button key={tab_key} onClick={() => setActiveTab(tab_key as any)} className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-widest rounded-lg transition-all whitespace-nowrap shadow-sm border ${activeTab === tab_key ? 'text-white border-dnd-red bg-dnd-red/20 ring-1 ring-dnd-red/50' : 'text-gray-500 border-[#3e4149]/50 bg-black/40 hover:text-gray-300 hover:border-gray-600 hover:bg-gray-800'}`}>{tabIcons[tab_key]}<span>{tab_key === 'log' ? 'Journal' : tab_key}</span></button>))}</nav>
+                    <nav className="hidden md:flex items-center gap-2 px-4 py-2 bg-[#121316]/50 shrink-0 overflow-x-auto custom-scrollbar border-b border-[#3e4149]/40">
+            {['actions', 'spells', 'inventory', 'features', 'rules', 'log'].map(tab_key => (
+                <button 
+                    key={tab_key} 
+                    onClick={() => setActiveTab(tab_key as any)} 
+                    className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-widest rounded-lg transition-all whitespace-nowrap shadow-sm border relative ${activeTab === tab_key ? 'text-white border-dnd-red bg-dnd-red/20 ring-1 ring-dnd-red/50' : 'text-gray-500 border-[#3e4149]/50 bg-black/40 hover:text-gray-300 hover:border-gray-600 hover:bg-gray-800'}`}
+                >
+                    {tabIcons[tab_key]}
+                    <span>{tab_key === 'log' ? 'Journal' : tab_key}</span>
+                    {tab_key === 'spells' && hasPendingSpells && (
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-dnd-red rounded-full border-2 border-[#121316] animate-pulse" />
+                    )}
+                </button>
+            ))}
+        </nav>
 
                     <div className="flex-grow overflow-y-auto custom-scrollbar p-4 bg-fixed bg-cover">
                         {activeTab === 'stats' && <StatsTab character={character} roll={roll} layout={layout} renderWidget={renderWidget} setShowLayoutManager={setShowLayoutManager} />}
@@ -2609,7 +2820,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             setCharacter(prev => {
                                 const newUsage = { ...prev.featureUsage };
                                 if (newUsage[itm.name]) {
-                                    newUsage[itm.name].current = Math.max(0, Math.min(newUsage[itm.name].max, newUsage[itm.name].current + itm.delta));
+                                    if (itm.value !== undefined) {
+                                        newUsage[itm.name].current = Math.max(0, Math.min(newUsage[itm.name].max, newUsage[itm.name].max - itm.value));
+                                    } else if (itm.delta !== undefined) {
+                                        newUsage[itm.name].current = Math.max(0, Math.min(newUsage[itm.name].max, newUsage[itm.name].current + itm.delta));
+                                    }
                                 }
                                 return { ...prev, featureUsage: newUsage };
                             });

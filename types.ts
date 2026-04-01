@@ -80,8 +80,7 @@ export interface RaceDetail extends APIReference {
     starting_proficiencies?: APIReference[];
     languages: APIReference[];
     language_desc: string;
-    traits: APIReference[];
-    subraces?: APIReference[];
+    traits: (APIReference & { desc?: string[] })[];
     subraces_details?: SubraceDetail[];
     url?: string;
 }
@@ -99,7 +98,7 @@ export interface SubraceDetail extends APIReference {
     }[];
     starting_proficiencies: APIReference[];
     languages: APIReference[];
-    traits: APIReference[];
+    traits: (APIReference & { desc?: string[] })[];
     desc?: string[];
 }
 
@@ -332,7 +331,7 @@ export interface LevelChoice {
     id: string;
     level: number;
     source: string;
-    type: 'language' | 'skill' | 'expertise' | 'asi' | 'feat' | 'subclass' | 'feature_choice' | 'spell' | 'other' | 'level_up';
+    type: 'language' | 'skill' | 'expertise' | 'asi' | 'feat' | 'subclass' | 'feature_choice' | 'spell' | 'other' | 'level_up' | 'asi-feat' | 'feat-selection' | 'Level Advancement';
     label: string;
     value: any;
     options?: any[];
@@ -390,6 +389,7 @@ export interface CharacterState {
     fontScale?: number;
     activeWildShape?: { creature: CreatureDetail, currentHp: number, maxHp: number } | null;
     activeConcentration?: { name: string, duration?: string } | null;
+    customTrackers?: { id: string, name: string, value?: string }[];
     activeFamiliar?: { creature: CreatureDetail, currentHp: number, maxHp: number } | null;
     activePolymorph?: { creature: CreatureDetail, currentHp: number, maxHp: number } | null;
     creatures?: CreatureDetail[];
@@ -420,6 +420,11 @@ export interface FeatureEffect {
     attributes?: string[];
     amount?: number;
     reset?: 'short' | 'long';
+    filter_class?: string;
+    filter_level?: number;
+    filter_school?: string;
+    level?: number;
+    school?: string;
 }
 
 export interface SkillDefinition {

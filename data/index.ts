@@ -268,16 +268,18 @@ export const fetchLevelFeatures = async (classIndex: string, level: number, user
     const levelRow = cls.level_table?.find((l: any) => l.level === level);
     if (!levelRow) return [];
 
-    return levelRow.features.map((fName: string) => {
-        const cleanName = fName.replace(/\s*\(.*?\)/g, '').trim();
-        const detail = cls.feature_details?.find((fd: any) => 
-            fd.name === fName || 
-            fd.name === cleanName ||
-            fd.name.toLowerCase() === cleanName.toLowerCase()
-        );
-        if (detail) return detail;
-        return { index: fName.toLowerCase().replace(/\s+/g, '-'), name: fName, url: "", desc: [] };
-    });
+    return levelRow.features
+        .filter((fName: string) => fName !== "Subclass feature" && fName !== "Subclass Feature")
+        .map((fName: string) => {
+            const cleanName = fName.replace(/\s*\(.*?\)/g, '').trim();
+            const detail = cls.feature_details?.find((fd: any) => 
+                fd.name === fName || 
+                fd.name === cleanName ||
+                fd.name.toLowerCase() === cleanName.toLowerCase()
+            );
+            if (detail) return detail;
+            return { index: fName.toLowerCase().replace(/\s+/g, '-'), name: fName, url: "", desc: [] };
+        });
 };
 
 export const fetchClassLevels = async (classIndex: string, userId?: string): Promise<any[]> => {
@@ -286,15 +288,17 @@ export const fetchClassLevels = async (classIndex: string, userId?: string): Pro
     if (!cls) return [];
     return (cls.level_table || []).map((row: any) => ({
         level: row.level,
-        features: row.features.map((fName: string) => {
-            const cleanName = fName.replace(/\s*\(.*?\)/g, '').trim();
-            const detail = cls.feature_details?.find((fd: any) => 
-                fd.name === fName || 
-                fd.name === cleanName
-            );
-            if (detail) return detail;
-            return { name: fName, index: fName.toLowerCase().replace(/\s+/g, '-'), desc: [] };
-        })
+        features: row.features
+            .filter((fName: string) => fName !== "Subclass feature" && fName !== "Subclass Feature")
+            .map((fName: string) => {
+                const cleanName = fName.replace(/\s*\(.*?\)/g, '').trim();
+                const detail = cls.feature_details?.find((fd: any) => 
+                    fd.name === fName || 
+                    fd.name === cleanName
+                );
+                if (detail) return detail;
+                return { name: fName, index: fName.toLowerCase().replace(/\s+/g, '-'), desc: [] };
+            })
     }));
 };
 

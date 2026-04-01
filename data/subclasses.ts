@@ -1,4 +1,5 @@
 import { SubclassDetail, ClassFeature } from '../types';
+import { FIGHTING_STYLES } from './classes';
 
 export type SubclassFeatureModifier = 
     | { type: 'bonus_action'; name: string; description: string }
@@ -9,6 +10,7 @@ export type SubclassFeatureModifier =
     | { type: 'proficiency'; target: string; category: 'skill' | 'tool' | 'armor' | 'weapon' | 'save' }
     | { type: 'proficiency_choice'; category: 'skill' | 'tool' | 'language' | 'weapon'; count: number; options?: string[] }
     | { type: 'expertise_choice'; category: 'skill' | 'tool'; count: number; options?: string[] }
+    | { type: 'feature_choice'; name: string; count: number; options: any[] }
     | { type: 'resistance'; damage_type: string }
     | { type: 'immunity'; condition: string }
     | { type: 'advantage'; key: string; label: string }
@@ -1395,7 +1397,7 @@ export const SUBCLASSES: ExtendedSubclassDetail[] = [
             { 
                 index: "remarkable-athlete", 
                 name: "Remarkable Athlete", 
-                level: 7, 
+                level: 3, 
                 source: "Champion", 
                 url: "", 
                 desc: ["Add half prof bonus to Str/Dex/Con checks. Increase jump distance."],
@@ -1404,10 +1406,11 @@ export const SUBCLASSES: ExtendedSubclassDetail[] = [
             { 
                 index: "additional-fighting-style", 
                 name: "Additional Fighting Style", 
-                level: 10, 
+                level: 7, 
                 source: "Champion", 
                 url: "", 
-                desc: ["Choose a second Fighting Style."] 
+                desc: ["Choose a second Fighting Style."],
+                effects: [{ type: 'feature_choice', name: 'Additional Fighting Style', count: 1, options: FIGHTING_STYLES }]
             }
         ]
     },
@@ -1436,7 +1439,23 @@ export const SUBCLASSES: ExtendedSubclassDetail[] = [
                 desc: ["Proficiency with one type of artisan's tools."],
                 effects: [{ type: 'proficiency_choice', category: 'tool', count: 1 }]
             },
-            { index: "know-your-enemy", name: "Know Your Enemy", level: 7, source: "Battle Master", url: "", desc: ["Observe enemy for 1 min to learn stats relative to yours."] }
+            { 
+                index: "know-your-enemy", 
+                name: "Know Your Enemy", 
+                level: 7, 
+                source: "Battle Master", 
+                url: "", 
+                desc: ["As a Bonus Action, you can discern the damage immunities, resistances, or vulnerabilities of a creature within 30 feet."] 
+            },
+            {
+                index: "combat-superiority-7",
+                name: "Combat Superiority",
+                level: 7,
+                source: "Battle Master",
+                url: "",
+                desc: ["You gain one additional Superiority Die (bringing your total to five) and learn two additional Maneuvers."],
+                effects: [{ type: 'feature', name: 'Combat Superiority Improvement', description: '+1 Die, +2 Maneuvers' }]
+            }
         ]
     },
     {
@@ -1462,8 +1481,8 @@ export const SUBCLASSES: ExtendedSubclassDetail[] = [
                 level: 7, 
                 source: "Eldritch Knight", 
                 url: "", 
-                desc: ["When you cast a cantrip as action, make one weapon attack as bonus action."],
-                effects: [{ type: 'bonus_action', name: 'War Magic Attack', description: 'Attack after casting cantrip.' }]
+                desc: ["When you take the Attack action, you can replace one of your attacks with the casting of a Wizard cantrip that has a casting time of one action."],
+                effects: [{ type: 'feature', name: 'War Magic', description: 'Replace attack with cantrip.' }]
             }
         ]
     },
@@ -1524,7 +1543,15 @@ export const SUBCLASSES: ExtendedSubclassDetail[] = [
         class: { index: "fighter", name: "Fighter", url: "" },
         desc: ["Augment physical might with psionic power."],
         feature_details: [
-            { index: "psionic-power", name: "Psionic Power", level: 3, source: "Psi Warrior", url: "", desc: ["Psionic Energy dice to reduce damage, deal extra damage, or move objects."] }
+            { index: "psionic-power", name: "Psionic Power", level: 3, source: "Psi Warrior", url: "", desc: ["Psionic Energy dice to reduce damage, deal extra damage, or move objects."] },
+            { 
+                index: "telekinetic-adept", 
+                name: "Telekinetic Adept", 
+                level: 7, 
+                source: "Psi Warrior", 
+                url: "", 
+                desc: ["You learn new ways to channel your psionic power: Psionic Thrust (push/knock prone when dealing psionic damage) and Telekinetic Movement (move an object or creature with your mind)."] 
+            }
         ]
     },
     {

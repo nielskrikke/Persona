@@ -18,6 +18,16 @@ import CharacterDashboard from './components/Dashboard/CharacterDashboard';
 
 const initialAbilities: AbilityScores = { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 };
 
+const mergeChoices = (existing: any[], incoming: any[]) => {
+    const map = new Map<string, any>();
+    existing.forEach(c => { if (c.id) map.set(c.id, c); });
+    incoming.forEach(c => { if (c.id) map.set(c.id, c); });
+    // Keep choices without IDs as well
+    const withIds = Array.from(map.values());
+    const withoutIds = incoming.filter(c => !c.id);
+    return [...withIds, ...withoutIds];
+};
+
 const INITIAL_CHARACTER: CharacterState = {
     name: '',
     race: null,
@@ -61,7 +71,8 @@ const INITIAL_CHARACTER: CharacterState = {
     customCreatures: [],
     creatures: [],
     activePolymorph: null,
-    choices: []
+    choices: [],
+    customTrackers: []
 };
 
 const App: React.FC = () => {
@@ -244,7 +255,7 @@ const App: React.FC = () => {
 
     if (extraData) {
         if (extraData.choices) {
-            updateCharacter({ choices: [...character.choices, ...extraData.choices] });
+            updateCharacter({ choices: mergeChoices(character.choices, extraData.choices) });
         }
         if (extraData.ancestry) {
              newFeatures.push({
@@ -332,7 +343,7 @@ const App: React.FC = () => {
         skills: mergedSkills,
         toolProficiencies: mergedTools,
         classFeatures: [...character.classFeatures.filter(f => f.source === 'Race'), ...choiceFeatures],
-        choices: [...character.choices, ...choices]
+        choices: mergeChoices(character.choices, choices)
     });
     setPhase('abilities');
   };
@@ -371,7 +382,7 @@ const App: React.FC = () => {
     const newSkills = Array.from(new Set([...character.skills, ...background.skill_proficiencies, ...extraData.skills]));
     const newLanguages = Array.from(new Set([...character.languages, ...extraData.languages]));
     const newTools = Array.from(new Set([...character.toolProficiencies, ...extraData.tools]));
-    const newChoices = [...character.choices, ...(extraData.choices || [])];
+    const newChoices = mergeChoices(character.choices, extraData.choices || []);
     
     const newCurrency = { ...character.currency };
     newCurrency.gp += background.currency.gp;

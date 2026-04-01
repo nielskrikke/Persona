@@ -16,10 +16,11 @@ interface SpellsTabProps {
     setShowSpellManager: (val: boolean) => void;
     setShowHomebrewModal: (val: boolean, tab?: 'race' | 'class' | 'subclass' | 'background' | 'spell' | 'item' | 'creature' | 'feat') => void;
     onPolymorphCast?: () => void;
+    hasPendingSpells?: boolean;
 }
 
 const SpellsTab: React.FC<SpellsTabProps> = ({ 
-    character, setCharacter, roll, triggerRollMenu, setSelectedDetail, spellSave, spellAttackStr, spellMod, setShowSpellManager, setShowHomebrewModal, onPolymorphCast 
+    character, setCharacter, roll, triggerRollMenu, setSelectedDetail, spellSave, spellAttackStr, spellMod, setShowSpellManager, setShowHomebrewModal, onPolymorphCast, hasPendingSpells 
 }) => {
     const [spellFilter, setSpellFilter] = useState<number | 'all'>('all');
     const [spellSearch, setSpellSearch] = useState('');
@@ -100,9 +101,12 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                 </div>
                 <button 
                     onClick={() => setShowSpellManager(true)} 
-                    className="text-[10px] text-dnd-red font-bold uppercase border border-dnd-red bg-black/40 px-4 py-1.5 rounded hover:bg-dnd-red hover:text-white transition-colors whitespace-nowrap"
+                    className="text-[10px] text-dnd-red font-bold uppercase border border-dnd-red bg-black/40 px-4 py-1.5 rounded hover:bg-dnd-red hover:text-white transition-colors whitespace-nowrap relative"
                 >
                     Manage Spells
+                    {hasPendingSpells && (
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-dnd-red rounded-full border-2 border-[#1b1c20] animate-pulse" />
+                    )}
                 </button>
             </div>
 

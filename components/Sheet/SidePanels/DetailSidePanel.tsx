@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, CheckSquare, Square } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import SidePanelLayout from '../Shared/SidePanelLayout';
 import { SpellDetail, InventoryItem, APIReference, RuleEntry, CharacterState } from '../../../types';
 import { isSpell } from '../../../utils/rules';
 import { fetchEquipmentDetail, fetchFeatureDetail, fetchTraitDetail } from '../../../data/index';
-import { MASTERY_DESCRIPTIONS } from '../../../data/constants';
+import { MASTERY_DESCRIPTIONS, WIDGET_BG } from '../../../data/constants';
 
 // Heuristic maps for proficiency checking
 const PROFICIENCY_MAP: Record<string, string[]> = {
@@ -428,6 +428,42 @@ const DetailSidePanel = ({
                  
             {!loading && fullDetail && (
                 <>
+                {character?.featureUsage?.[fullDetail.name] && (
+                    <div className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-xl p-4 shadow-xl mb-6`}>
+                        <div className="flex justify-between items-start mb-3">
+                            <div className="overflow-hidden">
+                                <h4 className="font-bold text-white text-sm truncate">{fullDetail.name}</h4>
+                                <div className="text-[9px] text-gray-500 font-bold tracking-tight">
+                                    Resets on {character.featureUsage[fullDetail.name].reset || 'long'} rest
+                                </div>
+                            </div>
+                            <div className="bg-black/40 px-2 py-0.5 rounded border border-gray-800 text-[10px] font-bold text-gray-400">
+                                {character.featureUsage[fullDetail.name].current} / {character.featureUsage[fullDetail.name].max}
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                            {Array.from({ length: character.featureUsage[fullDetail.name].max }).map((_, i) => {
+                                const usage = character.featureUsage[fullDetail.name];
+                                const usedCount = usage.max - usage.current;
+                                return (
+                                    <div 
+                                        key={i} 
+                                        onClick={() => {
+                                            const targetUsed = i + 1;
+                                            const finalUsed = usedCount === targetUsed ? i : targetUsed;
+                                            onAction && onAction('toggleFeatureUsage', { name: fullDetail.name, value: finalUsed });
+                                        }}
+                                        className={`w-4 h-4 rounded-full border cursor-pointer transition-all ${
+                                            i < usedCount 
+                                            ? 'bg-dnd-red border-dnd-red shadow-[inset_0_0_5px_rgba(0,0,0,0.5)]' 
+                                            : 'bg-transparent border-gray-600'
+                                        }`}
+                                    />
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
                 {/* SPELL LAYOUT */}
                 {(isSpell(fullDetail) || fullDetail.casting_time) && (
                     <div className="space-y-4">
@@ -461,39 +497,6 @@ const DetailSidePanel = ({
                             {renderDescription(fullDetail.desc)}
                         </div>
 
-                        {character?.featureUsage?.[fullDetail.name] && (
-                            <div className="bg-[#1b1c20] border border-dnd-gold/30 rounded p-4 mt-4">
-                                <div className="flex items-center justify-between mb-3">
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Limited Uses</span>
-                                        <span className="text-xs text-dnd-gold font-bold">
-                                            {character.featureUsage[fullDetail.name].current} / {character.featureUsage[fullDetail.name].max} remaining
-                                        </span>
-                                    </div>
-                                    <div className="text-[9px] font-bold text-gray-500 uppercase bg-black/40 px-2 py-1 rounded border border-gray-800">
-                                        Resets on {character.featureUsage[fullDetail.name].reset === 'short' ? 'Short or Long Rest' : 'Long Rest'}
-                                    </div>
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    {Array.from({ length: character.featureUsage[fullDetail.name].max }).map((_, i) => {
-                                        const isUsed = i >= character.featureUsage[fullDetail.name].current;
-                                        return (
-                                            <button
-                                                key={i}
-                                                onClick={() => onAction && onAction('toggleFeatureUsage', { name: fullDetail.name, delta: isUsed ? 1 : -1 })}
-                                                className={`w-6 h-6 flex items-center justify-center rounded border transition-all ${
-                                                    isUsed 
-                                                        ? 'bg-gray-800/50 border-gray-700 text-gray-600' 
-                                                        : 'bg-dnd-gold/10 border-dnd-gold/40 text-dnd-gold hover:bg-dnd-gold/20'
-                                                }`}
-                                            >
-                                                {isUsed ? <Square size={12} /> : <CheckSquare size={12} />}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
 
                         {fullDetail.higher_level && fullDetail.higher_level.length > 0 && (
                             <div className="mt-4 border-t border-gray-700 pt-3">
@@ -687,39 +690,6 @@ const DetailSidePanel = ({
                 {/* FEATURE / TRAIT LAYOUT */}
                 {(!isSpell(fullDetail) && !isItemLike(fullDetail)) && (
                     <div className="space-y-4">
-                        {character?.featureUsage?.[fullDetail.name] && (
-                            <div className="bg-[#1b1c20] border border-dnd-gold/30 rounded p-4">
-                                <div className="flex items-center justify-between mb-3">
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Limited Uses</span>
-                                        <span className="text-xs text-dnd-gold font-bold">
-                                            {character.featureUsage[fullDetail.name].current} / {character.featureUsage[fullDetail.name].max} remaining
-                                        </span>
-                                    </div>
-                                    <div className="text-[9px] font-bold text-gray-500 uppercase bg-black/40 px-2 py-1 rounded border border-gray-800">
-                                        Resets on {character.featureUsage[fullDetail.name].reset === 'short' ? 'Short or Long Rest' : 'Long Rest'}
-                                    </div>
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    {Array.from({ length: character.featureUsage[fullDetail.name].max }).map((_, i) => {
-                                        const isUsed = i >= character.featureUsage[fullDetail.name].current;
-                                        return (
-                                            <button
-                                                key={i}
-                                                onClick={() => onAction && onAction('toggleFeatureUsage', { name: fullDetail.name, delta: isUsed ? 1 : -1 })}
-                                                className={`w-6 h-6 flex items-center justify-center rounded border transition-all ${
-                                                    isUsed 
-                                                        ? 'bg-gray-800/50 border-gray-700 text-gray-600' 
-                                                        : 'bg-dnd-gold/10 border-dnd-gold/40 text-dnd-gold hover:bg-dnd-gold/20'
-                                                }`}
-                                            >
-                                                {isUsed ? <Square size={12} /> : <CheckSquare size={12} />}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
                         <div className="prose prose-invert prose-sm max-w-none text-gray-300">
                             {renderDescription(fullDetail.desc || fullDetail.description)}
                         </div>

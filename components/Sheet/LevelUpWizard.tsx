@@ -18,11 +18,8 @@ interface PendingChoice {
 }
 
 const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, onCancel, onComplete }) => {
-    const [step, setStep] = useState<'features' | 'choices' | 'subclass' | 'asi'>('features');
     const [newLevel, setNewLevel] = useState(0);
     const [newFeatures, setNewFeatures] = useState<any[]>([]);
-    const [availableFeats, setAvailableFeats] = useState<any[]>([]);
-    const [allSpells, setAllSpells] = useState<SpellDetail[]>([]);
     const [classDefinition, setClassDefinition] = useState<any | null>(null);
 
     // Feature Choices State
@@ -30,13 +27,6 @@ const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, on
 
     // Subclass state
     const [availableSubclasses, setAvailableSubclasses] = useState<APIReference[]>([]);
-    const [selectedSubclass, setSelectedSubclass] = useState<SubclassDetail | null>(null);
-
-    // ASI Choice State
-    const [asiChoice, setAsiChoice] = useState<'ability' | 'feat'>('ability');
-    const [abilityIncreases, setAbilityIncreases] = useState<AbilityScores>({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
-    const [selectedFeat, setSelectedFeat] = useState<any | null>(null);
-    const [featChoices, setFeatChoices] = useState<Record<number, any>>({});
 
     // Initiation check
     const existingClass = character.classes.find(c => c.definition.index === classIndex);
@@ -69,30 +59,17 @@ const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, on
             // Check if we need to choose a subclass at this level
             const subs = await fetchSubclasses(classIndex);
             if (subs.length > 0) {
-                // Expanded regex to catch "Fight Club", "Artificer Specialist", "Choose your Path" and other variant archetypes
                 const needsSub = feats.some((f: any) => 
-                    /archetype|domain|origin|college|circle|oath|tradition|patron|specialist|club|path/i.test(f.name)
+                    /subclass|archetype|domain|origin|college|circle|oath|tradition|patron|specialist|club|path/i.test(f.name)
                 ) || (isInitiation && ['cleric', 'warlock', 'sorcerer'].includes(classIndex));
 
                 if (needsSub) {
                     setAvailableSubclasses(subs);
                 }
             }
-
-            if (isAsiLevel) {
-                const list = await fetchFeatsList();
-                setAvailableFeats(list);
-            }
-            const spells = await fetchAllSpells();
-            setAllSpells(spells);
         };
         load();
     }, [classIndex, nextLevel, isInitiation]);
-
-    // Reset feat choices when feat selection changes
-    useEffect(() => {
-        setFeatChoices({});
-    }, [selectedFeat]);
 
     const hpIncrease = classDefinition ? (
         Math.floor(classDefinition.hit_die / 2) + 1
@@ -122,7 +99,6 @@ const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, on
             }
         }
 
-        const className = classDefinition.name;
         const effectiveAbilities = getEffectiveAbilities(character);
         const currentLevel = isInitiation ? 0 : (existingClass?.level || 0);
         const currKnown = currentLevel > 0 
@@ -138,58 +114,20 @@ const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, on
         return { newSlots, newCantrips, newSpells };
     }, [classDefinition, character.classes, classIndex, isInitiation, nextLevel, existingClass]);
 
-    const handleAsiChange = (stat: keyof AbilityScores, val: number) => {
-        const currentTotal = (Object.values(abilityIncreases) as number[]).reduce((a, b) => a + b, 0);
-        if (currentTotal + val > 2 && val > 0) return;
-        if (abilityIncreases[stat] + val < 0) return;
-        setAbilityIncreases(prev => ({ ...prev, [stat]: prev[stat] + val }));
-    };
-
-    const handleSubclassSelect = async (ref: APIReference) => {
-        const detail = await fetchSubclassDetail(ref.index);
-        setSelectedSubclass(detail);
-    };
-
-    const handleChoiceSelection = (choiceIndex: number, value: string) => {
-        const newChoices = [...pendingChoices];
-        const choice = newChoices[choiceIndex];
-        const max = (choice.effect as any).count || 1;
-
-        if (choice.selection.includes(value)) {
-            choice.selection = choice.selection.filter(v => v !== value);
-        } else {
-            if (choice.selection.length < max) {
-                choice.selection.push(value);
-            }
-        }
-        setPendingChoices(newChoices);
-    };
-
-    const nextStep = () => {
-        if (step === 'features') {
-            if (pendingChoices.length > 0) {
-                setStep('choices');
-            } else if (availableSubclasses.length > 0 && !selectedSubclass) {
-                setStep('subclass');
-            } else if (isAsiLevel) {
-                setStep('asi');
-            } else {
-                finish();
-            }
-        } else if (step === 'choices') {
-             if (availableSubclasses.length > 0 && !selectedSubclass) {
-                setStep('subclass');
-            } else if (isAsiLevel) {
-                setStep('asi');
-            } else {
-                finish();
-            }
-        } else if (step === 'subclass') {
-            if (isAsiLevel) setStep('asi');
-            else finish();
-        } else {
-            finish();
-        }
+    const getSubclassTerminology = () => {
+        if (!classDefinition) return 'Archetype';
+        const name = classDefinition.name;
+        if (name === 'Artificer') return 'Artificer Specialist';
+        if (name === 'Pugilist') return 'Fight Club';
+        if (name === 'Cleric') return 'Divine Domain';
+        if (name === 'Druid') return 'Druidic Circle';
+        if (name === 'Bard') return 'Bard College';
+        if (name === 'Paladin') return 'Sacred Oath';
+        if (name === 'Warlock') return 'Otherworldly Patron';
+        if (name === 'Sorcerer') return 'Sorcerous Origin';
+        if (name === 'Wizard') return 'Arcane Tradition';
+        if (name === 'Card Master') return 'Path';
+        return 'Archetype';
     };
 
     const finish = async () => {
@@ -202,12 +140,12 @@ const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, on
             updatedClasses.push({
                 definition: classDefinition,
                 level: 1,
-                subclass: selectedSubclass || undefined
+                subclass: null
             });
         } else {
             updatedClasses = updatedClasses.map(c => 
                 c.definition.index === classIndex 
-                ? { ...c, level: c.level + 1, subclass: selectedSubclass || c.subclass } 
+                ? { ...c, level: c.level + 1 } 
                 : c
             );
         }
@@ -225,6 +163,7 @@ const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, on
                 mergedFeatures.push({ ...f, level: nextLevel, source: sourceName });
             }
         });
+        updates.classFeatures = mergedFeatures;
 
         // 4. Update Resource Tracking (featureUsage)
         const newFeatureUsage = { ...character.featureUsage };
@@ -243,275 +182,64 @@ const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, on
         });
         updates.featureUsage = newFeatureUsage;
 
-        // 5. Process Choices (Expertise, etc)
-        let finalSkills = [...character.skills];
-        let finalExpertise = [...(character.expertise || [])];
-        let finalLanguages = [...(character.languages || [])];
+        // 5. Queue Choices
+        const newChoices: LevelChoice[] = [];
         
-        pendingChoices.forEach(choice => {
-            const effect = choice.effect;
-            if (effect.type === 'expertise_choice') {
-                 choice.selection.forEach(skill => {
-                     if (!finalExpertise.includes(skill)) finalExpertise.push(skill);
-                 });
-            } else if (effect.type === 'proficiency_choice') {
-                 choice.selection.forEach(prof => {
-                     if (effect.category === 'skill') {
-                         if (!finalSkills.includes(prof)) finalSkills.push(prof);
-                     } else if (effect.category === 'language') {
-                         if (!finalLanguages.includes(prof)) finalLanguages.push(prof);
-                     }
-                 });
-            }
-        });
-        
-        updates.skills = finalSkills;
-        updates.expertise = finalExpertise;
-        updates.languages = finalLanguages;
-
-        if (selectedSubclass) {
-            const subLvlData = await fetchSubclassLevels(selectedSubclass.index);
-            const subFeats = subLvlData
-                .filter(l => l.level <= nextLevel)
-                .flatMap(l => l.features.map((f: any) => ({ ...f, level: l.level, source: selectedSubclass.name })));
-            
-            subFeats.forEach(f => {
-                if (!mergedFeatures.some(existing => existing.index === f.index)) {
-                    mergedFeatures.push(f);
-                }
-            });
-        }
-        updates.classFeatures = mergedFeatures;
-
-        // 5. ASI / Feats
-        let finalAbilities = { ...character.abilities };
-        let finalFeats = [...character.feats];
-        let extraSpells: SpellDetail[] = [];
-        const levelChoices: LevelChoice[] = [];
-
-        if (isAsiLevel) {
-            if (asiChoice === 'ability') {
-                const increases: Record<string, number> = {};
-                ABILITY_NAMES.forEach(stat => {
-                    if (abilityIncreases[stat] > 0) {
-                        finalAbilities[stat] += abilityIncreases[stat];
-                        increases[stat] = abilityIncreases[stat];
-                    }
-                });
-                levelChoices.push({
-                    id: `asi-${nextLevel}`,
-                    level: nextLevel,
-                    source: 'Ability Score Improvement',
-                    type: 'asi',
-                    label: 'ASI Selection',
-                    value: Object.entries(increases).map(([s, a]) => `${ABILITY_LABELS[s as AbilityName]} +${a}`).join(', '),
-                    revertData: { abilities: increases }
-                });
-            } else if (selectedFeat) {
-                finalFeats.push(selectedFeat);
-                const featRevertData: any = { featIndex: selectedFeat.index, abilities: {}, spells: [], skills: [], expertise: [], tools: [], languages: [] };
-                
-                levelChoices.push({
-                    id: `feat-${nextLevel}`,
-                    level: nextLevel,
-                    source: 'Ability Score Improvement',
-                    type: 'feat',
-                    label: 'Feat Selection',
-                    value: selectedFeat.name,
-                    options: availableFeats,
-                    revertData: featRevertData
-                });
-
-                selectedFeat.effects?.forEach((eff: any, idx: number) => {
-                    const choice = featChoices[idx];
-                    if (eff.type === 'asi') {
-                        eff.attributes.forEach((attr: string) => {
-                            finalAbilities[attr as keyof AbilityScores] += eff.amount;
-                            featRevertData.abilities[attr] = (featRevertData.abilities[attr] || 0) + eff.amount;
-                        });
-                    } else if (eff.type === 'asi_choice' && choice) {
-                         if (Array.isArray(choice)) {
-                             choice.forEach(c => {
-                                 finalAbilities[c as keyof AbilityScores] += eff.amount;
-                                 featRevertData.abilities[c] = (featRevertData.abilities[c] || 0) + eff.amount;
-                             });
-                         } else {
-                             finalAbilities[choice as keyof AbilityScores] += eff.amount;
-                             featRevertData.abilities[choice] = (featRevertData.abilities[choice] || 0) + eff.amount;
-                         }
-                    } else if (eff.type === 'spell_access') {
-                        if (eff.spell) {
-                             const found = allSpells.find(s => s.name === eff.spell || s.index === eff.spell.toLowerCase().replace(/\s+/g, '-'));
-                             if (found) {
-                                 const spellWithSource = { ...found, sourceClassIndex: classIndex };
-                                 extraSpells.push(spellWithSource);
-                                 featRevertData.spells.push(found.index);
-                             }
-                        } else if (choice) {
-                            const selections = Array.isArray(choice) ? choice : [choice];
-                            selections.forEach(sel => {
-                                const found = allSpells.find(s => s.index === sel || s.name === sel);
-                                if (found) {
-                                    const spellWithSource = { ...found, sourceClassIndex: classIndex };
-                                    extraSpells.push(spellWithSource);
-                                    featRevertData.spells.push(found.index);
-                                }
-                            });
-                        }
-                    } else if (eff.type === 'proficiency_choice' && choice) {
-                        const selections = Array.isArray(choice) ? choice : [choice];
-                        if (eff.category === 'skill') {
-                            finalSkills = [...finalSkills, ...selections];
-                            featRevertData.skills.push(...selections);
-                        } else if (eff.category === 'tool') {
-                            // Tools are usually stored in proficiencies or similar, but for now we'll just track them
-                            featRevertData.tools.push(...selections);
-                        } else if (eff.category === 'language') {
-                            featRevertData.languages.push(...selections);
-                        }
-                    } else if (eff.type === 'expertise_choice' && choice) {
-                        const selections = Array.isArray(choice) ? choice : [choice];
-                        finalExpertise = [...finalExpertise, ...selections];
-                        featRevertData.expertise.push(...selections);
-                    } else if (eff.type === 'proficiency' && eff.category === 'skill') {
-                        finalSkills.push(eff.target);
-                        featRevertData.skills.push(eff.target);
-                    }
-                });
-            }
-        }
-        
-        updates.abilities = finalAbilities;
-        updates.skills = Array.from(new Set(finalSkills)); // Dedup just in case
-        updates.feats = finalFeats;
-        updates.spellSlots = getSpellSlots(updatedClasses);
-
-        if (extraSpells.length > 0) {
-            const existingIndices = new Set(character.spells.map(s => s.index));
-            updates.spells = [...character.spells, ...extraSpells.filter(s => !existingIndices.has(s.index))];
-        }
-
-        // 6. Record Choices
-        const newChoices: LevelChoice[] = [...(character.choices || [])];
-        
-        // Record Level Up
+        // Record Level Up (Completed)
         newChoices.push({
             id: `level-${nextLevel}-${classIndex}`,
             level: nextLevel,
             source: sourceName,
-            type: 'other',
+            type: 'Level Advancement',
             label: `Level ${nextLevel} Advancement`,
             value: `${sourceName} Level ${nextLevel}`,
             revertData: { classIndex, hpIncrease }
         });
 
-        // Record Subclass
-        if (selectedSubclass) {
+        // Queue Subclass Choice if needed
+        if (availableSubclasses.length > 0 && !existingClass?.subclass) {
             newChoices.push({
-                id: `subclass-${classIndex}`,
+                id: `subclass-${classIndex}-${nextLevel}`,
                 level: nextLevel,
                 source: sourceName,
                 type: 'subclass',
-                label: 'Subclass Selection',
-                value: selectedSubclass.name,
-                revertData: { classIndex, subclassIndex: selectedSubclass.index }
+                label: `${getSubclassTerminology()} Selection`,
+                value: null,
+                options: availableSubclasses
             });
         }
 
-        // Add ASI/Feat choices
-        newChoices.push(...levelChoices);
-
-        // Record Feature Choices
-        pendingChoices.forEach((choice, idx) => {
-            const revertData: any = {};
-            if (choice.effect.type === 'expertise_choice') {
-                revertData.expertise = choice.selection;
-            } else if (choice.effect.type === 'proficiency_choice') {
-                if (choice.effect.category === 'skill') revertData.skills = choice.selection;
-                else if (choice.effect.category === 'tool') revertData.tools = choice.selection;
-                else if (choice.effect.category === 'language') revertData.languages = choice.selection;
-            }
-
+        // Queue ASI/Feat choice if needed
+        if (isAsiLevel) {
             newChoices.push({
-                id: `choice-${nextLevel}-${idx}`,
+                id: `asi-${nextLevel}-${classIndex}`,
+                level: nextLevel,
+                source: 'Ability Score Improvement',
+                type: 'asi-feat',
+                label: 'Ability Score Improvement',
+                value: null
+            });
+        }
+
+        // Queue Feature Choices
+        pendingChoices.forEach((choice, idx) => {
+            newChoices.push({
+                id: `choice-${nextLevel}-${idx}-${classIndex}`,
                 level: nextLevel,
                 source: choice.featureName,
                 type: choice.effect.type === 'expertise_choice' ? 'expertise' : 
                       (choice.effect.category === 'language' ? 'language' : 'skill'),
                 label: choice.featureName,
-                value: choice.selection,
-                options: choice.effect.options || (choice.effect.category === 'language' ? STANDARD_LANGUAGES : []),
-                count: (choice.effect as any).count || 1,
-                revertData
+                value: null,
+                options: choice.effect.options || (choice.effect.category === 'language' ? STANDARD_LANGUAGES : (choice.effect.type === 'proficiency_choice' && choice.effect.category === 'skill' ? SKILL_LIST.map(s => s.name) : [])),
+                count: (choice.effect as any).count || 1
             });
         });
 
-        updates.choices = newChoices;
-
-        // Auto-add companion widgets to layout
-        if (classIndex === 'artificer' && nextLevel === 3) {
-            const currentLayout = character.layout || { left: [], right: [], mobile: [] };
-            if (selectedSubclass?.index === 'artillerist') {
-                if (!currentLayout.right.includes('eldritchCannon') && !currentLayout.left.includes('eldritchCannon')) {
-                    updates.layout = {
-                        ...currentLayout,
-                        right: [...currentLayout.right, 'eldritchCannon']
-                    };
-                }
-            } else if (selectedSubclass?.index === 'battle-smith') {
-                if (!currentLayout.right.includes('steelDefender') && !currentLayout.left.includes('steelDefender')) {
-                    updates.layout = {
-                        ...currentLayout,
-                        right: [...currentLayout.right, 'steelDefender']
-                    };
-                }
-            }
-        }
+        updates.choices = [...(character.choices || []), ...newChoices];
+        updates.spellSlots = getSpellSlots(updatedClasses);
 
         onComplete(updates);
-    };
-
-    const isStepReady = () => {
-        if (step === 'features') return true;
-        if (step === 'choices') {
-             // Ensure all choices are made
-             return pendingChoices.every(c => c.selection.length === ((c.effect as any).count || 1));
-        }
-        if (step === 'subclass') return !!selectedSubclass;
-        if (step === 'asi') {
-            if (asiChoice === 'ability') return (Object.values(abilityIncreases) as number[]).reduce((a, b) => a + b, 0) === 2;
-            if (asiChoice === 'feat') {
-                if (!selectedFeat) return false;
-                // Validate subchoices
-                let missing = false;
-                selectedFeat.effects?.forEach((eff: any, idx: number) => {
-                    if (eff.type === 'asi_choice') {
-                        const choice = featChoices[idx];
-                        const count = eff.count || 1;
-                        if (count === 1) { if (!choice) missing = true; }
-                        else { if (!Array.isArray(choice) || choice.length !== count) missing = true; }
-                    }
-                });
-                return !missing;
-            }
-        }
-        return false;
-    };
-
-    const getSubclassTerminology = () => {
-        if (!classDefinition) return 'Archetype';
-        const name = classDefinition.name;
-        if (name === 'Artificer') return 'Artificer Specialist';
-        if (name === 'Pugilist') return 'Fight Club';
-        if (name === 'Cleric') return 'Divine Domain';
-        if (name === 'Druid') return 'Druidic Circle';
-        if (name === 'Bard') return 'Bard College';
-        if (name === 'Paladin') return 'Sacred Oath';
-        if (name === 'Warlock') return 'Otherworldly Patron';
-        if (name === 'Sorcerer') return 'Sorcerous Origin';
-        if (name === 'Wizard') return 'Arcane Tradition';
-        if (name === 'Card Master') return 'Path';
-        return 'Archetype';
     };
 
     return (
@@ -525,297 +253,70 @@ const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, on
                 </div>
 
                 <div className="flex-grow overflow-y-auto custom-scrollbar p-8">
-                    {step === 'features' && (
-                        <div className="space-y-8">
-                             <section>
-                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-[0.2em] mb-4 border-b border-gray-800 pb-2">Destiny Advancement</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="bg-gray-800/50 p-4 rounded border border-gray-700 text-center">
-                                        <div className="text-[10px] text-gray-500 uppercase font-bold">Health Increase</div>
-                                        <div className="text-2xl font-serif text-green-400">+{hpIncrease} Max HP</div>
-                                    </div>
-                                    <div className="bg-gray-800/50 p-4 rounded border border-gray-700 text-center">
-                                        <div className="text-[10px] text-gray-500 uppercase font-bold">Proficiency Bonus</div>
-                                        <div className="text-2xl font-serif text-white">+{calculateProficiency(character.level + 1)}</div>
-                                    </div>
-                                </div>
-                            </section>
-
-                            {spellChanges && (
-                                <section>
-                                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-[0.2em] mb-4 border-b border-gray-800 pb-2">Arcane Expansion</h3>
-                                    <div className="flex flex-col md:flex-row gap-4">
-                                        {spellChanges.newSlots.length > 0 && (
-                                            <div className="bg-gray-800/50 p-4 rounded border border-gray-700 text-center flex-1">
-                                                <div className="text-[10px] text-gray-500 uppercase font-bold mb-2">New Spell Slots</div>
-                                                <div className="flex wrap justify-center gap-2">
-                                                    {spellChanges.newSlots.map(s => <span key={s} className="px-3 py-1 bg-purple-900/30 text-purple-300 border border-purple-800 rounded text-xs font-bold">{s}</span>)}
-                                                </div>
-                                            </div>
-                                        )}
-                                        {spellChanges.newCantrips > 0 && (
-                                            <div className="bg-gray-800/50 p-4 rounded border border-gray-700 text-center flex-1">
-                                                <div className="text-[10px] text-gray-500 uppercase font-bold">Cantrips Known</div>
-                                                <div className="text-2xl font-serif text-blue-400">+{spellChanges.newCantrips}</div>
-                                            </div>
-                                        )}
-                                        {spellChanges.newSpells > 0 && (
-                                            <div className="bg-gray-800/50 p-4 rounded border border-gray-700 text-center flex-1">
-                                                <div className="text-[10px] text-gray-500 uppercase font-bold">Spells Known / Prepared</div>
-                                                <div className="text-2xl font-serif text-purple-400">+{spellChanges.newSpells}</div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </section>
-                            )}
-
-                            <section>
-                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-[0.2em] mb-4 border-b border-gray-800 pb-2">New Path Features</h3>
-                                {newFeatures.length > 0 ? (
-                                    <div className="space-y-3">
-                                        {newFeatures.map((f, i) => (
-                                            <div key={i} className="bg-gray-800/30 p-4 rounded border-l-4 border-dnd-gold">
-                                                <h4 className="font-bold text-white text-lg">{f.name}</h4>
-                                                <p className="text-sm text-gray-400 mt-1 leading-relaxed line-clamp-2">
-                                                    {f.desc && f.desc.length > 0 ? f.desc[0] : "No description available."}
-                                                </p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : <p className="italic text-gray-600 text-sm">No new features at this level.</p>}
-                            </section>
-                        </div>
-                    )}
-
-                    {step === 'choices' && (
-                         <div className="space-y-8">
-                             <h3 className="text-2xl font-serif text-dnd-gold text-center">Feature Choices</h3>
-                             {pendingChoices.map((choice, idx) => {
-                                 const count = (choice.effect as any).count || 1;
-                                 let options: any[] = [];
-
-                                 if (choice.effect.type === 'expertise_choice') {
-                                     // Filter for skills the character IS proficient in but NOT expert in
-                                     options = character.skills.filter(s => !character.expertise?.includes(s));
-                                 } else if (choice.effect.type === 'proficiency_choice' && choice.effect.category === 'skill') {
-                                      // Default options if none provided in API (fallback to all skills)
-                                      const pool = choice.effect.options || SKILL_LIST.map(s => s.name);
-                                      // Filter out skills character already has
-                                      options = pool.filter(s => !character.skills.includes(s));
-                                 } else if (choice.effect.type === 'feature_choice') {
-                                     options = choice.effect.options || [];
-                                 }
-
-                                 return (
-                                     <div key={idx} className="bg-gray-800/50 p-6 rounded border border-gray-700">
-                                         <h4 className="text-lg font-bold text-white mb-2">{choice.featureName}</h4>
-                                         <p className="text-sm text-gray-400 mb-4">Choose {count} option{count > 1 ? 's' : ''}:</p>
-                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                             {options.map(opt => {
-                                                 const optName = typeof opt === 'string' ? opt : opt.name;
-                                                 const optDesc = typeof opt === 'string' ? null : opt.desc;
-                                                 const isSelected = choice.selection.includes(optName);
-                                                 
-                                                 return (
-                                                     <label key={optName} className={`flex flex-col gap-1 p-3 rounded cursor-pointer border transition-colors ${isSelected ? 'bg-dnd-gold/20 border-dnd-gold text-white' : 'bg-black/20 border-transparent hover:bg-gray-700'}`}>
-                                                         <div className="flex items-center gap-3">
-                                                             <input 
-                                                                type="checkbox" 
-                                                                checked={isSelected}
-                                                                onChange={() => handleChoiceSelection(idx, optName)}
-                                                                disabled={!isSelected && choice.selection.length >= count}
-                                                                className="accent-dnd-gold"
-                                                             />
-                                                             <span className="text-sm font-bold">{optName}</span>
-                                                         </div>
-                                                         {optDesc && <p className="text-[10px] text-gray-500 ml-7 leading-tight">{optDesc}</p>}
-                                                     </label>
-                                                 );
-                                             })}
-                                         </div>
-                                     </div>
-                                 );
-                             })}
-                         </div>
-                    )}
-
-                    {step === 'subclass' && (
-                        <div className="space-y-6">
-                            <h3 className="text-2xl font-serif text-dnd-gold text-center">Choose Your {getSubclassTerminology()}</h3>
+                    <div className="space-y-8">
+                         <section>
+                            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-[0.2em] mb-4 border-b border-gray-800 pb-2">Destiny Advancement</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {availableSubclasses.map(sub => (
-                                    <button key={sub.index} onClick={() => handleSubclassSelect(sub)} className={`p-6 rounded-lg border text-left transition-all ${selectedSubclass?.index === sub.index ? 'bg-dnd-gold border-dnd-gold text-black font-bold' : 'bg-gray-800 border-gray-700 text-gray-300'}`}>
-                                        <div className="text-lg">{sub.name}</div>
-                                    </button>
-                                ))}
+                                <div className="bg-gray-800/50 p-4 rounded border border-gray-700 text-center">
+                                    <div className="text-[10px] text-gray-500 uppercase font-bold">Health Increase</div>
+                                    <div className="text-2xl font-serif text-green-400">+{hpIncrease} Max HP</div>
+                                </div>
+                                <div className="bg-gray-800/50 p-4 rounded border border-gray-700 text-center">
+                                    <div className="text-[10px] text-gray-500 uppercase font-bold">Proficiency Bonus</div>
+                                    <div className="text-2xl font-serif text-white">+{calculateProficiency(character.level + 1)}</div>
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        </section>
 
-                    {step === 'asi' && (
-                        <div className="space-y-6">
-                             <div className="flex justify-center gap-4 mb-8">
-                                <button onClick={() => setAsiChoice('ability')} className={`px-10 py-2 rounded-full font-bold uppercase text-xs ${asiChoice === 'ability' ? 'bg-dnd-gold text-black' : 'bg-gray-800 text-gray-500'}`}>Stat Increase</button>
-                                <button onClick={() => setAsiChoice('feat')} className={`px-10 py-2 rounded-full font-bold uppercase text-xs ${asiChoice === 'feat' ? 'bg-dnd-gold text-black' : 'bg-gray-800 text-gray-500'}`}>Choose Feat</button>
-                            </div>
-                            {asiChoice === 'ability' ? (
-                                <div className="max-w-md mx-auto space-y-3">
-                                    {ABILITY_NAMES.map(stat => (
-                                        <div key={stat} className="bg-gray-800 p-3 rounded flex justify-between items-center">
-                                            <span className="text-gray-300 font-bold uppercase text-xs">{ABILITY_LABELS[stat]}</span>
-                                            <div className="flex items-center gap-4">
-                                                <button onClick={() => handleAsiChange(stat, -1)} className="w-6 h-6 rounded bg-gray-700 text-white">-</button>
-                                                <span className={`w-4 text-center font-bold ${abilityIncreases[stat] > 0 ? 'text-green-400' : 'text-white'}`}>+{abilityIncreases[stat]}</span>
-                                                <button onClick={() => handleAsiChange(stat, 1)} className="w-6 h-6 rounded bg-gray-700 text-white">+</button>
+                        {spellChanges && (
+                            <section>
+                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-[0.2em] mb-4 border-b border-gray-800 pb-2">Arcane Expansion</h3>
+                                <div className="flex flex-col md:flex-row gap-4">
+                                    {spellChanges.newSlots.length > 0 && (
+                                        <div className="bg-gray-800/50 p-4 rounded border border-gray-700 text-center flex-1">
+                                            <div className="text-[10px] text-gray-500 uppercase font-bold mb-2">New Spell Slots</div>
+                                            <div className="flex wrap justify-center gap-2">
+                                                {spellChanges.newSlots.map(s => <span key={s} className="px-3 py-1 bg-purple-900/30 text-purple-300 border border-purple-800 rounded text-xs font-bold">{s}</span>)}
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="space-y-6">
-                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-60 overflow-y-auto custom-scrollbar p-1">
-                                        {availableFeats.map(f => (
-                                            <button key={f.index} onClick={() => setSelectedFeat(f)} className={`p-3 rounded text-left text-xs border ${selectedFeat?.index === f.index ? 'bg-dnd-gold text-black font-bold border-dnd-gold' : 'bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-500'}`}>{f.name}</button>
-                                        ))}
-                                    </div>
-
-                                    {/* Feat Details & Choices */}
-                                    {selectedFeat && (
-                                        <div className="bg-black/30 p-4 rounded border border-gray-600 animate-in fade-in slide-in-from-bottom-2">
-                                            <h4 className="text-lg font-bold text-white mb-1">{selectedFeat.name}</h4>
-                                            <div className="text-sm text-gray-400 mb-4">{selectedFeat.desc[0]}</div>
-                                            
-                                            {selectedFeat.effects && selectedFeat.effects.length > 0 && (
-                                                <div className="space-y-4">
-                                                    {selectedFeat.effects.map((eff: any, idx: number) => {
-                                                        if (eff.type === 'asi_choice') {
-                                                            const count = eff.count || 1;
-                                                            return (
-                                                                <div key={idx} className="bg-gray-800 p-3 rounded border border-gray-700">
-                                                                    <span className="text-xs font-bold text-dnd-gold uppercase block mb-2">Increase {count} Ability Score{count > 1 ? 's' : ''} by {eff.amount}</span>
-                                                                    <div className="flex flex-col gap-2">
-                                                                        {Array.from({length: count}).map((_, i) => (
-                                                                             <select
-                                                                                key={i}
-                                                                                className="w-full bg-[#0b0c0e] border border-gray-600 rounded p-2 text-white text-sm focus:border-dnd-gold outline-none"
-                                                                                value={Array.isArray(featChoices[idx]) ? (featChoices[idx] as string[])[i] : (featChoices[idx] as string) || ''}
-                                                                                onChange={(e) => {
-                                                                                    const val = e.target.value;
-                                                                                    if (count > 1) {
-                                                                                        const current = (featChoices[idx] as string[]) || Array(count).fill('');
-                                                                                        const newArr = [...current];
-                                                                                        newArr[i] = val;
-                                                                                        setFeatChoices(prev => ({...prev, [idx]: newArr}));
-                                                                                    } else {
-                                                                                        setFeatChoices(prev => ({...prev, [idx]: val}));
-                                                                                    }
-                                                                                }}
-                                                                             >
-                                                                                <option value="">Select Ability...</option>
-                                                                                {eff.options.map((opt: string) => (
-                                                                                    <option key={opt} value={opt}>{ABILITY_LABELS[opt as AbilityName]}</option>
-                                                                                ))}
-                                                                             </select>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        } else if (eff.type === 'spell_access' && !eff.spell) {
-                                                            const count = eff.count || 1;
-                                                            const level = eff.level || 0;
-                                                            const filteredSpells = allSpells.filter(s => {
-                                                                if (s.level !== level) return false;
-                                                                if (eff.filter_class && s.classes && !s.classes.some((c: any) => c.index === eff.filter_class)) return false;
-                                                                if (eff.school && s.school.name !== eff.school) return false;
-                                                                return true;
-                                                            });
-
-                                                            return (
-                                                                <div key={idx} className="bg-gray-800 p-3 rounded border border-gray-700">
-                                                                    <span className="text-xs font-bold text-dnd-gold uppercase block mb-2">Choose {count} {level === 0 ? 'Cantrip' : `Level ${level} Spell`}{count > 1 ? 's' : ''}</span>
-                                                                    <div className="flex flex-col gap-2">
-                                                                        {Array.from({length: count}).map((_, i) => (
-                                                                             <select
-                                                                                key={i}
-                                                                                className="w-full bg-[#0b0c0e] border border-gray-600 rounded p-2 text-white text-sm focus:border-dnd-gold outline-none"
-                                                                                value={Array.isArray(featChoices[idx]) ? (featChoices[idx] as string[])[i] : (featChoices[idx] as string) || ''}
-                                                                                onChange={(e) => {
-                                                                                    const val = e.target.value;
-                                                                                    if (count > 1) {
-                                                                                        const current = (featChoices[idx] as string[]) || Array(count).fill('');
-                                                                                        const newArr = [...current];
-                                                                                        newArr[i] = val;
-                                                                                        setFeatChoices(prev => ({...prev, [idx]: newArr}));
-                                                                                    } else {
-                                                                                        setFeatChoices(prev => ({...prev, [idx]: val}));
-                                                                                    }
-                                                                                }}
-                                                                             >
-                                                                                <option value="">Select Spell...</option>
-                                                                                {filteredSpells.map(s => (
-                                                                                    <option key={s.index} value={s.index}>{s.name}</option>
-                                                                                ))}
-                                                                             </select>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        } else if (eff.type === 'proficiency_choice' || eff.type === 'expertise_choice') {
-                                                            const count = eff.count || 1;
-                                                            let options = eff.options || [];
-                                                            if (eff.category === 'skill') {
-                                                                options = SKILL_LIST.map(s => s.name);
-                                                                if (eff.type === 'expertise_choice') {
-                                                                    options = character.skills;
-                                                                }
-                                                            }
-
-                                                            return (
-                                                                <div key={idx} className="bg-gray-800 p-3 rounded border border-gray-700">
-                                                                    <span className="text-xs font-bold text-dnd-gold uppercase block mb-2">Choose {count} {eff.category} {eff.type === 'expertise_choice' ? 'Expertise' : 'Proficiency'}</span>
-                                                                    <div className="flex flex-col gap-2">
-                                                                        {Array.from({length: count}).map((_, i) => (
-                                                                             <select
-                                                                                key={i}
-                                                                                className="w-full bg-[#0b0c0e] border border-gray-600 rounded p-2 text-white text-sm focus:border-dnd-gold outline-none"
-                                                                                value={Array.isArray(featChoices[idx]) ? (featChoices[idx] as string[])[i] : (featChoices[idx] as string) || ''}
-                                                                                onChange={(e) => {
-                                                                                    const val = e.target.value;
-                                                                                    if (count > 1) {
-                                                                                        const current = (featChoices[idx] as string[]) || Array(count).fill('');
-                                                                                        const newArr = [...current];
-                                                                                        newArr[i] = val;
-                                                                                        setFeatChoices(prev => ({...prev, [idx]: newArr}));
-                                                                                    } else {
-                                                                                        setFeatChoices(prev => ({...prev, [idx]: val}));
-                                                                                    }
-                                                                                }}
-                                                                             >
-                                                                                <option value="">Select {eff.category}...</option>
-                                                                                {options.map((opt: any) => (
-                                                                                    <option key={opt.index || opt} value={opt.index || opt}>{opt.name || opt}</option>
-                                                                                ))}
-                                                                             </select>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        }
-                                                        return null;
-                                                    })}
-                                                </div>
-                                            )}
+                                    )}
+                                    {spellChanges.newCantrips > 0 && (
+                                        <div className="bg-gray-800/50 p-4 rounded border border-gray-700 text-center flex-1">
+                                            <div className="text-[10px] text-gray-500 uppercase font-bold">Cantrips Known</div>
+                                            <div className="text-2xl font-serif text-blue-400">+{spellChanges.newCantrips}</div>
+                                        </div>
+                                    )}
+                                    {spellChanges.newSpells > 0 && (
+                                        <div className="bg-gray-800/50 p-4 rounded border border-gray-700 text-center flex-1">
+                                            <div className="text-[10px] text-gray-500 uppercase font-bold">Spells Known / Prepared</div>
+                                            <div className="text-2xl font-serif text-purple-400">+{spellChanges.newSpells}</div>
                                         </div>
                                     )}
                                 </div>
-                            )}
-                        </div>
-                    )}
+                            </section>
+                        )}
+
+                        <section>
+                            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-[0.2em] mb-4 border-b border-gray-800 pb-2">New Path Features</h3>
+                            {newFeatures.length > 0 ? (
+                                <div className="space-y-3">
+                                    {newFeatures.map((f, i) => (
+                                        <div key={i} className="bg-gray-800/30 p-4 rounded border-l-4 border-dnd-gold">
+                                            <h4 className="font-bold text-white text-lg">{f.name}</h4>
+                                            <p className="text-sm text-gray-400 mt-1 leading-relaxed line-clamp-2">
+                                                {f.desc && f.desc.length > 0 ? f.desc[0] : "No description available."}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : <p className="italic text-gray-600 text-sm">No new features at this level.</p>}
+                        </section>
+                    </div>
                 </div>
 
                 <div className="p-6 border-t border-gray-700 flex justify-between bg-[#121316] rounded-b-xl">
                     <button onClick={onCancel} className="px-6 py-3 text-gray-500 hover:text-white font-bold uppercase text-xs">Cancel</button>
-                    <button onClick={nextStep} disabled={!isStepReady()} className="bg-dnd-gold disabled:bg-gray-700 text-black px-12 py-4 rounded font-bold uppercase text-sm">Continue &rarr;</button>
+                    <button onClick={finish} className="bg-dnd-gold text-black px-12 py-4 rounded font-bold uppercase text-sm">Finish Level Up &rarr;</button>
                 </div>
             </div>
         </div>

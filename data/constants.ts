@@ -68,10 +68,31 @@ export const STANDARD_LANGUAGES = [
     "Infernal", "Orc", "Primordial", "Sylvan", "Terran", "Undercommon"
 ];
 
+export const ARTISAN_TOOLS = [
+    "Alchemist's supplies",
+    "Brewer's supplies",
+    "Calligrapher's supplies",
+    "Carpenter's tools",
+    "Cartographer's tools",
+    "Cobbler's tools",
+    "Cook's utensils",
+    "Glassblower's tools",
+    "Jeweler's tools",
+    "Leatherworker's tools",
+    "Mason's tools",
+    "Painter's supplies",
+    "Potter's tools",
+    "Smith's tools",
+    "Tinker's tools",
+    "Weaver's tools",
+    "Woodcarver's tools"
+];
+
 export const CLASS_FEATURES: Record<string, {name: string, formula: (level: number, stats: any) => number, reset: 'short' | 'long'}> = {
     'Bard': { name: 'Bardic Inspiration', reset: 'long', formula: (l, s) => Math.max(1, calculateModifier(s.cha)) },
     'Barbarian': { name: 'Rages', reset: 'long', formula: (l) => l < 3 ? 2 : l < 6 ? 3 : l < 12 ? 4 : l < 17 ? 5 : 6 },
     'Fighter': { name: 'Second Wind', reset: 'short', formula: (l) => l < 4 ? 2 : l < 10 ? 3 : 4 },
+    'Fighter-SD': { name: 'Superiority Dice', reset: 'short', formula: (l) => l < 3 ? 0 : l < 7 ? 4 : l < 15 ? 5 : 6 },
     'Druid': { name: 'Wild Shape', reset: 'short', formula: (l) => l < 6 ? 2 : l < 17 ? 3 : 4 },
     'Monk': { name: 'Focus Points', reset: 'short', formula: (l) => l < 2 ? 0 : l },
     'Paladin': { name: 'Lay on Hands', reset: 'long', formula: (l) => l * 5 },
