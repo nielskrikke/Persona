@@ -33,6 +33,10 @@ export const getEffectiveAbilities = (character: CharacterState): AbilityScores 
             trait.modifiers?.forEach((m: any) => mods.push(m));
         });
     }
+    // Class Features
+    character.classFeatures?.forEach(feat => {
+        feat.effects?.forEach(e => mods.push(e));
+    });
     // Equipped & Attuned Items
     character.inventory.forEach(item => {
         if (item.equipped && (!item.requires_attunement || item.attuned)) {

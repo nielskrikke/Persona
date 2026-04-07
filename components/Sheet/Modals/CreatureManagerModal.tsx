@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import Markdown from 'react-markdown';
 import { CreatureDetail, CharacterState } from '@/types';
 import { Library } from '@/data/index';
 import { calculateModifier } from '@/utils/rules';
@@ -238,10 +239,10 @@ const CreatureManagerModal: React.FC<CreatureManagerModalProps> = ({
                                     ))}
                                 </div>
 
-                                <div className="space-y-4 text-sm text-gray-300">
+                                <div className="space-y-4 text-sm text-gray-300 markdown-body">
                                     {selectedCreature.traits?.map(t => (
                                         <div key={t.name}>
-                                            <span className="font-bold text-white italic">{t.name}.</span> {t.desc}
+                                            <span className="font-bold text-white italic">{t.name}.</span> <Markdown>{t.desc}</Markdown>
                                         </div>
                                     ))}
                                     
@@ -250,7 +251,7 @@ const CreatureManagerModal: React.FC<CreatureManagerModalProps> = ({
                                             <h4 className={`text-lg font-serif ${theme[0]} border-b border-gray-700 pb-1 pt-2`}>Actions</h4>
                                             {selectedCreature.actions.map((a, i) => (
                                                 <div key={i}>
-                                                    <span className="font-bold text-white italic">{a.name}.</span> {a.desc}
+                                                    <span className="font-bold text-white italic">{a.name}.</span> <Markdown>{a.desc}</Markdown>
                                                 </div>
                                             ))}
                                         </>

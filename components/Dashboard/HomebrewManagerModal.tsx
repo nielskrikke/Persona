@@ -81,6 +81,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     const [list, setList] = useState<any[]>([]);
     const [isSharedGlobally, setIsSharedGlobally] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const modalRef = useRef<HTMLDivElement>(null);
 
     // Track the last opened state to handle initialTab correctly without glitching
@@ -416,7 +417,6 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you wish to strike this creation from the archives?")) return;
         setLoading(true);
         try {
             const tableMap = { 
@@ -430,10 +430,13 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                 feat: 'custom_feats'
             };
             await deleteHomebrew(tableMap[activeTab] as any, id, currentUser.id);
+            setDeleteConfirmId(null);
             fetchList();
         } catch (err) {
             console.error(err);
-            alert("Failed to delete creation.");
+            // We can't use alert() in iframe easily, so we'll just log it for now or use a toast if available
+            // For now, let's just reset the confirm state
+            setDeleteConfirmId(null);
         } finally {
             setLoading(false);
         }
@@ -626,12 +629,31 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                     <span className="text-[7px] bg-blue-900/30 text-blue-500 px-1 rounded border border-blue-900/50 uppercase font-black">Personal</span>
                                                 )}
                                                 {item.user_id === currentUser.id && (
-                                                    <button 
-                                                        onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
-                                                        className="text-red-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    >
-                                                        <X size={12} />
-                                                    </button>
+                                                    <div className="flex items-center gap-1">
+                                                        {deleteConfirmId === item.id ? (
+                                                            <div className="flex items-center gap-1 animate-in fade-in slide-in-from-right-2 duration-200">
+                                                                <button 
+                                                                    onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
+                                                                    className="text-[8px] bg-red-600 text-white px-1.5 py-0.5 rounded font-black uppercase hover:bg-red-500"
+                                                                >
+                                                                    Confirm
+                                                                </button>
+                                                                <button 
+                                                                    onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(null); }}
+                                                                    className="text-[8px] bg-gray-700 text-gray-300 px-1.5 py-0.5 rounded font-black uppercase hover:bg-gray-600"
+                                                                >
+                                                                    Cancel
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <button 
+                                                                onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(item.id); }}
+                                                                className="text-red-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                                                            >
+                                                                <Trash2 size={12} />
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>

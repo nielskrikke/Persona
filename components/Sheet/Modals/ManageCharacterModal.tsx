@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import Markdown from 'react-markdown';
 import { X, User, GraduationCap, Activity, Shield, Settings, Plus, Trash2, Save, Languages, Palette, Type, Dice5, Eye, EyeOff, Info, Sparkles, AlertTriangle, RotateCcw, AlertCircle } from 'lucide-react';
 import { CharacterState, APIReference, RaceDetail, SubraceDetail, BackgroundDetail, FeatDetail, ABILITY_NAMES, ABILITY_LABELS, AbilityScores, SpellDetail, LevelChoice, AbilityName } from '@/types';
 import { fetchClasses, fetchRaces, fetchSubraces, fetchBackgrounds, fetchFeatsList, fetchRaceDetail, fetchSubraceDetail, fetchBackgroundDetail, fetchSubclasses, fetchSubclassDetail, fetchSubclassLevels, fetchClassLevels, getLocalSpells, fetchLevelFeatures, fetchClassDetail, fetchAllSpells } from '@/data/index';
 import { getSpellSlots, calculateModifier, SKILL_LIST } from '@/utils/rules';
 import { CLASS_FEATURES, STANDARD_LANGUAGES, ARTISAN_TOOLS } from '../../../data/constants';
 import DiceRoller3D from '../Shared/DiceRoller3D';
+
+import { RACES } from '@/data/races';
+import { SUBCLASSES } from '@/data/subclasses';
+import { BACKGROUNDS } from '@/data/backgrounds';
 
 const SUBCLASS_LEVELS: Record<string, number> = {
     'Cleric': 1, 'Warlock': 1, 'Sorcerer': 1,
@@ -71,6 +76,7 @@ const ManageCharacterModal = ({
     const [skills, setSkills] = useState<string[]>([...character.skills]);
     const [expertise, setExpertise] = useState<string[]>([...(character.expertise || [])]);
     const [toolProficiencies, setToolProficiencies] = useState<string[]>([...(character.toolProficiencies || [])]);
+    const [savingThrowProficiencies, setSavingThrowProficiencies] = useState<string[]>([...(character.savingThrowProficiencies || [])]);
     const [localFeatures, setLocalFeatures] = useState(character.featureUsage || {});
     const [newFeatName, setNewFeatName] = useState('');
     const [newFeatMax, setNewFeatMax] = useState(1);
@@ -127,6 +133,7 @@ const ManageCharacterModal = ({
             setAlignment(character.alignment);
             setLanguages(character.languages || []);
             setToolProficiencies([...(character.toolProficiencies || [])]);
+            setSavingThrowProficiencies([...(character.savingThrowProficiencies || [])]);
             setSelectedRaceIndex(character.race?.index || '');
             setSelectedSubraceIndex(character.subrace?.index || '');
             // Attempt to match background by name or index
@@ -361,8 +368,8 @@ const ManageCharacterModal = ({
                 source: sourceName,
                 type: 'asi-feat',
                 label: 'Ability Score Improvement or Feat',
-                value: 'asi', // Default to ASI
-                revertData: { classIndex, abilities: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } }
+                value: '', // Start empty so it's pending
+                revertData: { classIndex, mode: 'asi', abilities: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } }
             });
         }
 
@@ -538,18 +545,19 @@ const ManageCharacterModal = ({
     };
 
     // Global Save Helper
-    const getGlobalUpdates = () => ({
+    const getGlobalUpdates = (overrides: any = {}) => ({
         name,
         avatarUrl: avatar,
         xp: parseInt(xp) || 0, 
         alignment,
-        languages,
-        abilities,
-        feats: localFeats,
-        skills,
-        expertise,
-        toolProficiencies,
-        featureUsage: localFeatures,
+        languages: overrides.languages || languages,
+        abilities: overrides.abilities || abilities,
+        feats: overrides.feats || localFeats,
+        skills: overrides.skills || skills,
+        expertise: overrides.expertise || expertise,
+        toolProficiencies: overrides.toolProficiencies || toolProficiencies,
+        savingThrowProficiencies: overrides.savingThrowProficiencies || savingThrowProficiencies,
+        featureUsage: overrides.featureUsage || localFeatures,
         fontScale,
         backgroundImageUrl,
         backgroundColor,
@@ -558,20 +566,21 @@ const ManageCharacterModal = ({
         diceColor,
         show3DDice,
         combatOverrides,
-        choices: localChoices,
-        spells: localSpells,
-        classes: localClasses,
-        classFeatures: localClassFeatures,
-        maxHp: localMaxHp,
-        level: localClasses.reduce((sum, c) => sum + c.level, 0)
+        choices: overrides.choices || localChoices,
+        spells: overrides.spells || localSpells,
+        classes: overrides.classes || localClasses,
+        classFeatures: overrides.classFeatures || localClassFeatures,
+        maxHp: overrides.maxHp || localMaxHp,
+        level: (overrides.classes || localClasses).reduce((sum: number, c: any) => sum + c.level, 0),
+        spellSlots: getSpellSlots(overrides.classes || localClasses)
     });
 
-    const handleSave = () => {
+    const handleSave = (shouldClose: boolean = true, overrides: any = {}) => {
         onUpdate({
-            ...getGlobalUpdates(),
-            currentHp: Math.min(character.currentHp, localMaxHp)
+            ...getGlobalUpdates(overrides),
+            currentHp: Math.min(character.currentHp, overrides.maxHp || localMaxHp)
         });
-        onClose();
+        if (shouldClose) onClose();
     };
 
     // Save All Identity Changes
@@ -652,10 +661,11 @@ const ManageCharacterModal = ({
         } else if (choice.type === 'language') {
             const langsToRemove = data.languages || (Array.isArray(choice.value) ? choice.value : [choice.value]);
             temp.languages = temp.languages.filter((l: string) => !langsToRemove.includes(l));
-        } else if ((choice.type === 'other' || choice.type === 'Level Advancement') && choice.id.startsWith('level-')) {
-            if (data.classIndex) {
+        } else if (choice.type === 'Level Advancement' || (choice.type === 'other' && choice.id.startsWith('level-'))) {
+            const classIndex = data.classIndex || (choice.id.split('-')[2]);
+            if (classIndex) {
                 temp.classes = temp.classes.map((c: any) => {
-                    if (c.definition.index === data.classIndex) {
+                    if (c.definition.index === classIndex) {
                         return { ...c, level: Math.max(0, c.level - 1) };
                     }
                     return c;
@@ -754,7 +764,27 @@ const ManageCharacterModal = ({
         // 1. Revert all choices at this level in reverse order
         [...choicesAtLevel].reverse().forEach(choice => revertChoiceInternal(choice, temp));
 
-        // 2. Update all states at once
+        // 2. If no "Level Advancement" choice was found for this level, manually decrease a class level
+        // This handles characters created in the builder or imported without full history
+        const hasLevelAdvancement = choicesAtLevel.some(c => c.type === 'Level Advancement');
+        if (!hasLevelAdvancement && level > 0) {
+            // Find the class that was likely leveled up. 
+            // We'll take the last class in the list that has enough levels.
+            const classToLevelDown = [...temp.classes].reverse().find(c => c.level > 0);
+            if (classToLevelDown) {
+                temp.classes = temp.classes.map(c => 
+                    c.definition.index === classToLevelDown.definition.index 
+                        ? { ...c, level: c.level - 1 } 
+                        : c
+                ).filter(c => c.level > 0);
+                
+                // Guess HP decrease: Average + CON mod
+                const hpDecrease = Math.floor(classToLevelDown.definition.hit_die / 2) + 1 + calculateModifier(temp.abilities.con);
+                temp.maxHp -= hpDecrease;
+            }
+        }
+
+        // 3. Update all states at once
         setAbilities(temp.abilities);
         setLocalFeats(temp.feats);
         setLocalSpells(temp.spells);
@@ -765,22 +795,23 @@ const ManageCharacterModal = ({
         setLocalClasses(temp.classes);
         setLocalMaxHp(temp.maxHp);
 
-        // 3. Remove the choices from local state
+        // 4. Remove the choices from local state
         const updatedChoices = localChoices.filter(c => c.level !== level);
         setLocalChoices(updatedChoices);
 
-        // 4. Cleanup features for the new levels and update trackers
-        const updatedFeatures = { ...localFeatures };
-        setLocalClassFeatures(prev => prev.filter(f => {
+        // 5. Cleanup features for the new levels and update trackers
+        const finalClassFeatures = localClassFeatures.filter(f => {
             const cls = temp.classes.find(c => c.definition.name === f.source || c.subclass?.name === f.source);
             if (cls) {
                 if (f.level > cls.level) return false;
                 return true;
             }
             return true;
-        }));
+        });
+        setLocalClassFeatures(finalClassFeatures);
 
         // Sync featureUsage (trackers) with new levels
+        const updatedFeatures = { ...localFeatures };
         Object.keys(updatedFeatures).forEach(featName => {
             // Find the class that provides this feature
             const sourceClass = temp.classes.find(c => {
@@ -817,8 +848,21 @@ const ManageCharacterModal = ({
         setLocalFeatures(updatedFeatures);
         setLevelDownConfirm(null);
         
-        // Auto-save after destructive action like level down
-        handleSave();
+        // Auto-save after destructive action like level down, but don't close the modal
+        handleSave(false, {
+            abilities: temp.abilities,
+            feats: temp.feats,
+            spells: temp.spells,
+            skills: temp.skills,
+            expertise: temp.expertise,
+            toolProficiencies: temp.toolProficiencies,
+            languages: temp.languages,
+            classes: temp.classes,
+            classFeatures: finalClassFeatures,
+            maxHp: temp.maxHp,
+            choices: updatedChoices,
+            featureUsage: updatedFeatures
+        });
     };
 
     const handleAsiEdit = (choiceId: string, stat: string, delta: number) => {
@@ -830,9 +874,10 @@ const ManageCharacterModal = ({
                 
                 if (newVal === currentVal) return c;
 
-                // Total increases in this ASI choice should usually be 2
+                // Total increases in this ASI choice
+                const max = c.count || 2;
                 const total = Object.values(currentAbilities).reduce((a: any, b: any) => (a as number) + (b as number), 0) as number;
-                if (delta > 0 && total >= 2) return c;
+                if (delta > 0 && total >= max) return c;
 
                 const nextAbilities = { ...currentAbilities, [stat]: newVal };
                 const nextTotal = Object.values(nextAbilities).reduce((a: any, b: any) => (a as number) + (b as number), 0) as number;
@@ -843,10 +888,19 @@ const ManageCharacterModal = ({
                     [stat]: prevAbs[stat as keyof AbilityScores] + delta
                 }));
 
+                // Handle linked save proficiency (e.g. Resilient feat)
+                if (c.revertData?.linked_save_proficiency) {
+                    if (delta > 0 && newVal === 1) {
+                        setSavingThrowProficiencies(prev => Array.from(new Set([...prev, stat])));
+                    } else if (delta < 0 && newVal === 0) {
+                        setSavingThrowProficiencies(prev => prev.filter(s => s !== stat));
+                    }
+                }
+
                 return {
                     ...c,
                     revertData: { ...c.revertData, abilities: nextAbilities },
-                    value: nextTotal >= 2 
+                    value: nextTotal >= max 
                         ? Object.entries(nextAbilities)
                             .filter(([_, a]) => (a as number) > 0)
                             .map(([s, a]) => `${ABILITY_LABELS[s as AbilityName]} +${a}`)
@@ -1034,33 +1088,22 @@ const ManageCharacterModal = ({
 
         // Update local choices state
         const skipImmediateValue = ['asi-feat', 'subclass', 'feat-selection'].includes(choice.type);
-        setLocalChoices(prev => prev.map(c => 
-            c.id === choiceId ? { ...c, value: skipImmediateValue ? c.value : finalValue } : c
-        ));
+        setLocalChoices(prev => prev.map(c => {
+            if (c.id === choiceId) {
+                const updated = { ...c, value: skipImmediateValue ? c.value : finalValue };
+                if (choice.type === 'subclass' || choice.type === 'feat-selection') {
+                    updated.revertData = { ...c.revertData, featIndex: finalValue };
+                }
+                return updated;
+            }
+            return c;
+        }));
 
         if (choice.type === 'subclass') {
-            const subclassDetail = typeof finalValue === 'string' ? choice.options?.find((o: any) => o.index === finalValue) : finalValue;
-            if (subclassDetail) {
-                setLocalClasses(prev => prev.map(c => 
-                    c.definition.index === choice.revertData.classIndex ? { ...c, subclass: subclassDetail } : c
-                ));
-                
-                // Fetch and add subclass features
-                const subLevels = await fetchSubclassLevels(subclassDetail.index);
-                const currentLevel = localClasses.find(c => c.definition.index === choice.revertData.classIndex)?.level || 1;
-                const newSubFeatures = subLevels
-                    .filter(l => l.level <= currentLevel)
-                    .flatMap(l => l.features.map(f => ({
-                        ...f,
-                        level: l.level,
-                        source: subclassDetail.name,
-                        desc: f.desc || []
-                    })));
-                
-                setLocalClassFeatures(prev => {
-                    const filtered = prev.filter(f => f.source !== subclassDetail.name);
-                    return [...filtered, ...newSubFeatures];
-                });
+            const subclassIndex = typeof finalValue === 'string' ? finalValue : finalValue?.index;
+            if (subclassIndex) {
+                const classIndex = choice.id.replace('subclass-', '');
+                handleSubclassChange(classIndex, subclassIndex);
             }
         }
 
@@ -1154,6 +1197,8 @@ const ManageCharacterModal = ({
                                             filtered = filtered.filter(s => schools.includes(s.school.name.toLowerCase()));
                                         }
                                         options = filtered.map(s => ({ index: s.index, name: s.name }));
+                                    } else if (e.type === 'class_choice') {
+                                        options = e.options || [];
                                     }
 
                                     return {
@@ -1163,12 +1208,18 @@ const ManageCharacterModal = ({
                                         type: (e.type === 'asi_choice' ? 'asi' : 
                                                e.type === 'proficiency_choice' ? (e.category === 'skill' ? 'skill' : e.category === 'language' ? 'language' : 'other') :
                                                e.type === 'expertise_choice' ? 'expertise' :
-                                               e.type === 'spell_access' ? 'spell' : 'other') as LevelChoice['type'],
+                                               e.type === 'spell_access' ? 'spell' : 
+                                               e.type === 'class_choice' ? 'other' : 'other') as LevelChoice['type'],
                                         label: `${featDetail.name}: ${e.name || (e.type === 'spell_access' ? (e.level === 0 ? 'Cantrip' : '1st-level Spell') : e.type.replace('_', ' '))}`,
                                         value: null,
                                         options: options,
                                         count: e.count || 1,
-                                        revertData: { parentChoiceId: choiceId, featIndex: featDetail.index }
+                                        revertData: { 
+                                            parentChoiceId: choiceId, 
+                                            featIndex: featDetail.index,
+                                            isSubChoice: true,
+                                            linked_save_proficiency: (e as any).linked_save_proficiency
+                                        }
                                     };
                                 });
                             if (newSubChoices.length > 0) {
@@ -1202,9 +1253,7 @@ const ManageCharacterModal = ({
                     if (prev.some(f => f.index === featDetail.index)) return prev;
                     return [...prev, featDetail];
                 });
-                setLocalChoices(prev => prev.map(c => 
-                    c.id === choiceId ? { ...c, value: null, revertData: { ...c.revertData, featIndex: newValue } } : c
-                ));
+                // Note: revertData.featIndex is already updated in the common setLocalChoices call above
             }
         }
 
@@ -1766,27 +1815,40 @@ const ManageCharacterModal = ({
                                                 ))}
                                                 {customFeats.length === 0 && <div className="text-gray-600 italic text-sm text-center py-4 border border-dashed border-gray-800 rounded-xl">No custom feats.</div>}
                                             </div>
-                                            <div className="flex gap-3 pt-2">
-                                                <select 
-                                                    value={featToAdd} 
-                                                    onChange={e => setFeatToAdd(e.target.value)} 
-                                                    className="flex-grow bg-black/40 border border-gray-700 rounded-xl p-3 text-white focus:border-dnd-gold/50 outline-none transition-all text-xs"
-                                                >
-                                                    <option value="">Add Feat...</option>
-                                                    {allFeats
-                                                        .filter(f => !localFeats.some(lf => lf.index === f.index))
-                                                        .map(f => (
-                                                            <option key={f.index} value={f.index}>{f.name}</option>
-                                                        ))
-                                                    }
-                                                </select>
-                                                <button 
-                                                    onClick={handleAddFeat} 
-                                                    disabled={!featToAdd}
-                                                    className="px-4 py-3 bg-gray-800 hover:bg-gray-700 text-white font-black uppercase tracking-widest rounded-xl text-[10px] disabled:opacity-30 transition-all"
-                                                >
-                                                    Add
-                                                </button>
+                                            <div className="space-y-3 pt-2">
+                                                <div className="flex gap-3">
+                                                    <select 
+                                                        value={featToAdd} 
+                                                        onChange={e => setFeatToAdd(e.target.value)} 
+                                                        className="flex-grow bg-black/40 border border-gray-700 rounded-xl p-3 text-white focus:border-dnd-gold/50 outline-none transition-all text-xs"
+                                                    >
+                                                        <option value="">Add Feat...</option>
+                                                        {allFeats
+                                                            .filter(f => !localFeats.some(lf => lf.index === f.index))
+                                                            .map(f => (
+                                                                <option key={f.index} value={f.index}>{f.name}</option>
+                                                            ))
+                                                        }
+                                                    </select>
+                                                    <button 
+                                                        onClick={handleAddFeat} 
+                                                        disabled={!featToAdd}
+                                                        className="px-4 py-3 bg-gray-800 hover:bg-gray-700 text-white font-black uppercase tracking-widest rounded-xl text-[10px] disabled:opacity-30 transition-all"
+                                                    >
+                                                        Add
+                                                    </button>
+                                                </div>
+                                                {featToAdd && (
+                                                    <div className="p-3 bg-black/40 border border-gray-800 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300">
+                                                        <div className="flex items-center gap-2 mb-1.5">
+                                                            <Info size={10} className="text-dnd-gold" />
+                                                            <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Feat Description</span>
+                                                        </div>
+                                                        <p className="text-[10px] text-gray-400 leading-relaxed">
+                                                            {allFeats.find(f => f.index === featToAdd)?.desc.join(' ')}
+                                                        </p>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </section>
@@ -2095,7 +2157,7 @@ const ManageCharacterModal = ({
                                     <h3 className="text-[10px] font-black text-dnd-gold uppercase tracking-[0.2em]">Core Identity</h3>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-2">
+                                    <div className="space-y-3">
                                         <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Race</label>
                                         <select 
                                             value={selectedRaceIndex}
@@ -2107,8 +2169,23 @@ const ManageCharacterModal = ({
                                                 <option key={r.index} value={r.index}>{r.name}</option>
                                             ))}
                                         </select>
+                                        {selectedRaceIndex && (
+                                            <div className="p-3 bg-black/40 border border-gray-800 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300">
+                                                <div className="flex items-center gap-2 mb-1.5">
+                                                    <Info size={10} className="text-dnd-gold" />
+                                                    <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Race Description</span>
+                                                </div>
+                                                <div className="text-[10px] text-gray-400 leading-relaxed markdown-body">
+                                                    {(() => {
+                                                        const race = RACES.find(r => r.index === selectedRaceIndex);
+                                                        if (!race) return 'No description available.';
+                                                        return <Markdown>{`${race.alignment} ${race.age} ${race.size_description}`}</Markdown>;
+                                                    })()}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="space-y-3">
                                         <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Subrace</label>
                                         <select 
                                             value={selectedSubraceIndex}
@@ -2121,6 +2198,22 @@ const ManageCharacterModal = ({
                                                 <option key={s.index} value={s.index}>{s.name}</option>
                                             ))}
                                         </select>
+                                        {selectedSubraceIndex && (
+                                            <div className="p-3 bg-black/40 border border-gray-800 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300">
+                                                <div className="flex items-center gap-2 mb-1.5">
+                                                    <Info size={10} className="text-dnd-gold" />
+                                                    <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Subrace Description</span>
+                                                </div>
+                                                <div className="text-[10px] text-gray-400 leading-relaxed markdown-body">
+                                                    {(() => {
+                                                        const race = RACES.find(r => r.subraces_details?.some(s => s.index === selectedSubraceIndex));
+                                                        const subrace = race?.subraces_details?.find(s => s.index === selectedSubraceIndex);
+                                                        if (!subrace) return 'No description available.';
+                                                        return <Markdown>{subrace.desc?.join('\n\n') || 'No description available.'}</Markdown>;
+                                                    })()}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </section>
@@ -2135,9 +2228,12 @@ const ManageCharacterModal = ({
                                     <div className="space-y-3">
                                         {localSpells.filter(s => s.sourceClassIndex === 'racial').map(spell => (
                                             <div key={spell.index} className="flex items-center justify-between bg-black/20 p-5 rounded-2xl border border-gray-800">
-                                                <div>
+                                                <div className="flex-grow">
                                                     <div className="font-bold text-white text-lg font-serif">{spell.name}</div>
-                                                    <div className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Source: Race</div>
+                                                    <div className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Source: Race</div>
+                                                    <div className="text-[10px] text-gray-400 leading-relaxed max-w-md markdown-body">
+                                                        <Markdown>{Array.isArray(spell.desc) ? spell.desc.join('\n\n') : spell.desc}</Markdown>
+                                                    </div>
                                                 </div>
                                                 <div className="flex items-center gap-4">
                                                     <span className="text-xs text-gray-500 font-bold italic">Change to:</span>
@@ -2259,9 +2355,9 @@ const ManageCharacterModal = ({
                                                                                 <Info size={12} className="text-gray-500 hover:text-dnd-gold cursor-help" />
                                                                                 <div className="absolute left-0 bottom-full mb-2 w-64 p-3 bg-black border border-gray-800 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
                                                                                     <h6 className="text-dnd-gold font-bold text-[10px] mb-1">{allFeats.find(f => f.index === choice.revertData.featIndex)?.name}</h6>
-                                                                                    <p className="text-[9px] text-gray-400 leading-relaxed">
-                                                                                        {allFeats.find(f => f.index === choice.revertData.featIndex)?.desc.join(' ')}
-                                                                                    </p>
+                                                                                    <div className="text-[9px] text-gray-400 leading-relaxed markdown-body">
+                                                                                        <Markdown>{allFeats.find(f => f.index === choice.revertData.featIndex)?.desc.join('\n\n')}</Markdown>
+                                                                                    </div>
                                                                                 </div>
                                                                             </div>
                                                                         )}
@@ -2277,32 +2373,34 @@ const ManageCharacterModal = ({
                                                                 {/* Choice Input Logic */}
                                                                 {(choice.type === 'asi' || choice.type === 'asi-feat') ? (
                                                                     <div className="space-y-4">
-                                                                        <div className="flex gap-2">
-                                                                            <button 
-                                                                                onClick={() => handleChoiceChange(choice.id, 'asi')}
-                                                                                className={`flex-1 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${
-                                                                                    choice.revertData?.mode !== 'feat' 
-                                                                                        ? 'bg-dnd-gold border-dnd-gold text-black' 
-                                                                                        : 'bg-black/40 border-gray-800 text-gray-500 hover:border-gray-600'
-                                                                                }`}
-                                                                            >
-                                                                                Ability Score Increase
-                                                                            </button>
-                                                                            <button 
-                                                                                onClick={() => handleChoiceChange(choice.id, 'feat')}
-                                                                                className={`flex-1 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${
-                                                                                    choice.revertData?.mode === 'feat' 
-                                                                                        ? 'bg-dnd-gold border-dnd-gold text-black' 
-                                                                                        : 'bg-black/40 border-gray-800 text-gray-500 hover:border-gray-600'
-                                                                                }`}
-                                                                            >
-                                                                                Select a Feat
-                                                                            </button>
-                                                                        </div>
+                                                                        {!choice.revertData?.isSubChoice && (
+                                                                            <div className="flex gap-2">
+                                                                                <button 
+                                                                                    onClick={() => handleChoiceChange(choice.id, 'asi')}
+                                                                                    className={`flex-1 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${
+                                                                                        choice.revertData?.mode !== 'feat' 
+                                                                                            ? 'bg-dnd-gold border-dnd-gold text-black' 
+                                                                                            : 'bg-black/40 border-gray-800 text-gray-500 hover:border-gray-600'
+                                                                                    }`}
+                                                                                >
+                                                                                    Ability Score Increase
+                                                                                </button>
+                                                                                <button 
+                                                                                    onClick={() => handleChoiceChange(choice.id, 'feat')}
+                                                                                    className={`flex-1 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${
+                                                                                        choice.revertData?.mode === 'feat' 
+                                                                                            ? 'bg-dnd-gold border-dnd-gold text-black' 
+                                                                                            : 'bg-black/40 border-gray-800 text-gray-500 hover:border-gray-600'
+                                                                                    }`}
+                                                                                >
+                                                                                    Select a Feat
+                                                                                </button>
+                                                                            </div>
+                                                                        )}
 
                                                                         {choice.revertData?.mode !== 'feat' && (
                                                                             <div className="grid grid-cols-3 gap-2 max-w-md animate-in fade-in slide-in-from-top-1 duration-300">
-                                                                                {ABILITY_NAMES.map(stat => {
+                                                                                {ABILITY_NAMES.filter(s => !choice.options || choice.options.length === 0 || choice.options.includes(s)).map(stat => {
                                                                                     const currentVal = choice.revertData?.abilities?.[stat] || 0;
                                                                                     return (
                                                                                         <div key={stat} className="flex flex-col items-center bg-black/40 border border-gray-800 rounded-xl p-2">
@@ -2325,7 +2423,7 @@ const ManageCharacterModal = ({
                                                                         )}
 
                                                                         {choice.revertData?.mode === 'feat' && (
-                                                                            <div className="animate-in fade-in slide-in-from-top-1 duration-300">
+                                                                            <div className="animate-in fade-in slide-in-from-top-1 duration-300 space-y-3">
                                                                                 <select
                                                                                     value={choice.revertData?.featIndex || ''}
                                                                                     onChange={(e) => handleChoiceChange(choice.id, e.target.value)}
@@ -2336,31 +2434,78 @@ const ManageCharacterModal = ({
                                                                                         <option key={f.index} value={f.index}>{f.name}</option>
                                                                                     ))}
                                                                                 </select>
+                                                                                
+                                                                                {choice.revertData?.featIndex && (
+                                                                                    <div className="p-3 bg-black/40 border border-gray-800 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300">
+                                                                                        <div className="flex items-center gap-2 mb-1.5">
+                                                                                            <Info size={10} className="text-dnd-gold" />
+                                                                                            <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Feat Description</span>
+                                                                                        </div>
+                                                                                        <div className="text-[10px] text-gray-400 leading-relaxed markdown-body">
+                                                                                            <Markdown>{allFeats.find(f => f.index === choice.revertData?.featIndex)?.desc.join('\n\n')}</Markdown>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                )}
                                                                             </div>
                                                                         )}
                                                                     </div>
                                                                 ) : choice.type === 'subclass' ? (
-                                                                    <select
-                                                                        value={choice.revertData?.featIndex || choice.value || ''}
-                                                                        onChange={(e) => handleChoiceChange(choice.id, e.target.value)}
-                                                                        className="w-full max-w-md bg-black/40 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-dnd-gold/50 transition-all"
-                                                                    >
-                                                                        <option value="">Select Subclass...</option>
-                                                                        {choice.options?.map((opt: any, idx: number) => (
-                                                                            <option key={opt.index || opt.name || (typeof opt === 'string' ? opt : idx)} value={opt.index || opt.name || opt}>{opt.name || opt}</option>
-                                                                        ))}
-                                                                    </select>
+                                                                    <div className="space-y-3">
+                                                                        <select
+                                                                            value={choice.revertData?.featIndex || choice.value || ''}
+                                                                            onChange={(e) => handleChoiceChange(choice.id, e.target.value)}
+                                                                            className="w-full max-w-md bg-black/40 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-dnd-gold/50 transition-all"
+                                                                        >
+                                                                            <option value="">Select Subclass...</option>
+                                                                            {choice.options?.map((opt: any, idx: number) => (
+                                                                                <option key={opt.index || opt.name || (typeof opt === 'string' ? opt : idx)} value={opt.index || opt.name || opt}>{opt.name || opt}</option>
+                                                                            ))}
+                                                                        </select>
+
+                                                                        {(choice.revertData?.featIndex || choice.value) && (
+                                                                            <div className="p-3 bg-black/40 border border-gray-800 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300 max-w-md">
+                                                                                <div className="flex items-center gap-2 mb-1.5">
+                                                                                    <Info size={10} className="text-dnd-gold" />
+                                                                                    <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Subclass Description</span>
+                                                                                </div>
+                                                                                <div className="text-[10px] text-gray-400 leading-relaxed markdown-body">
+                                                                                    {(() => {
+                                                                                        const val = choice.revertData?.featIndex || choice.value;
+                                                                                        const opt = choice.options?.find((o: any) => (o.index || o.name || o) === val);
+                                                                                        if (opt?.desc) return <Markdown>{Array.isArray(opt.desc) ? opt.desc.join('\n\n') : opt.desc}</Markdown>;
+                                                                                        // Fallback to SUBCLASSES data if needed
+                                                                                        const fullSubclass = SUBCLASSES.find(s => s.index === val);
+                                                                                        return <Markdown>{fullSubclass?.desc.join('\n\n') || 'No description available.'}</Markdown>;
+                                                                                    })()}
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
                                                                 ) : choice.type === 'feat-selection' ? (
-                                                                    <select
-                                                                        value={choice.revertData?.featIndex || choice.value || ''}
-                                                                        onChange={(e) => handleChoiceChange(choice.id, e.target.value)}
-                                                                        className="w-full max-w-md bg-black/40 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-dnd-gold/50 transition-all"
-                                                                    >
-                                                                        <option value="">Select a Feat...</option>
-                                                                        {allFeats.map(f => (
-                                                                            <option key={f.index} value={f.index}>{f.name}</option>
-                                                                        ))}
-                                                                    </select>
+                                                                    <div className="space-y-3">
+                                                                        <select
+                                                                            value={choice.revertData?.featIndex || choice.value || ''}
+                                                                            onChange={(e) => handleChoiceChange(choice.id, e.target.value)}
+                                                                            className="w-full max-w-md bg-black/40 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-dnd-gold/50 transition-all"
+                                                                        >
+                                                                            <option value="">Select a Feat...</option>
+                                                                            {allFeats.map(f => (
+                                                                                <option key={f.index} value={f.index}>{f.name}</option>
+                                                                            ))}
+                                                                        </select>
+
+                                                                        {(choice.revertData?.featIndex || choice.value) && (
+                                                                            <div className="p-3 bg-black/40 border border-gray-800 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300 max-w-md">
+                                                                                <div className="flex items-center gap-2 mb-1.5">
+                                                                                    <Info size={10} className="text-dnd-gold" />
+                                                                                    <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Feat Description</span>
+                                                                                </div>
+                                                                                <div className="text-[10px] text-gray-400 leading-relaxed markdown-body">
+                                                                                    <Markdown>{allFeats.find(f => f.index === (choice.revertData?.featIndex || choice.value))?.desc.join('\n\n')}</Markdown>
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
                                                                 ) : (
                                                                     <div className="flex flex-wrap gap-2">
                                                                         {choice.options?.map((opt: any, idx: number) => {
@@ -2382,6 +2527,33 @@ const ManageCharacterModal = ({
                                                                                 </button>
                                                                             );
                                                                         })}
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Description for other choices (spells, backgrounds, etc) */}
+                                                                {choice.value && choice.type !== 'asi' && choice.type !== 'asi-feat' && choice.type !== 'subclass' && choice.type !== 'feat-selection' && (
+                                                                    <div className="mt-4 p-3 bg-black/40 border border-gray-800 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300 max-w-md">
+                                                                        <div className="flex items-center gap-2 mb-1.5">
+                                                                            <Info size={10} className="text-dnd-gold" />
+                                                                            <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Selection Details</span>
+                                                                        </div>
+                                                                        <div className="text-[10px] text-gray-400 leading-relaxed">
+                                                                            {(() => {
+                                                                                const selectedValues = Array.isArray(choice.value) ? choice.value : [choice.value];
+                                                                                const details = selectedValues.map((val, idx) => {
+                                                                                    const opt = choice.options?.find((o: any) => (o.index || o.name || o) === val);
+                                                                                    const desc = opt?.desc || opt?.feature?.desc;
+                                                                                    if (!desc) return null;
+                                                                                    return (
+                                                                                        <div key={idx} className={idx > 0 ? 'mt-2 pt-2 border-t border-gray-800/50' : ''}>
+                                                                                            <div className="font-bold text-gray-300 mb-0.5">{opt.name || val}</div>
+                                                                                            <div>{Array.isArray(desc) ? desc.join(' ') : desc}</div>
+                                                                                        </div>
+                                                                                    );
+                                                                                }).filter(Boolean);
+                                                                                return details.length > 0 ? details : 'No additional details available.';
+                                                                            })()}
+                                                                        </div>
                                                                     </div>
                                                                 )}
 
@@ -2416,7 +2588,7 @@ const ManageCharacterModal = ({
                                     <section className="space-y-4">
                                         <div className="flex items-center gap-3 px-2">
                                             <div className="w-2 h-2 rounded-full bg-gray-600" />
-                                            <h4 className="text-gray-500 font-black uppercase tracking-[0.2em] text-[11px]">Choice History</h4>
+                                            <h4 className="text-gray-500 font-black uppercase tracking-[0.2em] text-[11px]">Progression History</h4>
                                         </div>
                                         
                                         {localChoices.filter(c => c.value !== null && c.value !== undefined && c.value !== '' && !(Array.isArray(c.value) && c.value.length === 0)).length === 0 ? (
@@ -2425,18 +2597,31 @@ const ManageCharacterModal = ({
                                             </div>
                                         ) : (
                                             <div className="space-y-4">
-                                                {/* Group by level */}
-                                                {Array.from(new Set(localChoices
-                                                    .filter(c => c.value !== null && c.value !== undefined && c.value !== '' && !(Array.isArray(c.value) && c.value.length === 0))
-                                                    .map(c => c.level)))
-                                                    .sort((a, b) => b - a)
-                                                    .map(level => (
+                                            {/* Group by level, showing all levels from total down to 0 */}
+                                            {(() => {
+                                                const totalLevel = localClasses.reduce((acc, c) => acc + c.level, 0);
+                                                const historyLevels = Array.from({ length: totalLevel + 1 }, (_, i) => i).sort((a, b) => b - a);
+                                                
+                                                return historyLevels.map(level => (
                                                         <div key={level} className="bg-black/20 border border-gray-800 rounded-2xl overflow-hidden">
                                                             <div className="bg-black/40 px-6 py-3 border-b border-gray-800 flex justify-between items-center">
-                                                                <h4 className="text-gray-400 font-black uppercase tracking-[0.2em] text-[10px]">
-                                                                    {level === 0 ? 'Initial Creation' : `Level ${level}`}
-                                                                </h4>
-                                                                {level > 0 && level === Math.max(...localChoices.map(c => c.level)) && (
+                                                                <div className="flex items-center gap-3">
+                                                                    <h4 className="text-gray-400 font-black uppercase tracking-[0.2em] text-[10px]">
+                                                                        {level === 0 ? 'Initial Creation' : `Level ${level}`}
+                                                                    </h4>
+                                                                    {(() => {
+                                                                        const levelAdvancement = localChoices.find(c => c.level === level && c.type === 'Level Advancement');
+                                                                        if (levelAdvancement) {
+                                                                            return (
+                                                                                <span className="text-[8px] bg-dnd-gold/10 text-dnd-gold px-2 py-0.5 rounded border border-dnd-gold/20 font-black uppercase tracking-widest">
+                                                                                    {levelAdvancement.revertData?.classIndex}
+                                                                                </span>
+                                                                            );
+                                                                        }
+                                                                        return null;
+                                                                    })()}
+                                                                </div>
+                                                                {level > 0 && level === totalLevel && (
                                                                     <button 
                                                                         onClick={() => setLevelDownConfirm(level)}
                                                                         className="flex items-center gap-2 px-3 py-1 bg-red-900/20 border border-red-800 hover:bg-red-900/40 text-red-400 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all"
@@ -2447,6 +2632,66 @@ const ManageCharacterModal = ({
                                                                 )}
                                                             </div>
                                                             <div className="p-4 space-y-4">
+                                                                {/* Level Advancement Summary */}
+                                                                {(() => {
+                                                                    const featuresAtLevel = localClassFeatures.filter(f => f.level === level);
+                                                                    const levelAdvancement = localChoices.find(c => c.level === level && c.type === 'Level Advancement');
+                                                                    
+                                                                    if (level > 0 && (levelAdvancement?.revertData?.hpIncrease || featuresAtLevel.length > 0)) {
+                                                                        return (
+                                                                            <div className="bg-black/40 border border-gray-800/50 rounded-xl p-3 flex flex-wrap gap-4">
+                                                                                {levelAdvancement?.revertData?.hpIncrease && (
+                                                                                    <div className="flex flex-col">
+                                                                                        <span className="text-[7px] text-gray-500 uppercase font-black">HP Increase</span>
+                                                                                        <span className="text-[10px] text-green-400 font-bold">+{levelAdvancement.revertData.hpIncrease} Max HP</span>
+                                                                                    </div>
+                                                                                )}
+                                                                                
+                                                                                {featuresAtLevel.length > 0 && (
+                                                                                    <div className="flex flex-col">
+                                                                                        <span className="text-[7px] text-gray-500 uppercase font-black">New Features</span>
+                                                                                        <div className="flex flex-wrap gap-1 mt-1">
+                                                                                            {featuresAtLevel.map(f => (
+                                                                                                <span key={f.name} className="text-[9px] text-gray-300 bg-gray-800 px-2 py-0.5 rounded border border-gray-700">
+                                                                                                    {f.name}
+                                                                                                </span>
+                                                                                            ))}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                )}
+
+                                                                                {/* Spell Slots Increase (Visual only) */}
+                                                                                {(() => {
+                                                                                    const cls = levelAdvancement?.revertData?.classIndex 
+                                                                                        ? localClasses.find(c => c.definition.index === levelAdvancement.revertData.classIndex)
+                                                                                        : localClasses[0];
+                                                                                    
+                                                                                    if (cls) {
+                                                                                        const currentSlots = getSpellSlots([{ ...cls, level: level }]);
+                                                                                        const prevSlots = getSpellSlots([{ ...cls, level: Math.max(0, level - 1) }]);
+                                                                                        const increased = Object.keys(currentSlots).some(key => {
+                                                                                            const slotLevel = Number(key);
+                                                                                            return currentSlots[slotLevel].max > (prevSlots[slotLevel]?.max || 0);
+                                                                                        });
+                                                                                        
+                                                                                        if (increased) {
+                                                                                            return (
+                                                                                                <div className="flex flex-col">
+                                                                                                    <span className="text-[7px] text-gray-500 uppercase font-black">Spellcasting</span>
+                                                                                                    <span className="text-[9px] text-purple-400 font-bold">Spell Slots Increased</span>
+                                                                                                </div>
+                                                                                            );
+                                                                                        }
+                                                                                    }
+                                                                                    return null;
+                                                                                })()}
+                                                                            </div>
+                                                                        );
+                                                                    }
+                                                                    return null;
+                                                                })()}
+
+                                                                {/* Choices Made */}
                                                                 {localChoices
                                                                     .filter(c => c.level === level && c.value !== null && c.value !== undefined && c.value !== '' && !(Array.isArray(c.value) && c.value.length === 0) && c.type !== 'Level Advancement')
                                                                     .map(choice => {
@@ -2541,7 +2786,7 @@ const ManageCharacterModal = ({
                                                                                                     )}
 
                                                                                                     {choice.revertData?.mode === 'feat' && (
-                                                                                                        <div className="animate-in fade-in slide-in-from-top-1 duration-300">
+                                                                                                        <div className="animate-in fade-in slide-in-from-top-1 duration-300 space-y-3">
                                                                                                             <select
                                                                                                                 value={choice.revertData?.featIndex || ''}
                                                                                                                 onChange={(e) => handleChoiceChange(choice.id, e.target.value)}
@@ -2552,31 +2797,77 @@ const ManageCharacterModal = ({
                                                                                                                     <option key={f.index} value={f.index}>{f.name}</option>
                                                                                                                 ))}
                                                                                                             </select>
+
+                                                                                                            {choice.revertData?.featIndex && (
+                                                                                                                <div className="p-3 bg-black/40 border border-gray-800 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300">
+                                                                                                                    <div className="flex items-center gap-2 mb-1.5">
+                                                                                                                        <Info size={10} className="text-dnd-gold" />
+                                                                                                                        <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Feat Description</span>
+                                                                                                                    </div>
+                                                                                                                    <p className="text-[10px] text-gray-400 leading-relaxed">
+                                                                                                                        {allFeats.find(f => f.index === choice.revertData?.featIndex)?.desc.join(' ')}
+                                                                                                                    </p>
+                                                                                                                </div>
+                                                                                                            )}
                                                                                                         </div>
                                                                                                     )}
                                                                                                 </div>
                                                                                             ) : choice.type === 'subclass' ? (
-                                                                                                <select
-                                                                                                    value={choice.value || ''}
-                                                                                                    onChange={(e) => handleChoiceChange(choice.id, e.target.value)}
-                                                                                                    className="w-full max-w-md bg-black/40 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-dnd-gold/50 transition-all"
-                                                                                                >
-                                                                                                    <option value="">Select Subclass...</option>
-                                                                                                    {choice.options?.map((opt: any, idx: number) => (
-                                                                                                        <option key={opt.index || opt.name || (typeof opt === 'string' ? opt : idx)} value={opt.index || opt.name || opt}>{opt.name || opt}</option>
-                                                                                                    ))}
-                                                                                                </select>
+                                                                                                <div className="space-y-3">
+                                                                                                    <select
+                                                                                                        value={choice.value || ''}
+                                                                                                        onChange={(e) => handleChoiceChange(choice.id, e.target.value)}
+                                                                                                        className="w-full max-w-md bg-black/40 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-dnd-gold/50 transition-all"
+                                                                                                    >
+                                                                                                        <option value="">Select Subclass...</option>
+                                                                                                        {choice.options?.map((opt: any, idx: number) => (
+                                                                                                            <option key={opt.index || opt.name || (typeof opt === 'string' ? opt : idx)} value={opt.index || opt.name || opt}>{opt.name || opt}</option>
+                                                                                                        ))}
+                                                                                                    </select>
+
+                                                                                                    {choice.value && (
+                                                                                                        <div className="p-3 bg-black/40 border border-gray-800 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300 max-w-md">
+                                                                                                            <div className="flex items-center gap-2 mb-1.5">
+                                                                                                                <Info size={10} className="text-dnd-gold" />
+                                                                                                                <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Subclass Description</span>
+                                                                                                            </div>
+                                                                                                            <p className="text-[10px] text-gray-400 leading-relaxed">
+                                                                                                                {(() => {
+                                                                                                                    const val = choice.value;
+                                                                                                                    const opt = choice.options?.find((o: any) => (o.index || o.name || o) === val);
+                                                                                                                    if (opt?.desc) return Array.isArray(opt.desc) ? opt.desc.join(' ') : opt.desc;
+                                                                                                                    const fullSubclass = SUBCLASSES.find(s => s.index === val);
+                                                                                                                    return fullSubclass?.desc.join(' ') || 'No description available.';
+                                                                                                                })()}
+                                                                                                            </p>
+                                                                                                        </div>
+                                                                                                    )}
+                                                                                                </div>
                                                                                             ) : choice.type === 'feat-selection' ? (
-                                                                                                <select
-                                                                                                    value={choice.value || ''}
-                                                                                                    onChange={(e) => handleChoiceChange(choice.id, e.target.value)}
-                                                                                                    className="w-full max-w-md bg-black/40 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-dnd-gold/50 transition-all"
-                                                                                                >
-                                                                                                    <option value="">Select a Feat...</option>
-                                                                                                    {allFeats.map(f => (
-                                                                                                        <option key={f.index} value={f.index}>{f.name}</option>
-                                                                                                    ))}
-                                                                                                </select>
+                                                                                                <div className="space-y-3">
+                                                                                                    <select
+                                                                                                        value={choice.value || ''}
+                                                                                                        onChange={(e) => handleChoiceChange(choice.id, e.target.value)}
+                                                                                                        className="w-full max-w-md bg-black/40 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-dnd-gold/50 transition-all"
+                                                                                                    >
+                                                                                                        <option value="">Select a Feat...</option>
+                                                                                                        {allFeats.map(f => (
+                                                                                                            <option key={f.index} value={f.index}>{f.name}</option>
+                                                                                                        ))}
+                                                                                                    </select>
+
+                                                                                                    {choice.value && (
+                                                                                                        <div className="p-3 bg-black/40 border border-gray-800 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300 max-w-md">
+                                                                                                            <div className="flex items-center gap-2 mb-1.5">
+                                                                                                                <Info size={10} className="text-dnd-gold" />
+                                                                                                                <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Feat Description</span>
+                                                                                                            </div>
+                                                                                                            <p className="text-[10px] text-gray-400 leading-relaxed">
+                                                                                                                {allFeats.find(f => f.index === choice.value)?.desc.join(' ')}
+                                                                                                            </p>
+                                                                                                        </div>
+                                                                                                    )}
+                                                                                                </div>
                                                                                             ) : (
                                                                                                 <div className="flex flex-wrap gap-2">
                                                                                                     {choice.options?.map((opt: any, idx: number) => {
@@ -2608,12 +2899,13 @@ const ManageCharacterModal = ({
                                                                     })}
                                                             </div>
                                                         </div>
-                                                    ))}
-                                            </div>
-                                        )}
-                                    </section>
-                                </div>
-                            )}
+                                                    ))
+                                            })()}
+                                        </div>
+                                    )}
+                                </section>
+                            </div>
+                        )}
 
                             <div className="pt-8 border-t border-gray-800 flex justify-start hidden">
                                 <button 
@@ -2726,7 +3018,7 @@ const ManageCharacterModal = ({
 
                             <div className="pt-8 border-t border-gray-800 flex justify-start hidden">
                                 <button 
-                                    onClick={handleSave} 
+                                    onClick={() => handleSave()} 
                                     className="px-8 py-2.5 bg-dnd-gold hover:bg-white text-black font-black uppercase tracking-widest rounded-xl shadow-lg shadow-dnd-gold/10 transition-all flex items-center justify-center gap-2 text-xs"
                                 >
                                     <Save size={14} />
@@ -2744,7 +3036,7 @@ const ManageCharacterModal = ({
                         <span className="text-[10px] font-black uppercase tracking-widest">Unsaved changes will be lost</span>
                     </div>
                     <button 
-                        onClick={handleSave}
+                        onClick={() => handleSave()}
                         className="px-10 py-3 bg-dnd-gold hover:bg-white text-black font-black uppercase tracking-widest rounded-xl shadow-xl shadow-dnd-gold/10 transition-all flex items-center justify-center gap-2 text-xs group"
                     >
                         <Save size={16} className="group-hover:scale-110 transition-transform" />

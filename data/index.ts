@@ -1,7 +1,8 @@
 import { RACES, ExtendedRaceDetail } from './races';
 import { CLASSES, ExtendedClassDetail } from './classes';
 import { SUBCLASSES, ExtendedSubclassDetail } from './subclasses';
-import { FEATS, ExtendedFeatDetail } from './feats';
+import { FEATS } from './feats';
+import { ExtendedFeatDetail } from '../types';
 import { BACKGROUNDS } from './backgrounds';
 import { ALL_ITEMS, getItem } from './items/index';
 import { getLocalSpells } from './spells/index';

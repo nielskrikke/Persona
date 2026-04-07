@@ -41,6 +41,7 @@ const INITIAL_CHARACTER: CharacterState = {
     expertise: [],
     languages: ['Common'],
     toolProficiencies: [],
+    savingThrowProficiencies: [],
     maxHp: 10,
     currentHp: 10,
     tempHp: 0,

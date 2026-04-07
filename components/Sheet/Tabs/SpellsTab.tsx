@@ -163,6 +163,11 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                 <div className="min-w-0">
                                                     <div className="font-bold text-gray-200 text-sm group-hover:text-white truncate flex items-center gap-1.5">
                                                         {spell.name}
+                                                        {spell.name === 'Eldritch Blast' && (
+                                                            <span className="text-[10px] text-dnd-gold font-black ml-1">
+                                                                x{character.level >= 17 ? 4 : character.level >= 11 ? 3 : character.level >= 5 ? 2 : 1}
+                                                            </span>
+                                                        )}
                                                         <div className="flex gap-1">
                                                             {spell.concentration && (<span className="text-[8px] bg-blue-900/40 text-blue-400 border border-blue-800/60 px-1 rounded">C</span>)}
                                                             {spell.ritual && (<span className="text-[8px] bg-yellow-900/40 text-yellow-500 border border-yellow-800/60 px-1 rounded">R</span>)}

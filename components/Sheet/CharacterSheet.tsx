@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Sparkles, Plus, X } from 'lucide-react';
+import Markdown from 'react-markdown';
+import { Sparkles, Plus, X, Maximize, Search, Info } from 'lucide-react';
 import { CharacterState, ABILITY_NAMES, ABILITY_LABELS, RollResult, AbilityName, SpellDetail, InventoryItem, Currency, RuleEntry, CreatureDetail, EldritchCannonDetail, SteelDefenderDetail, EquipmentDetail, ItemModifier } from '../../types';
 import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount } from '../../utils/rules';
 import { rollDice } from '../../utils/dice';
@@ -334,6 +335,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const [showSteelDefenderModal, setShowSteelDefenderModal] = useState(false);
     const [showCardOptionsModal, setShowCardOptionsModal] = useState(false);
     const [showHomebrewModal, setShowHomebrewModal] = useState(false);
+    const [showFullScreenFeatures, setShowFullScreenFeatures] = useState(false);
+    const [fullScreenFeaturesSearch, setFullScreenFeaturesSearch] = useState('');
     const [homebrewInitialTab, setHomebrewInitialTab] = useState<'race' | 'class' | 'subclass' | 'background' | 'spell' | 'item' | 'creature' | 'feat' | undefined>(undefined);
     const [homebrewInitialData, setHomebrewInitialData] = useState<any>(null);
     const [viewingFamiliar, setViewingFamiliar] = useState<CreatureDetail | null>(null); 
@@ -650,8 +653,22 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
              // Unarmored Defense
              const isBarb = character.classes.some(c => c.definition.index === 'barbarian');
              const isMonk = character.classes.some(c => c.definition.index === 'monk');
-             if (isBarb) baseAC += conMod;
-             else if (isMonk) baseAC += wisMod;
+             
+             // Check for stat_bonus_attribute (e.g., Unarmored Defense)
+             let attrBonus = 0;
+             activeModifiers.forEach(m => {
+                 if (m.type === 'stat_bonus_attribute' && m.stat === 'ac' && m.attribute) {
+                     attrBonus = Math.max(attrBonus, calculateModifier(getStat(m.attribute)));
+                 }
+             });
+
+             if (attrBonus > 0) {
+                 baseAC += attrBonus;
+             } else if (isBarb) {
+                 baseAC += conMod;
+             } else if (isMonk) {
+                 baseAC += wisMod;
+             }
         }
 
         let total = baseAC + dexBonus;
@@ -730,12 +747,27 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
              // Unarmored Defense
              const isBarb = character.classes.some(c => c.definition.index === 'barbarian');
              const isMonk = character.classes.some(c => c.definition.index === 'monk');
-             if (isBarb) {
+             
+             let attrBonus = 0;
+             let attrSource = '';
+             activeModifiers.forEach(m => {
+                 if (m.type === 'stat_bonus_attribute' && m.stat === 'ac' && m.attribute) {
+                     const val = calculateModifier(getStat(m.attribute));
+                     if (val > attrBonus) {
+                         attrBonus = val;
+                         attrSource = `Unarmored Defense (${m.attribute.toUpperCase()})`;
+                     }
+                 }
+             });
+
+             if (attrBonus > 0) {
+                 breakdown.push({ label: attrSource, value: attrBonus });
+             } else if (isBarb) {
                  breakdown.push({ label: 'Unarmored Defense (Con)', value: conMod });
              } else if (isMonk) {
                  breakdown.push({ label: 'Unarmored Defense (Wis)', value: wisMod });
              }
-
+             
              if (setAC === -1) breakdown.push({ label: 'Dexterity', value: dexMod });
         }
 
@@ -1684,7 +1716,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
                          <div className="flex justify-between items-center mb-2"><h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Saving Throws</h3></div>
                          <div className="space-y-1">{ABILITY_NAMES.map(stat => { 
-                             const isProf = !!character.classes.some(c => c.definition.saving_throws.some(s => s.name === stat.substring(0,3).toUpperCase())); 
+                             const isProf = !!character.classes.some(c => c.definition.saving_throws.some(s => s.name === stat.substring(0,3).toUpperCase())) || 
+                                            (character.savingThrowProficiencies || []).includes(stat) ||
+                                            activeModifiers.some(m => m.type === 'proficiency' && m.target === stat.substring(0,3).toUpperCase() && m.category === 'save'); 
                              const mod = calculateModifier(getStat(stat)) + (isProf ? prof : 0) + globalSaveBonus; 
                              const hasFullAdv = activeModifiers.some(m => m.type === 'advantage' && (m.target === `${stat}_save` || (m.target === 'saves' && (!m.filter || m.filter.toLowerCase() === ABILITY_LABELS[stat].toLowerCase()))));
                              
@@ -1871,6 +1905,24 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const res = activeModifiers.filter(m => m.type === 'resistance').map(m => String(m.value));
                 const imm = activeModifiers.filter(m => m.type === 'immunity').map(m => String(m.value));
                 const advDef = activeModifiers.filter(m => m.type === 'advantage' && (m.target === 'saves' || m.target === 'skills') && m.filter).map(m => String(m.filter));
+                
+                const defensiveFeatures: { name: string, desc: string }[] = [];
+                if (character.classes.some(c => (c.definition.index === 'rogue' || c.definition.index === 'monk') && c.level >= 7)) {
+                    defensiveFeatures.push({ name: 'Evasion', desc: 'When you are subjected to an effect that allows you to make a Dexterity saving throw to take only half damage, you instead take no damage if you succeed on the saving throw, and only half damage if you fail.' });
+                }
+                if (character.classes.some(c => c.definition.index === 'rogue' && c.level >= 5)) {
+                    defensiveFeatures.push({ name: 'Uncanny Dodge', desc: 'When an attacker that you can see hits you with an attack, you can use your reaction to halve the attack\'s damage against you.' });
+                }
+                if (character.classes.some(c => c.definition.index === 'paladin' && c.level >= 6)) {
+                    defensiveFeatures.push({ name: 'Aura of Protection', desc: `You and friendly creatures within 10 feet of you gain a bonus to all saving throws equal to your Charisma modifier (${formatModifier(chaMod)}).` });
+                }
+                if (character.classes.some(c => c.definition.index === 'barbarian' && c.level >= 2)) {
+                    defensiveFeatures.push({ name: 'Danger Sense', desc: 'You have advantage on Dexterity saving throws against effects that you can see, such as traps and spells.' });
+                }
+                if (character.classes.some(c => c.definition.index === 'monk' && c.level >= 13)) {
+                    defensiveFeatures.push({ name: 'Deflect Energy', desc: 'You can use your reaction to deflect or redirect energy from a ranged attack.' });
+                }
+
                 return (
                     <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
                         <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest mb-2">Defenses</h3>
@@ -1878,7 +1930,16 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             {res.map(r => (<span key={`res-${r}`} className="bg-blue-900/30 border border-blue-800/50 px-1.5 py-0.5 rounded text-[9px] text-blue-200 font-bold uppercase">Resist: {r}</span>))}
                             {imm.map(i => (<span key={`imm-${i}`} className="bg-purple-900/30 border border-purple-800/50 px-1.5 py-0.5 rounded text-[9px] text-purple-200 font-bold uppercase">Immune: {i}</span>))}
                             {advDef.map(a => (<span key={`adv-${a}`} className="bg-green-900/30 border border-green-800/50 px-1.5 py-0.5 rounded text-[9px] text-green-200 font-bold uppercase">Adv vs {a}</span>))}
-                            {res.length === 0 && imm.length === 0 && advDef.length === 0 && <span className="text-gray-600 text-xs italic">No special defenses.</span>}
+                            {defensiveFeatures.map(f => (
+                                <div key={f.name} className="group/def relative">
+                                    <span className="bg-orange-900/30 border border-orange-800/50 px-1.5 py-0.5 rounded text-[9px] text-orange-200 font-bold uppercase cursor-help">{f.name}</span>
+                                    <div className="absolute bottom-full left-0 mb-2 w-64 p-2 bg-gray-900 border border-gray-700 rounded shadow-xl opacity-0 group-hover/def:opacity-100 transition-opacity pointer-events-none z-50 text-[10px] normal-case text-gray-200">
+                                        <div className="font-bold text-dnd-gold mb-1 uppercase tracking-wider">{f.name}</div>
+                                        {f.desc}
+                                    </div>
+                                </div>
+                            ))}
+                            {res.length === 0 && imm.length === 0 && advDef.length === 0 && defensiveFeatures.length === 0 && <span className="text-gray-600 text-xs italic">No special defenses.</span>}
                         </div>
                     </div>
                 );
@@ -1977,7 +2038,131 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         }
 
         const { hit: unarmedHit, damage: unarmedDmg } = applyOverrides(prof + unarmedHitMod, `${unarmedDie}${formatModifier(unarmedHitMod)}`);
-        attacks.push({ id: 'action-unarmed', name: 'Unarmed Strike', range: '5 ft.', hit: unarmedHit, damage: unarmedDmg, type: 'Bludgeoning', notes: [], source: { name: 'Unarmed Strike', desc: 'A punch, kick, head-butt, or similar forceful blow.' } });
+        
+        const getAttackModifiers = (attack: any) => {
+            const modifiers: { name: string, desc: string }[] = [];
+            const isMelee = attack.range === '5 ft.' || attack.range === '10 ft.';
+            const isRanged = !isMelee && attack.range !== 'Self';
+            const isWeapon = attack.source && (attack.source.equipment_category?.index === 'weapon' || attack.source.weapon_category);
+            const isUnarmed = attack.name === 'Unarmed Strike';
+            const isFinesse = attack.notes?.includes('Finesse');
+            const isSpell = attack.source && (attack.source.school || attack.type === 'spell');
+            const spellName = isSpell ? attack.name : '';
+
+            const source = attack.source;
+            const isMonkWeapon = attack.notes?.includes('Monk Weapon') || attack.notes?.includes('Kensei Weapon');
+            const isMagic = source?.requires_attunement || (source?.modifiers && source.modifiers.length > 0) || source?.isInfusion || source?.isPactWeapon || (isMonkWeapon && character.classes.some(c => c.definition.index === 'monk' && c.level >= 6));
+            if (isMagic && isWeapon && !isSpell) {
+                modifiers.push({ name: 'Magical Attack', desc: 'This attack counts as magical for the purpose of overcoming resistance and immunity to nonmagical attacks and damage.' });
+            }
+
+            // Monk: Empowered Strikes
+            if (isUnarmed && character.classes.some(c => c.definition.index === 'monk' && c.level >= 6)) {
+                modifiers.push({ name: 'Empowered Strikes', desc: 'Whenever you deal damage with your Unarmed Strike, it can deal Force damage or its normal damage type.' });
+            }
+
+            // Paladin: Radiant Strikes
+            if (isMelee && isWeapon && character.classes.some(c => c.definition.index === 'paladin' && c.level >= 11)) {
+                modifiers.push({ name: 'Radiant Strikes', desc: 'Whenever you hit a creature with a melee weapon, the creature takes an extra 1d8 radiant damage.' });
+            }
+
+            // Paladin: Divine Smite
+            if (isMelee && isWeapon && character.classes.some(c => c.definition.index === 'paladin' && c.level >= 2)) {
+                modifiers.push({ name: 'Divine Smite', desc: 'When you hit a creature with a melee weapon attack, you can expend one spell slot to deal extra radiant damage.' });
+            }
+
+            // Rogue: Sneak Attack
+            const rogue = character.classes.find(c => c.definition.index === 'rogue');
+            if ((isFinesse || isRanged) && isWeapon && rogue) {
+                const fullRogueDetail = Library.getClass('rogue');
+                const levelData = fullRogueDetail?.level_table.find((l: any) => l.level === rogue.level);
+                const sDice = levelData?.class_specific?.sneak_attack || '1d6';
+                modifiers.push({ name: 'Sneak Attack', desc: `Once per turn, you can deal an extra ${sDice} damage to one creature you hit with an attack if you have advantage on the attack roll.` });
+            }
+
+            // Rogue: Cunning Strike
+            if (character.classes.some(c => c.definition.index === 'rogue' && c.level >= 5) && modifiers.some(m => m.name === 'Sneak Attack')) {
+                modifiers.push({ name: 'Cunning Strike', desc: 'You can trade Sneak Attack damage for additional effects like Poison, Trip, or Withdraw.' });
+            }
+
+            // Barbarian: Reckless Attack
+            if (isMelee && character.classes.some(c => c.definition.index === 'barbarian' && c.level >= 2)) {
+                modifiers.push({ name: 'Reckless Attack', desc: 'You can have advantage on melee weapon attack rolls using Strength during this turn, but attack rolls against you have advantage until your next turn.' });
+            }
+
+            // Barbarian: Brutal Strike
+            if (isMelee && character.classes.some(c => c.definition.index === 'barbarian' && c.level >= 9)) {
+                modifiers.push({ name: 'Brutal Strike', desc: 'If you use Reckless Attack, you can trade advantage for +1d10 damage and a special effect (Forceful Blow or Hamstring Blow).' });
+            }
+
+            // Ranger: Foe Slayer
+            if (character.classes.some(c => c.definition.index === 'ranger' && c.level >= 20)) {
+                modifiers.push({ name: 'Foe Slayer', desc: 'You can add your Wisdom modifier to the attack roll or the damage roll of an attack you make against one of your favored enemies.' });
+            }
+
+            // Special Weapon Modifiers
+            if (attack.notes?.includes('Shillelagh')) {
+                modifiers.push({ name: 'Shillelagh', desc: 'The weapon becomes magical, its damage die becomes 1d8, and you use your spellcasting ability for attack and damage rolls.' });
+            }
+            if (attack.notes?.includes('Battle Ready')) {
+                modifiers.push({ name: 'Battle Ready', desc: 'When you attack with a magic weapon, you can use your Intelligence modifier, instead of Strength or Dexterity, for the attack and damage rolls.' });
+            }
+            if (attack.notes?.includes('Pact Weapon')) {
+                modifiers.push({ name: 'Pact Weapon', desc: 'You are proficient with this weapon, it counts as magical for overcoming resistance, and you can use it as a spellcasting focus.' });
+            }
+            if (attack.notes?.includes('Hex Weapon')) {
+                modifiers.push({ name: 'Hex Warrior', desc: 'You can use your Charisma modifier instead of Strength or Dexterity for attack and damage rolls with this weapon.' });
+            }
+
+            // Warlock: Agonizing Blast
+            if (spellName === 'Eldritch Blast' && character.classFeatures.some(f => f.name === 'Agonizing Blast')) {
+                modifiers.push({ name: 'Agonizing Blast', desc: 'Add your Charisma modifier to the damage it deals on a hit.' });
+            }
+
+            // Cleric: Potent Cantrip
+            if (isSpell && attack.source?.level === 0 && character.classFeatures.some(f => f.name === 'Potent Cantrip')) {
+                modifiers.push({ name: 'Potent Cantrip', desc: 'If you deal damage with a cantrip, you can add your Wisdom modifier to the damage.' });
+            }
+
+            return modifiers;
+        };
+
+        // Calculate Attack Count
+        let attackCount = 1;
+        const fighter = character.classes.find(c => c.definition.index === 'fighter');
+        const paladin = character.classes.find(c => c.definition.index === 'paladin');
+        const ranger = character.classes.find(c => c.definition.index === 'ranger');
+        const monkClass = character.classes.find(c => c.definition.index === 'monk');
+        const barbarian = character.classes.find(c => c.definition.index === 'barbarian');
+
+        if (fighter) {
+            if (fighter.level >= 20) attackCount = 4;
+            else if (fighter.level >= 11) attackCount = 3;
+            else if (fighter.level >= 5) attackCount = 2;
+        } else {
+            const hasExtraAttack = character.classes.some(c => 
+                (['barbarian', 'monk', 'paladin', 'ranger'].includes(c.definition.index) && c.level >= 5) ||
+                (c.definition.index === 'bard' && c.subclass?.index === 'college-of-valour' && c.level >= 6) ||
+                (c.definition.index === 'bard' && c.subclass?.index === 'college-of-swords' && c.level >= 6) ||
+                (c.definition.index === 'wizard' && c.subclass?.index === 'bladesinging' && c.level >= 6) ||
+                (c.definition.index === 'warlock' && character.classFeatures.some(f => f.index === 'thirsting-blade'))
+            );
+            if (hasExtraAttack) attackCount = 2;
+        }
+
+        const unarmedAttack = { 
+            id: 'action-unarmed', 
+            name: 'Unarmed Strike', 
+            range: '5 ft.', 
+            hit: unarmedHit, 
+            damage: unarmedDmg, 
+            type: 'Bludgeoning', 
+            attackCount,
+            notes: [], 
+            source: { name: 'Unarmed Strike', desc: 'A punch, kick, head-butt, or similar forceful blow.' } 
+        };
+        (unarmedAttack as any).modifiers = getAttackModifiers(unarmedAttack);
+        attacks.push(unarmedAttack);
         
         // --- Card Master: The Fool Spell ---
         const cmClass = character.classes.find(c => c.definition.index === 'card-master');
@@ -2015,6 +2200,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 }
             });
         }
+
+        // --- Eldritch Blast ---
+        // Removed manual block to handle in spell loop below
         
         // --- Arrowsmith Specific Arrows ---
         const arrowsmithCls = character.classes.find(c => c.definition.index === 'arrowsmith');
@@ -2077,7 +2265,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 
                 if (def && def.level <= lvl) {
                     const { hit: arrowHit, damage: arrowDmg } = applyOverrides(def.hit === null ? null : bowHit, def.dmg || (def.dmgPlus ? `${bowDmg}${def.dmgPlus}${formatModifier(baseDmgBonus)}` : finalBowDmg));
-                    attacks.push({ 
+                    const arrowAttack = { 
                         id: invItem.id, 
                         name: `${def.name} Arrow`, 
                         range: def.rangeLabel || rangeStr, 
@@ -2087,7 +2275,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         save: def.save || null,
                         notes: ['Arrowsmith', `Qty: ${invItem.quantity}`, ...(def.notes || [])], 
                         source: { name: `${def.name} Arrow`, desc: def.desc } 
-                    });
+                    };
+                    (arrowAttack as any).modifiers = getAttackModifiers(arrowAttack);
+                    attacks.push(arrowAttack);
                 }
             });
         }
@@ -2120,6 +2310,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const fightingStyles = character.classFeatures.filter(f => f.name.includes('Fighting Style'));
             let hasGWF = false;
             let hasDueling = false;
+            let hasTWF = false;
             let archeryBonus = 0;
             
             fightingStyles.forEach(fs => { 
@@ -2127,12 +2318,21 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 if (desc.includes('Archery') && (properties.includes('Ammunition') || (isRanged && item.range))) archeryBonus += 2; 
                 if (desc.includes('Dueling')) hasDueling = true;
                 if (desc.includes('Great Weapon Fighting')) hasGWF = true;
+                if (desc.includes('Two-Weapon Fighting')) hasTWF = true;
             });
             
             let damageDice = item.damage.damage_dice;
-            if (item.isShillelagh) damageDice = '1d8';
-            if (damageDice !== '0' && isMonkWeapon && parseInt(unarmedDie.slice(2)) > (parseInt(damageDice.match(/d(\d+)/)?.[1] || '0'))) {
-                damageDice = unarmedDie;
+            let damageType = item.isShillelagh ? 'Bludgeoning' : (typeof item.damage.damage_type === 'string' ? item.damage.damage_type : item.damage.damage_type.name);
+
+            if (item.isShillelagh) {
+                damageDice = '1d8';
+            }
+            if (damageDice !== '0' && isMonkWeapon) {
+                const monkDieVal = parseInt(unarmedDie.slice(2));
+                const weaponDieVal = parseInt(damageDice.match(/d(\d+)/)?.[1] || '0');
+                if (monkDieVal > weaponDieVal) {
+                    damageDice = unarmedDie;
+                }
             }
 
             let baseRangeVal = isRanged ? (typeof item.range === 'string' ? item.range : (item.range ? `${item.range.normal}${item.range.long ? `/${item.range.long}` : ''} ft.` : '')) : (isReach ? '10 ft.' : '5 ft.');
@@ -2165,7 +2365,6 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 }
             }
 
-            const damageType = item.isShillelagh ? 'Bludgeoning' : (typeof item.damage.damage_type === 'string' ? item.damage.damage_type : item.damage.damage_type.name);
             const notes = [...(item.properties?.map(p => typeof p === 'string' ? p : p.name) || [])];
             
             // Heavy property check for small creatures
@@ -2180,6 +2379,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             if (item.isHexWeapon) notes.push('Hex Weapon');
             if (item.isShillelagh) notes.push('Shillelagh');
             if (item.isBattleReady) notes.push('Battle Ready');
+            if (item.isInfusion) notes.push('Infusion');
+            if (hasTWF) notes.push('Two-Weapon Fighting');
             if (isThrown && !notes.includes('Thrown')) notes.push('Thrown');
             const mastery = item.mastery ? (typeof item.mastery === 'string' ? item.mastery : item.mastery.name) : null;
             if (mastery) {
@@ -2229,16 +2430,56 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 attackName = `${item.name} (Two-Handed)`;
             }
 
-            attacks.push({ id: item.id, name: attackName, range: rangeStr, hit: finalHit, damage: displayDamage, type: damageType, notes: finalNotes, source: item });
+            const weaponAttack = { 
+                id: item.id, 
+                name: attackName, 
+                range: rangeStr, 
+                hit: finalHit, 
+                damage: displayDamage, 
+                type: damageType, 
+                attackCount,
+                notes: finalNotes, 
+                source: item 
+            };
+            (weaponAttack as any).modifiers = getAttackModifiers(weaponAttack);
+            attacks.push(weaponAttack);
         });
 
         character.spells.forEach(spell => {
             const desc = spell.desc?.join(' ').toLowerCase() || '';
             if (desc.includes('spell attack') || spell.attack_type !== undefined) {
-                const dmgStr = getSpellDamageString(spell, character.level, spell.level || 1);
+                let dmgStr = getSpellDamageString(spell, character.level, spell.level || 1);
+                
+                // Agonizing Blast damage bonus
+                if (spell.name === 'Eldritch Blast' && character.classFeatures.some(f => f.name === 'Agonizing Blast')) {
+                    dmgStr = `${dmgStr}${formatModifier(chaMod)}`;
+                }
+
                 const dc = (spell as any).dc?.dc_type?.name?.substring(0, 3).toUpperCase();
                 const { hit: spellHit, damage: spellDmg } = applyOverrides(spellAttack, dmgStr || 'See Desc');
-                attacks.push({ id: spell.index, name: spell.name, range: spell.range, hit: spellHit, save: dc ? { dc: spellSave, type: dc } : null, damage: spellDmg, type: spell.damage?.damage_type?.name || 'Magic', notes: [spell.level === 0 ? 'Cantrip' : `Lvl ${spell.level}`], source: spell });
+                
+                let spellAttackCount = 1;
+                if (spell.name === 'Eldritch Blast') {
+                    const lvl = character.level;
+                    if (lvl >= 17) spellAttackCount = 4;
+                    else if (lvl >= 11) spellAttackCount = 3;
+                    else if (lvl >= 5) spellAttackCount = 2;
+                }
+                
+                const spellAttackObj = { 
+                    id: spell.index, 
+                    name: spell.name, 
+                    range: spell.range, 
+                    hit: spellHit, 
+                    save: dc ? { dc: spellSave, type: dc } : null, 
+                    damage: spellDmg, 
+                    type: spell.damage?.damage_type?.name || 'Magic', 
+                    attackCount: spellAttackCount,
+                    notes: [spell.level === 0 ? 'Cantrip' : `Lvl ${spell.level}`], 
+                    source: spell 
+                };
+                (spellAttackObj as any).modifiers = getAttackModifiers(spellAttackObj);
+                attacks.push(spellAttackObj);
             }
         });
         character.customActions?.forEach(action => {
@@ -2317,14 +2558,28 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
         if (f_item.desc && Array.isArray(f_item.desc) && f_item.desc.length > 0 && !isChoice) return f_item;
         
+        let match_f: any = null;
         for(const c_item of Library.getClasses()) {
-            const match_f = c_item.feature_details.find(fd => fd.index === f_item.index || fd.name === baseName);
-            if(match_f && match_f.desc) return { ...f_item, desc: match_f.desc };
+            match_f = c_item.feature_details.find(fd => fd.index === f_item.index || fd.name === baseName);
+            if(match_f) break;
         }
 
-        for(const s_item of Library.getSubclasses()) {
-            const match_s = s_item.feature_details.find(fd => fd.index === f_item.index || fd.name === baseName);
-            if(match_s && match_s.desc) return { ...f_item, desc: match_s.desc };
+        if (!match_f) {
+            for(const s_item of Library.getSubclasses()) {
+                match_f = s_item.feature_details.find(fd => fd.index === f_item.index || fd.name === baseName);
+                if(match_f) break;
+            }
+        }
+
+        if (match_f) {
+            const result = { ...f_item, desc: match_f.desc, effects: match_f.effects };
+            if (match_f.effects) {
+                const specificEffect = match_f.effects.find((e: any) => e.name === f_item.name);
+                if (specificEffect && (specificEffect.description || specificEffect.desc)) {
+                    result.desc = [specificEffect.description || specificEffect.desc];
+                }
+            }
+            return result;
         }
 
         for(const r_item of Library.getRaces()) {
@@ -2368,10 +2623,15 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
          if (classes.includes('rogue') && character.level >= 2) list.push(enrichFeature({ id: 'feature-cunning-action', index: 'cunning-action', name: 'Cunning Action', category: 'Action' }));
          
          const monk = character.classes.find(c => c.definition.index === 'monk');
-         if (monk && monk.level >= 2) {
-            list.push(enrichFeature({ id: 'feature-flurry-of-blows', index: 'flurry-of-blows', name: 'Flurry of Blows', category: 'Action' }));
-            list.push(enrichFeature({ id: 'feature-patient-defense', index: 'patient-defense', name: 'Patient Defense', category: 'Action' }));
-            list.push(enrichFeature({ id: 'feature-step-of-the-wind', index: 'step-of-the-wind', name: 'Step of the Wind', category: 'Action' }));
+         if (monk) {
+            if (monk.level >= 1) list.push(enrichFeature({ id: 'feature-martial-arts-strike', index: 'martial-arts-2024', name: 'Martial Arts Strike', category: 'Action' }));
+            if (monk.level >= 2) {
+                list.push(enrichFeature({ id: 'feature-flurry-of-blows', index: 'monks-focus', name: 'Flurry of Blows', category: 'Action' }));
+                list.push(enrichFeature({ id: 'feature-patient-defense', index: 'monks-focus', name: 'Patient Defense', category: 'Action' }));
+                list.push(enrichFeature({ id: 'feature-step-of-the-wind', index: 'monks-focus', name: 'Step of the Wind', category: 'Action' }));
+                list.push(enrichFeature({ id: 'feature-uncanny-metabolism', index: 'uncanny-metabolism', name: 'Uncanny Metabolism', category: 'Action' }));
+            }
+            if (monk.level >= 18) list.push(enrichFeature({ id: 'feature-superior-defense', index: 'superior-defense', name: 'Superior Defense', category: 'Action' }));
          }
 
          const paladin = character.classes.find(c => c.definition.index === 'paladin');
@@ -2423,26 +2683,64 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
              if (lvl >= 10) list.push(enrichFeature({ id: 'feature-the-world', index: 'the-world', name: 'The World', category: 'Action' }));
          }
 
-         // 3. Dynamic scanning of all class features for "bonus action" keywords
+         // 3. Dynamic scanning of all class features for "bonus action" keywords or effects
+         const EXCLUDED_INDICES = ['monks-focus', 'cunning-action', 'martial-arts-2024', 'superior-defense', 'uncanny-metabolism'];
          character.classFeatures.forEach(feat => {
-             // Skip if already in list
-             if (list.some(item => item.index === feat.index || item.name === feat.name)) return;
-
+             if (EXCLUDED_INDICES.includes(feat.index)) return;
              const enriched = enrichFeature(feat);
+             
+             // Check top-level description
              const descStr = Array.isArray(enriched.desc) 
                 ? enriched.desc.join(' ').toLowerCase() 
                 : (enriched.desc || '').toLowerCase();
              
              if (descStr.includes('bonus action')) {
-                 list.push({ 
-                     ...enriched, 
-                     id: enriched.id || `feature-${enriched.index || enriched.name.toLowerCase().replace(/\s+/g, '-')}`,
-                     category: 'Action' 
+                 if (!list.some(item => item.name === enriched.name)) {
+                     list.push({ 
+                         ...enriched, 
+                         id: enriched.id || `feature-${enriched.index || enriched.name.toLowerCase().replace(/\s+/g, '-')}`,
+                         category: 'Action' 
+                     });
+                 }
+             }
+
+             // Check effects for bonus_action type
+             if (enriched.effects) {
+                 enriched.effects.forEach((eff: any) => {
+                     if (eff.type === 'bonus_action') {
+                         if (!list.some(item => item.name === eff.name)) {
+                             list.push({
+                                 id: `effect-${eff.name.toLowerCase().replace(/\s+/g, '-')}`,
+                                 name: eff.name,
+                                 category: 'Action',
+                                 desc: [eff.description || eff.desc || (Array.isArray(enriched.desc) ? enriched.desc[0] : enriched.desc) || ''],
+                                 source: { ...enriched, name: eff.name, desc: [eff.description || eff.desc || (Array.isArray(enriched.desc) ? enriched.desc[0] : enriched.desc) || ''] }
+                             });
+                         }
+                     }
                  });
              }
          });
 
-         // 4. Custom Actions
+         // 4. Feats scanning
+         character.feats?.forEach(feat => {
+            const enriched = enrichFeature(feat);
+            const descStr = Array.isArray(enriched.desc) 
+               ? enriched.desc.join(' ').toLowerCase() 
+               : (enriched.desc || '').toLowerCase();
+            
+            if (descStr.includes('bonus action')) {
+                if (!list.some(item => item.name === enriched.name)) {
+                    list.push({ 
+                        ...enriched, 
+                        id: enriched.id || `feat-${enriched.index || enriched.name.toLowerCase().replace(/\s+/g, '-')}`,
+                        category: 'Feat' 
+                    });
+                }
+            }
+        });
+
+         // 5. Custom Actions
          character.customActions?.forEach(action => {
             if (action.activationType === 'bonus') {
                 list.push({ 
@@ -2839,7 +3137,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         )}
                         {activeTab === 'spells' && <SpellsTab character={character} setCharacter={setCharacter} roll={roll} triggerRollMenu={triggerRollMenu} setSelectedDetail={setSelectedDetail} spellSave={spellSave} spellAttackStr={spellAttackStr} spellMod={spellMod} setShowSpellManager={setShowSpellManager} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} onPolymorphCast={() => { setCreatureModalMode('polymorph'); setShowCreatureModal(true); }} />}
                         {activeTab === 'inventory' && <InventoryTab character={character} currentWeight={currentWeight} maxWeight={maxWeight} updateQuantity={updateQuantity} toggleAttunement={toggleAttunement} setSelectedDetail={setSelectedDetail} setShowItemSearchModal={(val, mode) => { setItemSearchMode(mode || 'search'); setShowItemSearchModal(val); }} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} setCharacter={setCharacter} />}
-                        {activeTab === 'features' && <FeaturesTab character={character} setCharacter={setCharacter} getAllFeatures={getAllFeaturesSorted} setSelectedDetail={setSelectedDetail} onTabChange={setActiveTab} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} setShowCardOptionsModal={setShowCardOptionsModal} />}
+                        {activeTab === 'features' && <FeaturesTab character={character} setCharacter={setCharacter} getAllFeatures={getAllFeaturesSorted} setSelectedDetail={setSelectedDetail} onTabChange={setActiveTab} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} setShowCardOptionsModal={setShowCardOptionsModal} onShowFullScreen={() => setShowFullScreenFeatures(true)} />}
                         {activeTab === 'rules' && <RulesTab visibleRules={visibleRules} setSelectedDetail={setSelectedDetail} />}
                         {activeTab === 'log' && <LogTab character={character} setCharacter={setCharacter} onOpenVault={onOpenVault} setShowLayoutManager={setShowLayoutManager} handleRest={handleRest} />}
                     </div>
@@ -2948,6 +3246,105 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 onAddCustom={() => setShowCustomSpellModal(true)} 
                 onDuplicateToHomebrew={(spell) => handleDuplicateToHomebrew('spell', spell)}
             />
+
+            {/* Full Screen Features Modal */}
+            {showFullScreenFeatures && (
+                <div 
+                    className="fixed inset-0 bg-black/95 z-[500] flex flex-col p-4 md:p-8 backdrop-blur-xl animate-in fade-in duration-300"
+                    onClick={() => setShowFullScreenFeatures(false)}
+                >
+                    <div 
+                        className="max-w-7xl mx-auto w-full flex flex-col h-full bg-[#1b1c20] border border-gray-800 rounded-2xl shadow-2xl overflow-hidden"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="p-6 border-b border-gray-800 bg-[#121316] flex justify-between items-center">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-dnd-gold/10 rounded-xl">
+                                    <Maximize size={24} className="text-dnd-gold" />
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl font-serif text-white">All Features & Traits</h2>
+                                    <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mt-1">Comprehensive Archive of your character's abilities</p>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => setShowFullScreenFeatures(false)}
+                                className="p-2 hover:bg-white/5 rounded-full text-gray-500 hover:text-white transition-colors"
+                            >
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        {/* Search Bar */}
+                        <div className="p-6 bg-black/20 border-b border-gray-800">
+                            <div className="relative max-w-2xl mx-auto">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
+                                <input 
+                                    autoFocus
+                                    type="text" 
+                                    placeholder="Search by name or description..." 
+                                    value={fullScreenFeaturesSearch} 
+                                    onChange={(e) => setFullScreenFeaturesSearch(e.target.value)} 
+                                    className="w-full bg-[#0b0c0e] border border-gray-700 rounded-xl py-4 pl-12 pr-4 text-white font-serif focus:border-dnd-gold outline-none shadow-inner transition-all"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-grow overflow-y-auto p-6 custom-scrollbar">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {getAllFeaturesSorted()
+                                    .filter(f => 
+                                        f.name.toLowerCase().includes(fullScreenFeaturesSearch.toLowerCase()) || 
+                                        (f.desc && f.desc[0]?.toLowerCase().includes(fullScreenFeaturesSearch.toLowerCase()))
+                                    )
+                                    .map(feat => (
+                                    <div 
+                                        key={feat.uniqueId}
+                                        className="bg-black/40 border border-gray-800 rounded-xl p-6 transition-all flex flex-col h-full"
+                                    >
+                                        <div className="flex justify-between items-start mb-4">
+                                            <h3 className="font-bold text-lg text-white group-hover:text-dnd-gold transition-colors">{feat.name}</h3>
+                                            <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold border ${
+                                                feat.type === 'Class' ? 'bg-blue-900/20 border-blue-800 text-blue-400' : 
+                                                feat.type === 'Race' ? 'bg-green-900/20 border-green-800 text-green-400' : 
+                                                'bg-orange-900/20 border-orange-800 text-orange-400'
+                                            }`}>
+                                                {feat.source || feat.type}
+                                            </span>
+                                        </div>
+                                        <div className="text-[10px] text-gray-500 font-mono mb-4">
+                                            {feat.level === '-' ? 'Base Feature' : `Level ${feat.level}`}
+                                        </div>
+                                        <div className="text-sm text-gray-400 font-serif leading-relaxed flex-grow space-y-3 markdown-body">
+                                            {feat.desc ? (
+                                                Array.isArray(feat.desc) ? (
+                                                    <Markdown>{feat.desc.join('\n\n')}</Markdown>
+                                                ) : (
+                                                    <Markdown>{feat.desc}</Markdown>
+                                                )
+                                            ) : (
+                                                <p className="italic text-gray-600">No description available.</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                                {getAllFeaturesSorted().filter(f => 
+                                    f.name.toLowerCase().includes(fullScreenFeaturesSearch.toLowerCase()) || 
+                                    (f.desc && f.desc[0]?.toLowerCase().includes(fullScreenFeaturesSearch.toLowerCase()))
+                                ).length === 0 && (
+                                    <div className="col-span-full py-20 text-center">
+                                        <div className="text-4xl mb-4 opacity-20">🔍</div>
+                                        <h3 className="text-xl font-serif text-gray-500">No features match your search.</h3>
+                                        <button onClick={() => setFullScreenFeaturesSearch('')} className="mt-4 text-dnd-gold hover:underline font-bold uppercase text-xs">Clear Search</button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

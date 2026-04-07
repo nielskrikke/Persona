@@ -1,4 +1,4 @@
-import { SubclassDetail, ClassFeature } from '../types';
+import { SubclassDetail, ClassFeature, FeatureEffect } from '../types';
 import { FIGHTING_STYLES } from './classes';
 
 export type SubclassFeatureModifier = 
@@ -18,7 +18,7 @@ export type SubclassFeatureModifier =
     | { type: 'feature'; name: string; description: string };
 
 export interface ExtendedClassFeature extends ClassFeature {
-    effects?: SubclassFeatureModifier[];
+    effects?: FeatureEffect[];
 }
 
 export interface ExtendedSubclassDetail extends SubclassDetail {
@@ -1595,58 +1595,155 @@ export const SUBCLASSES: ExtendedSubclassDetail[] = [
     // --- MONK ---
     {
         index: "open-hand",
-        name: "Way of the Open Hand",
-        source: "Player's Handbook",
+        name: "Warrior of the Open Hand",
+        source: "Player's Handbook 2024",
         class: { index: "monk", name: "Monk", url: "" },
-        desc: ["Masters of martial arts combat, manipulating Ki to heal or harm."],
+        desc: ["Masters of martial arts combat, manipulating Focus to heal or harm. They excel in controlling the battlefield with their unarmed strikes."],
         feature_details: [
-            { index: "open-hand-technique", name: "Open Hand Technique", level: 3, source: "Open Hand", url: "", desc: ["Flurry of Blows adds effects: knockdown (Dex save), push 15ft (Str save), or remove reactions."] },
+            { 
+                index: "open-hand-technique", 
+                name: "Open Hand Technique", 
+                level: 3, 
+                source: "Warrior of the Open Hand", 
+                url: "", 
+                desc: [
+                    "Whenever you hit a creature with an unarmed strike granted by your Flurry of Blows, you can impose one of the following effects on that target:",
+                    "**Addle:** The target can't make opportunity attacks until the start of your next turn.",
+                    "**Push:** The target must succeed on a Strength saving throw or be pushed up to 15 feet away from you.",
+                    "**Topple:** The target must succeed on a Dexterity saving throw or be knocked Prone."
+                ] 
+            },
             { 
                 index: "wholeness-of-body", 
                 name: "Wholeness of Body", 
                 level: 6, 
-                source: "Open Hand", 
+                source: "Warrior of the Open Hand", 
                 url: "", 
-                desc: ["Action: Heal 3 * Monk Level HP. (1/Long Rest)"],
-                effects: [{ type: 'action', name: 'Wholeness of Body', description: 'Heal 3x Level HP.' }]
+                desc: [
+                    "You can tap into your inner reserves to heal yourself. As a bonus action, you can roll your Martial Arts die. You regain a number of HP equal to the roll plus your Wisdom modifier.",
+                    "You can use this feature a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest."
+                ],
+                effects: [{ type: 'bonus_action', name: 'Wholeness of Body', description: 'As a bonus action, you can roll your Martial Arts die. You regain a number of HP equal to the roll plus your Wisdom modifier.' }]
+            },
+            {
+                index: "fleet-step",
+                name: "Fleet Step",
+                level: 11,
+                source: "Warrior of the Open Hand",
+                url: "",
+                desc: ["Your Step of the Wind is so instinctive that you can use it with ease. Whenever you use a Bonus Action that isn't Step of the Wind, you can also use Step of the Wind as part of that Bonus Action."]
+            },
+            {
+                index: "quivering-palm",
+                name: "Quivering Palm",
+                level: 17,
+                source: "Warrior of the Open Hand",
+                url: "",
+                desc: [
+                    "You gain the ability to set up lethal vibrations in someone's body. When you hit a creature with an unarmed strike, you can spend 4 Focus Points to start these vibrations, which last for a number of days equal to your Monk level. The vibrations are harmless unless you use your action to end them. To do so, you and the target must be on the same plane of existence.",
+                    "When you use this action, the target must make a Constitution saving throw. On a failed save, the target takes 10d12 Force damage. On a successful save, the target takes half as much damage."
+                ],
+                effects: [{ type: 'action', name: 'Quivering Palm (End Vibrations)', description: 'Deal 10d12 Force damage (Con save for half).' }]
             }
         ]
     },
     {
         index: "shadow",
-        name: "Way of Shadow",
-        source: "Player's Handbook",
+        name: "Warrior of Shadow",
+        source: "Player's Handbook 2024",
         class: { index: "monk", name: "Monk", url: "" },
-        desc: ["Ninjas and assassins who manipulate darkness."],
+        desc: ["Ninjas and assassins who manipulate darkness to strike from the shadows."],
         feature_details: [
             { 
-                index: "shadow-arts", 
+                index: "shadow-arts-2024", 
                 name: "Shadow Arts", 
                 level: 3, 
-                source: "Shadow", 
+                source: "Warrior of Shadow", 
                 url: "", 
-                desc: ["Spend 2 Ki to cast Darkness, Darkvision, Pass Without Trace, or Silence. Minor Illusion cantrip."],
+                desc: [
+                    "You learn the Minor Illusion cantrip, using Wisdom as your spellcasting ability.",
+                    "You can also spend 1 Focus Point to cast Darkness, Darkvision, Pass Without Trace, or Silence without material components. When you cast Darkness this way, you can move it at the start of each of your turns."
+                ],
                 effects: [{ type: 'spell_access', spell: 'Minor Illusion', cast_free: true }]
             },
             { 
-                index: "shadow-step", 
+                index: "shadow-step-2024", 
                 name: "Shadow Step", 
                 level: 6, 
-                source: "Shadow", 
+                source: "Warrior of Shadow", 
                 url: "", 
-                desc: ["Bonus Action: Teleport 60ft from dim light to dim light. Adv on next melee attack."],
-                effects: [{ type: 'bonus_action', name: 'Shadow Step', description: 'Teleport 60ft in dim light.' }]
+                desc: ["As a bonus action, you can magically teleport up to 60 feet to an unoccupied space you can see that is in dim light or darkness. You then have advantage on the next melee attack roll you make before the end of the current turn."],
+                effects: [{ type: 'bonus_action', name: 'Shadow Step', description: 'As a bonus action, you can magically teleport up to 60 feet to an unoccupied space you can see that is in dim light or darkness. You then have advantage on the next melee attack roll you make before the end of the current turn.' }]
+            },
+            {
+                index: "improved-shadow-arts",
+                name: "Improved Shadow Arts",
+                level: 11,
+                source: "Warrior of Shadow",
+                url: "",
+                desc: ["You can see through the darkness created by your Shadow Arts Darkness spell."]
+            },
+            {
+                index: "cloak-of-shadows-2024",
+                name: "Cloak of Shadows",
+                level: 17,
+                source: "Warrior of Shadow",
+                url: "",
+                desc: ["While you are in dim light or darkness, you can use a bonus action to become Invisible. You remain Invisible until you make an attack roll, cast a spell, or enter an area of bright light."],
+                effects: [{ type: 'bonus_action', name: 'Cloak of Shadows', description: 'While you are in dim light or darkness, you can use a bonus action to become Invisible. You remain Invisible until you make an attack roll, cast a spell, or enter an area of bright light.' }]
             }
         ]
     },
     {
         index: "four-elements",
-        name: "Way of the Four Elements",
-        source: "Player's Handbook",
+        name: "Warrior of the Elements",
+        source: "Player's Handbook 2024",
         class: { index: "monk", name: "Monk", url: "" },
-        desc: ["Use Ki to cast elemental spells."],
+        desc: ["Monks who channel the raw power of the elements through their martial arts."],
         feature_details: [
-            { index: "disciple-of-the-elements", name: "Disciple of the Elements", level: 3, source: "Four Elements", url: "", desc: ["Learn elemental disciplines (spells)."] }
+            { 
+                index: "elemental-attunement", 
+                name: "Elemental Attunement", 
+                level: 3, 
+                source: "Warrior of the Elements", 
+                url: "", 
+                desc: [
+                    "At the start of your turn, you can spend 1 Focus Point to imbue yourself with elemental energy for 10 minutes. While active:",
+                    "**Reach:** Your reach with unarmed strikes increases by 10 feet.",
+                    "**Elemental Damage:** Your unarmed strikes can deal Acid, Cold, Fire, or Lightning damage instead of their normal damage type.",
+                    "**Push/Pull:** When you hit with an unarmed strike, you can force the target to make a Strength save or be pushed or pulled 10 feet."
+                ] 
+            },
+            {
+                index: "elemental-epitome",
+                name: "Elemental Epitome",
+                level: 6,
+                source: "Warrior of the Elements",
+                url: "",
+                desc: [
+                    "While your Elemental Attunement is active, you gain the following benefits:",
+                    "**Resistance:** You gain resistance to one of the following damage types: Acid, Cold, Fire, or Lightning.",
+                    "**Stride of the Elements:** When you use Step of the Wind, you gain a Fly speed and Swim speed equal to your speed for the turn.",
+                    "**Elemental Damage:** Once on each of your turns when you deal damage with an unarmed strike, you can deal an extra 1d6 damage of the chosen type."
+                ]
+            },
+            {
+                index: "environmental-burst",
+                name: "Environmental Burst",
+                level: 11,
+                source: "Warrior of the Elements",
+                url: "",
+                desc: ["As an action, you can spend 2 Focus Points to create a 20-foot-radius sphere of elemental energy centered on yourself. Each creature in the area must make a Dexterity save or take damage equal to three rolls of your Martial Arts die. You can also teleport to an unoccupied space within the area as part of this action."],
+                effects: [{ type: 'action', name: 'Environmental Burst', description: 'Spend 2 Focus Points for 20ft elemental burst damage + teleport.' }]
+            },
+            {
+                index: "elemental-perfection",
+                name: "Elemental Perfection",
+                level: 17,
+                source: "Warrior of the Elements",
+                url: "",
+                desc: ["While your Elemental Attunement is active, you have resistance to Acid, Cold, Fire, and Lightning damage. Also, when you use Flurry of Blows, you can replace one of the attacks with an Environmental Burst without spending additional Focus Points."]
+            }
         ]
     },
     {
@@ -1673,7 +1770,7 @@ export const SUBCLASSES: ExtendedSubclassDetail[] = [
                 source: "Kensei", 
                 url: "", 
                 desc: ["Choose 2 Kensei weapons. Agile Parry: +2 AC if you make unarmed strike. Kensei's Shot: Bonus action +1d4 ranged dmg."],
-                effects: [{ type: 'bonus_action', name: "Kensei's Shot", description: 'Add 1d4 to ranged attacks this turn.' }]
+                effects: [{ type: 'bonus_action', name: "Kensei's Shot", description: 'You can use a bonus action on your turn to make your ranged attacks with a kensei weapon more deadly. When you do so, any target you hit with a ranged attack using a kensei weapon takes an extra 1d4 damage of the weapon\'s type.' }]
             },
             { index: "one-with-the-blade", name: "One with the Blade", level: 6, source: "Kensei", url: "", desc: ["Kensei weapons count as magical. Deft Strike: Spend 1 ki to deal extra damage."] }
         ]
@@ -1695,26 +1792,85 @@ export const SUBCLASSES: ExtendedSubclassDetail[] = [
         class: { index: "monk", name: "Monk", url: "" },
         desc: ["Summon spectral arms of your astral self."],
         feature_details: [
-            { index: "arms-of-the-astral-self", name: "Arms of the Astral Self", level: 3, source: "Astral Self", url: "", desc: ["Bonus Action: Summon arms. Reach +5ft. Use Wis for Str checks/attacks. Radiant/Necrotic damage."] }
+            { 
+                index: "arms-of-the-astral-self", 
+                name: "Arms of the Astral Self", 
+                level: 3, 
+                source: "Astral Self", 
+                url: "", 
+                desc: ["As a bonus action, you can spend 1 Focus Point to summon the arms of your astral self. When you do so, each creature of your choice that you can see within 10 feet of you must succeed on a Dexterity saving throw or take force damage equal to two rolls of your Martial Arts die."],
+                effects: [{ type: 'bonus_action', name: 'Arms of the Astral Self', description: 'As a bonus action, you can spend 1 Focus Point to summon the arms of your astral self. When you do so, each creature of your choice that you can see within 10 feet of you must succeed on a Dexterity saving throw or take force damage equal to two rolls of your Martial Arts die.' }]
+            }
         ]
     },
     {
         index: "mercy",
-        name: "Way of Mercy",
-        source: "Tasha's Cauldron of Everything",
+        name: "Warrior of Mercy",
+        source: "Player's Handbook 2024",
         class: { index: "monk", name: "Monk", url: "" },
-        desc: ["Monks who manipulate the life force of others to bring aid or end suffering."],
+        desc: ["Monks who manipulate the life force of others to bring aid or end suffering, often wearing masks to represent their dual nature."],
         feature_details: [
             { 
-                index: "hand-of-healing", 
+                index: "implements-of-mercy",
+                name: "Implements of Mercy",
+                level: 3,
+                source: "Warrior of Mercy",
+                url: "",
+                desc: ["You gain proficiency in the Insight and Medicine skills, and you gain proficiency with the herbalism kit."],
+                effects: [
+                    { type: 'proficiency', target: 'Insight', category: 'skill' },
+                    { type: 'proficiency', target: 'Medicine', category: 'skill' },
+                    { type: 'proficiency', target: 'Herbalism Kit', category: 'tool' }
+                ]
+            },
+            { 
+                index: "hand-of-healing-2024", 
                 name: "Hand of Healing", 
                 level: 3, 
-                source: "Mercy", 
+                source: "Warrior of Mercy", 
                 url: "", 
-                desc: ["Spend 1 Ki to heal (Martial Arts die + Wis) as an action, or as part of Flurry of Blows."],
-                effects: [{ type: 'action', name: 'Hand of Healing', description: 'Heal ally using Ki.' }]
+                desc: [
+                    "As an action, you can spend 1 Focus Point to touch a creature and restore HP equal to a roll of your Martial Arts die + your Wisdom modifier.",
+                    "When you use Flurry of Blows, you can replace one of the unarmed strikes with a use of this feature without spending a Focus Point for the healing."
+                ],
+                effects: [{ type: 'action', name: 'Hand of Healing', description: 'As an action, you can spend 1 Focus Point to touch a creature and restore HP equal to a roll of your Martial Arts die + your Wisdom modifier. When you use Flurry of Blows, you can replace one of the unarmed strikes with a use of this feature without spending a Focus Point for the healing.' }]
             },
-            { index: "hand-of-harm", name: "Hand of Harm", level: 3, source: "Mercy", url: "", desc: ["Spend 1 Ki when you hit to deal extra necrotic damage."] }
+            { 
+                index: "hand-of-harm-2024", 
+                name: "Hand of Harm", 
+                level: 3, 
+                source: "Warrior of Mercy", 
+                url: "", 
+                desc: ["Once per turn when you hit a creature with an unarmed strike, you can spend 1 Focus Point to deal extra Necrotic damage equal to a roll of your Martial Arts die + your Wisdom modifier."] 
+            },
+            {
+                index: "physicians-touch",
+                name: "Physician's Touch",
+                level: 6,
+                source: "Warrior of Mercy",
+                url: "",
+                desc: [
+                    "Your Hand of Healing can now also remove one of the following conditions: Blinded, Deafened, Paralyzed, Poisoned, or Stunned.",
+                    "When you use Hand of Harm, you can also subject the target to the Poisoned condition until the end of your next turn."
+                ]
+            },
+            {
+                index: "flurry-of-healing-and-harm",
+                name: "Flurry of Healing and Harm",
+                level: 11,
+                source: "Warrior of Mercy",
+                url: "",
+                desc: ["When you use Flurry of Blows, you can replace both of the unarmed strikes with a use of Hand of Healing, or you can replace one with Hand of Healing and the other with Hand of Harm without spending additional Focus Points."]
+            },
+            {
+                index: "hand-of-ultimate-mercy",
+                name: "Hand of Ultimate Mercy",
+                level: 17,
+                source: "Warrior of Mercy",
+                url: "",
+                desc: ["As an action, you can touch the corpse of a creature that died within the last 24 hours and spend 5 Focus Points. The creature returns to life with 0 HP and regains HP equal to 4d10 + your Wisdom modifier. Once you use this feature, you can't do so again until you finish a Long Rest."],
+                effects: [{ type: 'action', name: 'Hand of Ultimate Mercy', description: 'As an action, you can touch the corpse of a creature that died within the last 24 hours and spend 5 Focus Points. The creature returns to life with 0 HP and regains HP equal to 4d10 + your Wisdom modifier. Once you use this feature, you can\'t do so again until you finish a Long Rest.' }]
+            }
         ]
     },
     {

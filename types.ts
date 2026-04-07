@@ -44,6 +44,7 @@ export interface ClassFeature {
     ritual?: boolean;
     damage?: string | { damage_dice: string; damage_type?: any };
     save?: { type?: string; dc?: number; dc_type?: any };
+    effects?: FeatureEffect[];
 }
 
 export interface SpellDetail extends APIReference {
@@ -108,6 +109,7 @@ export interface ExtendedSubraceDetail extends SubraceDetail {
 
 export interface ClassDetail extends APIReference {
     hit_die: number;
+    primary_ability?: string[];
     proficiency_choices: {
         choose: number;
         type: string;
@@ -355,6 +357,7 @@ export interface CharacterState {
     expertise: string[];
     languages: string[];
     toolProficiencies: string[];
+    savingThrowProficiencies: string[];
     maxHp: number;
     currentHp: number;
     tempHp: number;
@@ -410,8 +413,9 @@ export interface CharacterState {
 }
 
 export interface FeatureEffect {
-    type: 'bonus' | 'set' | 'resistance' | 'expertise_choice' | 'proficiency_choice' | 'feature_choice' | 'asi' | 'asi_choice' | 'stat_bonus' | 'proficiency' | 'advantage' | 'spell_access' | 'feature' | 'bonus_action' | 'action' | 'reaction';
+    type: 'bonus' | 'set' | 'resistance' | 'immunity' | 'expertise_choice' | 'proficiency_choice' | 'feature_choice' | 'asi' | 'asi_choice' | 'stat_bonus' | 'stat_bonus_attribute' | 'proficiency' | 'advantage' | 'spell_access' | 'feature' | 'bonus_action' | 'action' | 'reaction' | 'class_choice';
     target?: string;
+    attribute?: 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha';
     value?: string | number;
     options?: any[];
     category?: string;
@@ -425,6 +429,16 @@ export interface FeatureEffect {
     filter_school?: string;
     level?: number;
     school?: string;
+    linked_save_proficiency?: boolean;
+    cast_free?: boolean;
+    description?: string;
+    key?: string;
+    stat?: string;
+    spell?: string;
+    label?: string;
+    condition?: string;
+    damage_type?: string;
+    ritual?: boolean;
 }
 
 export interface SkillDefinition {
@@ -466,6 +480,8 @@ export interface ItemModifier {
 
 export interface ExtendedFeatDetail extends APIReference {
     desc: string[];
+    source?: string;
+    prerequisite?: string;
     prerequisites?: string[];
     effects?: FeatureEffect[];
 }

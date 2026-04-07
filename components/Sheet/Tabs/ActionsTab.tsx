@@ -132,6 +132,9 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                         <div className="min-w-0">
                                             <div className="font-bold text-gray-200 text-sm group-hover:text-white truncate flex items-center gap-1.5">
                                                 {attack.name}
+                                                {attack.attackCount && attack.attackCount > 1 && (
+                                                    <span className="text-[10px] text-dnd-gold font-black ml-1">x{attack.attackCount}</span>
+                                                )}
                                                 {attack.source && typeof attack.source === 'object' && 'concentration' in attack.source && attack.source.concentration && (
                                                     <span className="text-[8px] bg-blue-900/40 text-blue-400 border border-blue-800/60 px-1 rounded h-3 flex items-center">C</span>
                                                 )}
@@ -140,6 +143,21 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                                 )}
                                             </div>
                                             <div className="text-[10px] text-gray-500 lowercase line-clamp-2 leading-tight">{attack.type}{attack.notes?.length ? ` • ${attack.notes.join(' • ')}` : ''}</div>
+                                            {attack.modifiers && attack.modifiers.length > 0 && (
+                                                <div className="flex flex-wrap gap-1 mt-1">
+                                                    {attack.modifiers.map((mod: any, idx: number) => (
+                                                        <div key={idx} className="group/mod relative">
+                                                            <span className="text-[9px] bg-dnd-gold/10 text-dnd-gold border border-dnd-gold/30 px-1.5 py-0.5 rounded cursor-help font-bold uppercase tracking-tighter">
+                                                                {mod.name}
+                                                            </span>
+                                                            <div className="absolute bottom-full left-0 mb-2 w-64 p-2 bg-gray-900 border border-gray-700 rounded shadow-xl opacity-0 group-hover/mod:opacity-100 transition-opacity pointer-events-none z-50 text-[10px] normal-case text-gray-200">
+                                                                <div className="font-bold text-dnd-gold mb-1 uppercase tracking-wider">{mod.name}</div>
+                                                                {mod.desc}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="text-center text-[10px] text-gray-400 font-bold">{attack.range}</div>
                                         <div className="flex justify-center"><button onClick={(e) => { e.stopPropagation(); roll(attack.damage, `Damage ${attack.name}`); }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex flex-col items-center justify-center text-center"><span className="text-sm font-bold text-white">{attack.damage}</span><span className="text-[8px] text-gray-500 uppercase">{attack.type}</span></button></div>
@@ -189,6 +207,9 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                  <div className="min-w-0">
                                     <div className="font-bold text-gray-200 text-sm group-hover:text-white truncate flex items-center gap-1.5">
                                         {attack.name}
+                                        {attack.attackCount && attack.attackCount > 1 && (
+                                            <span className="text-[10px] text-dnd-gold font-black ml-1">x{attack.attackCount}</span>
+                                        )}
                                         {attack.source && typeof attack.source === 'object' && 'concentration' in attack.source && attack.source.concentration && (
                                             <span className="text-[8px] bg-blue-900/40 text-blue-400 border border-blue-800/60 px-1 rounded h-3 flex items-center">C</span>
                                         )}
@@ -221,6 +242,21 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                             </span>
                                         )}
                                     </div>
+                                    {attack.modifiers && attack.modifiers.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                            {attack.modifiers.map((mod: any, idx: number) => (
+                                                <div key={idx} className="group/mod relative">
+                                                    <span className="text-[9px] bg-dnd-gold/10 text-dnd-gold border border-dnd-gold/30 px-1.5 py-0.5 rounded cursor-help font-bold uppercase tracking-tighter">
+                                                        {mod.name}
+                                                    </span>
+                                                    <div className="absolute bottom-full left-0 mb-2 w-64 p-2 bg-gray-900 border border-gray-700 rounded shadow-xl opacity-0 group-hover/mod:opacity-100 transition-opacity pointer-events-none z-50 text-[10px] normal-case text-gray-200">
+                                                        <div className="font-bold text-dnd-gold mb-1 uppercase tracking-wider">{mod.name}</div>
+                                                        {mod.desc}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                  </div>
                                  <div className="text-center text-[10px] text-gray-400 font-bold">{attack.range}</div>
                                  <div className="flex justify-center"><button onClick={(e) => { e.stopPropagation(); roll(attack.damage, `Damage ${attack.name}`); }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex flex-col items-center justify-center text-center"><span className="text-sm font-bold text-white">{attack.damage}</span><span className="text-[8px] text-gray-500 uppercase">{attack.type}</span></button></div>

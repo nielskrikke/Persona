@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import SidePanelLayout from '../Shared/SidePanelLayout';
 import { SpellDetail, InventoryItem, APIReference, RuleEntry, CharacterState } from '../../../types';
 import { isSpell } from '../../../utils/rules';
@@ -259,12 +260,22 @@ const DetailSidePanel = ({
 
     const renderDescription = (desc: string[] | string | any[] | undefined) => {
         if (!desc) return <p className="italic text-gray-500">The scrolls have no entry for this item's specific lore...</p>;
-        const lines = Array.isArray(desc) ? desc : desc.split('\n');
-        return lines.map((line, i) => (
-            <p key={i} className="mb-3">
-                {typeof line === 'object' ? (line.name || line.label || JSON.stringify(line)) : line}
-            </p>
-        ));
+        
+        let markdown = '';
+        if (Array.isArray(desc)) {
+            markdown = desc.map(line => {
+                if (typeof line === 'object') return line.name || line.label || JSON.stringify(line);
+                return line;
+            }).join('\n\n');
+        } else {
+            markdown = desc;
+        }
+
+        return (
+            <div className="markdown-body text-gray-400 text-sm leading-relaxed">
+                <ReactMarkdown>{markdown}</ReactMarkdown>
+            </div>
+        );
     };
 
     const getProficiencyStatus = (): boolean | null => {

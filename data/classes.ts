@@ -534,14 +534,30 @@ export const CLASSES: ExtendedClassDetail[] = [
         name: "Monk",
         source: "Player's Handbook 2024",
         hit_die: 8,
-        proficiency_choices: [{ 
-            choose: 2, 
-            type: "proficiencies", 
-            from: { 
-                options: makeOptions(["Acrobatics", "Athletics", "History", "Insight", "Religion", "Stealth"], "Skill: ")
-            } 
-        }],
-        proficiencies: [{ index: "simple-weapons", name: "Simple Weapons", url: "" }, { index: "martial-weapons", name: "Martial Weapons", url: "" }],
+        primary_ability: ["dex", "wis"],
+        proficiency_choices: [
+            { 
+                choose: 2, 
+                type: "proficiencies", 
+                from: { 
+                    options: makeOptions(["Acrobatics", "Athletics", "History", "Insight", "Religion", "Stealth"], "Skill: ")
+                } 
+            },
+            {
+                choose: 1,
+                type: "proficiencies",
+                from: {
+                    options: [
+                        { index: "artisan-tools", name: "Artisan's Tools", url: "" },
+                        { index: "musical-instruments", name: "Musical Instrument", url: "" }
+                    ]
+                }
+            }
+        ],
+        proficiencies: [
+            { index: "simple-weapons", name: "Simple Weapons", url: "" }, 
+            { index: "martial-weapons-light", name: "Martial Weapons with the Light property", url: "" }
+        ],
         saving_throws: [{ index: "str", name: "STR", url: "" }, { index: "dex", name: "DEX", url: "" }],
         level_table: [
             { level: 1, prof_bonus: 2, features: ["Martial Arts", "Unarmored Defense"], class_specific: { martial_arts: "1d6", focus_points: 0, unarmored_movement: 0 } },
@@ -566,25 +582,218 @@ export const CLASSES: ExtendedClassDetail[] = [
             { level: 20, prof_bonus: 6, features: ["Body and Mind"], class_specific: { martial_arts: "1d12", focus_points: 20, unarmored_movement: 30 } }
         ],
         feature_details: [
-            { index: "martial-arts-2024", name: "Martial Arts", level: 1, source: "Monk", url: "", desc: ["Your practice of martial arts gives you mastery of combat styles that use unarmed strikes and Monk weapons. You can use Dexterity instead of Strength for attack and damage rolls, use your Martial Arts die for damage, and make an unarmed strike as a bonus action if you took the Attack action."] },
-            { index: "unarmored-defense-monk", name: "Unarmored Defense", level: 1, source: "Monk", url: "", desc: ["While you are wearing no armor and not wielding a shield, your AC equals 10 + Dexterity modifier + Wisdom modifier."] },
-            { index: "monks-focus", name: "Monk's Focus", level: 2, source: "Monk", url: "", desc: ["You can channel your inner focus to perform supernatural feats. You have a number of Focus Points as shown in the Monk table. You can spend these points to fuel features like Flurry of Blows, Patient Defense, and Step of the Wind. You regain all Focus Points at the end of a Short or Long Rest."] },
-            { index: "unarmored-movement-monk", name: "Unarmored Movement", level: 2, source: "Monk", url: "", desc: ["Your speed increases while you are not wearing armor or wielding a shield. This bonus increases as you reach certain Monk levels."] },
-            { index: "uncanny-metabolism", name: "Uncanny Metabolism", level: 2, source: "Monk", url: "", desc: ["When you roll Initiative, you can regain all expended Focus Points and regain HP equal to your Monk level + Wisdom modifier. (1/Long Rest)"] },
-            { index: "deflect-attacks", name: "Deflect Attacks", level: 3, source: "Monk", url: "", desc: ["You can use your reaction to deflect or catch the missile when you are hit by a ranged weapon attack or reduce damage from a melee attack. Damage reduction: 1d10 + Dex modifier + Monk level."] },
-            { index: "slow-fall", name: "Slow Fall", level: 4, source: "Monk", url: "", desc: ["You can use your reaction when you fall to reduce any falling damage you take by an amount equal to five times your monk level."] },
-            { index: "extra-attack-monk", name: "Extra Attack", level: 5, source: "Monk", url: "", desc: ["You can attack twice, instead of once, whenever you take the Attack action on your turn."] },
-            { index: "stunning-strike", name: "Stunning Strike", level: 5, source: "Monk", url: "", desc: ["Once per turn when you hit a creature with a Monk weapon or Unarmed Strike, you can spend 1 Focus Point to attempt a stunning strike. The target must succeed on a Con save or be stunned until the end of your next turn."] },
-            { index: "empowered-strikes", name: "Empowered Strikes", level: 6, source: "Monk", url: "", desc: ["Your Unarmed Strikes deal force damage instead of their normal damage type."] },
-            { index: "evasion-monk", name: "Evasion", level: 7, source: "Monk", url: "", desc: ["When you are subjected to an effect that allows you to make a Dexterity saving throw to take only half damage, you instead take no damage if you succeed on the saving throw, and only half damage if you fail."] },
-            { index: "acrobatic-movement", name: "Acrobatic Movement", level: 9, source: "Monk", url: "", desc: ["You gain the ability to move along vertical surfaces and across liquids on your turn without falling during the move."] },
-            { index: "heightened-focus", name: "Heightened Focus", level: 10, source: "Monk", url: "", desc: ["Your Monk's Focus features are improved: Flurry of Blows (3 attacks), Patient Defense (Temp HP), Step of the Wind (Fly speed/Disengage)."] },
-            { index: "self-restoration", name: "Self-Restoration", level: 10, source: "Monk", url: "", desc: ["At the end of your turn, you can remove one condition: Charmed, Frightened, or Poisoned. You also don't suffer the effects of exhaustion."] },
-            { index: "deflect-energy", name: "Deflect Energy", level: 13, source: "Monk", url: "", desc: ["You can use Deflect Attacks against attacks that deal any damage type, not just bludgeoning, piercing, or slashing."] },
-            { index: "disciplined-survivor", name: "Disciplined Survivor", level: 14, source: "Monk", url: "", desc: ["You gain proficiency in all saving throws. If you fail a save, you can spend 1 Focus Point to reroll it and must use the new roll."] },
-            { index: "perfect-focus", name: "Perfect Focus", level: 15, source: "Monk", url: "", desc: ["When you roll Initiative and have 0 Focus Points remaining, you regain 4 Focus Points."] },
-            { index: "superior-defense", name: "Superior Defense", level: 18, source: "Monk", url: "", desc: ["At the start of your turn, you can spend 3 Focus Points to gain resistance to all damage except force damage for 1 minute or until you are incapacitated."] },
-            { index: "body-and-mind", name: "Body and Mind", level: 20, source: "Monk", url: "", desc: ["Your Dexterity and Wisdom scores increase by 4. Your maximum for those scores is now 24."] }
+            { 
+                index: "martial-arts-2024", 
+                name: "Martial Arts", 
+                level: 1, 
+                source: "Monk", 
+                url: "", 
+                desc: [
+                    "Your practice of martial arts gives you mastery of combat styles that use unarmed strikes and Monk weapons (Simple weapons and Martial weapons with the Light property).",
+                    "**Dexterous Attacks:** You can use Dexterity instead of Strength for the attack and damage rolls of your unarmed strikes and Monk weapons.",
+                    "**Martial Arts Die:** You can roll your Martial Arts die (starting at 1d6) in place of the normal damage of your unarmed strike or Monk weapon. This die increases as you reach higher Monk levels.",
+                    "**Bonus Unarmed Strike:** When you take the Attack action with an unarmed strike or a Monk weapon on your turn, you can make one unarmed strike as a bonus action on the same turn."
+                ],
+                effects: [{ type: 'bonus_action', name: 'Martial Arts Strike', description: 'When you take the Attack action with an unarmed strike or a Monk weapon on your turn, you can make one unarmed strike as a bonus action on the same turn.' }]
+            },
+            { 
+                index: "unarmored-defense-monk", 
+                name: "Unarmored Defense", 
+                level: 1, 
+                source: "Monk", 
+                url: "", 
+                desc: ["While you are wearing no armor and not wielding a shield, your Armor Class equals 10 + your Dexterity modifier + your Wisdom modifier."],
+                effects: [{ type: 'stat_bonus_attribute', stat: 'ac', attribute: 'wis' }]
+            },
+            { 
+                index: "monks-focus", 
+                name: "Monk's Focus", 
+                level: 2, 
+                source: "Monk", 
+                url: "", 
+                desc: [
+                    "You can channel your inner focus to perform supernatural feats. You have a number of Focus Points equal to your Monk level.",
+                    "**Flurry of Blows:** Immediately after you take the Attack action on your turn, you can spend 1 Focus Point to make two unarmed strikes as a bonus action.",
+                    "**Patient Defense:** You can take the Disengage action as a bonus action. Alternatively, you can spend 1 Focus Point to take the Dodge action as a bonus action.",
+                    "**Step of the Wind:** You can take the Dash action as a bonus action. Alternatively, you can spend 1 Focus Point to take the Disengage action as a bonus action, and your jump distance is doubled for the turn.",
+                    "You regain all expended Focus Points when you finish a Short or Long Rest."
+                ],
+                effects: [
+                    { type: 'bonus_action', name: 'Flurry of Blows', description: 'Immediately after you take the Attack action on your turn, you can spend 1 Focus Point to make two unarmed strikes as a bonus action.' },
+                    { type: 'bonus_action', name: 'Patient Defense', description: 'You can take the Disengage action as a bonus action. Alternatively, you can spend 1 Focus Point to take the Dodge action as a bonus action.' },
+                    { type: 'bonus_action', name: 'Step of the Wind', description: 'You can take the Dash action as a bonus action. Alternatively, you can spend 1 Focus Point to take the Disengage action as a bonus action, and your jump distance is doubled for the turn.' }
+                ]
+            },
+            { 
+                index: "unarmored-movement-monk", 
+                name: "Unarmored Movement", 
+                level: 2, 
+                source: "Monk", 
+                url: "", 
+                desc: ["Your speed increases by the amount shown in the Monk table while you are not wearing armor or wielding a shield."]
+            },
+            { 
+                index: "uncanny-metabolism", 
+                name: "Uncanny Metabolism", 
+                level: 2, 
+                source: "Monk", 
+                url: "", 
+                desc: ["When you roll Initiative, you can regain all expended Focus Points. When you do so, you also regain HP equal to your Monk level + Wisdom modifier. Once you use this feature, you can't do so again until you finish a Long Rest."],
+                effects: [{ type: 'feature', name: 'Uncanny Metabolism', description: 'When you roll Initiative, you can regain all expended Focus Points. When you do so, you also regain HP equal to your Monk level + Wisdom modifier. Once you use this feature, you can\'t do so again until you finish a Long Rest.' }]
+            },
+            { 
+                index: "deflect-attacks", 
+                name: "Deflect Attacks", 
+                level: 3, 
+                source: "Monk", 
+                url: "", 
+                desc: [
+                    "You can use your reaction to deflect or catch the missile when you are hit by a ranged weapon attack or reduce damage from a melee attack.",
+                    "**Damage Reduction:** When you are hit by an attack, you can reduce the damage by 1d10 + your Dexterity modifier + your Monk level.",
+                    "**Redirect Attack:** If you reduce the damage to 0, you can spend 1 Focus Point to redirect the attack. If it was a ranged attack, you catch the missile and can make a ranged attack with it (range 20/60). If it was a melee attack, you can make an unarmed strike against a creature within 5 feet of you as part of the same reaction."
+                ],
+                effects: [{ type: 'reaction', name: 'Deflect Attacks', description: 'Reduce damage from an attack; can redirect if damage is 0.' }]
+            },
+            { 
+                index: "slow-fall", 
+                name: "Slow Fall", 
+                level: 4, 
+                source: "Monk", 
+                url: "", 
+                desc: ["You can use your reaction when you fall to reduce any falling damage you take by an amount equal to five times your Monk level."],
+                effects: [{ type: 'reaction', name: 'Slow Fall', description: 'Reduce falling damage by 5x Monk level.' }]
+            },
+            { 
+                index: "extra-attack-monk", 
+                name: "Extra Attack", 
+                level: 5, 
+                source: "Monk", 
+                url: "", 
+                desc: ["You can attack twice, instead of once, whenever you take the Attack action on your turn."] 
+            },
+            { 
+                index: "stunning-strike", 
+                name: "Stunning Strike", 
+                level: 5, 
+                source: "Monk", 
+                url: "", 
+                desc: [
+                    "Once per turn when you hit a creature with a Monk weapon or an unarmed strike, you can spend 1 Focus Point to attempt a Stunning Strike.",
+                    "The target must succeed on a Constitution saving throw or be Stunned until the end of your next turn. If the target succeeds on the save, its speed is halved until the start of your next turn."
+                ],
+                effects: [{ type: 'feature', name: 'Stunning Strike', description: 'Spend 1 Focus Point to stun or slow a target on hit.' }]
+            },
+            { 
+                index: "empowered-strikes", 
+                name: "Empowered Strikes", 
+                level: 6, 
+                source: "Monk", 
+                url: "", 
+                desc: ["Whenever you deal damage with your Unarmed Strike, it can deal Force damage or its normal damage type."] 
+            },
+            { 
+                index: "evasion-monk", 
+                name: "Evasion", 
+                level: 7, 
+                source: "Monk", 
+                url: "", 
+                desc: ["When you are subjected to an effect that allows you to make a Dexterity saving throw to take only half damage, you instead take no damage if you succeed on the saving throw, and only half damage if you fail."],
+                effects: [{ type: 'feature', name: 'Evasion', description: 'Take no damage on successful Dex save, half on fail.' }]
+            },
+            { 
+                index: "acrobatic-movement", 
+                name: "Acrobatic Movement", 
+                level: 9, 
+                source: "Monk", 
+                url: "", 
+                desc: ["While you aren't wearing armor or wielding a shield, you gain the ability to move along vertical surfaces and across liquids on your turn without falling during the move."] 
+            },
+            { 
+                index: "heightened-focus", 
+                name: "Heightened Focus", 
+                level: 10, 
+                source: "Monk", 
+                url: "", 
+                desc: [
+                    "Your Monk's Focus features are improved:",
+                    "**Flurry of Blows:** You can make three unarmed strikes instead of two when you use Flurry of Blows.",
+                    "**Patient Defense:** When you use Patient Defense, you gain Temporary HP equal to two rolls of your Martial Arts die.",
+                    "**Step of the Wind:** When you use Step of the Wind, your jump distance is doubled for the turn, and you can move a creature that is your size or smaller with you when you move. This movement doesn't provoke opportunity attacks for either of you."
+                ],
+                effects: [
+                    { type: 'feature', name: 'Heightened Flurry', description: 'Flurry of Blows now makes 3 attacks.' },
+                    { type: 'feature', name: 'Heightened Patient Defense', description: 'Patient Defense grants Temp HP.' },
+                    { type: 'feature', name: 'Heightened Step of the Wind', description: 'Step of the Wind allows moving others and doubles jump.' }
+                ]
+            },
+            { 
+                index: "self-restoration", 
+                name: "Self-Restoration", 
+                level: 10, 
+                source: "Monk", 
+                url: "", 
+                desc: [
+                    "Through sheer force of will, you can remove one of the following conditions from yourself at the end of your turn: Charmed, Frightened, or Poisoned.",
+                    "In addition, forgoing food and drink doesn't give you levels of exhaustion."
+                ],
+                effects: [{ type: 'feature', name: 'Self-Restoration', description: 'Remove Charmed/Frightened/Poisoned at end of turn.' }]
+            },
+            { 
+                index: "deflect-energy", 
+                name: "Deflect Energy", 
+                level: 13, 
+                source: "Monk", 
+                url: "", 
+                desc: ["You can use your Deflect Attacks feature against attacks that deal any damage type, not just bludgeoning, piercing, or slashing."] 
+            },
+            { 
+                index: "disciplined-survivor", 
+                name: "Disciplined Survivor", 
+                level: 14, 
+                source: "Monk", 
+                url: "", 
+                desc: [
+                    "Your physical and mental discipline grant you proficiency in all saving throws.",
+                    "Additionally, whenever you make a saving throw and fail, you can spend 1 Focus Point to reroll it and take the second result."
+                ],
+                effects: [
+                    { type: 'proficiency', target: 'STR', category: 'save' },
+                    { type: 'proficiency', target: 'DEX', category: 'save' },
+                    { type: 'proficiency', target: 'CON', category: 'save' },
+                    { type: 'proficiency', target: 'INT', category: 'save' },
+                    { type: 'proficiency', target: 'WIS', category: 'save' },
+                    { type: 'proficiency', target: 'CHA', category: 'save' }
+                ]
+            },
+            { 
+                index: "perfect-focus", 
+                name: "Perfect Focus", 
+                level: 15, 
+                source: "Monk", 
+                url: "", 
+                desc: ["When you roll Initiative and have 0 Focus Points remaining, you regain 4 Focus Points."] 
+            },
+            { 
+                index: "superior-defense", 
+                name: "Superior Defense", 
+                level: 18, 
+                source: "Monk", 
+                url: "", 
+                desc: ["As a Bonus Action, you can spend 3 Focus Points to gain resistance to all damage except Force damage for 1 minute or until you are incapacitated."],
+                effects: [{ type: 'bonus_action', name: 'Superior Defense', description: 'As a Bonus Action, you can spend 3 Focus Points to gain resistance to all damage except Force damage for 1 minute or until you are incapacitated.' }]
+            },
+            { 
+                index: "body-and-mind", 
+                name: "Body and Mind", 
+                level: 20, 
+                source: "Monk", 
+                url: "", 
+                desc: ["Your Dexterity and Wisdom scores increase by 4. Your maximum for those scores is now 24."],
+                effects: [
+                    { type: 'bonus', target: 'dex', value: 4 },
+                    { type: 'bonus', target: 'wis', value: 4 }
+                ] 
+            }
         ]
     },
     {

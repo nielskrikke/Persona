@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
+import Markdown from 'react-markdown';
 import { X, Search, Filter, Plus, Info, ChevronUp, ChevronDown, Sparkles, Book, Wand2, GraduationCap, Trash2 } from 'lucide-react';
 import { CharacterState, SpellDetail } from '../../../types';
 import { fetchSpellsByClass } from '../../../data/index';
@@ -179,13 +180,15 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
                     <div className="text-gray-300">{spell.components.join(', ')}</div>
                 </div>
             </div>
-            <div className="pt-2 leading-relaxed font-serif text-sm text-gray-400">
-                {spell.desc.map((p, i) => <p key={i} className="mb-2 last:mb-0">{p}</p>)}
+            <div className="pt-2 leading-relaxed font-serif text-sm text-gray-400 markdown-body">
+                <Markdown>{spell.desc.join('\n\n')}</Markdown>
             </div>
             {spell.higher_level && (
-                <div className="pt-3 border-t border-gray-800">
+                <div className="pt-3 border-t border-gray-800 markdown-body">
                     <span className="text-[10px] font-black uppercase tracking-widest text-dnd-gold">At Higher Levels</span>
-                    <p className="mt-1 text-gray-400 italic">{spell.higher_level}</p>
+                    <div className="mt-1 text-gray-400 italic">
+                        <Markdown>{Array.isArray(spell.higher_level) ? spell.higher_level.join('\n\n') : spell.higher_level}</Markdown>
+                    </div>
                 </div>
             )}
         </div>

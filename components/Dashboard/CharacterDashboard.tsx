@@ -279,10 +279,10 @@ const CharacterDashboard: React.FC<CharacterDashboardProps> = ({ onLoadCharacter
         reader.readAsText(file);
     };
 
-    if (loading) return <div className="fixed inset-0 flex items-center justify-center bg-[#0b0c0e] text-dnd-gold">Accessing the archives...</div>;
+    if (loading) return <div className="fixed inset-0 flex items-center justify-center bg-[#0b0c0e] text-dnd-gold z-[200]">Accessing the archives...</div>;
 
     return (
-        <div className="fixed inset-0 bg-[#0b0c0e] z-50 flex flex-col p-4 md:p-10 overflow-hidden">
+        <div className="fixed inset-0 bg-[#0b0c0e] z-[200] flex flex-col p-4 md:p-10 overflow-hidden">
             <input type="file" accept=".json" ref={fileInputRef} className="hidden" onChange={handleImportFile} />
             
             <HomebrewManagerModal 

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { CharacterState } from '@/types';
 import { WIDGET_BG } from '../../../data/constants';
+import { Maximize, X, Search, Filter } from 'lucide-react';
 
 interface FeaturesTabProps {
     character: CharacterState;
@@ -10,13 +11,16 @@ interface FeaturesTabProps {
     onTabChange?: (tab: any) => void;
     setShowHomebrewModal: (val: boolean, tab?: 'race' | 'class' | 'subclass' | 'background' | 'spell' | 'item' | 'creature' | 'feat') => void;
     setShowCardOptionsModal?: (val: boolean) => void;
+    onShowFullScreen: () => void;
 }
 
-const FeaturesTab: React.FC<FeaturesTabProps> = ({ character, setCharacter, getAllFeatures, setSelectedDetail, onTabChange, setShowHomebrewModal, setShowCardOptionsModal }) => {
+const FeaturesTab: React.FC<FeaturesTabProps> = ({ character, setCharacter, getAllFeatures, setSelectedDetail, onTabChange, setShowHomebrewModal, setShowCardOptionsModal, onShowFullScreen }) => {
     const [featureFilter, setFeatureFilter] = useState('All');
     const [featureSearch, setFeatureSearch] = useState('');
 
-    const filteredFeatures = getAllFeatures().filter(f => (featureFilter === 'All' || f.type === featureFilter) && f.name.toLowerCase().includes(featureSearch.toLowerCase()));
+    const allFeatures = useMemo(() => getAllFeatures(), [character]);
+
+    const filteredFeatures = allFeatures.filter(f => (featureFilter === 'All' || f.type === featureFilter) && f.name.toLowerCase().includes(featureSearch.toLowerCase()));
 
     const updateFeatureUsage = (name: string, used: number) => {
         setCharacter(prev => {
@@ -113,10 +117,17 @@ const FeaturesTab: React.FC<FeaturesTabProps> = ({ character, setCharacter, getA
                             onChange={(e) => setFeatureSearch(e.target.value)} 
                             className="text-[9px] font-bold uppercase px-3 py-1.5 rounded border bg-black/40 text-white border-gray-700 focus:border-dnd-gold outline-none w-full md:w-64 placeholder:text-gray-600" 
                         />
+                        <button 
+                            onClick={onShowFullScreen}
+                            className="p-1.5 bg-black/40 border border-gray-700 rounded-lg hover:border-dnd-gold transition-colors text-gray-400 hover:text-dnd-gold"
+                            title="Full Screen View"
+                        >
+                            <Maximize size={14} />
+                        </button>
                     </div>
                 </div>
 
-                <div className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-xl overflow-hidden shadow-2xl`}>
+                <div className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-xl overflow-hidden shadow-2xl relative`}>
                     <div className="grid grid-cols-[2fr_1.5fr_60px_2.5fr] gap-4 px-6 py-3 bg-[#121316]/80 border-b border-[#3e4149]/50 text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em]">
                         <div>Feature</div>
                         <div>Source</div>
