@@ -151,7 +151,7 @@ const InventoryTab: React.FC<InventoryTabProps> = ({
                             { name: 'Blinding', level: 4, desc: '30ft burst (Con save or blinded).' },
                             { name: 'Explosive', level: 5, desc: '5d6 Force damage (10ft AoE).' },
                             { name: 'Knockdown', level: 5, desc: 'Str save or knocked prone.' },
-                        ].filter(a => a.level <= arrowsmithLvl).map(arrow => {
+                        ].filter(a => a.level <= arrowsmithLvl).sort((a, b) => a.name.localeCompare(b.name)).map(arrow => {
                             const arrowId = `as-arrow-${arrow.name.toLowerCase().replace(/\s+/g, '-')}`;
                             const count = character.inventory.find(i => i.id === arrowId)?.quantity || 0;
                             return (
@@ -214,7 +214,9 @@ const InventoryTab: React.FC<InventoryTabProps> = ({
                 </div>
             </div>
             {[{ title: "Equipped Items", items: character.inventory.filter(i => i.equipped && !i.id.startsWith('as-arrow-')) }, { title: "Backpack", items: character.inventory.filter(i => !i.equipped && !i.id.startsWith('as-arrow-')) }].map((section, idx) => {
-                const filteredItems = section.items.filter(i => i.name.toLowerCase().includes(inventorySearch.toLowerCase()));
+                const filteredItems = section.items
+                    .filter(i => i.name.toLowerCase().includes(inventorySearch.toLowerCase()))
+                    .sort((a, b) => a.name.localeCompare(b.name));
                 if (section.items.length === 0 && idx === 0 && !inventorySearch) return null;
                 return (
                     <div key={section.title} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-xl overflow-hidden shadow-sm`}>
