@@ -10,7 +10,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 async function startServer() {
   const app = express();
-  const PORT = 4000;
+  const PORT = 3000;
 
   app.use(express.json({ limit: '10mb' }));
 
@@ -285,7 +285,11 @@ async function startServer() {
     const vite = await createViteServer({
       server: { 
         middlewareMode: true,
-        hmr: false 
+        hmr: false,
+        watch: {
+          usePolling: true,
+          interval: 1000
+        }
       },
       appType: "spa",
     });
