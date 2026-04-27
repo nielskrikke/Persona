@@ -213,22 +213,6 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
       
       const levelChoices: any[] = [];
       
-      // Subclasses
-      draftClasses.forEach(draft => {
-          if (draft.subclass) {
-              levelChoices.push({
-                  id: `class-subclass-${draft.index}`,
-                  level: 1, 
-                  source: draft.name,
-                  type: 'subclass',
-                  label: 'Subclass',
-                  value: [draft.subclass.name],
-                  options: subclassOptions[draft.index]?.map(s => s.name) || [],
-                  count: 1
-              });
-          }
-      });
-
       onSelect(finalClasses, [], [], levelChoices);
   };
 

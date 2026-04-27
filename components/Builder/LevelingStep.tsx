@@ -54,8 +54,7 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
             character.classes.forEach(cls => {
                 for (let i = 1; i <= cls.level; i++) {
                     const isSub = (
-                        (['cleric', 'warlock', 'sorcerer'].includes(cls.definition.index) && i === 1) ||
-                        (['druid', 'wizard'].includes(cls.definition.index) && i === 2) ||
+                        (['cleric', 'warlock', 'sorcerer', 'druid', 'wizard'].includes(cls.definition.index) && i === 3) ||
                         (['bard', 'barbarian', 'fighter', 'monk', 'paladin', 'ranger', 'rogue', 'artificer', 'pugilist', 'arrowsmith'].includes(cls.definition.index) && i === 3) ||
                         (['arrowsmith'].includes(cls.definition.index) && i === 5)
                     );
@@ -65,6 +64,29 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
                         level: i,
                         isSubclassLevel: isSub
                     });
+
+                    // Add Metamagic Matrix choice for Sorcerer (2024 rules)
+                    if (cls.definition.index === 'sorcerer') {
+                        const isProgression = [2, 10, 17].includes(i);
+                        const isCalibration = !isProgression && i > 2;
+
+                        if (isProgression || isCalibration) {
+                            const choiceId = `metamagic-matrix-${i}`;
+                            if (!accumulator.current.choices.some(c => c.id === choiceId)) {
+                                accumulator.current.choices.push({
+                                    id: choiceId,
+                                    level: i,
+                                    source: 'Sorcerer',
+                                    type: 'other',
+                                    label: isProgression ? 'Metamagic Options' : 'Metamagic Calibration',
+                                    value: null,
+                                    options: [], // Options will be handled by custom UI
+                                    count: isProgression ? 2 : 1,
+                                    revertData: { classIndex: 'sorcerer', isMetamagicMatrix: true, isProgression }
+                                });
+                            }
+                        }
+                    }
                 }
             });
             setQueue(q);

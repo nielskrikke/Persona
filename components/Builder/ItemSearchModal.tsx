@@ -236,6 +236,9 @@ const ItemSearchModal: React.FC<ItemSearchModalProps> = ({ isOpen, onClose, item
         setCustomName(''); setCustomWeight(''); setCustomCost(''); setCustomQuantity('1'); setCustomDesc('');
         setCustomCategory('Other'); setCustomAttunement(false); setCustomModifiers([]);
         setCustomDmgDice(''); setCustomAcBase(''); setCustomProperties('');
+        setCustomSubtype(''); setCustomIsWondrous(false); setCustomRarity('Common');
+        setCustomDmgType('Piercing'); setCustomWeaponType('Simple'); setCustomArmorType('Light');
+        setCustomAcDexBonus(false); setCustomAcMaxBonus('');
         setIsAddingCustom(false);
     };
 

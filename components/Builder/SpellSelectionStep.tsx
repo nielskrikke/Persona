@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { SpellDetail, CharacterState, CharacterClass } from '../../types';
-import { fetchSpellsByClassAndLevel } from '../../data/index';
+import { fetchSpellsByClass } from '../../data/index';
 import { getSpellsKnownCount } from '../../utils/rules';
 
 interface SpellSelectionStepProps {
@@ -62,19 +62,18 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
                 setLoading(true);
                 const cls = casterClasses.find(c => c.definition.index === activeClassIndex);
                 if (cls) {
-                    let allSpells: SpellDetail[] = [];
-                    const maxFetchLevel = 9; 
-                    for (let i = 0; i <= maxFetchLevel; i++) {
-                        const spells = await fetchSpellsByClassAndLevel(cls.definition.index, i, character.user_id);
-                        allSpells = [...allSpells, ...spells];
+                    try {
+                        const allSpells = await fetchSpellsByClass(cls.definition.index, character.user_id);
+                        setAvailableSpellsCache(prev => ({...prev, [activeClassIndex]: allSpells}));
+                    } catch (error) {
+                        console.error("Error loading spells:", error);
                     }
-                    setAvailableSpellsCache(prev => ({...prev, [activeClassIndex]: allSpells}));
                 }
                 setLoading(false);
             }
         };
         load();
-    }, [activeClassIndex, casterClasses]); 
+    }, [activeClassIndex, casterClasses, character.user_id]); 
 
     const handleMouseMove = (e: React.MouseEvent) => {
         setCursorPos({ x: e.clientX, y: e.clientY });

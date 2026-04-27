@@ -796,6 +796,145 @@ export const SUBCLASSES: ExtendedSubclassDetail[] = [
         ]
     },
 
+    // --- BARBARIAN ---
+    {
+        index: "berserker",
+        name: "Path of the Berserker",
+        source: "Player's Handbook",
+        class: { index: "barbarian", name: "Barbarian", url: "" },
+        desc: ["For some barbarians, rage is a means to an end—that end being violence."],
+        feature_details: [
+            { 
+                index: "frenzy", 
+                name: "Frenzy", 
+                level: 3, 
+                source: "Berserker", 
+                url: "", 
+                desc: ["You can go into a frenzy when you rage. If you do so, for the duration of your rage you can make a single melee weapon attack as a bonus action on each of your turns after this one. When your rage ends, you suffer one level of exhaustion."] 
+            }
+        ]
+    },
+    {
+        index: "totem-warrior",
+        name: "Path of the Totem Warrior",
+        source: "Player's Handbook",
+        class: { index: "barbarian", name: "Barbarian", url: "" },
+        desc: ["The Path of the Totem Warrior is a spiritual journey, as the barbarian accepts a spirit animal as guide, protector, and inspiration."],
+        feature_details: [
+            { 
+                index: "spirit-seeker", 
+                name: "Spirit Seeker", 
+                level: 3, 
+                source: "Totem Warrior", 
+                url: "", 
+                desc: ["You can cast the beast sense and speak with animals spells, but only as rituals."] 
+            },
+            { 
+                index: "totem-spirit", 
+                name: "Totem Spirit", 
+                level: 3, 
+                source: "Totem Warrior", 
+                url: "", 
+                desc: ["Choose a totem spirit: Bear (resistance to all dmg except psychic), Eagle (dash as bonus action), or Wolf (advantage for allies)."] 
+            }
+        ]
+    },
+    {
+        index: "ancestral-guardian",
+        name: "Path of the Ancestral Guardian",
+        source: "Xanathar's Guide to Everything",
+        class: { index: "barbarian", name: "Barbarian", url: "" },
+        desc: ["Some barbarians hail from cultures that revere their ancestors."],
+        feature_details: [
+            { 
+                index: "ancestral-protectors", 
+                name: "Ancestral Protectors", 
+                level: 3, 
+                source: "Ancestral Guardian", 
+                url: "", 
+                desc: ["Spectral warriors appear when you rage. The first creature you hit on your turn has disadvantage on attack rolls against anyone other than you, and the target has resistance to that creature's damage."] 
+            }
+        ]
+    },
+
+    // --- BARD ---
+    {
+        index: "lore",
+        name: "College of Lore",
+        source: "Player's Handbook",
+        class: { index: "bard", name: "Bard", url: "" },
+        desc: ["Bards of the College of Lore know something about most things, collecting bits of knowledge from sources as diverse as scholarly tomes and peasant tales."],
+        feature_details: [
+            { 
+                index: "cutting-words", 
+                name: "Cutting Words", 
+                level: 3, 
+                source: "Lore", 
+                url: "", 
+                desc: ["As a reaction when a creature you can see within 60 feet of you makes an attack roll, an ability check, or a damage roll, you can expend one use of your Bardic Inspiration to subtract the number rolled from the creature's roll."] 
+            },
+            { 
+                index: "bonus-proficiencies-lore", 
+                name: "Bonus Proficiencies", 
+                level: 3, 
+                source: "Lore", 
+                url: "", 
+                desc: ["You gain proficiency with three skills of your choice."],
+                effects: [{ type: 'proficiency_choice', category: 'skill', count: 3 }]
+            }
+        ]
+    },
+    {
+        index: "valor",
+        name: "College of Valor",
+        source: "Player's Handbook",
+        class: { index: "bard", name: "Bard", url: "" },
+        desc: ["Bards of the College of Valor are daring skalds whose tales keep the memory of the great heroes of the past alive."],
+        feature_details: [
+            { 
+                index: "combat-inspiration", 
+                name: "Combat Inspiration", 
+                level: 3, 
+                source: "Valor", 
+                url: "", 
+                desc: ["A creature that has a Bardic Inspiration die from you can roll that die and add the number rolled to a weapon damage roll it just made. Alternatively, when an attack roll is made against the creature, it can use its reaction to roll the Bardic Inspiration die and add the number rolled to its AC against that attack."] 
+            },
+            { 
+                index: "bonus-proficiencies-valor", 
+                name: "Bonus Proficiencies", 
+                level: 3, 
+                source: "Valor", 
+                url: "", 
+                desc: ["You gain proficiency with medium armor, shields, and martial weapons."] 
+            }
+        ]
+    },
+    {
+        index: "glamour",
+        name: "College of Glamour",
+        source: "Xanathar's Guide to Everything",
+        class: { index: "bard", name: "Bard", url: "" },
+        desc: ["The College of Glamour is the domain of bards who mastered their craft in the vibrant realm of the Feywild or under the tutelage of those who have dwelt there."],
+        feature_details: [
+            { 
+                index: "mantle-of-inspiration", 
+                name: "Mantle of Inspiration", 
+                level: 3, 
+                source: "Glamour", 
+                url: "", 
+                desc: ["As a bonus action, you can expend one use of your Bardic Inspiration to grant yourself a wondrous appearance. When you do so, choose a number of creatures you can see and who can see you within 60 feet of you, up to a number equal to your Charisma modifier (minimum of one). Each of them gains 5 temporary hit points."] 
+            },
+            { 
+                index: "enthralling-performance", 
+                name: "Enthralling Performance", 
+                level: 3, 
+                source: "Glamour", 
+                url: "", 
+                desc: ["If you perform for at least 1 minute, you can attempt to inspire wonder in your audience. At the end of the performance, choose a number of humanoids within 60 feet of you who watched and listened to all of it, up to a number equal to your Charisma modifier (minimum of one). Each target must succeed on a Wisdom saving throw against your spell save DC or be charmed by you."] 
+            }
+        ]
+    },
+
     // --- CLERIC ---
     {
         index: "knowledge",
@@ -1592,6 +1731,146 @@ export const SUBCLASSES: ExtendedSubclassDetail[] = [
         ]
     },
 
+    // --- DRUID ---
+    {
+        index: "land",
+        name: "Circle of the Land",
+        source: "Player's Handbook",
+        class: { index: "druid", name: "Druid", url: "" },
+        desc: ["The Circle of the Land is made up of mystics and sages who safeguard ancient knowledge and rites through a vast oral tradition."],
+        feature_details: [
+            { 
+                index: "bonus-cantrip-land", 
+                name: "Bonus Cantrip", 
+                level: 2, 
+                source: "Land", 
+                url: "", 
+                desc: ["You learn one additional druid cantrip of your choice."],
+                effects: [{ type: 'spell_access', category: 'cantrip', count: 1 }]
+            },
+            { 
+                index: "natural-recovery", 
+                name: "Natural Recovery", 
+                level: 2, 
+                source: "Land", 
+                url: "", 
+                desc: ["During a short rest, you can choose expended spell slots to recover. The spell slots can have a combined level that is equal to or less than half your druid level (rounded up), and none of the slots can be 6th level or higher."] 
+            }
+        ]
+    },
+    {
+        index: "moon",
+        name: "Circle of the Moon",
+        source: "Player's Handbook",
+        class: { index: "druid", name: "Druid", url: "" },
+        desc: ["Druids of the Circle of the Moon are fierce guardians of the wilds."],
+        feature_details: [
+            { 
+                index: "combat-wild-shape", 
+                name: "Combat Wild Shape", 
+                level: 2, 
+                source: "Moon", 
+                url: "", 
+                desc: ["You gain the ability to use Wild Shape on your turn as a bonus action, rather than as an action. Additionally, while you are transformed by Wild Shape, you can use a bonus action to expend one spell slot to regain 1d8 hit points per level of the spell slot expended."] 
+            },
+            { 
+                index: "circle-forms", 
+                name: "Circle Forms", 
+                level: 2, 
+                source: "Moon", 
+                url: "", 
+                desc: ["The rites of your circle grant you the ability to transform into more dangerous animal forms. Starting at 2nd level, you can use your Wild Shape to transform into a beast with a challenge rating as high as 1."] 
+            }
+        ]
+    },
+    {
+        index: "dreams",
+        name: "Circle of Dreams",
+        source: "Xanathar's Guide to Everything",
+        class: { index: "druid", name: "Druid", url: "" },
+        desc: ["Druids who are members of the Circle of Dreams hail from regions that have strong ties to the Feywild and its dreamlike realms."],
+        feature_details: [
+            { 
+                index: "balm-of-the-summer-court", 
+                name: "Balm of the Summer Court", 
+                level: 2, 
+                source: "Dreams", 
+                url: "", 
+                desc: ["You become a conduit for the holy energy of the Summer Court. You have a pool of fey energy represented by a number of d6s equal to your druid level. As a bonus action, you can choose one creature you can see within 120 feet of you and spend a number of those dice equal to half your druid level or less. Roll the dice and add them together. The target regains a number of hit points equal to the total."] 
+            }
+        ]
+    },
+
+    // --- FIGHTER ---
+    {
+        index: "champion",
+        name: "Champion",
+        source: "Player's Handbook",
+        class: { index: "fighter", name: "Fighter", url: "" },
+        desc: ["The archetypal Champion focuses on the development of raw physical power perfected to deadly perfection."],
+        feature_details: [
+            { 
+                index: "improved-critical", 
+                name: "Improved Critical", 
+                level: 3, 
+                source: "Champion", 
+                url: "", 
+                desc: ["Your weapon attacks score a critical hit on a roll of 19 or 20."] 
+            }
+        ]
+    },
+    {
+        index: "battle-master",
+        name: "Battle Master",
+        source: "Player's Handbook",
+        class: { index: "fighter", name: "Fighter", url: "" },
+        desc: ["Those who emulate the archetypal Battle Master employ martial techniques passed down through generations."],
+        feature_details: [
+            { 
+                index: "combat-superiority", 
+                name: "Combat Superiority", 
+                level: 3, 
+                source: "Battle Master", 
+                url: "", 
+                desc: ["You learn maneuvers that are fueled by special dice called superiority dice. You learn three maneuvers of your choice. You gain four superiority dice, which are d8s."] 
+            },
+            { 
+                index: "student-of-war", 
+                name: "Student of War", 
+                level: 3, 
+                source: "Battle Master", 
+                url: "", 
+                desc: ["You gain proficiency with one type of artisan's tools of your choice."],
+                effects: [{ type: 'proficiency_choice', category: 'tool', count: 1 }]
+            }
+        ]
+    },
+    {
+        index: "eldritch-knight",
+        name: "Eldritch Knight",
+        source: "Player's Handbook",
+        class: { index: "fighter", name: "Fighter", url: "" },
+        desc: ["The archetypal Eldritch Knight combines the martial mastery common to all fighters with a careful study of magic."],
+        feature_details: [
+            { 
+                index: "spellcasting-ek", 
+                name: "Spellcasting", 
+                level: 3, 
+                source: "Eldritch Knight", 
+                url: "", 
+                desc: ["You gain the ability to cast spells. You learn two cantrips of your choice from the wizard spell list. You also learn three 1st-level wizard spells, two of which you must choose from the abjuration and evocation spells on the wizard spell list."] 
+            },
+            { 
+                index: "weapon-bond", 
+                name: "Weapon Bond", 
+                level: 3, 
+                source: "Eldritch Knight", 
+                url: "", 
+                desc: ["You learn a ritual that creates a magical bond between yourself and one weapon. You perform the ritual over the course of 1 hour, which can be done during a short rest. The weapon must be within your reach throughout the ritual, at the conclusion of which you touch the weapon and forge the bond."] 
+            }
+        ]
+    },
+
     // --- MONK ---
     {
         index: "open-hand",
@@ -1892,6 +2171,815 @@ export const SUBCLASSES: ExtendedSubclassDetail[] = [
         desc: ["Obsessed with the meaning and mechanics of dying."],
         feature_details: [
             { index: "touch-of-death", name: "Touch of Death", level: 3, source: "Long Death", url: "", desc: ["Reduce creature to 0 HP -> gain temp HP (Wis + Level)."] }
+        ]
+    },
+
+    // --- SORCERER ---
+    {
+        index: "draconic-bloodline",
+        name: "Draconic Bloodline",
+        source: "Player's Handbook",
+        class: { index: "sorcerer", name: "Sorcerer", url: "" },
+        desc: ["Your innate magic comes from draconic magic that was mingled with your blood or that of your ancestors."],
+        feature_details: [
+            { 
+                index: "dragon-ancestor", 
+                name: "Dragon Ancestor", 
+                level: 1, 
+                source: "Draconic Bloodline", 
+                url: "", 
+                desc: ["You choose one type of dragon as your ancestor. The damage type associated with each dragon is used by features you gain later."] 
+            },
+            { 
+                index: "draconic-resilience", 
+                name: "Draconic Resilience", 
+                level: 1, 
+                source: "Draconic Bloodline", 
+                url: "", 
+                desc: ["Your HP maximum increases by 1 at 1st level and by 1 whenever you gain a level in this class. Additionally, your AC equals 13 + your Dexterity modifier when you aren't wearing armor."],
+                effects: [{ type: 'stat_bonus', stat: 'hp_per_level', value: 1 }]
+            },
+            { 
+                index: "elemental-affinity", 
+                name: "Elemental Affinity", 
+                level: 6, 
+                source: "Draconic Bloodline", 
+                url: "", 
+                desc: ["When you cast a spell that deals damage of the type associated with your draconic ancestry, you can add your Charisma modifier to one damage roll of that spell. You can also spend 1 sorcery point to gain resistance to that damage type for 1 hour."] 
+            }
+        ]
+    },
+    {
+        index: "wild-magic-sorcerer",
+        name: "Wild Magic",
+        source: "Player's Handbook",
+        class: { index: "sorcerer", name: "Sorcerer", url: "" },
+        desc: ["Your innate magic comes from the wild forces of chaos that underlie the order of the creation."],
+        feature_details: [
+            { 
+                index: "wild-magic-surge", 
+                name: "Wild Magic Surge", 
+                level: 1, 
+                source: "Wild Magic", 
+                url: "", 
+                desc: ["Once per turn, the DM can have you roll a d20 immediately after you cast a sorcerer spell of 1st level or higher. If you roll a 1, roll on the Wild Magic Surge table to create a magical effect."] 
+            },
+            { 
+                index: "tides-of-chaos", 
+                name: "Tides of Chaos", 
+                level: 1, 
+                source: "Wild Magic", 
+                url: "", 
+                desc: ["You can gain advantage on one attack roll, ability check, or saving throw. You regain the use of this feature after a long rest or after you roll on the Wild Magic Surge table."] 
+            },
+            { 
+                index: "bend-luck", 
+                name: "Bend Luck", 
+                level: 6, 
+                source: "Wild Magic", 
+                url: "", 
+                desc: ["When another creature you can see makes an attack roll, an ability check, or a saving throw, you can use your reaction and spend 2 sorcery points to roll 1d4 and apply the number rolled as a bonus or penalty to the creature's roll."] 
+            }
+        ]
+    },
+    {
+        index: "divine-soul",
+        name: "Divine Soul",
+        source: "Xanathar's Guide to Everything",
+        class: { index: "sorcerer", name: "Sorcerer", url: "" },
+        desc: ["Sometimes the spark of magic that fuels a sorcerer comes from a divine source that glimmers within the soul."],
+        feature_details: [
+            { 
+                index: "divine-magic", 
+                name: "Divine Magic", 
+                level: 1, 
+                source: "Divine Soul", 
+                url: "", 
+                desc: ["When you gain a level in this class, you can choose spells from the cleric spell list in addition to the sorcerer list. You also learn an additional spell based on your alignment (Cure Wounds, Inflict Wounds, etc.)."] 
+            },
+            { 
+                index: "favored-by-the-gods", 
+                name: "Favored by the Gods", 
+                level: 1, 
+                source: "Divine Soul", 
+                url: "", 
+                desc: ["If you fail a saving throw or miss with an attack roll, you can roll 2d4 and add it to the total, possibly changing the outcome. (1/Short or Long Rest)"] 
+            },
+            { 
+                index: "empowered-healing", 
+                name: "Empowered Healing", 
+                level: 6, 
+                source: "Divine Soul", 
+                url: "", 
+                desc: ["Whenever you or an ally within 5 feet of you rolls dice to determine the number of HP a spell restores, you can spend 1 sorcery point to reroll any number of those dice once."] 
+            }
+        ]
+    },
+    {
+        index: "shadow-magic-sorcerer",
+        name: "Shadow Magic",
+        source: "Xanathar's Guide to Everything",
+        class: { index: "sorcerer", name: "Sorcerer", url: "" },
+        desc: ["You are a creature of shadow, for your innate magic comes from the Shadowfell itself."],
+        feature_details: [
+            { 
+                index: "eyes-of-the-dark", 
+                name: "Eyes of the Dark", 
+                level: 1, 
+                source: "Shadow Magic", 
+                url: "", 
+                desc: ["You gain darkvision with a range of 120 feet. When you reach 3rd level, you learn the darkness spell, and you can cast it by spending 2 sorcery points or a spell slot. If you cast it with sorcery points, you can see through the darkness created by the spell."],
+                effects: [{ type: 'stat_bonus', stat: 'darkvision', value: 120 }]
+            },
+            { 
+                index: "strength-of-the-grave", 
+                name: "Strength of the Grave", 
+                level: 1, 
+                source: "Shadow Magic", 
+                url: "", 
+                desc: ["When damage reduces you to 0 HP, you can make a Charisma saving throw (DC 5 + damage taken). On a success, you instead drop to 1 HP. You can't use this feature if the damage is radiant or from a critical hit. (1/Long Rest)"] 
+            },
+            { 
+                index: "hound-of-ill-omen", 
+                name: "Hound of Ill Omen", 
+                level: 6, 
+                source: "Shadow Magic", 
+                url: "", 
+                desc: ["As a bonus action, you can spend 3 sorcery points to magically summon a hound of ill omen to target one creature you can see within 120 feet of you. The hound uses the dire wolf statistics with several modifications."] 
+            }
+        ]
+    },
+    {
+        index: "storm-sorcery",
+        name: "Storm Sorcery",
+        source: "Xanathar's Guide to Everything",
+        class: { index: "sorcerer", name: "Sorcerer", url: "" },
+        desc: ["Your innate magic comes from the power of elemental air."],
+        feature_details: [
+            { 
+                index: "wind-speaker", 
+                name: "Wind Speaker", 
+                level: 1, 
+                source: "Storm Sorcery", 
+                url: "", 
+                desc: ["You can speak, read, and write Primordial. Knowing this language allows you to understand and be understood by those who speak its dialects: Aquan, Auran, Ignan, and Terran."],
+                effects: [{ type: 'proficiency_choice', category: 'language', count: 1, options: ['Primordial'] }]
+            },
+            { 
+                index: "tempestuous-magic", 
+                name: "Tempestuous Magic", 
+                level: 1, 
+                source: "Storm Sorcery", 
+                url: "", 
+                desc: ["Immediately before or after you cast a spell of 1st level or higher, you can use a bonus action to cause whirling gusts of elemental air to briefly surround you, allowing you to fly up to 10 feet without provoking opportunity attacks."] 
+            },
+            { 
+                index: "heart-of-the-storm", 
+                name: "Heart of the Storm", 
+                level: 6, 
+                source: "Storm Sorcery", 
+                url: "", 
+                desc: ["You gain resistance to lightning and thunder damage. In addition, whenever you start casting a spell of 1st level or higher that deals lightning or thunder damage, stormy magic escapes from you, dealing lightning or thunder damage to creatures of your choice within 10 feet of you."],
+                effects: [{ type: 'resistance', damage_type: 'Lightning' }, { type: 'resistance', damage_type: 'Thunder' }]
+            }
+        ]
+    },
+    {
+        index: "aberrant-mind",
+        name: "Aberrant Mind",
+        source: "Tasha's Cauldron of Everything",
+        class: { index: "sorcerer", name: "Sorcerer", url: "" },
+        desc: ["An alien influence has enveloped your mind, leaving an indelible imprint on you and your magic."],
+        feature_details: [
+            { 
+                index: "psionic-spells", 
+                name: "Psionic Spells", 
+                level: 1, 
+                source: "Aberrant Mind", 
+                url: "", 
+                desc: ["You learn additional spells when you reach certain levels in this class. These spells don't count against the number of sorcerer spells you know."] 
+            },
+            { 
+                index: "telepathic-speech", 
+                name: "Telepathic Speech", 
+                level: 1, 
+                source: "Aberrant Mind", 
+                url: "", 
+                desc: ["You can form a telepathic connection between your mind and the mind of another. As a bonus action, choose one creature you can see within 30 feet of you. You and the chosen creature can speak telepathically with each other while the two of you are within a number of miles equal to your Charisma modifier."] 
+            },
+            { 
+                index: "psionic-sorcery", 
+                name: "Psionic Sorcery", 
+                level: 6, 
+                source: "Aberrant Mind", 
+                url: "", 
+                desc: ["When you cast any spell of 1st level or higher from your Psionic Spells feature, you can cast it by expending a spell slot as normal or by spending a number of sorcery points equal to the spell's level. If you cast the spell using sorcery points, it requires no verbal or somatic components, and it requires no material components unless they are consumed by the spell."] 
+            }
+        ]
+    },
+    {
+        index: "clockwork-soul",
+        name: "Clockwork Soul",
+        source: "Tasha's Cauldron of Everything",
+        class: { index: "sorcerer", name: "Sorcerer", url: "" },
+        desc: ["The cosmic force of order has suffused your being with magic."],
+        feature_details: [
+            { 
+                index: "clockwork-spells", 
+                name: "Clockwork Spells", 
+                level: 1, 
+                source: "Clockwork Soul", 
+                url: "", 
+                desc: ["You learn additional spells when you reach certain levels in this class. These spells don't count against the number of sorcerer spells you know."] 
+            },
+            { 
+                index: "restore-balance", 
+                name: "Restore Balance", 
+                level: 1, 
+                source: "Clockwork Soul", 
+                url: "", 
+                desc: ["Your connection to the plane of absolute order allows you to equalize chaotic moments. When a creature you can see within 60 feet of you is about to roll a d20 with advantage or disadvantage, you can use your reaction to prevent the roll from being affected by advantage or disadvantage. (PB/Long Rest)"] 
+            },
+            { 
+                index: "bastion-of-law", 
+                name: "Bastion of Law", 
+                level: 6, 
+                source: "Clockwork Soul", 
+                url: "", 
+                desc: ["You can tap into the grand equation of existence to create a shimmering shield of order around yourself or another creature. As an action, you can expend 1 to 5 sorcery points to create a magical ward around yourself or another creature you can see within 30 feet of you. The ward lasts until you finish a long rest or until you use this feature again."] 
+            }
+        ]
+    },
+
+    // --- WARLOCK ---
+    {
+        index: "the-fiend",
+        name: "The Fiend",
+        source: "Player's Handbook",
+        class: { index: "warlock", name: "Warlock", url: "" },
+        desc: ["You have made a pact with a fiend from the lower planes of existence."],
+        feature_details: [
+            { 
+                index: "dark-ones-blessing", 
+                name: "Dark One's Blessing", 
+                level: 1, 
+                source: "The Fiend", 
+                url: "", 
+                desc: ["When you reduce a hostile creature to 0 HP, you gain temporary HP equal to your Charisma modifier + your warlock level (minimum of 1)."] 
+            },
+            { 
+                index: "dark-ones-own-luck", 
+                name: "Dark One's Own Luck", 
+                level: 6, 
+                source: "The Fiend", 
+                url: "", 
+                desc: ["You can call on your patron to alter fate in your favor. When you make an ability check or a saving throw, you can add a d10 to the roll. You can do so after seeing the initial roll but before any of the roll's effects occur. (1/Short or Long Rest)"] 
+            }
+        ]
+    },
+    {
+        index: "the-archfey",
+        name: "The Archfey",
+        source: "Player's Handbook",
+        class: { index: "warlock", name: "Warlock", url: "" },
+        desc: ["Your patron is a lord or lady of the fey, a creature of legend who holds secrets that were forgotten before the mortal races were born."],
+        feature_details: [
+            { 
+                index: "fey-presence", 
+                name: "Fey Presence", 
+                level: 1, 
+                source: "The Archfey", 
+                url: "", 
+                desc: ["As an action, you can cause each creature in a 10-foot cube originating from you to make a Wisdom saving throw against your warlock spell save DC. The creatures that fail their saving throws are all charmed or frightened by you (your choice) until the end of your next turn. (1/Short or Long Rest)"] 
+            },
+            { 
+                index: "misty-escape", 
+                name: "Misty Escape", 
+                level: 6, 
+                source: "The Archfey", 
+                url: "", 
+                desc: ["When you take damage, you can use your reaction to turn invisible and teleport up to 60 feet to an unoccupied space you can see. You remain invisible until the start of your next turn or until you attack or cast a spell. (1/Short or Long Rest)"] 
+            }
+        ]
+    },
+    {
+        index: "the-great-old-one",
+        name: "The Great Old One",
+        source: "Player's Handbook",
+        class: { index: "warlock", name: "Warlock", url: "" },
+        desc: ["Your patron is a mysterious entity whose nature is utterly foreign to the fabric of reality."],
+        feature_details: [
+            { 
+                index: "awakened-mind", 
+                name: "Awakened Mind", 
+                level: 1, 
+                source: "The Great Old One", 
+                url: "", 
+                desc: ["You can telepathically speak to any creature you can see within 30 feet of you. You don't need to share a language with the creature for it to understand your telepathic utterances, but the creature must be able to understand at least one language."] 
+            },
+            { 
+                index: "entropic-ward", 
+                name: "Entropic Ward", 
+                level: 6, 
+                source: "The Great Old One", 
+                url: "", 
+                desc: ["When a creature makes an attack roll against you, you can use your reaction to impose disadvantage on that roll. If the attack misses you, your next attack roll against the creature has advantage if you make it before the end of your next turn. (1/Short or Long Rest)"] 
+            }
+        ]
+    },
+    {
+        index: "the-hexblade",
+        name: "The Hexblade",
+        source: "Xanathar's Guide to Everything",
+        class: { index: "warlock", name: "Warlock", url: "" },
+        desc: ["You have made your pact with a mysterious entity from the Shadowfell—a force that manifests in sentient magic weapons carved from the stuff of shadow."],
+        feature_details: [
+            { 
+                index: "hexblades-curse", 
+                name: "Hexblade's Curse", 
+                level: 1, 
+                source: "The Hexblade", 
+                url: "", 
+                desc: ["As a bonus action, choose one creature you can see within 30 feet of you. The target is cursed for 1 minute. You gain a bonus to damage rolls against the cursed target equal to your proficiency bonus. Any attack roll you make against the cursed target is a critical hit on a roll of 19 or 20. If the cursed target dies, you regain HP equal to your warlock level + your Charisma modifier (minimum of 1). (1/Short or Long Rest)"] 
+            },
+            { 
+                index: "hex-warrior", 
+                name: "Hex Warrior", 
+                level: 1, 
+                source: "The Hexblade", 
+                url: "", 
+                desc: ["You gain proficiency with medium armor, shields, and martial weapons. When you attack with a weapon that you are proficient with and that lacks the two-handed property, you can use your Charisma modifier, instead of Strength or Dexterity, for the attack and damage rolls."],
+                effects: [
+                    { type: 'proficiency', target: 'Medium Armor', category: 'armor' },
+                    { type: 'proficiency', target: 'Shields', category: 'armor' },
+                    { type: 'proficiency', target: 'Martial Weapons', category: 'weapon' }
+                ]
+            },
+            { 
+                index: "accursed-specter", 
+                name: "Accursed Specter", 
+                level: 6, 
+                source: "The Hexblade", 
+                url: "", 
+                desc: ["When you slay a humanoid, you can cause its spirit to rise from its corpse as a specter. When the specter appears, it gains temporary HP equal to half your warlock level. Roll initiative for the specter, which has its own turns. It obeys your verbal commands, and it gains a special bonus to its attack rolls equal to your Charisma modifier (minimum of +0). (1/Long Rest)"] 
+            }
+        ]
+    },
+    {
+        index: "the-celestial",
+        name: "The Celestial",
+        source: "Xanathar's Guide to Everything",
+        class: { index: "warlock", name: "Warlock", url: "" },
+        desc: ["Your patron is a powerful being of the Upper Planes."],
+        feature_details: [
+            { 
+                index: "healing-light", 
+                name: "Healing Light", 
+                level: 1, 
+                source: "The Celestial", 
+                url: "", 
+                desc: ["You gain the ability to channel celestial energy to heal wounds. You have a pool of d6s that you spend to fuel this healing. The number of dice in the pool equals 1 + your warlock level. As a bonus action, you can heal one creature you can see within 60 feet of you, spending a number of dice from the pool up to your Charisma modifier (minimum of 1 die)."] 
+            },
+            { 
+                index: "radiant-soul", 
+                name: "Radiant Soul", 
+                level: 6, 
+                source: "The Celestial", 
+                url: "", 
+                desc: ["You gain resistance to radiant damage, and when you cast a spell that deals radiant or fire damage, you can add your Charisma modifier to one radiant or fire damage roll of that spell against one of its targets."],
+                effects: [{ type: 'resistance', damage_type: 'Radiant' }]
+            }
+        ]
+    },
+
+    // --- WIZARD ---
+    {
+        index: "abjuration",
+        name: "School of Abjuration",
+        source: "Player's Handbook",
+        class: { index: "wizard", name: "Wizard", url: "" },
+        desc: ["The School of Abjuration emphasizes magic that blocks, banishes, and protects."],
+        feature_details: [
+            { 
+                index: "abjuration-savant", 
+                name: "Abjuration Savant", 
+                level: 2, 
+                source: "Abjuration", 
+                url: "", 
+                desc: ["The gold and time you must spend to copy an abjuration spell into your spellbook is halved."] 
+            },
+            { 
+                index: "arcane-ward", 
+                name: "Arcane Ward", 
+                level: 2, 
+                source: "Abjuration", 
+                url: "", 
+                desc: ["When you cast an abjuration spell of 1st level or higher, you can simultaneously use a strand of the spell's magic to create a magical ward on yourself that lasts until you finish a long rest. The ward has HP equal to twice your wizard level + your Intelligence modifier."] 
+            }
+        ]
+    },
+    {
+        index: "conjuration",
+        name: "School of Conjuration",
+        source: "Player's Handbook",
+        class: { index: "wizard", name: "Wizard", url: "" },
+        desc: ["As a conjurer, you favor spells that produce objects and creatures out of thin air."],
+        feature_details: [
+            { 
+                index: "conjuration-savant", 
+                name: "Conjuration Savant", 
+                level: 2, 
+                source: "Conjuration", 
+                url: "", 
+                desc: ["The gold and time you must spend to copy a conjuration spell into your spellbook is halved."] 
+            },
+            { 
+                index: "minor-conjuration", 
+                name: "Minor Conjuration", 
+                level: 2, 
+                source: "Conjuration", 
+                url: "", 
+                desc: ["You can use your action to conjure up an inanimate object in your hand or on the ground in an unoccupied space that you can see within 10 feet of you. This object can be no larger than 3 feet on a side and weigh no more than 10 pounds, and its form must be that of a nonmagical object that you have seen."] 
+            }
+        ]
+    },
+    {
+        index: "divination",
+        name: "School of Divination",
+        source: "Player's Handbook",
+        class: { index: "wizard", name: "Wizard", url: "" },
+        desc: ["The counsel of a diviner is sought by all who would understand the past, present, and future."],
+        feature_details: [
+            { 
+                index: "divination-savant", 
+                name: "Divination Savant", 
+                level: 2, 
+                source: "Divination", 
+                url: "", 
+                desc: ["The gold and time you must spend to copy a divination spell into your spellbook is halved."] 
+            },
+            { 
+                index: "portent", 
+                name: "Portent", 
+                level: 2, 
+                source: "Divination", 
+                url: "", 
+                desc: ["When you finish a long rest, roll two d20s and record the numbers rolled. You can replace any attack roll, saving throw, or ability check made by you or a creature that you can see with one of these foretelling rolls. You must choose to do so before the roll occurs, and you can replace a roll in this way only once per turn."] 
+            }
+        ]
+    },
+    {
+        index: "enchantment",
+        name: "School of Enchantment",
+        source: "Player's Handbook",
+        class: { index: "wizard", name: "Wizard", url: "" },
+        desc: ["As a member of the School of Enchantment, you have honed your ability to magically entrance and beguile other people and monsters."],
+        feature_details: [
+            { 
+                index: "enchantment-savant", 
+                name: "Enchantment Savant", 
+                level: 2, 
+                source: "Enchantment", 
+                url: "", 
+                desc: ["The gold and time you must spend to copy an enchantment spell into your spellbook is halved."] 
+            },
+            { 
+                index: "hypnotic-gaze", 
+                name: "Hypnotic Gaze", 
+                level: 2, 
+                source: "Enchantment", 
+                url: "", 
+                desc: ["As an action, choose one creature that you can see within 5 feet of you. If the target can see or hear you, it must succeed on a Wisdom saving throw against your wizard spell save DC or be charmed by you until the end of your next turn. The charmed creature's speed drops to 0, and the creature is incapacitated and visibly dazed."] 
+            }
+        ]
+    },
+    {
+        index: "evocation",
+        name: "School of Evocation",
+        source: "Player's Handbook",
+        class: { index: "wizard", name: "Wizard", url: "" },
+        desc: ["You focus your study on magic that creates powerful elemental effects such as bitter cold, searing flame, rolling thunder, crackling lightning, and burning acid."],
+        feature_details: [
+            { 
+                index: "evocation-savant", 
+                name: "Evocation Savant", 
+                level: 2, 
+                source: "Evocation", 
+                url: "", 
+                desc: ["The gold and time you must spend to copy an evocation spell into your spellbook is halved."] 
+            },
+            { 
+                index: "sculpt-spells", 
+                name: "Sculpt Spells", 
+                level: 2, 
+                source: "Evocation", 
+                url: "", 
+                desc: ["You can create pockets of relative safety within the effects of your evocation spells. When you cast an evocation spell that affects other creatures that you can see, you can choose a number of them equal to 1 + the spell's level. The chosen creatures automatically succeed on their saving throws against the spell, and they take no damage if they would normally take half damage on a successful save."] 
+            }
+        ]
+    },
+    {
+        index: "illusion",
+        name: "School of Illusion",
+        source: "Player's Handbook",
+        class: { index: "wizard", name: "Wizard", url: "" },
+        desc: ["You focus your studies on magic that dazzles the senses, befuddles the mind, and fools even the wisest eyes."],
+        feature_details: [
+            { 
+                index: "illusion-savant", 
+                name: "Illusion Savant", 
+                level: 2, 
+                source: "Illusion", 
+                url: "", 
+                desc: ["The gold and time you must spend to copy an illusion spell into your spellbook is halved."] 
+            },
+            { 
+                index: "improved-minor-illusion", 
+                name: "Improved Minor Illusion", 
+                level: 2, 
+                source: "Illusion", 
+                url: "", 
+                desc: ["You learn the minor illusion cantrip. If you already know this cantrip, you learn a different wizard cantrip of your choice. The cantrip doesn't count against your number of cantrips known. When you cast minor illusion, you can create both a sound and an image with a single casting of the spell."] 
+            }
+        ]
+    },
+    {
+        index: "necromancy",
+        name: "School of Necromancy",
+        source: "Player's Handbook",
+        class: { index: "wizard", name: "Wizard", url: "" },
+        desc: ["The School of Necromancy explores the cosmic forces of life, death, and unlife."],
+        feature_details: [
+            { 
+                index: "necromancy-savant", 
+                name: "Necromancy Savant", 
+                level: 2, 
+                source: "Necromancy", 
+                url: "", 
+                desc: ["The gold and time you must spend to copy a necromancy spell into your spellbook is halved."] 
+            },
+            { 
+                index: "grim-harvest", 
+                name: "Grim Harvest", 
+                level: 2, 
+                source: "Necromancy", 
+                url: "", 
+                desc: ["You gain the ability to reap life energy from creatures you kill with your spells. Once per turn when you kill one or more creatures with a spell of 1st level or higher, you regain HP equal to twice the spell's level, or three times its level if the spell belongs to the School of Necromancy. You don't gain this benefit for killing constructs or undead."] 
+            }
+        ]
+    },
+    {
+        index: "transmutation",
+        name: "School of Transmutation",
+        source: "Player's Handbook",
+        class: { index: "wizard", name: "Wizard", url: "" },
+        desc: ["You are a student of spells that modify energy and matter."],
+        feature_details: [
+            { 
+                index: "transmutation-savant", 
+                name: "Transmutation Savant", 
+                level: 2, 
+                source: "Transmutation", 
+                url: "", 
+                desc: ["The gold and time you must spend to copy a transmutation spell into your spellbook is halved."] 
+            },
+            { 
+                index: "minor-alchemy", 
+                name: "Minor Alchemy", 
+                level: 2, 
+                source: "Transmutation", 
+                url: "", 
+                desc: ["You can temporarily alter the physical properties of one nonmagical object, changing it from one substance into another. You perform a special alchemical procedure on one object composed entirely of wood, stone (but not a gemstone), iron, copper, or silver, transforming it into a different one of those materials."] 
+            }
+        ]
+    },
+    {
+        index: "bladesinging",
+        name: "Bladesinging",
+        source: "Tasha's Cauldron of Everything",
+        class: { index: "wizard", name: "Wizard", url: "" },
+        desc: ["Bladesinging is a tradition of wizardry that incorporates swordplay and dance."],
+        feature_details: [
+            { 
+                index: "training-in-war-and-song", 
+                name: "Training in War and Song", 
+                level: 2, 
+                source: "Bladesinging", 
+                url: "", 
+                desc: ["You gain proficiency with light armor, and you gain proficiency with one type of one-handed melee weapon of your choice. You also gain proficiency in the Performance skill if you don't already have it."],
+                effects: [
+                    { type: 'proficiency', target: 'Light Armor', category: 'armor' },
+                    { type: 'proficiency', target: 'Performance', category: 'skill' }
+                ]
+            },
+            { 
+                index: "bladesong", 
+                name: "Bladesong", 
+                level: 2, 
+                source: "Bladesinging", 
+                url: "", 
+                desc: ["You can invoke a elven magic called the Bladesong, provided that you aren't wearing medium or heavy armor or using a shield. It graces you with supernatural speed, agility, and focus. You can use a bonus action to start the Bladesong, which lasts for 1 minute. It ends early if you are incapacitated, if you don't have a free hand, or if you don't have a weapon in your hand. (PB/Long Rest)"] 
+            }
+        ]
+    },
+
+    // --- PALADIN ---
+    {
+        index: "devotion",
+        name: "Oath of Devotion",
+        source: "Player's Handbook",
+        class: { index: "paladin", name: "Paladin", url: "" },
+        desc: ["The Oath of Devotion binds a paladin to the loftiest ideals of justice, virtue, and order."],
+        feature_details: [
+            { 
+                index: "channel-divinity-devotion", 
+                name: "Channel Divinity", 
+                level: 3, 
+                source: "Devotion", 
+                url: "", 
+                desc: ["Sacred Weapon: Add Cha mod to attack rolls with one weapon for 1 min. Turn the Unholy: Turn fiends and undead."] 
+            }
+        ]
+    },
+    {
+        index: "ancients",
+        name: "Oath of the Ancients",
+        source: "Player's Handbook",
+        class: { index: "paladin", name: "Paladin", url: "" },
+        desc: ["The Oath of the Ancients is as old as the race of elves and the rituals of the druids."],
+        feature_details: [
+            { 
+                index: "channel-divinity-ancients", 
+                name: "Channel Divinity", 
+                level: 3, 
+                source: "Ancients", 
+                url: "", 
+                desc: ["Nature's Wrath: Restrain a creature within 10 feet. Turn the Faithless: Turn fey and fiends."] 
+            }
+        ]
+    },
+    {
+        index: "vengeance",
+        name: "Oath of Vengeance",
+        source: "Player's Handbook",
+        class: { index: "paladin", name: "Paladin", url: "" },
+        desc: ["The Oath of Vengeance is a solemn commitment to punish those who have committed a grievous sin."],
+        feature_details: [
+            { 
+                index: "channel-divinity-vengeance", 
+                name: "Channel Divinity", 
+                level: 3, 
+                source: "Vengeance", 
+                url: "", 
+                desc: ["Abjure Enemy: Frighten a creature. Vow of Enmity: Gain advantage on attack rolls against one creature for 1 min."] 
+            }
+        ]
+    },
+    {
+        index: "conquest",
+        name: "Oath of Conquest",
+        source: "Xanathar's Guide to Everything",
+        class: { index: "paladin", name: "Paladin", url: "" },
+        desc: ["The Oath of Conquest calls to paladins who seek glory in battle and the subjugation of their enemies."],
+        feature_details: [
+            { 
+                index: "channel-divinity-conquest", 
+                name: "Channel Divinity", 
+                level: 3, 
+                source: "Conquest", 
+                url: "", 
+                desc: ["Conquering Presence: Frighten creatures within 30 feet. Guided Strike: Gain a +10 bonus to an attack roll."] 
+            }
+        ]
+    },
+    {
+        index: "redemption",
+        name: "Oath of Redemption",
+        source: "Xanathar's Guide to Everything",
+        class: { index: "paladin", name: "Paladin", url: "" },
+        desc: ["The Oath of Redemption sets a paladin on a difficult path, one that requires a holy warrior to use violence only as a last resort."],
+        feature_details: [
+            { 
+                index: "channel-divinity-redemption", 
+                name: "Channel Divinity", 
+                level: 3, 
+                source: "Redemption", 
+                url: "", 
+                desc: ["Emissary of Peace: Gain a +5 bonus to Persuasion checks for 10 min. Rebuke the Violent: Deal damage to a creature that damaged another."] 
+            }
+        ]
+    },
+
+    // --- RANGER ---
+    {
+        index: "hunter",
+        name: "Hunter",
+        source: "Player's Handbook",
+        class: { index: "ranger", name: "Ranger", url: "" },
+        desc: ["Emulate the idealized hunter, specializing in fighting the threats that prey on other folk."],
+        feature_details: [
+            { 
+                index: "hunters-prey", 
+                name: "Hunter's Prey", 
+                level: 3, 
+                source: "Hunter", 
+                url: "", 
+                desc: ["Choose one of the following: Colossus Slayer (extra 1d8 dmg to wounded targets), Giant Killer (reaction attack vs large+ creatures), or Horde Breaker (extra attack vs adjacent creatures)."] 
+            }
+        ]
+    },
+    {
+        index: "beast-master",
+        name: "Beast Master",
+        source: "Player's Handbook",
+        class: { index: "ranger", name: "Ranger", url: "" },
+        desc: ["The Beast Master embodies a friendship between the civilized races and the beasts of the world."],
+        feature_details: [
+            { 
+                index: "rangers-companion", 
+                name: "Ranger's Companion", 
+                level: 3, 
+                source: "Beast Master", 
+                url: "", 
+                desc: ["You gain a beast companion that accompanies you on your adventures and is trained to fight alongside you."] 
+            }
+        ]
+    },
+    {
+        index: "gloom-stalker",
+        name: "Gloom Stalker",
+        source: "Xanathar's Guide to Everything",
+        class: { index: "ranger", name: "Ranger", url: "" },
+        desc: ["Gloom Stalkers are at home in the darkest places: deep under the earth, in gloomy alleyways, and in primeval forests."],
+        feature_details: [
+            { 
+                index: "dread-ambusher", 
+                name: "Dread Ambusher", 
+                level: 3, 
+                source: "Gloom Stalker", 
+                url: "", 
+                desc: ["Add Wis mod to initiative. On your first turn of combat, your speed increases by 10 feet, and if you take the Attack action, you can make one additional weapon attack that deals an extra 1d8 damage."],
+                effects: [{ type: 'stat_bonus_attribute', stat: 'initiative', attribute: 'wis' }]
+            },
+            { 
+                index: "umbral-sight", 
+                name: "Umbral Sight", 
+                level: 3, 
+                source: "Gloom Stalker", 
+                url: "", 
+                desc: ["You gain darkvision out to a range of 60 feet. If you already have darkvision, its range increases by 30 feet. You are also invisible to any creature that relies on darkvision to see you in darkness."],
+                effects: [{ type: 'stat_bonus', stat: 'darkvision', value: 60 }]
+            }
+        ]
+    },
+    {
+        index: "horizon-walker",
+        name: "Horizon Walker",
+        source: "Xanathar's Guide to Everything",
+        class: { index: "ranger", name: "Ranger", url: "" },
+        desc: ["Horizon Walkers guard the world against threats that originate from other planes."],
+        feature_details: [
+            { 
+                index: "detect-portal", 
+                name: "Detect Portal", 
+                level: 3, 
+                source: "Horizon Walker", 
+                url: "", 
+                desc: ["You gain the ability to magically sense the presence of a planar portal within 1 mile of you. (1/Short or Long Rest)"] 
+            },
+            { 
+                index: "planer-warrior", 
+                name: "Planar Warrior", 
+                level: 3, 
+                source: "Horizon Walker", 
+                url: "", 
+                desc: ["As a bonus action, choose one creature you can see within 30 feet of you. The next time you hit that creature on this turn with a weapon attack, all damage dealt by the attack becomes force damage, and the creature takes an extra 1d8 force damage."] 
+            }
+        ]
+    },
+    {
+        index: "monster-slayer",
+        name: "Monster Slayer",
+        source: "Xanathar's Guide to Everything",
+        class: { index: "ranger", name: "Ranger", url: "" },
+        desc: ["You have dedicated yourself to hunting down creatures of the night and wielders of grim magic."],
+        feature_details: [
+            { 
+                index: "hunters-sense", 
+                name: "Hunter's Sense", 
+                level: 3, 
+                source: "Monster Slayer", 
+                url: "", 
+                desc: ["As an action, choose one creature you can see within 60 feet of you. You immediately learn whether the creature has any damage immunities, resistances, or vulnerabilities and what they are. (Wis mod/Long Rest)"] 
+            },
+            { 
+                index: "slayers-prey", 
+                name: "Slayer's Prey", 
+                level: 3, 
+                source: "Monster Slayer", 
+                url: "", 
+                desc: ["As a bonus action, you designate one creature you can see within 60 feet of you as the target of this feature. The first time each turn that you hit that target with a weapon attack, it takes an extra 1d6 damage from the weapon."] 
+            }
         ]
     },
 

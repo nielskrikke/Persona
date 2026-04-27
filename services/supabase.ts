@@ -90,25 +90,44 @@ export const deleteCharacter = async (id: string) => {
 
 // --- HOMEBREW SERVICES ---
 
+const homebrewCache: Record<string, { data: any[], timestamp: number }> = {};
+const CACHE_DURATION = 30000; // 30 seconds
+
 export const loadHomebrew = async (
     table: 'custom_races' | 'custom_classes' | 'custom_subclasses' | 'custom_backgrounds' | 'custom_spells' | 'custom_equipment' | 'custom_beasts' | 'custom_familiars' | 'custom_feats',
     userId?: string
 ) => {
+    const cacheKey = `${table}_${userId || 'public'}`;
+    const now = Date.now();
+    
+    if (homebrewCache[cacheKey] && (now - homebrewCache[cacheKey].timestamp < CACHE_DURATION)) {
+        return homebrewCache[cacheKey].data;
+    }
+
     try {
         const url = userId ? `/api/homebrew/${table}?userId=${userId}` : `/api/homebrew/${table}`;
         const response = await fetch(url);
         if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error || `Failed to load ${table}`);
+            let errorMsg = `Failed to load ${table}`;
+            try {
+                const err = await response.json();
+                errorMsg = err.error || errorMsg;
+            } catch (e) {
+                errorMsg = `${response.status} ${response.statusText}`;
+            }
+            throw new Error(errorMsg);
         }
         const data = await response.json();
-        return data.map((item: any) => ({ 
+        const results = (data || []).map((item: any) => ({ 
             ...item.data, 
             id: item.id, 
             user_id: item.user_id, 
             is_public: item.is_public, 
             isCustom: true 
         }));
+        
+        homebrewCache[cacheKey] = { data: results, timestamp: now };
+        return results;
     } catch (error) {
         console.error(`Error loading homebrew from ${table}:`, error);
         return [];

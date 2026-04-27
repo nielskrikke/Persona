@@ -3,8 +3,9 @@ import React, { useEffect, useState } from 'react';
 import { APIReference, RaceDetail, SubraceDetail, SpellDetail, AbilityName, ABILITY_NAMES, ABILITY_LABELS } from '../../types';
 import { fetchRaces, fetchRaceDetail, fetchSubraces, fetchSubraceDetail, getLocalSpells } from '../../data/index';
 import { SKILL_LIST } from '../../utils/rules';
+import { SIMPLE_WEAPONS, MARTIAL_WEAPONS, TOOLS, SKILLS, LANGUAGES, getProficiencyType, getAllowedSwaps } from '../../data/origin_customization';
 
-const LANGUAGE_LIST = ["Common", "Dwarvish", "Elvish", "Giant", "Gnomish", "Goblin", "Halfling", "Orc", "Abyssal", "Celestial", "Draconic", "Deep Speech", "Infernal", "Primordial", "Sylvan", "Undercommon"];
+const LANGUAGE_LIST = LANGUAGES;
 
 interface RaceStepProps {
   onSelect: (race: RaceDetail, subrace: SubraceDetail | null, extraData?: any) => void;
@@ -32,6 +33,13 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
   const [traitSelections, setTraitSelections] = useState<Record<string, any>>({});
   const [validationError, setValidationError] = useState<string | null>(null);
   
+  // Customize Your Origin State
+  const [isCustomizingOrigin, setIsCustomizingOrigin] = useState(false);
+  const [customAsi, setCustomAsi] = useState<Record<string, number>>({});
+  const [customLanguages, setCustomLanguages] = useState<string[]>([]);
+  const [customProficiencies, setCustomProficiencies] = useState<Record<string, string>>({});
+  const [proficiencySwaps, setProficiencySwaps] = useState<{original: string, replacement: string}[]>([]);
+  
   // Data for options
   const [wizardCantrips, setWizardCantrips] = useState<SpellDetail[]>([]);
 
@@ -57,6 +65,11 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
     setHalfElfAsi([]);
     setChosenLanguages([]);
     setTraitSelections({});
+    setIsCustomizingOrigin(false);
+    setCustomAsi({});
+    setCustomLanguages([]);
+    setCustomProficiencies({});
+    setProficiencySwaps([]);
     
     const detail = await fetchRaceDetail(index, userId);
     setPreviewRace(detail);
@@ -114,6 +127,30 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
     if (previewRace) {
         const langOptions = previewRace.language_options || 0;
         
+        // Validation for Custom Origin
+        if (isCustomizingOrigin) {
+            const baseBonuses = [...(previewRace.ability_bonuses || []), ...(selectedSubrace?.ability_bonuses || [])].map(b => b.bonus);
+            if (previewRace.index === 'half-elf') baseBonuses.push(1, 1); // Half-elf gets +2 CHA and two +1s
+            
+            const customBonuses = Object.values(customAsi).filter(b => b > 0);
+            
+            const sortedBase = [...baseBonuses].sort((a, b) => b - a);
+            const sortedCustom = [...customBonuses].sort((a, b) => b - a);
+            
+            if (JSON.stringify(sortedBase) !== JSON.stringify(sortedCustom)) {
+                setValidationError(`Please distribute your Ability Score points correctly: ${sortedBase.map(b => `+${b}`).join(', ')}.`);
+                return;
+            }
+
+            const baseLanguagesCount = (previewRace.languages?.length || 0) + (selectedSubrace?.languages?.length || 0) + langOptions;
+            if (customLanguages.length !== baseLanguagesCount) {
+                setValidationError(`Please select exactly ${baseLanguagesCount} languages.`);
+                return;
+            }
+
+            // Proficiency swaps are optional but must be valid if selected
+        }
+
         if (subraces.length > 0 && !selectedSubrace) {
             setValidationError("Please select a subrace.");
             return;
@@ -191,6 +228,43 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
         
         const choices: any[] = [];
         const extraData: any = { ...traitSelections };
+
+        if (isCustomizingOrigin) {
+            extraData.isCustomOrigin = true;
+            extraData.customAsi = customAsi;
+            extraData.customLanguages = customLanguages;
+            extraData.customProficiencies = customProficiencies;
+            extraData.proficiencySwaps = proficiencySwaps;
+
+            choices.push({
+                id: 'race-custom-origin-asi',
+                level: 1,
+                source: 'Custom Origin',
+                type: 'asi',
+                label: 'Custom Ability Score Increases',
+                value: customAsi
+            });
+
+            choices.push({
+                id: 'race-custom-origin-languages',
+                level: 1,
+                source: 'Custom Origin',
+                type: 'language',
+                label: 'Custom Languages',
+                value: customLanguages
+            });
+
+            if (proficiencySwaps.length > 0) {
+                choices.push({
+                    id: 'race-custom-origin-proficiencies',
+                    level: 1,
+                    source: 'Custom Origin',
+                    type: 'proficiency',
+                    label: 'Custom Proficiencies',
+                    value: proficiencySwaps
+                });
+            }
+        }
         
         if (ancestry) {
             extraData.ancestry = ancestry;
@@ -404,7 +478,39 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
               <div className="p-6 bg-[#121316] border-b border-gray-800">
                 <div className="flex justify-between items-start">
                     <h2 className="text-4xl font-serif text-white mb-2">{previewRace.name}</h2>
-                    {previewRace.isCustom && <span className="bg-blue-900/40 text-blue-300 border border-blue-800 px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest">Shared Creation</span>}
+                    <div className="flex gap-2">
+                        <button 
+                            onClick={() => {
+                                setIsCustomizingOrigin(!isCustomizingOrigin);
+                                if (!isCustomizingOrigin) {
+                                    // Initialize custom values from base race
+                                    const baseAsi: Record<string, number> = {};
+                                    previewRace.ability_bonuses.forEach((b: any) => {
+                                        baseAsi[b.ability_score.index] = (baseAsi[b.ability_score.index] || 0) + b.bonus;
+                                    });
+                                    if (selectedSubrace) {
+                                        selectedSubrace.ability_bonuses.forEach((b: any) => {
+                                            baseAsi[b.ability_score.index] = (baseAsi[b.ability_score.index] || 0) + b.bonus;
+                                        });
+                                    }
+                                    if (previewRace.index === 'half-elf') {
+                                        baseAsi['cha'] = 2;
+                                        halfElfAsi.forEach(stat => {
+                                            baseAsi[stat] = (baseAsi[stat] || 0) + 1;
+                                        });
+                                    }
+                                    setCustomAsi(baseAsi);
+                                    
+                                    const baseLangs = [...(previewRace.languages || []), ...(selectedSubrace?.languages || [])].map((l: any) => typeof l === 'string' ? l : l.name);
+                                    setCustomLanguages([...baseLangs, ...chosenLanguages]);
+                                }
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border ${isCustomizingOrigin ? 'bg-dnd-gold border-dnd-gold text-black' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'}`}
+                        >
+                            {isCustomizingOrigin ? 'Customizing Origin' : 'Customize Origin'}
+                        </button>
+                        {previewRace.isCustom && <span className="bg-blue-900/40 text-blue-300 border border-blue-800 px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest">Shared Creation</span>}
+                    </div>
                 </div>
                 <div className="flex flex-wrap gap-x-4 gap-y-2 text-[10px] font-black text-dnd-gold uppercase tracking-widest">
                    <span>Walk: {previewRace.speed}ft</span>
@@ -417,11 +523,152 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
               </div>
               
               <div className="flex-grow overflow-y-auto custom-scrollbar p-8 space-y-8">
-                <div className="bg-black/20 p-5 rounded-lg border border-gray-800 italic text-gray-400 leading-relaxed font-serif">
-                   {previewRace.alignment}
-                </div>
-                
-                <section>
+                {isCustomizingOrigin ? (
+                    <div className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
+                        <div className="bg-dnd-gold/5 border border-dnd-gold/20 p-6 rounded-xl">
+                            <h3 className="text-lg font-serif text-dnd-gold mb-2">Customize Your Origin</h3>
+                            <p className="text-sm text-gray-400 font-serif italic mb-6">
+                                You can customize your ability scores, languages, and proficiencies to fit the origin you have in mind.
+                            </p>
+
+                            {/* Custom ASI */}
+                            <section className="mb-8">
+                                <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-4 border-b border-gray-800 pb-2">Ability Score Increases</h4>
+                                <div className="bg-black/40 p-4 rounded-xl border border-gray-800 mb-6">
+                                    <p className="text-[10px] text-gray-500 uppercase font-black mb-4">Available Bonuses to Distribute:</p>
+                                    <div className="flex gap-2">
+                                        {(() => {
+                                            const baseBonuses = [...(previewRace.ability_bonuses || []), ...(selectedSubrace?.ability_bonuses || [])].map(b => b.bonus);
+                                            if (previewRace.index === 'half-elf') baseBonuses.push(1, 1); // Half-elf gets +2 CHA and two +1s
+                                            return baseBonuses.sort((a, b) => b - a).map((b, i) => (
+                                                <div key={i} className="bg-dnd-gold/20 border border-dnd-gold/50 px-3 py-1 rounded text-dnd-gold font-black text-xs">+{b}</div>
+                                            ));
+                                        })()}
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                                    {ABILITY_NAMES.map(stat => (
+                                        <div key={stat} className="bg-gray-800/40 border border-gray-700 p-4 rounded-xl flex flex-col items-center">
+                                            <span className="font-black uppercase text-[10px] tracking-widest text-gray-400 mb-2">{ABILITY_LABELS[stat as AbilityName]}</span>
+                                            <select 
+                                                value={customAsi[stat] || 0}
+                                                onChange={(e) => {
+                                                    const val = parseInt(e.target.value);
+                                                    setCustomAsi(prev => {
+                                                        const next = { ...prev };
+                                                        if (val === 0) delete next[stat];
+                                                        else next[stat] = val;
+                                                        return next;
+                                                    });
+                                                }}
+                                                className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-white text-center font-black"
+                                            >
+                                                <option value="0">None</option>
+                                                <option value="1">+1</option>
+                                                <option value="2">+2</option>
+                                            </select>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+
+                            {/* Custom Languages */}
+                            <section className="mb-8">
+                                <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-4 border-b border-gray-800 pb-2">Languages</h4>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                    {LANGUAGE_LIST.map(lang => (
+                                        <label key={lang} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer border transition-all ${customLanguages.includes(lang) ? 'bg-dnd-gold/10 border-dnd-gold text-dnd-gold' : 'bg-black/40 border-transparent hover:bg-gray-800 text-gray-500'}`}>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={customLanguages.includes(lang)}
+                                                onChange={() => {
+                                                    const max = (previewRace.languages?.length || 0) + (selectedSubrace?.languages?.length || 0) + (previewRace.language_options || 0);
+                                                    if (customLanguages.includes(lang)) {
+                                                        setCustomLanguages(prev => prev.filter(l => l !== lang));
+                                                    } else if (customLanguages.length < max) {
+                                                        setCustomLanguages(prev => [...prev, lang]);
+                                                    }
+                                                }}
+                                                className="accent-dnd-gold"
+                                            />
+                                            <span className="text-[10px] font-bold uppercase">{lang}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                                <p className="text-[10px] text-gray-500 mt-4 uppercase font-bold">
+                                    Selected: {customLanguages.length} / {(previewRace.languages?.length || 0) + (selectedSubrace?.languages?.length || 0) + (previewRace.language_options || 0)}
+                                </p>
+                            </section>
+
+                            {/* Proficiency Swaps */}
+                            <section>
+                                <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-4 border-b border-gray-800 pb-2">Proficiency Swaps</h4>
+                                <div className="space-y-4">
+                                    {proficiencySwaps.map((swap, index) => (
+                                        <div key={index} className="flex gap-4 items-end bg-gray-800/20 p-4 rounded-xl border border-gray-700">
+                                            <div className="flex-grow">
+                                                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">Original Proficiency</label>
+                                                <input 
+                                                    type="text"
+                                                    value={swap.original}
+                                                    onChange={(e) => {
+                                                        const newSwaps = [...proficiencySwaps];
+                                                        newSwaps[index].original = e.target.value;
+                                                        setProficiencySwaps(newSwaps);
+                                                    }}
+                                                    placeholder="e.g. Longsword"
+                                                    className="w-full bg-[#0b0c0e] border border-gray-700 rounded-lg p-3 text-sm text-white focus:border-dnd-gold outline-none"
+                                                />
+                                            </div>
+                                            <div className="flex-grow">
+                                                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">Replacement</label>
+                                                <select 
+                                                    value={swap.replacement}
+                                                    onChange={(e) => {
+                                                        const newSwaps = [...proficiencySwaps];
+                                                        newSwaps[index].replacement = e.target.value;
+                                                        setProficiencySwaps(newSwaps);
+                                                    }}
+                                                    className="w-full bg-[#0b0c0e] border border-gray-700 rounded-lg p-3 text-sm text-white focus:border-dnd-gold outline-none"
+                                                >
+                                                    <option value="">Select Replacement...</option>
+                                                    {(() => {
+                                                        const type = getProficiencyType(swap.original);
+                                                        if (!type) return <option disabled>Enter valid original first</option>;
+                                                        return getAllowedSwaps(type).map(opt => (
+                                                            <option key={opt} value={opt}>{opt}</option>
+                                                        ));
+                                                    })()}
+                                                </select>
+                                            </div>
+                                            <button 
+                                                onClick={() => setProficiencySwaps(prev => prev.filter((_, i) => i !== index))}
+                                                className="p-3 text-red-500 hover:text-red-400"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                    ))}
+                                    <button 
+                                        onClick={() => setProficiencySwaps(prev => [...prev, { original: '', replacement: '' }])}
+                                        className="w-full py-3 border-2 border-dashed border-gray-800 rounded-xl text-gray-500 hover:border-dnd-gold hover:text-dnd-gold transition-all font-bold text-xs uppercase"
+                                    >
+                                        + Add Proficiency Swap
+                                    </button>
+                                    <p className="text-[10px] text-gray-500 italic">
+                                        According to Tasha's: Skill → Skill, Simple Weapon → Simple Weapon/Tool, Martial Weapon → Simple/Martial Weapon/Tool, Tool → Tool/Simple Weapon.
+                                    </p>
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        <div className="bg-black/20 p-5 rounded-lg border border-gray-800 italic text-gray-400 leading-relaxed font-serif">
+                           {previewRace.alignment}
+                        </div>
+                        
+                        <section>
                   <h4 className="text-xs font-black text-gray-500 uppercase tracking-[0.2em] mb-4 border-b border-gray-800 pb-2">Ability Bonuses</h4>
                   <div className="flex flex-wrap gap-3">
                     {previewRace.ability_bonuses.map((b: any, i: number) => (
@@ -448,6 +695,8 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
                     ))}
                   </div>
                 </section>
+                    </>
+                )}
 
                 {/* Subrace Section */}
                 {subraces.length > 0 && (

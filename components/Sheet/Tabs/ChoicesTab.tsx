@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { CharacterState, LevelChoice, AbilityScores, ABILITY_NAMES, ABILITY_LABELS, AbilityName, SpellDetail, FeatDetail } from '../../../types';
+import { CharacterState, LevelChoice, AbilityScores, ABILITY_NAMES, ABILITY_LABELS, AbilityName, SpellDetail, FeatDetail, SubclassDetail } from '../../../types';
 import { AlertTriangle, CheckCircle2, ChevronRight, RotateCcw, Sparkles, Info } from 'lucide-react';
 import { calculateModifier, SKILL_LIST } from '../../../utils/rules';
-import { STANDARD_LANGUAGES } from '../../../data/constants';
+import { STANDARD_LANGUAGES, METAMAGIC_OPTIONS } from '../../../data/constants';
 import { fetchFeatsList, fetchAllSpells, fetchSubclasses, fetchSubclassDetail, fetchSubclassLevels, fetchClassLevels } from '../../../data/index';
 
 interface ChoicesTabProps {
@@ -309,11 +309,45 @@ interface ChoiceCardProps {
 }
 
 const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onMakeChoice, allFeats, allSpells, character }) => {
-    const [selection, setSelection] = useState<any>(choice.count && choice.count > 1 ? [] : null);
+    const [selection, setSelection] = useState<any>(() => {
+        if (choice.revertData?.isMetamagicMatrix) {
+            return choice.revertData.isProgression ? [] : {};
+        }
+        return choice.count && choice.count > 1 ? [] : null;
+    });
     const [asiIncreases, setAsiIncreases] = useState<Record<string, number>>({});
     const [asiMode, setAsiMode] = useState<'ability' | 'feat'>('ability');
+    const [subclassDetails, setSubclassDetails] = useState<Record<string, SubclassDetail>>({});
+
+    useEffect(() => {
+        if (choice.type === 'subclass' && choice.options) {
+            const loadSubs = async () => {
+                const details: Record<string, SubclassDetail> = {};
+                for (const sub of choice.options as any[]) {
+                    const d = await fetchSubclassDetail(sub.index);
+                    if (d) details[sub.index] = d;
+                }
+                setSubclassDetails(details);
+            };
+            loadSubs();
+        }
+    }, [choice.type, choice.options]);
 
     const handleConfirm = async () => {
+        if (choice.revertData?.isMetamagicMatrix) {
+            const isProgression = choice.revertData.isProgression;
+            if (isProgression) {
+                onMakeChoice(choice.id, selection, { isMetamagic: true });
+            } else {
+                onMakeChoice(choice.id, `${selection.newOption} (Replaced ${selection.toReplace})`, { 
+                    isMetamagicSwap: true,
+                    replaced: selection.toReplace,
+                    newOption: selection.newOption
+                });
+            }
+            return;
+        }
+
         if (choice.type === 'asi' || choice.type === 'asi-feat') {
             if (asiMode === 'ability') {
                 onMakeChoice(choice.id, Object.entries(asiIncreases).filter(([_, v]) => v > 0).map(([s, v]) => `${ABILITY_LABELS[s as AbilityName]} +${v}`).join(', '), { abilities: asiIncreases });
@@ -425,16 +459,34 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onMakeChoice, allFeats,
 
             case 'subclass':
                 return (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {(choice.options || []).map((sub: any) => (
-                            <button
-                                key={sub.index}
-                                onClick={() => setSelection(sub.index)}
-                                className={`p-4 rounded-xl border text-left transition-all ${selection === sub.index ? 'bg-dnd-gold/20 border-dnd-gold' : 'bg-black/20 border-gray-800 hover:border-gray-600'}`}
-                            >
-                                <h4 className={`font-bold ${selection === sub.index ? 'text-dnd-gold' : 'text-white'}`}>{sub.name}</h4>
-                            </button>
-                        ))}
+                    <div className="grid grid-cols-1 gap-3">
+                        {(choice.options || []).map((sub: any) => {
+                            const detail = subclassDetails[sub.index];
+                            return (
+                                <button
+                                    key={sub.index}
+                                    onClick={() => setSelection(sub.index)}
+                                    className={`p-5 rounded-xl border text-left transition-all group ${selection === sub.index ? 'bg-dnd-gold/20 border-dnd-gold' : 'bg-black/20 border-gray-800 hover:border-gray-600'}`}
+                                >
+                                    <h4 className={`font-serif text-xl mb-2 ${selection === sub.index ? 'text-dnd-gold' : 'text-white group-hover:text-dnd-gold/80'}`}>{sub.name}</h4>
+                                    {detail && (
+                                        <div className="text-xs text-gray-400 space-y-2">
+                                            {detail.desc.map((d, i) => <p key={i}>{d}</p>)}
+                                            {detail.feature_details && (
+                                                <div className="mt-3 pt-3 border-t border-gray-800/50">
+                                                    <span className="text-[10px] font-black uppercase text-gray-500 tracking-widest block mb-1">Key Features:</span>
+                                                    <div className="flex flex-wrap gap-2 text-[9px] uppercase font-bold text-gray-500">
+                                                        {detail.feature_details.filter(f => f.level === 1 || f.level === 3).map(f => (
+                                                            <span key={f.index} className="bg-gray-800/50 px-2 py-0.5 rounded border border-gray-700/50">{f.name}</span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </button>
+                            );
+                        })}
                     </div>
                 );
 
@@ -444,6 +496,90 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onMakeChoice, allFeats,
             case 'spell':
             case 'feature_choice':
             case 'other':
+                if (choice.revertData?.isMetamagicMatrix) {
+                    const currentMetamagics = (character.choices || [])
+                        .filter(c => c.revertData?.isMetamagicMatrix && c.value)
+                        .flatMap(c => Array.isArray(c.value) ? c.value : [c.value]);
+                    
+                    const isProgression = choice.revertData.isProgression;
+                    const count = choice.count || (isProgression ? 2 : 1);
+
+                    return (
+                        <div className="space-y-6">
+                            <div className="bg-purple-900/10 border border-purple-500/30 rounded-xl p-4 flex items-start gap-4">
+                                <div className="p-2 bg-purple-500/20 rounded-lg">
+                                    <Sparkles className="text-purple-400 w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-bold text-purple-300 mb-1">{isProgression ? 'Enhancement Mode' : 'Calibration Mode'}</h4>
+                                    <p className="text-[11px] text-gray-400 leading-relaxed italic">
+                                        {isProgression 
+                                            ? `Select ${count} new Metamagic options to add to your repertoire. Current options: ${currentMetamagics.join(', ') || 'None'}`
+                                            : `Replace one of your existing Metamagic options with a new one. Current: ${currentMetamagics.join(', ')}`}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {!isProgression && (
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Replace Option:</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {currentMetamagics.map(m => (
+                                            <button
+                                                key={m}
+                                                onClick={() => setSelection((prev: any) => ({ ...prev, toReplace: m }))}
+                                                className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${selection?.toReplace === m ? 'bg-red-900/30 border-red-500 text-red-100 shadow-[0_0_10px_rgba(239,68,68,0.2)]' : 'bg-black/20 border-gray-800 text-gray-500 hover:border-gray-700'}`}
+                                            >
+                                                {m}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">{isProgression ? `Select ${count} Options:` : 'New Option:'}</label>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                    {METAMAGIC_OPTIONS.map((opt) => {
+                                        const isAlreadyKnown = currentMetamagics.includes(opt.name);
+                                        const isSelected = isProgression 
+                                            ? (Array.isArray(selection) && selection.includes(opt.name))
+                                            : selection?.newOption === opt.name;
+                                        
+                                        return (
+                                            <div key={opt.name} className="relative group/mm">
+                                                <button
+                                                    disabled={isAlreadyKnown && !(selection?.toReplace === opt.name)}
+                                                    onClick={() => {
+                                                        if (isProgression) {
+                                                            if (isSelected) setSelection((prev: any[]) => prev.filter(i => i !== opt.name));
+                                                            else if (selection.length < count) setSelection((prev: any[]) => [...prev, opt.name]);
+                                                        } else {
+                                                            setSelection((prev: any) => ({ ...prev, newOption: opt.name }));
+                                                        }
+                                                    }}
+                                                    className={`w-full p-3 rounded border text-left text-sm transition-all h-full ${isSelected ? 'bg-purple-900/30 border-purple-500 text-white shadow-[0_0_15px_rgba(168,85,247,0.2)]' : 'bg-black/20 border-gray-800 text-gray-400 hover:border-gray-600 disabled:opacity-20'}`}
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <span>{opt.name}</span>
+                                                        <Info size={12} className="text-gray-600 group-hover/mm:text-purple-400 transition-colors" />
+                                                    </div>
+                                                </button>
+                                                {/* Metamagic Tooltip */}
+                                                <div className="absolute bottom-full left-0 mb-2 w-64 p-3 bg-gray-900 border border-purple-900/50 rounded-xl shadow-2xl opacity-0 group-hover/mm:opacity-100 pointer-events-none transition-opacity z-[999] pointer-events-none">
+                                                    <h6 className="text-purple-400 font-bold text-xs mb-1">{opt.name}</h6>
+                                                    <p className="text-[10px] text-gray-300 leading-relaxed font-sans">{opt.desc}</p>
+                                                    <div className="absolute bottom-0 left-6 transform translate-y-1/2 rotate-45 w-2 h-2 bg-gray-900 border-r border-b border-purple-900/50"></div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                }
+
                 const options = choice.options || [];
                 const count = choice.count || 1;
                 const isMulti = count > 1;
@@ -481,6 +617,13 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onMakeChoice, allFeats,
     };
 
     const canConfirm = () => {
+        if (choice.revertData?.isMetamagicMatrix) {
+            const isProgression = choice.revertData.isProgression;
+            const count = choice.count || (isProgression ? 2 : 1);
+            if (isProgression) return Array.isArray(selection) && selection.length === count;
+            return selection?.toReplace && selection?.newOption && selection.toReplace !== selection.newOption;
+        }
+
         if (choice.type === 'asi' || choice.type === 'asi-feat') {
             if (asiMode === 'ability') return Object.values(asiIncreases).reduce((a, b) => a + b, 0) === 2;
             return !!selection;
@@ -491,8 +634,8 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onMakeChoice, allFeats,
     };
 
     return (
-        <div className="bg-[#1b1c20] border-2 border-dnd-gold/30 rounded-xl overflow-hidden shadow-xl animate-in slide-in-from-bottom-4 duration-300">
-            <div className="p-4 bg-dnd-gold/5 border-b border-dnd-gold/20 flex items-center justify-between">
+        <div className="bg-[#1b1c20] border-2 border-dnd-gold/30 rounded-xl shadow-xl animate-in slide-in-from-bottom-4 duration-300 relative">
+            <div className="p-4 bg-dnd-gold/5 border-b border-dnd-gold/20 flex items-center justify-between rounded-t-xl overflow-hidden">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-dnd-gold/20 flex items-center justify-center">
                         <Sparkles className="text-dnd-gold w-5 h-5" />

@@ -272,8 +272,10 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
         setArmorProfs([]); setWeaponProfs([]);
         setSpellLevel(0); setSpellSchool('Evocation'); setSpellCastTime('1 Action'); setSpellRange('60 feet'); setSpellDuration('Instantaneous'); setSpellRitual(false); setSpellConcentration(false);
         setSpellComponents(['V', 'S']); setSpellMaterial(''); setSpellHigherLevel(''); setSpellHasAttack(false); setSpellHasSave(false); setSpellDmgFormula('');
-        setItemCategory('Other'); setItemSubtype(''); setItemIsWondrous(false); setItemWeight(0); setItemCost('0 gp'); setItemAttunement(false); setItemDmgDice(''); setItemAcBase(0); setItemAcDexBonus(false); setItemModifiers([]);
-        setItemIsThrown(false); setItemThrownRange(''); setItemThrownDamage('');
+        setSpellDmgType('Force'); setSpellClasses([]);
+        setItemCategory('Other'); setItemSubtype(''); setItemIsWondrous(false); setItemRarity('Common'); setItemWeight(0); setItemCost('0 gp'); setItemAttunement(false); 
+        setItemDmgDice(''); setItemDmgType('Piercing'); setItemWeaponType('Simple'); setItemArmorType('Light'); setItemAcBase(0); setItemAcDexBonus(false); setItemAcMaxBonus(null);
+        setItemIsThrown(false); setItemThrownRange(''); setItemThrownDamage(''); setItemProperties([]); setItemModifiers([]);
         setCreatureSize('Medium'); setCreatureType('Creature'); setCreatureAc(10); setCreatureHp(10); setCreatureSpeed('30 ft.'); setCreatureAbilities({ str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 }); setCreatureSenses(''); setCreatureLanguages(''); setCreatureCr(0); setCreatureActions([]);
         setFeatPrerequisite(''); setFeatEffects([]);
         setShowForm(false);

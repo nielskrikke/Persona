@@ -11,7 +11,7 @@ import EquipmentStep from './components/Builder/EquipmentStep';
 import SpellSelectionStep from './components/Builder/SpellSelectionStep';
 import { CharacterSheet } from './components/Sheet/CharacterSheet';
 import ErrorBoundary from './components/ErrorBoundary';
-import { getSpellSlots } from './utils/rules';
+import { getSpellSlots, SKILL_LIST } from './utils/rules';
 import { saveCharacterToDb, loginUser } from './services/supabase';
 import AuthModal from './components/Auth/AuthModal';
 import CharacterDashboard from './components/Dashboard/CharacterDashboard';
@@ -253,38 +253,68 @@ const App: React.FC = () => {
     const newSpells: SpellDetail[] = [...character.spells];
     let newSkills = [...character.skills];
     let newLanguages = [...character.languages];
+    let newTools = [...character.toolProficiencies];
 
     if (extraData) {
         if (extraData.choices) {
             updateCharacter({ choices: mergeChoices(character.choices, extraData.choices) });
         }
-        if (extraData.ancestry) {
-             newFeatures.push({
-                 index: 'draconic-ancestry-selection',
-                 name: `Draconic Ancestry: ${extraData.ancestry}`,
-                 level: 1,
-                 source: 'Race',
-                 desc: [`You have resistance to the damage type associated with your ${extraData.ancestry} ancestry.`],
-                 url: ''
-             });
-        }
-        if (extraData.cantrip) {
-             const cantrip = { ...extraData.cantrip, sourceClassIndex: 'racial', isPrepared: true };
-             newSpells.push(cantrip);
-        }
-        if (extraData.skills) {
-             newSkills = Array.from(new Set([...newSkills, ...extraData.skills]));
-        }
-        if (extraData.languages) {
-             newLanguages = Array.from(new Set([...newLanguages, ...extraData.languages]));
-        }
-        if (extraData.halfElfAsi && Array.isArray(extraData.halfElfAsi)) {
-            extraData.halfElfAsi.forEach((stat: string) => {
-                finalRace.ability_bonuses.push({
+
+        if (extraData.isCustomOrigin) {
+            // Override ASI
+            if (extraData.customAsi) {
+                finalRace.ability_bonuses = Object.entries(extraData.customAsi).map(([stat, bonus]) => ({
                     ability_score: { index: stat, name: stat.toUpperCase(), url: '' },
-                    bonus: 1
+                    bonus: bonus as number
+                }));
+            }
+            // Override Languages
+            if (extraData.customLanguages) {
+                newLanguages = extraData.customLanguages;
+            }
+            // Handle Proficiency Swaps
+            if (extraData.proficiencySwaps) {
+                extraData.proficiencySwaps.forEach((swap: any) => {
+                    if (swap.replacement) {
+                        // Check if it's a skill
+                        if (SKILL_LIST.some(s => s.name === swap.replacement)) {
+                            newSkills.push(swap.replacement);
+                        } else {
+                            newTools.push(swap.replacement);
+                        }
+                    }
                 });
-            });
+            }
+        } else {
+            // Standard race processing
+            if (extraData.ancestry) {
+                 newFeatures.push({
+                     index: 'draconic-ancestry-selection',
+                     name: `Draconic Ancestry: ${extraData.ancestry}`,
+                     level: 1,
+                     source: 'Race',
+                     desc: [`You have resistance to the damage type associated with your ${extraData.ancestry} ancestry.`],
+                     url: ''
+                 });
+            }
+            if (extraData.cantrip) {
+                 const cantrip = { ...extraData.cantrip, sourceClassIndex: 'racial', isPrepared: true };
+                 newSpells.push(cantrip);
+            }
+            if (extraData.skills) {
+                 newSkills = Array.from(new Set([...newSkills, ...extraData.skills]));
+            }
+            if (extraData.languages) {
+                 newLanguages = Array.from(new Set([...newLanguages, ...extraData.languages]));
+            }
+            if (extraData.halfElfAsi && Array.isArray(extraData.halfElfAsi)) {
+                extraData.halfElfAsi.forEach((stat: string) => {
+                    finalRace.ability_bonuses.push({
+                        ability_score: { index: stat, name: stat.toUpperCase(), url: '' },
+                        bonus: 1
+                    });
+                });
+            }
         }
     }
 
@@ -293,8 +323,9 @@ const App: React.FC = () => {
         subrace,
         classFeatures: newFeatures,
         spells: newSpells,
-        skills: newSkills,
-        languages: newLanguages
+        skills: Array.from(new Set(newSkills)),
+        languages: Array.from(new Set(newLanguages)),
+        toolProficiencies: Array.from(new Set(newTools))
     });
     setPhase('class');
   };

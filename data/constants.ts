@@ -183,6 +183,19 @@ export const MASTERY_DESCRIPTIONS: Record<string, string> = {
     'Vex': 'If you hit a creature with this weapon and deal damage to the creature, you have Advantage on your next attack roll against that creature before the end of your next turn.'
 };
 
+export const METAMAGIC_OPTIONS = [
+    { name: 'Careful Spell', desc: 'When you cast a spell that forces other creatures to make a saving throw, you can protect some of those creatures from the spell’s full force. To do so, you spend 1 Sorcery Point and choose a number of those creatures up to your Charisma modifier (minimum of one creature). A chosen creature automatically succeeds on its saving throw against the spell, and it takes no damage if it would normally take half damage on a successful save.' },
+    { name: 'Distant Spell', desc: 'When you cast a spell that has a range of at least 5 feet, you can spend 1 Sorcery Point to double the range of the spell. When you cast a spell that has a range of Touch, you can spend 1 Sorcery Point to make the range of the spell 30 feet.' },
+    { name: 'Empowered Spell', desc: 'When you roll damage for a spell, you can spend 1 Sorcery Point to reroll a number of the damage dice up to your Charisma modifier (minimum of one). You must use the new rolls. You can use Empowered Spell even if you have already used a different Metamagic option during the casting of the spell.' },
+    { name: 'Extended Spell', desc: 'When you cast a spell that has a duration of 1 minute or longer, you can spend 1 Sorcery Point to double its duration, to a maximum duration of 24 hours.' },
+    { name: 'Heightened Spell', desc: 'When you cast a spell that forces a creature to make a saving throw to resist its effects, you can spend 2 Sorcery Points to give one target of the spell disadvantage on its first saving throw made against the spell.' },
+    { name: 'Quickened Spell', desc: 'When you cast a spell that has a casting time of 1 action, you can spend 2 Sorcery Points to change the casting time to 1 bonus action for this casting.' },
+    { name: 'Seeking Spell', desc: 'If you make an attack roll for a spell and miss, you can spend 2 Sorcery Points to reroll the d20, and you must use the new roll.' },
+    { name: 'Subtle Spell', desc: 'When you cast a spell, you can spend 1 Sorcery Point to cast it without any somatic or verbal components.' },
+    { name: 'Transmuted Spell', desc: 'When you cast a spell that deals a type of damage from the following list, you can spend 1 Sorcery Point to change that damage type to one of the other listed types: acid, cold, fire, lightning, poison, thunder.' },
+    { name: 'Twinned Spell', desc: 'When you cast a spell, such as Charm Person or Hold Person, that can be upcast to target an additional creature, you can spend 1 Sorcery Point to target an additional creature now. The spell must be at its base level.' }
+];
+
 export const STATIC_RULES: RuleEntry[] = [
     { name: 'Attack', category: 'Action', desc: 'Make a melee or ranged attack. See your equipment for details.' },
     { name: 'Cast a Spell', category: 'Action', desc: 'Cast a spell with a casting time of 1 action.' },

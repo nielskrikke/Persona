@@ -10,7 +10,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 async function startServer() {
   const app = express();
-  const PORT = 4000;
+  const PORT = 3000;
 
   app.use(express.json({ limit: '10mb' }));
 
