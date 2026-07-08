@@ -1,0 +1,12 @@
+services:
+  niels-persona-app:
+    build: .
+    container_name: niels-persona-app
+    networks:
+      nielsnet:
+        ipv4_address: 172.23.0.10
+
+networks:
+  nielsnet:
+    external: true
+    name: nielsnet
