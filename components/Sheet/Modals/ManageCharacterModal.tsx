@@ -2,14 +2,10 @@ import React, { useState, useEffect } from 'react';
 import Markdown from 'react-markdown';
 import { X, User, GraduationCap, Activity, Shield, Settings, Plus, Trash2, Save, Languages, Palette, Type, Dice5, Eye, EyeOff, Info, Sparkles, AlertTriangle, RotateCcw, AlertCircle } from 'lucide-react';
 import { CharacterState, APIReference, RaceDetail, SubraceDetail, BackgroundDetail, FeatDetail, ABILITY_NAMES, ABILITY_LABELS, AbilityScores, SpellDetail, LevelChoice, AbilityName } from '@/types';
-import { fetchClasses, fetchRaces, fetchSubraces, fetchBackgrounds, fetchFeatsList, fetchRaceDetail, fetchSubraceDetail, fetchBackgroundDetail, fetchSubclasses, fetchSubclassDetail, fetchSubclassLevels, fetchClassLevels, getLocalSpells, fetchLevelFeatures, fetchClassDetail, fetchAllSpells } from '@/data/index';
+import { fetchClasses, fetchRaces, fetchSubraces, fetchBackgrounds, fetchFeatsList, fetchRaceDetail, fetchSubraceDetail, fetchBackgroundDetail, fetchSubclasses, fetchSubclassDetail, fetchSubclassLevels, fetchClassLevels, getLocalSpells, fetchLevelFeatures, fetchClassDetail, fetchAllSpells, RACES, SUBCLASSES } from '@/data/index';
 import { getSpellSlots, calculateModifier, SKILL_LIST } from '@/utils/rules';
 import { CLASS_FEATURES, STANDARD_LANGUAGES, ARTISAN_TOOLS } from '../../../data/constants';
 import DiceRoller3D from '../Shared/DiceRoller3D';
-
-import { RACES } from '@/data/races';
-import { SUBCLASSES } from '@/data/subclasses';
-import { BACKGROUNDS } from '@/data/backgrounds';
 
 const SUBCLASS_LEVELS: Record<string, number> = {
     'Cleric': 1, 'Warlock': 1, 'Sorcerer': 1,
@@ -736,6 +732,10 @@ const ManageCharacterModal = ({
         // Revert all including children (revertChoices handles the reverse order)
         revertChoices([choice, ...subChoices]);
         
+        // Remove any virtual features added by this choice or its children
+        const allRevertIds = [choiceId, ...subChoices.map(s => s.id)];
+        setLocalClassFeatures(prev => prev.filter(f => !f.revertData?.choiceId || !allRevertIds.includes(f.revertData.choiceId)));
+
         // Update localChoices: set parent to null, remove children
         setLocalChoices(prev => {
             const childIds = new Set(subChoices.map(s => s.id));
@@ -1088,16 +1088,99 @@ const ManageCharacterModal = ({
 
         // Update local choices state
         const skipImmediateValue = ['asi-feat', 'subclass', 'feat-selection'].includes(choice.type);
-        setLocalChoices(prev => prev.map(c => {
-            if (c.id === choiceId) {
-                const updated = { ...c, value: skipImmediateValue ? c.value : finalValue };
-                if (choice.type === 'subclass' || choice.type === 'feat-selection') {
-                    updated.revertData = { ...c.revertData, featIndex: finalValue };
+        setLocalChoices(prev => {
+            const updatedChoices = prev.map(c => {
+                if (c.id === choiceId) {
+                    const updated = { ...c, value: skipImmediateValue ? c.value : finalValue };
+                    if (choice.type === 'subclass' || choice.type === 'feat-selection') {
+                        updated.revertData = { ...c.revertData, featIndex: finalValue };
+                    }
+                    return updated;
                 }
-                return updated;
+                return c;
+            });
+            return updatedChoices;
+        });
+
+        // Trigger side effects for options with effects (Generic Triggered Choices)
+        const selectedOption = choice.options?.find((o: any) => {
+            if (typeof o === 'string') return o === finalValue;
+            const optIndex = o.index || o.name;
+            return optIndex === finalValue || (typeof finalValue === 'object' && (finalValue.index === optIndex || finalValue.name === optIndex));
+        });
+
+        // Revert children if selection changed
+        if (oldValue !== finalValue) {
+            const subChoiceIds = localChoices.filter(c => c.revertData?.parentChoiceId === choiceId).map(c => c.id);
+            if (subChoiceIds.length > 0) {
+                setLocalChoices(prev => {
+                    const next = prev.filter(c => c.revertData?.parentChoiceId !== choiceId);
+                    return next;
+                });
             }
-            return c;
-        }));
+            // Revert virtual features
+            setLocalClassFeatures(prev => prev.filter(f => f.revertData?.choiceId !== choiceId));
+        }
+
+        if (finalValue && selectedOption && typeof selectedOption !== 'string' && (selectedOption.effects || selectedOption.desc)) {
+            // Apply side effects
+            if (selectedOption.effects) {
+                const triggerEffects = selectedOption.effects.filter((e: any) => e.type.endsWith('_choice') || e.type === 'spell_access');
+                if (triggerEffects.length > 0) {
+                    const allSpells = await fetchAllSpells();
+                    const newSubChoices = triggerEffects.map((e: any, idx: number) => {
+                        let options: any[] = [];
+                        if (e.options) {
+                            options = e.options;
+                        } else if (e.type === 'spell_access') {
+                            let filtered = allSpells;
+                            if (e.filter_class) {
+                                filtered = filtered.filter(s => s.classes?.some((c: any) => c.name === e.filter_class));
+                            }
+                            if (e.level !== undefined) {
+                                filtered = filtered.filter(s => s.level === e.level);
+                            }
+                            options = filtered.map(s => ({ index: s.index, name: s.name }));
+                        } else if (e.type === 'proficiency_choice') {
+                            if (e.category === 'skill') options = SKILL_LIST.map(s => s.name);
+                            else if (e.category === 'language') options = STANDARD_LANGUAGES;
+                            else if (e.category === 'tool') options = ARTISAN_TOOLS;
+                        }
+
+                        return {
+                            id: `${choiceId}-sub-${idx}-${Date.now()}`,
+                            level: choice.level,
+                            source: `${choice.label}: ${selectedOption.name}`,
+                            type: (e.type === 'asi_choice' ? 'asi' : 
+                                   e.type === 'proficiency_choice' ? (e.category === 'skill' ? 'skill' : e.category === 'language' ? 'language' : 'other') :
+                                   e.type === 'expertise_choice' ? 'expertise' :
+                                   e.type === 'spell_access' ? 'spell' : 'other') as LevelChoice['type'],
+                            label: e.name || (e.type === 'spell_access' ? (e.level === 0 ? 'Cantrip' : 'Spell') : e.type.replace('_', ' ')),
+                            value: null,
+                            options: options,
+                            count: e.count || 1,
+                            revertData: { parentChoiceId: choiceId, isSubChoice: true }
+                        };
+                    });
+                    setLocalChoices(prev => [...prev, ...newSubChoices]);
+                }
+
+                // Passive effects
+                const passiveEffects = selectedOption.effects.filter((e: any) => !e.type.endsWith('_choice') && e.type !== 'spell_access');
+                if (passiveEffects.length > 0 || selectedOption.desc) {
+                    const virtualFeature = {
+                        index: `${choiceId}-feature`.toLowerCase(),
+                        name: `${choice.label}: ${selectedOption.name}`,
+                        level: choice.level,
+                        source: choice.source,
+                        desc: selectedOption.desc ? [selectedOption.desc] : [],
+                        effects: passiveEffects,
+                        revertData: { choiceId }
+                    };
+                    setLocalClassFeatures(prev => [...prev, virtualFeature]);
+                }
+            }
+        }
 
         if (choice.type === 'subclass') {
             const subclassIndex = typeof finalValue === 'string' ? finalValue : finalValue?.index;
@@ -2507,27 +2590,61 @@ const ManageCharacterModal = ({
                                                                         )}
                                                                     </div>
                                                                 ) : (
-                                                                    <div className="flex flex-wrap gap-2">
-                                                                        {choice.options?.map((opt: any, idx: number) => {
-                                                                            const val = opt.index || opt.name || opt;
-                                                                            const isSelected = Array.isArray(choice.value) 
-                                                                                ? choice.value.includes(val)
-                                                                                : choice.value === val;
-                                                                            return (
-                                                                                <button
-                                                                                    key={typeof val === 'string' || typeof val === 'number' ? val : idx}
-                                                                                    onClick={() => handleChoiceChange(choice.id, val)}
-                                                                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
-                                                                                        isSelected 
-                                                                                            ? 'bg-dnd-gold border-dnd-gold text-black shadow-lg shadow-dnd-gold/20' 
-                                                                                            : 'bg-black/40 border-gray-800 text-gray-400 hover:border-gray-600'
-                                                                                    }`}
-                                                                                >
-                                                                                    {opt.name || opt}
-                                                                                </button>
-                                                                            );
-                                                                        })}
-                                                                    </div>
+                                                                    (() => {
+                                                                        const options = choice.options || [];
+                                                                        const hasDescriptions = options.some((opt: any) => typeof opt !== 'string' && opt.desc);
+                                                                        
+                                                                        return (
+                                                                            <div className={`grid gap-3 ${hasDescriptions ? 'grid-cols-1' : 'flex flex-wrap gap-2'}`}>
+                                                                                {options.map((opt: any, idx: number) => {
+                                                                                    const val = opt.index || opt.name || opt;
+                                                                                    const name = opt.name || opt;
+                                                                                    const desc = typeof opt === 'string' ? null : opt.desc;
+                                                                                    const isSelected = Array.isArray(choice.value) 
+                                                                                        ? choice.value.includes(val)
+                                                                                        : choice.value === val;
+                                                                                    
+                                                                                    if (!hasDescriptions) {
+                                                                                        return (
+                                                                                            <button
+                                                                                                key={typeof val === 'string' || typeof val === 'number' ? val : idx}
+                                                                                                onClick={() => handleChoiceChange(choice.id, val)}
+                                                                                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
+                                                                                                    isSelected 
+                                                                                                        ? 'bg-dnd-gold border-dnd-gold text-black shadow-lg shadow-dnd-gold/20' 
+                                                                                                        : 'bg-black/40 border-gray-800 text-gray-400 hover:border-gray-600'
+                                                                                                }`}
+                                                                                            >
+                                                                                                {name}
+                                                                                            </button>
+                                                                                        );
+                                                                                    }
+
+                                                                                    return (
+                                                                                        <button
+                                                                                            key={typeof val === 'string' || typeof val === 'number' ? val : idx}
+                                                                                            onClick={() => handleChoiceChange(choice.id, val)}
+                                                                                            className={`p-4 rounded-xl border text-left transition-all group p-5 ${isSelected ? 'bg-dnd-gold/20 border-dnd-gold text-white' : 'bg-black/40 border-gray-800 text-gray-400 hover:border-gray-600'}`}
+                                                                                        >
+                                                                                            <div className="flex flex-col gap-1">
+                                                                                                <div className="flex items-center justify-between">
+                                                                                                    <span className={`font-serif text-lg ${isSelected ? 'text-dnd-gold' : 'text-gray-200 group-hover:text-white'} font-bold`}>
+                                                                                                        {name}
+                                                                                                    </span>
+                                                                                                    {isSelected && <Sparkles size={12} className="text-dnd-gold" />}
+                                                                                                </div>
+                                                                                                {desc && (
+                                                                                                    <p className="text-[10px] text-gray-400 mt-2 leading-relaxed opacity-80 group-hover:opacity-100 transition-opacity">
+                                                                                                        {Array.isArray(desc) ? desc.join(' ') : desc}
+                                                                                                    </p>
+                                                                                                )}
+                                                                                            </div>
+                                                                                        </button>
+                                                                                    );
+                                                                                })}
+                                                                            </div>
+                                                                        );
+                                                                    })()
                                                                 )}
 
                                                                 {/* Description for other choices (spells, backgrounds, etc) */}
@@ -2869,27 +2986,61 @@ const ManageCharacterModal = ({
                                                                                                     )}
                                                                                                 </div>
                                                                                             ) : (
-                                                                                                <div className="flex flex-wrap gap-2">
-                                                                                                    {choice.options?.map((opt: any, idx: number) => {
-                                                                                                        const val = opt.index || opt.name || opt;
-                                                                                                        const isSelected = Array.isArray(choice.value) 
-                                                                                                            ? choice.value.includes(val)
-                                                                                                            : choice.value === val;
-                                                                                                        return (
-                                                                                                            <button
-                                                                                                                key={typeof val === 'string' || typeof val === 'number' ? val : idx}
-                                                                                                                onClick={() => handleChoiceChange(choice.id, val)}
-                                                                                                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
-                                                                                                                    isSelected 
-                                                                                                                        ? 'bg-dnd-gold border-dnd-gold text-black shadow-lg shadow-dnd-gold/20' 
-                                                                                                                        : 'bg-black/40 border-gray-800 text-gray-400 hover:border-gray-600'
-                                                                                                                }`}
-                                                                                                            >
-                                                                                                                {opt.name || opt}
-                                                                                                            </button>
-                                                                                                        );
-                                                                                                    })}
-                                                                                                </div>
+                                                                                                (() => {
+                                                                                                    const options = choice.options || [];
+                                                                                                    const hasDescriptions = options.some((opt: any) => typeof opt !== 'string' && opt.desc);
+
+                                                                                                    return (
+                                                                                                        <div className={`grid gap-3 ${hasDescriptions ? 'grid-cols-1' : 'flex flex-wrap gap-2'}`}>
+                                                                                                            {options.map((opt: any, idx: number) => {
+                                                                                                                const val = opt.index || opt.name || opt;
+                                                                                                                const name = opt.name || opt;
+                                                                                                                const desc = typeof opt === 'string' ? null : opt.desc;
+                                                                                                                const isSelected = Array.isArray(choice.value) 
+                                                                                                                    ? choice.value.includes(val)
+                                                                                                                    : choice.value === val;
+
+                                                                                                                if (!hasDescriptions) {
+                                                                                                                    return (
+                                                                                                                        <button
+                                                                                                                            key={typeof val === 'string' || typeof val === 'number' ? val : idx}
+                                                                                                                            onClick={() => handleChoiceChange(choice.id, val)}
+                                                                                                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
+                                                                                                                                isSelected 
+                                                                                                                                    ? 'bg-dnd-gold border-dnd-gold text-black shadow-lg shadow-dnd-gold/20' 
+                                                                                                                                    : 'bg-black/40 border-gray-800 text-gray-400 hover:border-gray-600'
+                                                                                                                            }`}
+                                                                                                                        >
+                                                                                                                            {name}
+                                                                                                                        </button>
+                                                                                                                    );
+                                                                                                                }
+
+                                                                                                                return (
+                                                                                                                    <button
+                                                                                                                        key={typeof val === 'string' || typeof val === 'number' ? val : idx}
+                                                                                                                        onClick={() => handleChoiceChange(choice.id, val)}
+                                                                                                                        className={`p-4 rounded-xl border text-left transition-all group p-5 ${isSelected ? 'bg-dnd-gold/20 border-dnd-gold text-white' : 'bg-black/40 border-gray-800 text-gray-400 hover:border-gray-600'}`}
+                                                                                                                    >
+                                                                                                                        <div className="flex flex-col gap-1">
+                                                                                                                            <div className="flex items-center justify-between">
+                                                                                                                                <span className={`font-serif text-lg ${isSelected ? 'text-dnd-gold' : 'text-gray-200 group-hover:text-white'} font-bold`}>
+                                                                                                                                    {name}
+                                                                                                                                </span>
+                                                                                                                                {isSelected && <Sparkles size={12} className="text-dnd-gold" />}
+                                                                                                                            </div>
+                                                                                                                            {desc && (
+                                                                                                                                <p className="text-[10px] text-gray-400 mt-2 leading-relaxed opacity-80 group-hover:opacity-100 transition-opacity">
+                                                                                                                                    {Array.isArray(desc) ? desc.join(' ') : desc}
+                                                                                                                                </p>
+                                                                                                                            )}
+                                                                                                                        </div>
+                                                                                                                    </button>
+                                                                                                                );
+                                                                                                            })}
+                                                                                                        </div>
+                                                                                                    );
+                                                                                                })()
                                                                                             )}
                                                                                         </div>
                                                                                     </div>

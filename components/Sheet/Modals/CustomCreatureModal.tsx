@@ -82,7 +82,7 @@ const CustomCreatureModal: React.FC<CustomCreatureModalProps> = ({ isOpen, onClo
 
     return (
         <div className="fixed inset-0 bg-black/90 z-[600] flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="bg-[#1b1c20] border-2 border-dnd-gold rounded-xl w-full max-w-3xl shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="bg-[#1b1c20] border border-gray-800 rounded-xl w-full max-w-3xl shadow-2xl flex flex-col max-h-[90vh]">
                 <div className="p-6 border-b border-gray-700 bg-[#121316] rounded-t-xl shrink-0 flex justify-between items-center">
                     <h2 className="text-2xl font-serif text-dnd-gold">Create Custom Creature</h2>
                     <button onClick={onClose} className="text-gray-500 hover:text-white text-2xl transition-colors">&times;</button>

@@ -300,8 +300,7 @@ const CharacterDashboard: React.FC<CharacterDashboardProps> = ({ onLoadCharacter
 
             {confirmDeleteId && (
                 <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="bg-[#1b1c20] border-2 border-red-600 rounded-lg p-8 max-w-md w-full shadow-2xl text-center relative">
-                        <div className="text-red-500 text-6xl mb-4 animate-bounce">⚠️</div>
+                    <div className="bg-[#1b1c20] border border-gray-800 rounded-lg p-8 max-w-md w-full shadow-2xl text-center relative">
                         <h2 className="text-2xl font-bold text-white mb-2 font-serif">Delete Character?</h2>
                         <p className="text-gray-400 mb-8 text-sm leading-relaxed">
                             Are you sure you want to permanently delete this character from the vault? This action cannot be undone.
@@ -327,7 +326,7 @@ const CharacterDashboard: React.FC<CharacterDashboardProps> = ({ onLoadCharacter
                             <Download size={14} />
                             Download All
                         </button>
-                        <button onClick={() => setShowHomebrew(true)} className="bg-blue-900/20 border border-blue-800 hover:border-blue-500 text-blue-400 px-5 py-2.5 rounded font-black uppercase text-[10px] tracking-widest transition-all transform active:scale-95">Homebrew</button>
+                        <button onClick={() => setShowHomebrew(true)} className="bg-blue-900/20 border border-blue-800 hover:border-blue-500 text-blue-400 px-5 py-2.5 rounded font-black uppercase text-[10px] tracking-widest transition-all transform active:scale-95">Content Library</button>
                         <div className="w-px h-8 bg-gray-800 hidden sm:block"></div>
                         <button onClick={onCancel} className="text-gray-500 hover:text-white font-bold uppercase text-xs px-2 transition-colors">Close</button>
                         <button onClick={onLogout} className="text-red-500 hover:text-red-400 font-bold uppercase text-xs border border-red-900 bg-red-900/10 px-4 py-2 rounded transition-colors">Log Out</button>

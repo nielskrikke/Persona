@@ -129,7 +129,7 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
                             if (!accumulator.current.choices.some(c => c.id === choiceId)) {
                                 let choiceType: LevelChoice['type'] = 'skill';
                                 if (eff.type === 'expertise_choice') choiceType = 'expertise';
-                                else if (eff.type === 'feature_choice') choiceType = 'other';
+                                else if (eff.type === 'feature_choice') choiceType = 'feature_choice';
                                 else if (eff.category === 'language') choiceType = 'language';
                                 else if (eff.category === 'tool') choiceType = 'other';
 
@@ -140,7 +140,12 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
                                     type: choiceType,
                                     label: f.name,
                                     value: null,
-                                    options: eff.options ? eff.options.map((o: any) => typeof o === 'string' ? o : (o.name || o.item?.name)) : (eff.category === 'tool' ? TOOLS.map(t => t.name) : (eff.category === 'language' ? STANDARD_LANGUAGES : SKILL_LIST.map(s => s.name))),
+                                    options: eff.options ? eff.options.map((o: any) => {
+                                        if (typeof o === 'string') return o;
+                                        // If it has a desc, preserve the whole object but ensure it has name/index
+                                        if (o.desc) return { ...o, index: o.index || o.name };
+                                        return (o.name || o.item?.name || o.index);
+                                    }) : (eff.category === 'tool' ? TOOLS.map(t => t.name) : (eff.category === 'language' ? STANDARD_LANGUAGES : SKILL_LIST.map(s => s.name))),
                                     count: eff.count || 1,
                                     revertData: { classIndex: item.classIndex }
                                 });

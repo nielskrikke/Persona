@@ -72,7 +72,7 @@ const EldritchCannonModal: React.FC<EldritchCannonModalProps> = ({ isOpen, onClo
 
     return (
         <div className="fixed inset-0 bg-black/90 z-[500] flex items-center justify-center p-4 backdrop-blur-md">
-            <div className="bg-[#1b1c20] border-2 border-cyan-500 rounded-xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="bg-[#1b1c20] border border-gray-800 rounded-xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
                 <div className="p-6 border-b border-gray-700 bg-[#121316] rounded-t-xl shrink-0 flex justify-between items-center">
                     <div>
                         <h2 className="text-2xl font-serif text-cyan-400">Summon Eldritch Cannon</h2>

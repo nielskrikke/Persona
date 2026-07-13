@@ -22,10 +22,28 @@ const SPELL_DATA: Record<string, SpellDetail[]> = {
     'card-master': SORCERER_SPELLS
 };
 
+const CLASS_NAMES: Record<string, string> = {
+    'bard': 'Bard',
+    'cleric': 'Cleric',
+    'druid': 'Druid',
+    'paladin': 'Paladin',
+    'ranger': 'Ranger',
+    'sorcerer': 'Sorcerer',
+    'warlock': 'Warlock',
+    'wizard': 'Wizard',
+    'artificer': 'Artificer',
+    'card-master': 'Sorcerer'
+};
+
 export const getLocalSpells = (className: string, level?: number): SpellDetail[] => {
     if (!className) return [];
     const key = className.toLowerCase();
-    const spells = SPELL_DATA[key] || [];
+    const spells = (SPELL_DATA[key] || []).map(s => ({
+        ...s,
+        sourceClassIndex: s.sourceClassIndex || key,
+        classes: (s.classes && s.classes.length > 0) ? s.classes : [{ name: CLASS_NAMES[key] || className, index: key }]
+    }));
+    
     if (level !== undefined) {
         return spells.filter(s => s.level === level);
     }

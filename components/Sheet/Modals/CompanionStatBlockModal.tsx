@@ -23,7 +23,7 @@ const CompanionStatBlockModal: React.FC<CompanionStatBlockModalProps> = ({ compa
     return (
         <div className="fixed inset-0 bg-black/90 z-[700] flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
             <div 
-                className={`bg-[#1b1c20] border-2 border-dnd-gold rounded-xl w-full max-w-lg shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200`} 
+                className={`bg-[#1b1c20] border border-gray-800 rounded-xl w-full max-w-lg shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200`} 
                 onClick={e => e.stopPropagation()}
             >
                 <button 

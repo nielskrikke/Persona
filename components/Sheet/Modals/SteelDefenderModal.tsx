@@ -30,7 +30,7 @@ const SteelDefenderModal: React.FC<SteelDefenderModalProps> = ({ isOpen, onClose
 
     return (
         <div className="fixed inset-0 bg-black/90 z-[500] flex items-center justify-center p-4 backdrop-blur-md">
-            <div className="bg-[#1b1c20] border-2 border-orange-500 rounded-xl w-full max-w-md shadow-2xl flex flex-col">
+            <div className="bg-[#1b1c20] border border-gray-800 rounded-xl w-full max-w-md shadow-2xl flex flex-col">
                 <div className="p-6 border-b border-gray-700 bg-[#121316] rounded-t-xl flex justify-between items-center">
                     <h2 className="text-2xl font-serif text-orange-400">Summon Steel Defender</h2>
                     <button onClick={onClose} className="text-gray-500 hover:text-white text-2xl transition-colors">&times;</button>

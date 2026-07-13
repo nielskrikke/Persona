@@ -41,8 +41,8 @@ const ConcentrationCheckModal = ({
 
     return (
         <div className="fixed inset-0 bg-black/90 z-[600] flex items-center justify-center p-4 backdrop-blur-md">
-            <div className="bg-[#1b1c20] border-2 border-blue-500 rounded-xl w-full max-w-md shadow-[0_0_50px_rgba(59,130,246,0.3)] p-8 text-center animate-in zoom-in-95 duration-300">
-                <div className="w-20 h-20 bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-blue-500 animate-pulse">
+            <div className="bg-[#1b1c20] border border-gray-800 rounded-xl w-full max-w-md shadow-2xl p-8 text-center animate-in zoom-in-95 duration-300">
+                <div className="w-20 h-20 bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-6 border border-blue-500/50">
                     <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400">
                         <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
                         <circle cx="12" cy="12" r="3" />

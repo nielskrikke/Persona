@@ -2,6 +2,10 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { createClient } from '@supabase/supabase-js';
+import { ALL_ITEMS } from './data/items';
+import { COMMON_CREATURES } from './data/beasts';
+import { STANDARD_FAMILIARS } from './data/familiars';
+import { getLocalSpells } from './data/spells';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://pducitlqzhcjjeqthkof.supabase.co';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBkdWNpdGxxemhjamplcXRoa29mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxNjQ5MjksImV4cCI6MjA4NTc0MDkyOX0.akpxEEytntkNy8rDjfp4FDOLuQW2LjdYqED1F-Z811g';
@@ -10,9 +14,35 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 async function startServer() {
   const app = express();
-  const PORT = 4000;
+  const PORT = 3000;
 
   app.use(express.json({ limit: '10mb' }));
+
+  // CSV Export endpoint for manual Supabase import
+  app.get("/api/export-csv/:table", (req, res) => {
+    const { table } = req.params;
+    let items: any[] = [];
+    if (table === 'custom_equipment') items = ALL_ITEMS;
+    else if (table === 'custom_beasts') items = COMMON_CREATURES;
+    else if (table === 'custom_familiars') items = STANDARD_FAMILIARS;
+    else if (table === 'custom_spells') items = getLocalSpells('wizard');
+    else return res.status(404).json({ error: "Table not found or already imported" });
+
+    // Build CSV content: columns: name, is_public, data, user_id
+    let csv = "name,is_public,data,user_id\n";
+    for (const item of items) {
+      const name = `"${(item.name || '').replace(/"/g, '""')}"`;
+      const is_public = "TRUE";
+      const jsonStr = JSON.stringify(item).replace(/"/g, '""');
+      const data = `"${jsonStr}"`;
+      const user_id = `"b0027d9e-13eb-41a7-b3ee-1da5f52c9599"`;
+      csv += `${name},${is_public},${data},${user_id}\n`;
+    }
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=${table}.csv`);
+    res.send(csv);
+  });
 
   // Heuristic Scraper Endpoint (No AI)
   app.post("/api/scrape", async (req, res) => {
@@ -120,36 +150,46 @@ async function startServer() {
     const { table } = req.params;
     const { userId, payload, isPublic, id } = req.body;
 
-    if (id) {
-      const { data, error } = await supabase
-        .from(table)
-        .update({ 
-          name: payload.name, 
-          data: payload,
-          is_public: isPublic
-        })
-        .eq('id', id)
-        .eq('user_id', userId)
-        .select()
-        .single();
-        
-      if (error) return res.status(500).json({ error: error.message });
-      res.json(data);
-    } else {
-      const { data, error } = await supabase
-        .from(table)
-        .insert([{ 
-          user_id: userId,
-          name: payload.name, 
-          data: payload,
-          is_public: isPublic
-        }])
-        .select()
-        .single();
-        
-      if (error) return res.status(500).json({ error: error.message });
-      res.json(data);
+    const isValidUUID = (uuid: any) => {
+      if (typeof uuid !== 'string') return false;
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
+    };
+
+    if (id && isValidUUID(id)) {
+      // Check if row belongs to user
+      const { data: existing } = await supabase.from(table).select('user_id').eq('id', id).maybeSingle();
+      if (existing && existing.user_id === userId) {
+        const { data, error } = await supabase
+          .from(table)
+          .update({ 
+            name: payload.name, 
+            data: payload,
+            is_public: isPublic
+          })
+          .eq('id', id)
+          .eq('user_id', userId)
+          .select()
+          .maybeSingle();
+          
+        if (error) return res.status(500).json({ error: error.message });
+        return res.json(data);
+      }
     }
+
+    // Insert as new row (or user override copy)
+    const { data, error } = await supabase
+      .from(table)
+      .insert([{ 
+        user_id: userId,
+        name: payload.name, 
+        data: payload,
+        is_public: isPublic
+      }])
+      .select()
+      .maybeSingle();
+      
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data);
   });
 
   app.delete("/api/homebrew/:table/:id", async (req, res) => {
@@ -222,14 +262,14 @@ async function startServer() {
         const { data, error } = await supabase
           .from('characters')
           .insert([{ user_id: userId, name: character.name || 'Unnamed Hero', data: charData }])
-          .select().single();
+          .select().maybeSingle();
         if (error) throw error;
         res.json(data);
       } else {
         const { data, error } = await supabase
           .from('characters')
           .update({ name: character.name, data: charData, updated_at: new Date().toISOString() })
-          .eq('id', id).select().single();
+          .eq('id', id).select().maybeSingle();
         if (error) throw error;
         res.json(data);
       }
@@ -249,7 +289,7 @@ async function startServer() {
   app.get("/api/users", async (req, res) => {
     const { username } = req.query;
     if (username) {
-      const { data, error } = await supabase.from('app_users').select('*').eq('username', username).single();
+      const { data, error } = await supabase.from('app_users').select('*').eq('username', username).maybeSingle();
       if (error) return res.status(500).json({ error: error.message });
       return res.json(data);
     }
@@ -279,6 +319,8 @@ async function startServer() {
     if (error) return res.status(500).json({ error: error.message });
     res.json({ success: true });
   });
+
+
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {

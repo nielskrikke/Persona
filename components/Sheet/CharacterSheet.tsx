@@ -43,7 +43,13 @@ import StatsTab from './Tabs/StatsTab';
 import ChoicesTab from './Tabs/ChoicesTab';
 
 const cleanProficiencyName = (name: string) => {
-    return name.replace(/^(Skill|Musical Instrument|Gaming Set|Tool|Armor|Weapon|Other):\s*/i, '').trim();
+    if (!name) return '';
+    return name.replace(/^(Skill|Musical Instrument|Gaming Set|Tool|Armor|Weapon|Other):\s*/i, '')
+               .replace(/-/g, ' ')
+               .split(' ')
+               .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+               .join(' ')
+               .trim();
 };
 
 const getCharacterSpecificRules = (character: CharacterState): RuleEntry[] => {
@@ -535,7 +541,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         if (character.race) {
             const race = character.race as any;
             race.traits?.forEach((trait: any) => {
-                trait.modifiers?.forEach((m: any) => mods.push(m));
+                if (trait.effects) trait.effects.forEach((e: any) => mods.push(e));
+                if (trait.modifiers) trait.modifiers.forEach((m: any) => mods.push(m));
             });
         }
 
@@ -543,29 +550,55 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         if (character.subrace) {
             const subrace = character.subrace as any;
             subrace.traits?.forEach((trait: any) => {
-                trait.modifiers?.forEach((m: any) => mods.push(m));
+                if (trait.effects) trait.effects.forEach((e: any) => mods.push(e));
+                if (trait.modifiers) trait.modifiers.forEach((m: any) => mods.push(m));
             });
         }
 
-        // 3. Class Features
+        // 3. Class & Subclass Features
         character.classes.forEach(cls => {
-            const features = cls.definition.feature_details || [];
-            features.forEach(f => {
+            // Base Class Features
+            const classFeatures = cls.definition.feature_details || [];
+            classFeatures.forEach(f => {
                 if (f.level <= cls.level && f.effects) {
                     f.effects.forEach((e: any) => mods.push(e));
                 }
             });
+            // Subclass Features
+            if (cls.subclass) {
+                const subFeatures = cls.subclass.feature_details || [];
+                subFeatures.forEach(f => {
+                    if (f.level <= cls.level && f.effects) {
+                        f.effects.forEach((e: any) => mods.push(e));
+                    }
+                });
+            }
+        });
+
+        // 3b. Features with Choices / Custom Features
+        character.classFeatures?.forEach(f => {
+            if (f.effects) {
+                f.effects.forEach((e: any) => mods.push(e));
+            }
         });
 
         // 4. Equipped & Attuned Items
         character.inventory.forEach(item => {
             if (item.equipped && (!item.requires_attunement || item.attuned)) {
-                item.modifiers?.forEach(m => mods.push(m));
+                if (item.modifiers) item.modifiers.forEach(m => mods.push(m));
+                // Handle effects too
+                if ((item as any).effects) (item as any).effects.forEach((e: any) => mods.push(e));
             }
         });
 
+        // 5. Feats
+        character.feats?.forEach(feat => {
+            if (feat.effects) feat.effects.forEach((e: any) => mods.push(e));
+            if (feat.modifiers) feat.modifiers.forEach((m: any) => mods.push(m));
+        });
+
         return mods;
-    }, [character.race, character.subrace, character.inventory, character.classes]);
+    }, [character]);
 
     const effectiveAbilities = useMemo(() => getEffectiveAbilities(character), [character]);
 
@@ -575,7 +608,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
     const hasPendingSpells = useMemo(() => {
         return character.classes.some(cls => {
-            const knownCount = getSpellsKnownCount(cls, character.abilities);
+            const knownCount = getSpellsKnownCount(cls, character.abilities, character.classFeatures);
             const currentCantrips = character.spells.filter(s => s.level === 0 && s.sourceClassIndex === cls.definition.index).length;
             const currentSpells = character.spells.filter(s => s.level > 0 && s.sourceClassIndex === cls.definition.index).length;
             
@@ -1719,7 +1752,18 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                              const isProf = !!character.classes.some(c => c.definition.saving_throws.some(s => s.name === stat.substring(0,3).toUpperCase())) || 
                                             (character.savingThrowProficiencies || []).includes(stat) ||
                                             activeModifiers.some(m => m.type === 'proficiency' && m.target === stat.substring(0,3).toUpperCase() && m.category === 'save'); 
-                             const mod = calculateModifier(getStat(stat)) + (isProf ? prof : 0) + globalSaveBonus; 
+                             
+                             const saveBonus = activeModifiers
+                                .filter(m => m.type === 'bonus' && (m.target === stat.substring(0,3).toUpperCase() || m.target === 'saves'))
+                                .reduce((acc, m) => {
+                                    let v = 0;
+                                    if (m.value === 'wisMod') v = Math.max(m.min || 1, wisMod);
+                                    else if (m.value === 'intMod') v = Math.max(m.min || 1, intMod);
+                                    else v = Number(m.value) || 0;
+                                    return acc + v;
+                                }, 0);
+
+                             const mod = calculateModifier(getStat(stat)) + (isProf ? prof : 0) + globalSaveBonus + saveBonus; 
                              const hasFullAdv = activeModifiers.some(m => m.type === 'advantage' && (m.target === `${stat}_save` || (m.target === 'saves' && (!m.filter || m.filter.toLowerCase() === ABILITY_LABELS[stat].toLowerCase()))));
                              
                              return <SavingThrowRow key={stat} label={ABILITY_LABELS[stat]} stat={stat} isProf={isProf} mod={mod} advantage={hasFullAdv} onRoll={roll} onContextMenu={triggerRollMenu} />; 
@@ -1757,7 +1801,17 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                                   hasFeatureExpertise || 
                                                   (isTrustSkill && character.skills.includes(skill.name)); 
                                 
-                                const mod = calculateModifier(getStat(skill.ability)) + (isProf ? prof : 0) + (isExpertise ? prof : 0); 
+                                const skillBonus = activeModifiers
+                                    .filter(m => m.type === 'bonus' && (m.target === skill.name || m.target === 'skills'))
+                                    .reduce((acc, m) => {
+                                        let v = 0;
+                                        if (m.value === 'wisMod') v = Math.max(m.min || 1, wisMod);
+                                        else if (m.value === 'intMod') v = Math.max(m.min || 1, intMod);
+                                        else v = Number(m.value) || 0;
+                                        return acc + v;
+                                    }, 0);
+
+                                const mod = calculateModifier(getStat(skill.ability)) + (isProf ? prof : 0) + (isExpertise ? prof : 0) + skillBonus; 
                                 const hasFullAdv = activeModifiers.some(m => m.type === 'advantage' && (m.target === skill.name.toLowerCase().replace(/\s+/g, '_') || (m.target === 'skills' && (!m.filter || m.filter.toLowerCase() === skill.name.toLowerCase())))) || isTrustSkill;
 
                                 return <SkillRow key={skill.name} skill={skill.name} stat={skill.ability} isProf={isProf} isExpertise={isExpertise} mod={mod} advantage={hasFullAdv} onRoll={roll} onContextMenu={triggerRollMenu} />; 
@@ -1777,8 +1831,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 );
             case 'proficiencies':
                 const charLanguages = Array.from(new Set([...(character.languages || []), ...(character.race?.languages?.map(l => l.name) || [])]));
-                const charTools = Array.from(new Set([...(character.toolProficiencies || [])]));
-                const allProfs = Array.from(new Set([...character.classes.flatMap(c => c.definition.proficiencies.map(p => p.name)), ...(character.race?.starting_proficiencies?.map(p => p.name) || [])]));
+                const charTools = Array.from(new Set([...(character.toolProficiencies || []), ...activeModifiers.filter(m => m.type === 'proficiency' && m.category === 'tool').map(m => m.target)]));
+                const allProfs = Array.from(new Set([
+                    ...character.classes.flatMap(c => c.definition.proficiencies.map(p => p.name)), 
+                    ...(character.race?.starting_proficiencies?.map(p => p.name) || []),
+                    ...activeModifiers.filter(m => m.type === 'proficiency' && (m.category === 'weapon' || m.category === 'armor')).map(m => m.target)
+                ]));
                 return (
                     <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
                         <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest mb-2">Proficiencies & Languages</h3>
@@ -2771,9 +2829,81 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const getAllFeaturesSorted = () => {
          const list: any[] = [];
          
-        character.classFeatures
-            .filter(f => f.name !== "Subclass feature" && f.name !== "Subclass Feature")
-            .forEach((feat, idx) => list.push({ ...enrichFeature(feat), type: 'Class', uniqueId: `class-${feat.index}-${feat.level}-${idx}` }));
+        // 1. Gather all unique features from character.classFeatures
+        const skipNames = ["Subclass feature", "Subclass Feature", "Divine Domain", "Divine Order", "Subclass choice", "Subclass Selection"];
+        const enrichedFeatures = character.classFeatures
+            .filter(f => !skipNames.includes(f.name))
+            .map(f => {
+                const enriched = enrichFeature(f);
+                if (!enriched.type) enriched.type = 'Class';
+                return enriched;
+            });
+
+        // 2. Add base class features from definitions that should be visible
+        character.classes.forEach(cls => {
+            const defFeatures = cls.definition.feature_details || [];
+            defFeatures.forEach(f => {
+                if (f.level <= cls.level) {
+                   const isPlaceholder = skipNames.includes(f.name);
+                   const hasChoice = isPlaceholder && (
+                       (f.name === "Divine Order" && character.classFeatures.some(cf => cf.name.startsWith("Divine Order:"))) ||
+                       (isPlaceholder && f.name !== "Divine Order" && cls.subclass)
+                   );
+
+                   // Only add if not already present in classFeatures (by name)
+                   const isAlreadyEnriched = enrichedFeatures.some(ef => ef.name === f.name || ef.name.startsWith(`${f.name}:`));
+                   if (!isAlreadyEnriched) {
+                        if (!isPlaceholder || !hasChoice) {
+                            list.push({ ...enrichFeature({ ...f, source: cls.definition.name }), type: 'Class', uniqueId: `class-def-${f.index}-${f.level}` });
+                        }
+                   }
+                }
+            });
+
+            // 3. Add virtual feature for subclasses
+            if (cls.subclass) {
+                let categoryName = `${cls.definition.name} Subclass`;
+                if (cls.definition.index === 'cleric') categoryName = "Divine Domain";
+                else if (cls.definition.index === 'paladin') categoryName = "Sacred Oath";
+                else if (cls.definition.index === 'druid') categoryName = "Druid Circle";
+                else if (cls.definition.index === 'fighter') categoryName = "Martial Archetype";
+                else if (cls.definition.index === 'ranger') categoryName = "Ranger Archetype";
+                else if (cls.definition.index === 'rogue') categoryName = "Roguish Archetype";
+                else if (cls.definition.index === 'warlock') categoryName = "Otherworldly Patron";
+                else if (cls.definition.index === 'sorcerer') categoryName = "Sorcerous Origin";
+                else if (cls.definition.index === 'wizard') categoryName = "Arcane Tradition";
+                else if (cls.definition.index === 'monk') categoryName = "Way of the";
+                else if (cls.definition.index === 'barbarian') categoryName = "Primal Path";
+                else if (cls.definition.index === 'bard') categoryName = "Bard College";
+                
+                list.push({
+                    name: `${categoryName}: ${cls.subclass.name}`,
+                    level: cls.definition.index === 'cleric' ? 3 : 3, // PHB 2024 standardized most to 3
+                    source: cls.definition.name,
+                    desc: cls.subclass.desc,
+                    type: 'Class',
+                    uniqueId: `subclass-virtual-${cls.definition.index}`
+                });
+            }
+        });
+
+        // 4. Add the enriched class features (filter out parent features if choice was made)
+        const featureNames = enrichedFeatures.map(f => f.name.trim());
+        const filteredFeatures = enrichedFeatures.filter(f => {
+            const trimmedName = f.name.trim();
+            // Case 1: If another feature exists that starts with "f.name: ", this is a parent feature with a choice already made
+            if (featureNames.some(name => name.startsWith(`${trimmedName}: `))) return false;
+            
+            // Case 2: If this feature name is just "Protector" or "Thaumaturge", but "Divine Order: [Name]" exists, filter out the bare name
+            if (featureNames.some(name => name.endsWith(`: ${trimmedName}`))) return false;
+
+            return true;
+        });
+
+        filteredFeatures.forEach((feat, idx) => {
+            list.push({ ...feat, type: 'Class', uniqueId: `class-feat-${feat.index || idx}-${feat.level}-${idx}` });
+        });
+
         character.feats.forEach((feat, idx) => list.push({ ...enrichFeature(feat), type: 'Feat', source: 'Feat', level: '-', uniqueId: `feat-${feat.index}-${idx}` }));
         character.race?.traits.forEach((trait, idx) => list.push({ ...enrichFeature(trait), type: 'Race', source: character.race?.name, level: '-', uniqueId: `race-${trait.index}-${idx}` }));
         character.subrace?.traits.forEach((trait, idx) => list.push({ ...enrichFeature(trait), type: 'Race', source: character.subrace?.name, level: '-', uniqueId: `subrace-${trait.index}-${idx}` }));
@@ -3017,7 +3147,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 )}
                             </div>
                         </div>
-                        <div className="flex gap-4 w-full md:w-auto overflow-x-auto pb-1"><button onClick={() => handleRest('short')} className="flex items-center gap-2 px-4 py-2 bg-[#1b1c20]/80 border border-gray-600 hover:border-dnd-gold text-gray-300 hover:text-white rounded transition-colors group shrink-0"><span className="text-lg group-hover:text-dnd-red">🪑</span><div className="text-left"><div className="text-[10px] font-bold uppercase leading-none">Short</div><div className="text-xs font-bold uppercase leading-none">Rest</div></div></button><button onClick={() => handleRest('long')} className="flex items-center gap-2 px-4 py-2 bg-[#1b1c20]/80 border border-gray-600 hover:border-dnd-gold text-gray-300 hover:text-white rounded transition-colors group shrink-0"><span className="text-lg group-hover:text-dnd-gold">🌙</span><div className="text-left"><div className="text-[10px] font-bold uppercase leading-none">Long</div><div className="text-xs font-bold uppercase leading-none">Rest</div></div></button></div>
+                        <div className="flex gap-4 w-full md:w-auto overflow-x-auto pb-1"><button onClick={() => handleRest('short')} className="flex items-center gap-2 px-4 py-2 bg-[#1b1c20]/80 border border-gray-600 hover:border-dnd-gold text-gray-300 hover:text-white rounded transition-colors group shrink-0"><div className="text-left"><div className="text-[10px] font-bold uppercase leading-none">Short</div><div className="text-xs font-bold uppercase leading-none">Rest</div></div></button><button onClick={() => handleRest('long')} className="flex items-center gap-2 px-4 py-2 bg-[#1b1c20]/80 border border-gray-600 hover:border-dnd-gold text-gray-300 hover:text-white rounded transition-colors group shrink-0"><div className="text-left"><div className="text-[10px] font-bold uppercase leading-none">Long</div><div className="text-xs font-bold uppercase leading-none">Rest</div></div></button></div>
                      </div>
                 </div>
                 <div className="bg-[#121316]/80 backdrop-blur-md border-b border-[#3e4149]/40 py-3 overflow-x-auto custom-scrollbar relative z-10">
@@ -3147,6 +3277,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 <DetailSidePanel 
                     item={selectedDetail} 
                     character={character} 
+                    activeModifiers={activeModifiers}
                     onClose={() => setSelectedDetail(null)} 
                     onAction={(action, itm) => { 
                         if (action === 'toggleFeatureUsage') {

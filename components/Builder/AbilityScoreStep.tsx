@@ -109,7 +109,7 @@ const AbilityScoreStep: React.FC<AbilityScoreStepProps> = ({ race, initialScores
                             onClick={handleRandomize}
                             className="px-6 py-2 border border-blue-900/50 bg-blue-900/10 text-blue-400 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-blue-900/20 transition-all"
                         >
-                            🎲 Standard Array
+                            Standard Array
                         </button>
                     </div>
                 </div>

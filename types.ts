@@ -27,6 +27,7 @@ export interface APIReference {
     name: string;
     url?: string;
     isCustom?: boolean;
+    is_homebrew?: boolean;
 }
 
 export interface ClassFeature {
@@ -35,7 +36,7 @@ export interface ClassFeature {
     level: number;
     source: string;
     desc: string[];
-    url: string;
+    url?: string;
     school?: APIReference;
     casting_time?: string;
     range?: string;
@@ -45,6 +46,7 @@ export interface ClassFeature {
     damage?: string | { damage_dice: string; damage_type?: any };
     save?: { type?: string; dc?: number; dc_type?: any };
     effects?: FeatureEffect[];
+    revertData?: any;
 }
 
 export interface SpellDetail extends APIReference {

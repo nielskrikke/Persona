@@ -48,7 +48,7 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
     
     // Calculate limits for the ACTIVE class
     const limits = activeClass 
-        ? getSpellsKnownCount(activeClass, effectiveAbilities)
+        ? getSpellsKnownCount(activeClass, effectiveAbilities, character.classFeatures)
         : { cantrips: 0, spells: 0 };
 
     // Calculate current usage for the ACTIVE class

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CharacterState, LevelChoice, AbilityScores, ABILITY_NAMES, ABILITY_LABELS, AbilityName, SpellDetail, FeatDetail, SubclassDetail } from '../../../types';
 import { AlertTriangle, CheckCircle2, ChevronRight, RotateCcw, Sparkles, Info } from 'lucide-react';
 import { calculateModifier, SKILL_LIST } from '../../../utils/rules';
-import { STANDARD_LANGUAGES, METAMAGIC_OPTIONS } from '../../../data/constants';
+import { STANDARD_LANGUAGES, METAMAGIC_OPTIONS, ARTISAN_TOOLS } from '../../../data/constants';
 import { fetchFeatsList, fetchAllSpells, fetchSubclasses, fetchSubclassDetail, fetchSubclassLevels, fetchClassLevels } from '../../../data/index';
 
 interface ChoicesTabProps {
@@ -37,6 +37,72 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
 
         let additionalUpdates: Partial<CharacterState> = {};
 
+        // 1. Generic Side Effects for any option with .effects (Triggered Choices)
+        const selectedOption = choice.options?.find((o: any) => {
+            if (typeof o === 'string') return o === value;
+            return (o.index || o.name) === value;
+        });
+
+        if (selectedOption && typeof selectedOption !== 'string' && (selectedOption.effects || selectedOption.desc)) {
+            if (selectedOption.effects) {
+                const triggerEffects = selectedOption.effects.filter((e: any) => e.type.endsWith('_choice') || e.type === 'spell_access');
+                if (triggerEffects.length > 0) {
+                    const newSubChoices = triggerEffects.map((e: any, idx: number) => {
+                        let opts: any[] = [];
+                        if (e.options) opts = e.options;
+                        else if (e.type === 'spell_access') {
+                            let filtered = allSpells;
+                            if (e.filter_class) {
+                                filtered = filtered.filter(s => s.classes?.some((c: any) => c.name === e.filter_class) || 
+                                                           s.sourceClassIndex?.toLowerCase() === e.filter_class.toLowerCase());
+                            }
+                            if (e.level !== undefined) filtered = filtered.filter(s => s.level === e.level);
+                            opts = filtered.map(s => ({ index: s.index, name: s.name }));
+                        } else if (e.type === 'proficiency_choice') {
+                            if (e.category === 'skill') opts = SKILL_LIST.map(s => s.name);
+                            else if (e.category === 'tool') opts = ARTISAN_TOOLS;
+                            else if (e.category === 'language') opts = STANDARD_LANGUAGES;
+                        } else if (e.type === 'expertise_choice') {
+                            if (e.category === 'skill') opts = SKILL_LIST.map(s => s.name);
+                        }
+
+                        return {
+                            id: `${choiceId}-sub-${idx}-${Date.now()}`,
+                            level: choice.level,
+                            source: `${choice.label}: ${selectedOption.name}`,
+                            type: (e.type === 'asi_choice' ? 'asi' : 
+                                   e.type === 'proficiency_choice' ? (e.category === 'skill' ? 'skill' : e.category === 'language' ? 'language' : 'other') :
+                                   e.type === 'expertise_choice' ? 'expertise' :
+                                   e.type === 'spell_access' ? 'spell' : 'other') as LevelChoice['type'],
+                            label: e.name || (e.type === 'spell_access' ? (e.level === 0 ? 'Cantrip' : 'Spell') : e.type.replace('_', ' ')),
+                            value: null,
+                            options: opts,
+                            count: e.count || 1,
+                            revertData: { parentChoiceId: choiceId, isSubChoice: true }
+                        };
+                    });
+                    additionalUpdates.choices = [...(additionalUpdates.choices || character.choices), ...newSubChoices];
+                }
+
+                // Passive effects handled as features
+                const passiveEffects = selectedOption.effects.filter((e: any) => !e.type.endsWith('_choice') && e.type !== 'spell_access');
+                if (passiveEffects.length > 0 || selectedOption.desc) {
+                    const newFeature = {
+                        index: `${choiceId}-feature`.toLowerCase(),
+                        name: `${choice.label}: ${selectedOption.name}`,
+                        level: choice.level,
+                        source: choice.source,
+                        desc: selectedOption.desc ? [selectedOption.desc] : [],
+                        effects: passiveEffects,
+                        revertData: { choiceId }
+                    };
+                    additionalUpdates.classFeatures = [...(additionalUpdates.classFeatures || character.classFeatures), newFeature];
+                    if (!revertData) revertData = {};
+                    revertData.features = [...(revertData.features || []), newFeature];
+                }
+            }
+        }
+
         // Special handling for subclass to fetch features
         if (choice.type === 'subclass' && value) {
             const subclassRef = choice.options?.find(o => o.index === value || o.name === value);
@@ -52,13 +118,106 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
                         .flatMap((l: any) => l.features.map((f: any) => ({ 
                             ...f, 
                             level: l.level, 
-                            source: subclassDetail.name 
+                            source: subclassDetail.name,
+                            type: 'Class'
                         })));
                     
                     additionalUpdates.classes = character.classes.map(c => 
                         c.definition.index === classIndex ? { ...c, subclass: subclassDetail } : c
                     );
                     additionalUpdates.classFeatures = [...character.classFeatures, ...newFeatures];
+
+                    // Scan gained subclass features for choice-triggering effects
+                    const subSubChoices: LevelChoice[] = [];
+                    const autoSpells: SpellDetail[] = [];
+                    const autoProficiencies: string[] = [];
+                    const autoExpertise: string[] = [];
+                    const autoToolProficiencies: string[] = [];
+                    const autoLanguages: string[] = [];
+
+                    newFeatures.forEach((f: any) => {
+                        if (f.effects) {
+                            f.effects.forEach((e: any, idx: number) => {
+                                if (e.type.endsWith('_choice') || (e.type === 'spell_access' && !e.spell)) {
+                                    let opts: any[] = [];
+                                     if (e.options) opts = e.options;
+                                    else if (e.type === 'spell_access') {
+                                        let filtered = allSpells;
+                                        if (e.filter_class) {
+                                            filtered = filtered.filter(s => s.classes?.some((c: any) => c.name === e.filter_class) || 
+                                                                       s.sourceClassIndex?.toLowerCase() === e.filter_class.toLowerCase());
+                                        }
+                                        if (e.level !== undefined) filtered = filtered.filter(s => s.level === e.level);
+                                        opts = filtered.map(s => ({ index: s.index, name: s.name }));
+                                    } else if (e.type === 'proficiency_choice') {
+                                        if (e.category === 'skill') opts = SKILL_LIST.map(s => s.name);
+                                        else if (e.category === 'tool') opts = ARTISAN_TOOLS;
+                                        else if (e.category === 'language') opts = STANDARD_LANGUAGES;
+                                    } else if (e.type === 'expertise_choice') {
+                                        if (e.category === 'skill') opts = SKILL_LIST.map(s => s.name);
+                                    }
+
+                                    subSubChoices.push({
+                                        id: `${choiceId}-sub-${f.index}-${idx}-${Date.now()}`,
+                                        level: choice.level,
+                                        source: `${subclassDetail.name}: ${f.name}`,
+                                        type: (e.type === 'asi_choice' ? 'asi' : 
+                                               e.type === 'proficiency_choice' ? (e.category === 'skill' ? 'skill' : e.category === 'language' ? 'language' : 'other') :
+                                               e.type === 'expertise_choice' ? 'expertise' :
+                                               e.type === 'spell_access' ? 'spell' : 'other') as LevelChoice['type'],
+                                        label: e.label || e.name || (e.type === 'spell_access' ? (e.level === 0 ? 'Cantrip' : 'Spell') : e.type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())),
+                                        value: null,
+                                        options: opts,
+                                        count: e.count || 1,
+                                        revertData: { parentChoiceId: choiceId, isSubChoice: true }
+                                    });
+                                } else if (e.type === 'spell_access' && e.spell) {
+                                    // Automatic spells (Domain Spells)
+                                    const fullSpell = allSpells.find(s => s.name === e.spell || s.index === e.spell || s.index === e.spell.toLowerCase().replace(/\s+/g, '-'));
+                                    if (fullSpell) {
+                                        autoSpells.push({ ...fullSpell, sourceClassIndex: classIndex, isPrepared: true });
+                                    }
+                                } else if (e.type === 'proficiency') {
+                                    if (e.category === 'skill' && typeof e.target === 'string') autoProficiencies.push(e.target);
+                                    if (e.category === 'tool' && typeof e.target === 'string') autoToolProficiencies.push(e.target);
+                                    if (e.category === 'language' && typeof e.target === 'string') autoLanguages.push(e.target);
+                                } else if (e.type === 'expertise') {
+                                    if (e.category === 'skill' && typeof e.target === 'string') autoExpertise.push(e.target);
+                                }
+                            });
+                        }
+                    });
+
+                    // Update character with automatic gains
+                    if (autoSpells.length > 0) {
+                        additionalUpdates.spells = [...character.spells, ...autoSpells.filter(as => !character.spells.some(cs => cs.index === as.index))];
+                    }
+                    if (autoProficiencies.length > 0) {
+                        additionalUpdates.skills = [...character.skills, ...autoProficiencies.filter(p => !character.skills.includes(p))];
+                    }
+                    if (autoExpertise.length > 0) {
+                        additionalUpdates.expertise = [...(character.expertise || []), ...autoExpertise.filter(p => !(character.expertise || []).includes(p))];
+                    }
+                    if (autoToolProficiencies.length > 0) {
+                        additionalUpdates.toolProficiencies = [...(character.toolProficiencies || []), ...autoToolProficiencies.filter(p => !(character.toolProficiencies || []).includes(p))];
+                    }
+                    if (autoLanguages.length > 0) {
+                        additionalUpdates.languages = [...(character.languages || []), ...autoLanguages.filter(p => !(character.languages || []).includes(p))];
+                    }
+
+                    // Save revert data
+                    revertData = {
+                        ...revertData,
+                        addedSpells: autoSpells.map(s => s.index),
+                        addedSkills: autoProficiencies,
+                        addedExpertise: autoExpertise,
+                        addedTools: autoToolProficiencies,
+                        addedLanguages: autoLanguages
+                    };
+
+                    if (subSubChoices.length > 0) {
+                        additionalUpdates.choices = [...(additionalUpdates.choices || character.choices), ...subSubChoices];
+                    }
                 }
             }
         }
@@ -163,13 +322,28 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
         const choice = character.choices.find(c => c.id === choiceId);
         if (!choice || !choice.revertData) return;
 
+        // Recursive finding of child choices
+        const findChildren = (parentId: string): LevelChoice[] => {
+            const children = character.choices.filter(c => c.revertData?.parentChoiceId === parentId);
+            return [...children, ...children.flatMap(c => findChildren(c.id))];
+        };
+        const subChoices = findChildren(choiceId);
+        const subChoiceIds = subChoices.map(sc => sc.id);
+
         setCharacter(prev => {
+            // Revert features associated with this choice and its children
+            const allRevertIds = [choiceId, ...subChoiceIds];
+            
             const updates: Partial<CharacterState> = {
-                choices: prev.choices.map(c => c.id === choiceId ? { ...c, value: null, revertData: null } : c)
+                choices: prev.choices
+                    .filter(c => !subChoiceIds.includes(c.id))
+                    .map(c => c.id === choiceId ? { ...c, value: null, revertData: null } : c),
+                classFeatures: (prev.classFeatures || []).filter(f => !f.revertData?.choiceId || !allRevertIds.includes(f.revertData.choiceId))
             };
 
             const data = choice.revertData;
-
+            
+            // Special handling for each data type in revertData
             if (choice.type === 'subclass') {
                 const subclassName = choice.value;
                 updates.classes = prev.classes.map(c => {
@@ -179,6 +353,23 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
                     return c;
                 });
                 updates.classFeatures = prev.classFeatures.filter(f => f.source !== subclassName);
+
+                // Remove automatic gains stored in revertData
+                if (data.addedSpells) {
+                    updates.spells = (updates.spells || prev.spells).filter(s => !data.addedSpells.includes(s.index));
+                }
+                if (data.addedSkills) {
+                    updates.skills = (updates.skills || prev.skills).filter(s => !data.addedSkills.includes(s));
+                }
+                if (data.addedExpertise) {
+                    updates.expertise = (updates.expertise || prev.expertise).filter(s => !data.addedExpertise.includes(s));
+                }
+                if (data.addedTools) {
+                    updates.toolProficiencies = (updates.toolProficiencies || prev.toolProficiencies).filter(t => !data.addedTools.includes(t));
+                }
+                if (data.addedLanguages) {
+                    updates.languages = (updates.languages || prev.languages).filter(l => !data.addedLanguages.includes(l));
+                }
             }
 
             if (data.abilities) {
@@ -583,13 +774,15 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onMakeChoice, allFeats,
                 const options = choice.options || [];
                 const count = choice.count || 1;
                 const isMulti = count > 1;
+                const hasDescriptions = options.some((opt: any) => typeof opt !== 'string' && opt.desc);
 
                 return (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                    <div className={hasDescriptions ? "grid grid-cols-1 gap-4" : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2"}>
                         {options.map((opt: any) => {
                             const name = typeof opt === 'string' ? opt : opt.name;
-                            const index = typeof opt === 'string' ? opt : opt.index;
-                            const isSelected = isMulti ? selection.includes(index) : selection === index;
+                            const index = typeof opt === 'string' ? opt : (opt.index || opt.name);
+                            const desc = typeof opt === 'string' ? null : opt.desc;
+                            const isSelected = isMulti ? selection.slice().includes(index) : selection === index;
 
                             return (
                                 <button
@@ -602,9 +795,21 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onMakeChoice, allFeats,
                                             setSelection((prev: any) => prev === index ? null : index);
                                         }
                                     }}
-                                    className={`p-3 rounded border text-left text-sm transition-all ${isSelected ? 'bg-dnd-gold/20 border-dnd-gold text-white' : 'bg-black/20 border-gray-800 text-gray-400 hover:border-gray-600'}`}
+                                    className={`p-4 rounded-xl border text-left transition-all group ${hasDescriptions ? 'p-5' : 'p-3 text-sm'} ${isSelected ? 'bg-dnd-gold/20 border-dnd-gold text-white' : 'bg-black/20 border-gray-800 text-gray-400 hover:border-gray-600'}`}
                                 >
-                                    {name}
+                                    <div className="flex flex-col gap-1">
+                                        <div className="flex items-center justify-between">
+                                            <span className={`font-serif ${hasDescriptions ? 'text-xl' : ''} ${isSelected ? 'text-dnd-gold' : 'text-gray-200 group-hover:text-white'}`}>
+                                                {name}
+                                            </span>
+                                            {isSelected && <CheckCircle2 className="w-5 h-5 text-dnd-gold" />}
+                                        </div>
+                                        {desc && (
+                                            <p className="text-sm text-gray-400 mt-2 leading-relaxed">
+                                                {desc}
+                                            </p>
+                                        )}
+                                    </div>
                                 </button>
                             );
                         })}

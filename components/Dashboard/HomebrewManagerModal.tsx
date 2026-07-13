@@ -3,7 +3,7 @@ import { saveHomebrew, loadHomebrew, deleteHomebrew } from '../../services/supab
 import { ABILITY_NAMES, ABILITY_LABELS, APIReference, SpellDetail, EquipmentDetail, CreatureDetail } from '../../types';
 import { SKILL_LIST } from '../../utils/rules';
 import { SPELL_SCHOOLS } from '../../data/constants';
-import { X, Search, Filter, Sparkles, Save, Coins, Link, Trash2, Info, ChevronUp, Plus, PawPrint } from 'lucide-react';
+import { X, Search, Filter, Sparkles, Save, Coins, Link, Trash2, Info, ChevronUp, Plus, PawPrint, Copy } from 'lucide-react';
 
 interface HomebrewManagerModalProps {
     isOpen: boolean;
@@ -258,6 +258,23 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
         const data = await loadHomebrew(tableMap[activeTab] as any, currentUser.id);
         setList(data);
         setLoading(false);
+    };
+
+
+
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filterCategory, setFilterCategory] = useState('all');
+
+    useEffect(() => {
+        setSearchQuery('');
+        setFilterCategory('all');
+    }, [activeTab]);
+
+    const handleDuplicate = (item: any, e: React.MouseEvent) => {
+        e.stopPropagation();
+        handleEdit(item);
+        setEditingId(null);
+        setShowForm(true);
     };
 
     if (!isOpen) return null;
@@ -573,22 +590,23 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
 
     return (
         <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4 backdrop-blur-md">
-            <div ref={modalRef} className="bg-[#1b1c20] border-2 border-dnd-gold rounded-xl w-full max-w-6xl shadow-2xl flex flex-col h-[90vh]">
+            <div ref={modalRef} className="bg-[#1b1c20] border border-gray-800 rounded-xl w-full max-w-6xl shadow-2xl flex flex-col h-[90vh]">
                 
                 {/* Forge Header */}
                 <div className="p-6 border-b border-gray-800 bg-[#121316] rounded-t-xl shrink-0 flex justify-between items-center">
                     <div className="flex items-center gap-6">
                         <div>
                             <h2 className="text-3xl font-serif text-dnd-gold flex items-center gap-3">
-                                <span className="opacity-50">⚒️</span>
-                                {showForm ? 'Forging Mode' : 'The Homebrew Forge'}
+                                {showForm ? 'Forging Mode' : 'Content Library'}
                             </h2>
                             <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mt-1 italic">
                                 {showForm ? 'Binding mechanics to the weave' : 'Shared creations from across the realms'}
                             </p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="text-gray-500 hover:text-white text-3xl transition-colors">&times;</button>
+                    <div className="flex items-center gap-4">
+                        <button onClick={onClose} className="text-gray-500 hover:text-white text-3xl transition-colors">&times;</button>
+                    </div>
                 </div>
 
                 <div className="flex border-b border-gray-800 bg-[#1b1c20] shrink-0 overflow-x-auto no-scrollbar">
@@ -613,15 +631,79 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                 <button onClick={() => setShowForm(true)} className="text-[10px] text-dnd-gold hover:underline font-bold uppercase">+ Forge New</button>
                             </div>
                         </div>
+                        {/* Search and Filter */}
+                        <div className="p-3 border-b border-gray-800 space-y-2">
+                            <div className="relative">
+                                <Search size={14} className="absolute left-2.5 top-2.5 text-gray-500" />
+                                <input 
+                                    type="text" 
+                                    placeholder="Search entries..." 
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                    className="w-full bg-[#121316] border border-gray-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-dnd-gold"
+                                />
+                            </div>
+                            <div className="flex gap-2">
+                                <select 
+                                    value={filterCategory} 
+                                    onChange={e => setFilterCategory(e.target.value)}
+                                    className="w-full bg-[#121316] border border-gray-700 rounded-lg px-2 py-1 text-[10px] text-gray-300 focus:outline-none focus:border-dnd-gold"
+                                >
+                                    <option value="all">All Filters</option>
+                                    {activeTab === 'item' && (
+                                        <>
+                                            <option value="Weapon">Weapon</option>
+                                            <option value="Armor">Armor</option>
+                                            <option value="Adventuring Gear">Adventuring Gear</option>
+                                            <option value="Potion">Potion</option>
+                                            <option value="Ring">Ring</option>
+                                            <option value="Wondrous Item">Wondrous Item</option>
+                                        </>
+                                    )}
+                                    {activeTab === 'spell' && (
+                                        <>
+                                            <option value="0">Cantrip (Lvl 0)</option>
+                                            <option value="1">Level 1</option>
+                                            <option value="2">Level 2</option>
+                                            <option value="3">Level 3</option>
+                                            <option value="4">Level 4</option>
+                                            <option value="5">Level 5</option>
+                                            <option value="6">Level 6</option>
+                                            <option value="7">Level 7</option>
+                                            <option value="8">Level 8</option>
+                                            <option value="9">Level 9</option>
+                                        </>
+                                    )}
+                                </select>
+                            </div>
+                        </div>
                         <div className="flex-grow overflow-y-auto custom-scrollbar p-2 space-y-1">
                             {loading && list.length === 0 ? <div className="p-4 text-xs text-gray-600 animate-pulse">Browsing scrolls...</div> : (
-                                list.map(item => (
+                                [...list]
+                                    .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+                                    .filter(item => {
+                                        const matchesSearch = (item.name || '').toLowerCase().includes(searchQuery.toLowerCase());
+                                        if (!matchesSearch) return false;
+                                        if (filterCategory !== 'all') {
+                                            if (activeTab === 'item') {
+                                                const cat = item.equipment_category?.name || '';
+                                                if (cat.toLowerCase() !== filterCategory.toLowerCase() && item.rarity?.toLowerCase() !== filterCategory.toLowerCase()) return false;
+                                            } else if (activeTab === 'spell') {
+                                                if (item.level?.toString() !== filterCategory) return false;
+                                            }
+                                        }
+                                        return true;
+                                    })
+                                    .map(item => (
                                     <div 
                                         key={item.id} 
                                         onClick={() => handleEdit(item)}
                                         className="p-3 bg-gray-800/20 rounded-lg border border-gray-700/50 hover:border-dnd-gold transition-colors group relative cursor-pointer"
                                     >
-                                        <div className="font-bold text-sm text-gray-300 group-hover:text-white">{item.name} (HB)</div>
+                                        <div className="font-bold text-sm text-gray-300 group-hover:text-white flex items-center justify-between">
+                                            <span>{item.name}</span>
+                                            {item.is_homebrew && <span className="text-[9px] bg-dnd-gold/20 text-dnd-gold px-1.5 py-0.5 rounded font-mono">(HB)</span>}
+                                        </div>
                                         <div className="flex justify-between items-center mt-1">
                                             <div className="text-[8px] text-gray-600 uppercase font-black">By {item.user_id === currentUser.id ? 'You' : item.user_id?.substring(0,8)}</div>
                                             <div className="flex items-center gap-2">
@@ -630,6 +712,13 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                 ) : (
                                                     <span className="text-[7px] bg-blue-900/30 text-blue-500 px-1 rounded border border-blue-900/50 uppercase font-black">Personal</span>
                                                 )}
+                                                <button 
+                                                    onClick={(e) => handleDuplicate(item, e)}
+                                                    className="text-gray-400 hover:text-dnd-gold opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                                                    title="Duplicate Entry"
+                                                >
+                                                    <Copy size={12} />
+                                                </button>
                                                 {item.user_id === currentUser.id && (
                                                     <div className="flex items-center gap-1">
                                                         {deleteConfirmId === item.id ? (

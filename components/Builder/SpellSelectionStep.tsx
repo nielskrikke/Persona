@@ -47,7 +47,7 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
 
     const activeClass = casterClasses.find(c => c.definition.index === activeClassIndex);
     const limits = activeClass 
-        ? getSpellsKnownCount(activeClass, character.abilities) 
+        ? getSpellsKnownCount(activeClass, character.abilities, character.classFeatures) 
         : { cantrips: 0, spells: 0 };
 
     const currentSelected = classSpells[activeClassIndex] || [];
@@ -102,7 +102,7 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
         for (const cls of casterClasses) {
             const clsIndex = cls.definition.index;
             const selected = classSpells[clsIndex] || [];
-            const clsLimits = getSpellsKnownCount(cls, character.abilities);
+            const clsLimits = getSpellsKnownCount(cls, character.abilities, character.classFeatures);
             
             const cantrips = selected.filter(s => s.level === 0).length;
             const leveled = selected.filter(s => s.level > 0).length;

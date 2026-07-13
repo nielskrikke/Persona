@@ -41,11 +41,20 @@ const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, on
             setNewLevel(nextLevel);
 
             const feats = await fetchLevelFeatures(classIndex, nextLevel);
-            setNewFeatures(feats);
+            
+            // Fetch subclass features if applicable
+            let subFeats: any[] = [];
+            if (existingClass?.subclass) {
+                const subLevels = await fetchSubclassLevels(existingClass.subclass.index);
+                subFeats = subLevels.find((l: any) => l.level === nextLevel)?.features || [];
+            }
+            
+            const allNewFeatures = [...feats, ...subFeats];
+            setNewFeatures(allNewFeatures);
 
             // Process feature effects for choices
             const choices: PendingChoice[] = [];
-            feats.forEach((f: any) => {
+            allNewFeatures.forEach((f: any) => {
                 if (f.effects) {
                     f.effects.forEach((eff: FeatureEffect) => {
                         if (eff.type === 'expertise_choice' || eff.type === 'proficiency_choice' || eff.type === 'feature_choice') {
@@ -102,9 +111,9 @@ const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, on
         const effectiveAbilities = getEffectiveAbilities(character);
         const currentLevel = isInitiation ? 0 : (existingClass?.level || 0);
         const currKnown = currentLevel > 0 
-            ? getSpellsKnownCount({ definition: classDefinition, level: currentLevel, subclass: existingClass?.subclass || null }, effectiveAbilities)
+            ? getSpellsKnownCount({ definition: classDefinition, level: currentLevel, subclass: existingClass?.subclass || null }, effectiveAbilities, character.classFeatures)
             : { cantrips: 0, spells: 0 };
-        const nextKnown = getSpellsKnownCount({ definition: classDefinition, level: nextLevel, subclass: existingClass?.subclass || null }, effectiveAbilities);
+        const nextKnown = getSpellsKnownCount({ definition: classDefinition, level: nextLevel, subclass: existingClass?.subclass || null }, effectiveAbilities, character.classFeatures);
 
         const newCantrips = Math.max(0, nextKnown.cantrips - currKnown.cantrips);
         const newSpells = Math.max(0, nextKnown.spells - currKnown.spells);
@@ -158,12 +167,57 @@ const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, on
 
         // 3. Features Merging with attribution
         let mergedFeatures = [...character.classFeatures];
+        const autoSpells: any[] = [];
+        const autoSkills: string[] = [];
+        const autoExpertise: string[] = [];
+        const autoTools: string[] = [];
+        const autoLanguages: string[] = [];
+
+        // Fetch all spells for matching
+        const allSpells = await fetchAllSpells();
+
         newFeatures.forEach(f => {
             if (!mergedFeatures.some(existing => existing.index === f.index)) {
-                mergedFeatures.push({ ...f, level: nextLevel, source: sourceName });
+                // Determine source (Class or Subclass)
+                const isSubfeat = existingClass?.subclass && f.source === existingClass.subclass.name;
+                const source = isSubfeat ? existingClass.subclass!.name : sourceName;
+                
+                mergedFeatures.push({ ...f, level: nextLevel, source: source, type: 'Class' });
+
+                // Process auto-gains (Domain spells, extra proficiencies)
+                if (f.effects) {
+                    f.effects.forEach((e: any) => {
+                        if (e.type === 'spell_access' && e.spell) {
+                            const fullSpell = allSpells.find(s => s.name === e.spell || s.index === e.spell || s.index === e.spell.toLowerCase().replace(/\s+/g, '-'));
+                            if (fullSpell) autoSpells.push({ ...fullSpell, sourceClassIndex: classIndex, isPrepared: true });
+                        } else if (e.type === 'proficiency') {
+                            if (e.category === 'skill' && typeof e.target === 'string') autoSkills.push(e.target);
+                            if (e.category === 'tool' && typeof e.target === 'string') autoTools.push(e.target);
+                            if (e.category === 'language' && typeof e.target === 'string') autoLanguages.push(e.target);
+                        } else if (e.type === 'expertise') {
+                            if (e.category === 'skill' && typeof e.target === 'string') autoExpertise.push(e.target);
+                        }
+                    });
+                }
             }
         });
+        
         updates.classFeatures = mergedFeatures;
+        if (autoSpells.length > 0) {
+            updates.spells = [...(character.spells || []), ...autoSpells.filter(as => !character.spells.some(cs => cs.index === as.index))];
+        }
+        if (autoSkills.length > 0) {
+            updates.skills = [...(character.skills || []), ...autoSkills.filter(s => !character.skills.includes(s))];
+        }
+        if (autoExpertise.length > 0) {
+            updates.expertise = [...(character.expertise || []), ...autoExpertise.filter(e => !character.expertise.includes(e))];
+        }
+        if (autoTools.length > 0) {
+            updates.toolProficiencies = [...(character.toolProficiencies || []), ...autoTools.filter(t => !character.toolProficiencies.includes(t))];
+        }
+        if (autoLanguages.length > 0) {
+            updates.languages = [...(character.languages || []), ...autoLanguages.filter(l => !character.languages.includes(l))];
+        }
 
         // 4. Update Resource Tracking (featureUsage)
         const newFeatureUsage = { ...character.featureUsage };
@@ -205,7 +259,8 @@ const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, on
                 type: 'subclass',
                 label: `${getSubclassTerminology()} Selection`,
                 value: null,
-                options: availableSubclasses
+                options: availableSubclasses,
+                revertData: { classIndex }
             });
         }
 
@@ -223,12 +278,18 @@ const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, on
 
         // Queue Feature Choices
         pendingChoices.forEach((choice, idx) => {
+            let choiceType: LevelChoice['type'] = 'skill';
+            if (choice.effect.type === 'expertise_choice') choiceType = 'expertise';
+            else if (choice.effect.type === 'feature_choice') choiceType = 'feature_choice';
+            else if (choice.effect.category === 'language') choiceType = 'language';
+            else if (choice.effect.type === 'proficiency_choice' && choice.effect.category === 'skill') choiceType = 'skill';
+            else choiceType = 'other';
+
             newChoices.push({
                 id: `choice-${nextLevel}-${idx}-${classIndex}`,
                 level: nextLevel,
                 source: choice.featureName,
-                type: choice.effect.type === 'expertise_choice' ? 'expertise' : 
-                      (choice.effect.category === 'language' ? 'language' : 'skill'),
+                type: choiceType,
                 label: choice.featureName,
                 value: null,
                 options: choice.effect.options || (choice.effect.category === 'language' ? STANDARD_LANGUAGES : (choice.effect.type === 'proficiency_choice' && choice.effect.category === 'skill' ? SKILL_LIST.map(s => s.name) : [])),
@@ -244,7 +305,7 @@ const LevelUpWizard: React.FC<LevelUpWizardProps> = ({ character, classIndex, on
 
     return (
         <div className="fixed inset-0 bg-black/90 z-[400] flex items-center justify-center p-4 backdrop-blur-md font-scalable-text">
-            <div className="bg-[#1b1c20] border-2 border-dnd-gold rounded-xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="bg-[#1b1c20] border border-gray-800 rounded-xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[90vh]">
                 <div className="p-6 border-b border-gray-700 bg-[#121316] rounded-t-xl shrink-0">
                     <h2 className="text-4xl font-serif text-dnd-gold">{isInitiation ? 'Initiate' : 'Level Up'}: {classDefinition?.name}</h2>
                     <p className="text-gray-400 font-bold uppercase tracking-widest text-sm">

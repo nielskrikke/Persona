@@ -465,7 +465,7 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
                 }`}
               >
                 <span>{race.name}</span>
-                {race.isCustom && <span className="text-[9px] uppercase font-black opacity-40">Homebrew</span>}
+                {race.is_homebrew && <span className="text-[9px] uppercase font-black text-dnd-gold bg-dnd-gold/10 px-1.5 py-0.5 rounded">Homebrew</span>}
               </li>
             ))}
           </ul>
@@ -509,7 +509,7 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
                         >
                             {isCustomizingOrigin ? 'Customizing Origin' : 'Customize Origin'}
                         </button>
-                        {previewRace.isCustom && <span className="bg-blue-900/40 text-blue-300 border border-blue-800 px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest">Shared Creation</span>}
+                        {previewRace.is_homebrew && <span className="bg-dnd-gold/20 text-dnd-gold border border-dnd-gold/30 px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest">Homebrew</span>}
                     </div>
                 </div>
                 <div className="flex flex-wrap gap-x-4 gap-y-2 text-[10px] font-black text-dnd-gold uppercase tracking-widest">

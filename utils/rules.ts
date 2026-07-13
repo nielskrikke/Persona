@@ -144,7 +144,7 @@ export const getPointBuyCost = (score: number): number => {
     return costs[score] || 0;
 };
 
-export const getSpellsKnownCount = (characterClass: CharacterClass, abilities: AbilityScores): { cantrips: number; spells: number } => {
+export const getSpellsKnownCount = (characterClass: CharacterClass, abilities: AbilityScores, classFeatures: any[] = []): { cantrips: number; spells: number } => {
     const { definition, level } = characterClass;
     
     // Robust ability detection
@@ -216,6 +216,19 @@ export const getSpellsKnownCount = (characterClass: CharacterClass, abilities: A
             cantrips = 0;
             spells = 0;
     }
+
+    // Apply bonuses from features (e.g. Thaumaturge)
+    classFeatures.forEach(f => {
+        f.effects?.forEach((e: any) => {
+            if (e.type === 'spell_access') {
+                // If it matches the class and level, add to count
+                if ((!e.filter_class || e.filter_class.toLowerCase() === definition.index.toLowerCase()) && e.level !== undefined) {
+                    if (e.level === 0) cantrips += (e.count || 1);
+                    else spells += (e.count || 1);
+                }
+            }
+        });
+    });
 
     return { cantrips, spells };
 };

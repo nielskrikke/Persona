@@ -107,31 +107,27 @@ export const loadHomebrew = async (
     try {
         const url = userId ? `/api/homebrew/${table}?userId=${userId}` : `/api/homebrew/${table}`;
         const response = await fetch(url);
-        if (!response.ok) {
-            let errorMsg = `Failed to load ${table}`;
-            try {
-                const err = await response.json();
-                errorMsg = err.error || errorMsg;
-            } catch (e) {
-                errorMsg = `${response.status} ${response.statusText}`;
+        if (response.ok) {
+            const data = await response.json();
+            const results = (data || []).map((item: any) => ({ 
+                ...item.data, 
+                id: item.id, 
+                user_id: item.user_id, 
+                is_public: item.is_public, 
+                is_homebrew: item.is_homebrew ?? item.data?.is_homebrew ?? item.homebrew ?? false,
+                isCustom: true 
+            }));
+            
+            if (results.length > 0) {
+                homebrewCache[cacheKey] = { data: results, timestamp: now };
+                return results;
             }
-            throw new Error(errorMsg);
         }
-        const data = await response.json();
-        const results = (data || []).map((item: any) => ({ 
-            ...item.data, 
-            id: item.id, 
-            user_id: item.user_id, 
-            is_public: item.is_public, 
-            isCustom: true 
-        }));
-        
-        homebrewCache[cacheKey] = { data: results, timestamp: now };
-        return results;
     } catch (error) {
         console.error(`Error loading homebrew from ${table}:`, error);
-        return [];
     }
+
+    return [];
 };
 
 export const saveHomebrew = async (

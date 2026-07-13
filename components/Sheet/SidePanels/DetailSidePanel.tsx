@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import SidePanelLayout from '../Shared/SidePanelLayout';
-import { SpellDetail, InventoryItem, APIReference, RuleEntry, CharacterState } from '../../../types';
+import { SpellDetail, InventoryItem, APIReference, RuleEntry, CharacterState, FeatureEffect } from '../../../types';
 import { isSpell } from '../../../utils/rules';
 import { fetchEquipmentDetail, fetchFeatureDetail, fetchTraitDetail } from '../../../data/index';
 import { MASTERY_DESCRIPTIONS, WIDGET_BG } from '../../../data/constants';
@@ -20,6 +20,7 @@ const PROFICIENCY_MAP: Record<string, string[]> = {
 const cleanProfName = (name: string) => {
     return name.toLowerCase()
         .replace(/^(skill|musical instrument|gaming set|tool|armor|weapon|other):\s*/i, '')
+        .replace(/-/g, ' ')
         .trim();
 };
 
@@ -31,7 +32,8 @@ const DetailSidePanel = ({
     isPinned,
     onTogglePin,
     isFavorite,
-    onToggleFavorite
+    onToggleFavorite,
+    activeModifiers = []
 }: { 
     item: SpellDetail | InventoryItem | APIReference | any | null, 
     character?: CharacterState;
@@ -41,6 +43,7 @@ const DetailSidePanel = ({
     onTogglePin: () => void;
     isFavorite?: boolean;
     onToggleFavorite?: () => void;
+    activeModifiers?: FeatureEffect[];
 }) => {
     const [fullDetail, setFullDetail] = useState<any>(null);
     const [loading, setLoading] = useState(false);
@@ -311,6 +314,17 @@ const DetailSidePanel = ({
         // Include direct tool proficiencies from character state
         character.toolProficiencies?.forEach(t => charProfs.add(cleanProfName(t)));
         
+        // Include active modifiers (for choices like Divine Order: Protector)
+        activeModifiers.forEach(mod => {
+            if (mod.type === 'proficiency') {
+                const cleaned = cleanProfName(mod.target || '');
+                charProfs.add(cleaned);
+                // Also add shorthand for comparison with item categories (e.g., "heavy armor" -> "heavy")
+                if (cleaned.endsWith(' armor')) charProfs.add(cleaned.replace(' armor', '').trim());
+                if (cleaned.endsWith(' weapons')) charProfs.add(cleaned.replace(' weapons', '').trim());
+            }
+        });
+        
         // --- 1. Direct & Fuzzy Matches ---
         for (const checkName of namesToCheck) {
              const cleanedCheckName = cleanProfName(checkName);
@@ -332,8 +346,14 @@ const DetailSidePanel = ({
         if (charProfs.has('shields') && rawName.includes('shield')) return true;
 
         for (const [category, items] of Object.entries(PROFICIENCY_MAP)) {
-             // Check if any of our name variations match a mapped item
-             const isInCategory = items.some(i => namesToCheck.some(n => n.includes(i)));
+             // Check if any of our name variations match a mapped item (fuzzy match)
+             const isInCategory = items.some(i => {
+                 const mappedItem = i.toLowerCase();
+                 return namesToCheck.some(n => {
+                     const lowerN = n.toLowerCase();
+                     return lowerN.includes(mappedItem) || mappedItem.includes(lowerN);
+                 });
+             });
              if (isInCategory) {
                  if (charProfs.has(category.toLowerCase())) return true;
              }
