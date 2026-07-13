@@ -1,14 +1,10 @@
-# === STAGE 1: THE CONSTRUCTION SITE ===
-FROM node:24-alpine AS builder
+FROM node:24-alpine
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
 RUN npm run build
+EXPOSE 3000
+ENV NODE_ENV=production
+CMD ["npm", "start"]
 
-# === STAGE 2: THE SECURE RUNTIME ===
-FROM nginx:alpine
-COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
