@@ -14,7 +14,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 async function startServer() {
   const app = express();
-  const PORT = process.env.PORT ? parseInt(process.env.PORT) : 4000;
+  const PORT = 3000;
 
   app.use(express.json({ limit: '10mb' }));
 
@@ -120,109 +120,97 @@ async function startServer() {
 
   // Supabase Proxy Endpoints
   app.get("/api/homebrew/:table", async (req, res) => {
-    try {
-      const { table } = req.params;
-      const { userId } = req.query;
-      
-      let query = supabase.from(table).select('*');
-      
-      // Validate userId is a valid UUID if provided
-      const isValidUUID = (uuid: any) => {
-        if (typeof uuid !== 'string') return false;
-        return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
-      };
+    const { table } = req.params;
+    const { userId } = req.query;
+    
+    let query = supabase.from(table).select('*');
+    
+    // Validate userId is a valid UUID if provided
+    const isValidUUID = (uuid: any) => {
+      if (typeof uuid !== 'string') return false;
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
+    };
 
-      if (userId && isValidUUID(userId)) {
-        query = query.or(`is_public.eq.true,user_id.eq.${userId}`);
-      } else {
-        query = query.eq('is_public', true);
-      }
-
-      const { data, error } = await query.order('created_at', { ascending: false });
-      
-      if (error) {
-        console.error(`Error loading homebrew from ${table}:`, error);
-        return res.status(500).json({ error: error.message });
-      }
-      res.json(data);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message || "Internal server error" });
+    if (userId && isValidUUID(userId)) {
+      query = query.or(`is_public.eq.true,user_id.eq.${userId}`);
+    } else {
+      query = query.eq('is_public', true);
     }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error(`Error loading homebrew from ${table}:`, error);
+      return res.status(500).json({ error: error.message });
+    }
+    res.json(data);
   });
 
   app.post("/api/homebrew/:table", async (req, res) => {
-    try {
-      const { table } = req.params;
-      const { userId, payload, isPublic, id } = req.body;
+    const { table } = req.params;
+    const { userId, payload, isPublic, id } = req.body;
 
-      const isValidUUID = (uuid: any) => {
-        if (typeof uuid !== 'string') return false;
-        return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
-      };
+    const isValidUUID = (uuid: any) => {
+      if (typeof uuid !== 'string') return false;
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
+    };
 
-      if (id && isValidUUID(id)) {
-        // Check if row belongs to user
-        const { data: existing } = await supabase.from(table).select('user_id').eq('id', id).maybeSingle();
-        if (existing && existing.user_id === userId) {
-          const { data, error } = await supabase
-            .from(table)
-            .update({ 
-              name: payload.name, 
-              data: payload,
-              is_public: isPublic
-            })
-            .eq('id', id)
-            .eq('user_id', userId)
-            .select()
-            .maybeSingle();
-            
-          if (error) return res.status(500).json({ error: error.message });
-          return res.json(data);
-        }
+    if (id && isValidUUID(id)) {
+      // Check if row belongs to user
+      const { data: existing } = await supabase.from(table).select('user_id').eq('id', id).maybeSingle();
+      if (existing && existing.user_id === userId) {
+        const { data, error } = await supabase
+          .from(table)
+          .update({ 
+            name: payload.name, 
+            data: payload,
+            is_public: isPublic
+          })
+          .eq('id', id)
+          .eq('user_id', userId)
+          .select()
+          .maybeSingle();
+          
+        if (error) return res.status(500).json({ error: error.message });
+        return res.json(data);
       }
-
-      // Insert as new row (or user override copy)
-      const { data, error } = await supabase
-        .from(table)
-        .insert([{ 
-          user_id: userId,
-          name: payload.name, 
-          data: payload,
-          is_public: isPublic
-        }])
-        .select()
-        .maybeSingle();
-        
-      if (error) return res.status(500).json({ error: error.message });
-      res.json(data);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message || "Internal server error" });
     }
+
+    // Insert as new row (or user override copy)
+    const { data, error } = await supabase
+      .from(table)
+      .insert([{ 
+        user_id: userId,
+        name: payload.name, 
+        data: payload,
+        is_public: isPublic
+      }])
+      .select()
+      .maybeSingle();
+      
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data);
   });
 
   app.delete("/api/homebrew/:table/:id", async (req, res) => {
-    try {
-      const { table, id } = req.params;
-      const { userId } = req.query;
+    const { table, id } = req.params;
+    const { userId } = req.query;
 
-      // Validate UUID format for userId to prevent "The string did not match the expected pattern" error
-      const isValidUUID = (uuid: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
+    // Validate UUID format for userId to prevent "The string did not match the expected pattern" error
+    const isValidUUID = (uuid: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
 
-      if (!userId || typeof userId !== 'string' || !isValidUUID(userId)) {
-        return res.status(400).json({ error: "Valid User ID required" });
-      }
-
-      const { error } = await supabase
-        .from(table)
-        .delete()
-        .eq('id', id)
-        .eq('user_id', userId);
-      
-      if (error) return res.status(500).json({ error: error.message });
-      res.json({ success: true });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message || "Internal server error" });
+    if (!userId || typeof userId !== 'string' || !isValidUUID(userId)) {
+      return res.status(400).json({ error: "Valid User ID required" });
     }
+
+    const { error } = await supabase
+      .from(table)
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId);
+    
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ success: true });
   });
 
   // Character Endpoints
@@ -291,65 +279,45 @@ async function startServer() {
   });
 
   app.delete("/api/characters/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { error } = await supabase.from('characters').delete().eq('id', id);
-      if (error) return res.status(500).json({ error: error.message });
-      res.json({ success: true });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message || "Internal server error" });
-    }
+    const { id } = req.params;
+    const { error } = await supabase.from('characters').delete().eq('id', id);
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ success: true });
   });
 
   // User Endpoints
   app.get("/api/users", async (req, res) => {
-    try {
-      const { username } = req.query;
-      if (username) {
-        const { data, error } = await supabase.from('app_users').select('*').eq('username', username).maybeSingle();
-        if (error) return res.status(500).json({ error: error.message });
-        return res.json(data);
-      }
-      const { data, error } = await supabase.from('app_users').select('id, username').order('username');
+    const { username } = req.query;
+    if (username) {
+      const { data, error } = await supabase.from('app_users').select('*').eq('username', username).maybeSingle();
       if (error) return res.status(500).json({ error: error.message });
-      res.json(data);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message || "Internal server error" });
+      return res.json(data);
     }
+    const { data, error } = await supabase.from('app_users').select('id, username').order('username');
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data);
   });
 
   // Share Endpoints
   app.get("/api/shares/:characterId", async (req, res) => {
-    try {
-      const { characterId } = req.params;
-      const { data, error } = await supabase.from('character_shares').select('shared_with_user_id').eq('character_id', characterId);
-      if (error) return res.json([]);
-      res.json(data.map(d => d.shared_with_user_id));
-    } catch (error: any) {
-      res.json([]);
-    }
+    const { characterId } = req.params;
+    const { data, error } = await supabase.from('character_shares').select('shared_with_user_id').eq('character_id', characterId);
+    if (error) return res.json([]);
+    res.json(data.map(d => d.shared_with_user_id));
   });
 
   app.post("/api/shares", async (req, res) => {
-    try {
-      const { characterId, sharedWithUserId } = req.body;
-      const { error } = await supabase.from('character_shares').insert([{ character_id: characterId, shared_with_user_id: sharedWithUserId }]);
-      if (error) return res.status(500).json({ error: error.message });
-      res.json({ success: true });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message || "Internal server error" });
-    }
+    const { characterId, sharedWithUserId } = req.body;
+    const { error } = await supabase.from('character_shares').insert([{ character_id: characterId, shared_with_user_id: sharedWithUserId }]);
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ success: true });
   });
 
   app.delete("/api/shares", async (req, res) => {
-    try {
-      const { characterId, sharedWithUserId } = req.body;
-      const { error } = await supabase.from('character_shares').delete().eq('character_id', characterId).eq('shared_with_user_id', sharedWithUserId);
-      if (error) return res.status(500).json({ error: error.message });
-      res.json({ success: true });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message || "Internal server error" });
-    }
+    const { characterId, sharedWithUserId } = req.body;
+    const { error } = await supabase.from('character_shares').delete().eq('character_id', characterId).eq('shared_with_user_id', sharedWithUserId);
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ success: true });
   });
 
 
