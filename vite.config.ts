@@ -7,7 +7,7 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
       server: {
-        port: 4000,
+        port: 80,
         host: '0.0.0.0',
         hmr: false,
       },
