@@ -49,7 +49,7 @@ const ShareModal = ({ isOpen, onClose, character, currentUser }: any) => {
             }
         } catch (err) {
             console.error(err);
-            alert("Failed to update sharing permissions.");
+            alert("Failed to update sharing permissions");
         }
     };
 
