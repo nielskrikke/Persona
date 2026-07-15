@@ -1,14 +1,20 @@
-# === STAGE 1: THE CONSTRUCTION SITE ===
-FROM node:24-alpine AS builder
+# === SINGLE STAGE: NODE RUNTIME ===
+FROM node:24-alpine
 WORKDIR /app
+
+# Install dependencies
 COPY package*.json ./
 RUN npm ci
+
+# Copy application files
 COPY . .
+
+# Build frontend and compile the server
 RUN npm run build
 
-# === STAGE 2: THE SECURE RUNTIME ===
-FROM nginx:alpine
-COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+# Expose the Express server port
+EXPOSE 4000
+ENV NODE_ENV=production
+
+# Start the full-stack server
+CMD ["npm", "start"]
