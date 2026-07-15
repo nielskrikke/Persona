@@ -13,7 +13,7 @@ COPY . .
 RUN npm run build
 
 # Expose the Express server port
-EXPOSE 4000
+EXPOSE 80
 ENV NODE_ENV=production
 
 # Start the full-stack server
