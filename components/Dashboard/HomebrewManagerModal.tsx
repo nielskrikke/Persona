@@ -345,15 +345,31 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
             const weapons = item.proficiencies?.filter((p: any) => !['Light Armor', 'Medium Armor', 'Heavy Armor', 'Shields'].includes(p.name)).map((p: any) => p.name) || [];
             setWeaponProfs(weapons);
         } else if (activeTab === 'subclass') {
-            setParentClass(item.class?.index || 'fighter');
-            if (item.feature_details) {
-                setLevelFeatures(item.feature_details.map((f: any) => ({
-                    level: f.level,
-                    name: f.name,
-                    desc: Array.isArray(f.desc) ? f.desc.join('\n') : f.desc,
-                    effects: f.effects || []
-                })));
+            setParentClass(item.class?.index || item.class_index || 'fighter');
+            let rawFeatures: any[] = [];
+            if (Array.isArray(item.feature_details)) {
+                rawFeatures = item.feature_details;
+            } else if (Array.isArray(item.subclass_levels)) {
+                item.subclass_levels.forEach((lvlObj: any) => {
+                    const lvl = lvlObj.level || 1;
+                    (lvlObj.features || []).forEach((f: any) => {
+                        rawFeatures.push({
+                            level: lvl,
+                            name: typeof f === 'string' ? f : (f.name || ''),
+                            desc: typeof f === 'object' ? (Array.isArray(f.desc) ? f.desc.join('\n') : (f.desc || f.description || '')) : '',
+                            effects: typeof f === 'object' ? (f.effects || f.modifiers || []) : []
+                        });
+                    });
+                });
+            } else if (Array.isArray(item.features)) {
+                rawFeatures = item.features;
             }
+            setLevelFeatures(rawFeatures.map((f: any) => ({
+                level: f.level || 1,
+                name: typeof f === 'string' ? f : (f.name || f.title || ''),
+                desc: Array.isArray(f.desc) ? f.desc.join('\n') : (f.desc || f.description || ''),
+                effects: f.effects || f.modifiers || []
+            })));
         } else if (activeTab === 'spell') {
             setSpellLevel(item.level || 0);
             setSpellSchool(item.school?.name || 'Evocation');
@@ -507,7 +523,9 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                 };
             } else if (activeTab === 'subclass') {
                 payload = { 
-                    ...payload, class: { index: parentClass, name: parentClass.charAt(0).toUpperCase() + parentClass.slice(1) },
+                    ...payload, 
+                    class: { index: parentClass, name: parentClass.charAt(0).toUpperCase() + parentClass.slice(1) },
+                    class_index: parentClass,
                     feature_details: levelFeatures.map(f => ({ index: f.name.toLowerCase().replace(/\s+/g, '-'), name: f.name, level: f.level, desc: [f.desc], effects: f.effects }))
                 };
             } else if (activeTab === 'background') {
@@ -1351,6 +1369,58 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                         </div>
                                                     </div>
                                                 ))}
+                                            </div>
+                                        </section>
+                                    </div>
+                                )}
+
+                                {activeTab === 'subclass' && (
+                                    <div className="space-y-12 animate-in slide-in-from-bottom-4 duration-500">
+                                        <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div>
+                                                <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Parent Class</label>
+                                                <select value={parentClass} onChange={e => setParentClass(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-3 text-white font-bold text-xs uppercase">
+                                                    <option value="barbarian">Barbarian</option>
+                                                    <option value="bard">Bard</option>
+                                                    <option value="cleric">Cleric</option>
+                                                    <option value="druid">Druid</option>
+                                                    <option value="fighter">Fighter</option>
+                                                    <option value="monk">Monk</option>
+                                                    <option value="paladin">Paladin</option>
+                                                    <option value="ranger">Ranger</option>
+                                                    <option value="rogue">Rogue</option>
+                                                    <option value="sorcerer">Sorcerer</option>
+                                                    <option value="warlock">Warlock</option>
+                                                    <option value="wizard">Wizard</option>
+                                                    <option value="artificer">Artificer</option>
+                                                </select>
+                                            </div>
+                                        </section>
+
+                                        <section className="space-y-6">
+                                            <div className="flex justify-between items-center border-b border-gray-800 pb-2">
+                                                <h4 className="text-[10px] uppercase font-black text-dnd-gold tracking-[0.2em]">Subclass Level Features</h4>
+                                                <button type="button" onClick={() => setLevelFeatures([...levelFeatures, { level: 3, name: '', desc: '', effects: [] }])} className="text-[10px] bg-gray-800 px-3 py-1 rounded text-white font-bold hover:bg-gray-700">+ Add Subclass Feature</button>
+                                            </div>
+                                            <div className="space-y-6">
+                                                {levelFeatures.length === 0 ? (
+                                                    <p className="text-xs text-gray-500 italic p-4 bg-black/20 rounded-xl border border-gray-800">No subclass features added yet. Click "+ Add Subclass Feature" above to define features gained at specific levels.</p>
+                                                ) : (
+                                                    levelFeatures.map((f, i) => (
+                                                        <div key={i} className="bg-black/20 p-6 rounded-xl border border-gray-800 grid grid-cols-[80px_1fr] gap-6 relative">
+                                                            <button type="button" onClick={() => setLevelFeatures(levelFeatures.filter((_, idx) => idx !== i))} className="absolute top-2 right-4 text-red-500 hover:text-red-400">&times;</button>
+                                                            <div>
+                                                                <label className="text-[8px] uppercase font-black text-gray-600 block mb-1">Level</label>
+                                                                <input type="number" min="1" max="20" value={f.level} onChange={e => { const n = [...levelFeatures]; n[i].level = parseInt(e.target.value) || 1; setLevelFeatures(n); }} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-white text-center font-bold" />
+                                                            </div>
+                                                            <div className="space-y-4">
+                                                                <input type="text" value={f.name} onChange={e => { const n = [...levelFeatures]; n[i].name = e.target.value; setLevelFeatures(n); }} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-sm text-white font-bold" placeholder="Feature Name (e.g. Combat Inspiration)" />
+                                                                <textarea value={f.desc} onChange={e => { const n = [...levelFeatures]; n[i].desc = e.target.value; setLevelFeatures(n); }} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-gray-400 h-24 resize-none font-serif" placeholder="Feature description..." />
+                                                                <EffectEditor effects={f.effects} onChange={newE => { const n = [...levelFeatures]; n[i].effects = newE; setLevelFeatures(n); }} />
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                )}
                                             </div>
                                         </section>
                                     </div>
