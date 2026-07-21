@@ -133,8 +133,8 @@ export const fetchSubclasses = async (classIndex: string, userId?: string): Prom
         const subclasses = await loadHomebrew('custom_subclasses', userId);
         if (subclasses && subclasses.length > 0) {
             return subclasses
-                .filter((s: any) => !classIndex || s.class?.index === classIndex)
-                .map((s: any) => ({ index: s.index, name: s.name, url: "", isCustom: s.isCustom, is_homebrew: s.is_homebrew }));
+                .filter((s: any) => !classIndex || s.class?.index === classIndex || s.class_index === classIndex)
+                .map((s: any) => ({ index: s.index || s.id, name: s.name, url: "", isCustom: true, is_homebrew: s.is_homebrew ?? true }));
         }
     } catch (e) {}
     return [];
@@ -143,7 +143,11 @@ export const fetchSubclasses = async (classIndex: string, userId?: string): Prom
 export const fetchSubclassDetail = async (index: string, userId?: string): Promise<SubclassDetail | null> => {
     try {
         const subclasses = await loadHomebrew('custom_subclasses', userId);
-        const found = subclasses.find((s: any) => s.index === index);
+        const found = subclasses.find((s: any) => 
+            s.index === index || 
+            s.id === index || 
+            (s.name && s.name.toLowerCase().replace(/\s+/g, '-') === index)
+        );
         if (found) return found;
     } catch (e) {}
     return null;
@@ -418,15 +422,25 @@ export const fetchSubclassLevels = async (subclassIndex: string, userId?: string
     } catch (e) {}
     if (!subclasses || subclasses.length === 0) subclasses = SUBCLASSES;
 
-    const sub = subclasses.find((s: any) => s.index === subclassIndex);
+    const sub = subclasses.find((s: any) => 
+        s.index === subclassIndex || 
+        s.id === subclassIndex || 
+        (s.name && s.name.toLowerCase().replace(/\s+/g, '-') === subclassIndex)
+    );
     if (!sub) return [];
     
     const levelMap = new Map<number, any>();
-    (sub.feature_details || []).forEach((feat: any) => {
-        if (!levelMap.has(feat.level)) {
-            levelMap.set(feat.level, { level: feat.level, features: [] });
+    const rawFeatures = sub.feature_details || sub.features || [];
+    rawFeatures.forEach((feat: any) => {
+        const lvl = feat.level || 1;
+        if (!levelMap.has(lvl)) {
+            levelMap.set(lvl, { level: lvl, features: [] });
         }
-        levelMap.get(feat.level).features.push({ ...feat, name: feat.name, index: feat.index });
+        levelMap.get(lvl).features.push({
+            ...feat,
+            name: typeof feat === 'string' ? feat : (feat.name || ''),
+            index: feat.index || (typeof feat === 'string' ? feat : feat.name)?.toLowerCase().replace(/\s+/g, '-') || `feature-${lvl}`
+        });
     });
     return Array.from(levelMap.values());
 };
