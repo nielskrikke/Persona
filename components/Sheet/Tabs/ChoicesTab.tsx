@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CharacterState, LevelChoice, AbilityScores, ABILITY_NAMES, ABILITY_LABELS, AbilityName, SpellDetail, FeatDetail, SubclassDetail } from '../../../types';
 import { AlertTriangle, CheckCircle2, ChevronRight, RotateCcw, Sparkles, Info } from 'lucide-react';
-import { calculateModifier, SKILL_LIST } from '../../../utils/rules';
+import { calculateModifier, SKILL_LIST, inferOptionEffects } from '../../../utils/rules';
 import { STANDARD_LANGUAGES, METAMAGIC_OPTIONS, ARTISAN_TOOLS } from '../../../data/constants';
 import { fetchFeatsList, fetchAllSpells, fetchSubclasses, fetchSubclassDetail, fetchSubclassLevels, fetchClassLevels } from '../../../data/index';
 
@@ -37,71 +37,82 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
 
         let additionalUpdates: Partial<CharacterState> = {};
 
-        // 1. Generic Side Effects for any option with .effects (Triggered Choices)
-        const selectedOption = choice.options?.find((o: any) => {
-            if (typeof o === 'string') return o === value;
-            return (o.index || o.name) === value;
-        });
-
-        if (selectedOption && typeof selectedOption !== 'string' && (selectedOption.effects || selectedOption.desc)) {
-            if (selectedOption.effects) {
-                const triggerEffects = selectedOption.effects.filter((e: any) => e.type.endsWith('_choice') || e.type === 'spell_access');
-                if (triggerEffects.length > 0) {
-                    const newSubChoices = triggerEffects.map((e: any, idx: number) => {
-                        let opts: any[] = [];
-                        if (e.options) opts = e.options;
-                        else if (e.type === 'spell_access') {
-                            let filtered = allSpells;
-                            if (e.filter_class) {
-                                filtered = filtered.filter(s => s.classes?.some((c: any) => c.name === e.filter_class) || 
-                                                           s.sourceClassIndex?.toLowerCase() === e.filter_class.toLowerCase());
-                            }
-                            if (e.level !== undefined) filtered = filtered.filter(s => s.level === e.level);
-                            opts = filtered.map(s => ({ index: s.index, name: s.name }));
-                        } else if (e.type === 'proficiency_choice') {
-                            if (e.category === 'skill') opts = SKILL_LIST.map(s => s.name);
-                            else if (e.category === 'tool') opts = ARTISAN_TOOLS;
-                            else if (e.category === 'language') opts = STANDARD_LANGUAGES;
-                        } else if (e.type === 'expertise_choice') {
-                            if (e.category === 'skill') opts = SKILL_LIST.map(s => s.name);
-                        }
-
-                        return {
-                            id: `${choiceId}-sub-${idx}-${Date.now()}`,
-                            level: choice.level,
-                            source: `${choice.label}: ${selectedOption.name}`,
-                            type: (e.type === 'asi_choice' ? 'asi' : 
-                                   e.type === 'proficiency_choice' ? (e.category === 'skill' ? 'skill' : e.category === 'language' ? 'language' : 'other') :
-                                   e.type === 'expertise_choice' ? 'expertise' :
-                                   e.type === 'spell_access' ? 'spell' : 'other') as LevelChoice['type'],
-                            label: e.name || (e.type === 'spell_access' ? (e.level === 0 ? 'Cantrip' : 'Spell') : e.type.replace('_', ' ')),
-                            value: null,
-                            options: opts,
-                            count: e.count || 1,
-                            revertData: { parentChoiceId: choiceId, isSubChoice: true }
-                        };
-                    });
-                    additionalUpdates.choices = [...(additionalUpdates.choices || character.choices), ...newSubChoices];
+        // 1. Generic Side Effects for any selected option(s) (Triggered Choices & Mechanical Effects)
+        const selectedValues = Array.isArray(value) ? value : (value ? [value] : []);
+        const matchingOptions = selectedValues.map(val => {
+            const found = choice.options?.find((o: any) => {
+                if (typeof o === 'string') return o === val;
+                return (o.index || o.name) === val || o === val;
+            });
+            if (found) {
+                if (typeof found === 'string') {
+                    return { name: found, desc: '', effects: inferOptionEffects(found) };
                 }
-
-                // Passive effects handled as features
-                const passiveEffects = selectedOption.effects.filter((e: any) => !e.type.endsWith('_choice') && e.type !== 'spell_access');
-                if (passiveEffects.length > 0 || selectedOption.desc) {
-                    const newFeature = {
-                        index: `${choiceId}-feature`.toLowerCase(),
-                        name: `${choice.label}: ${selectedOption.name}`,
-                        level: choice.level,
-                        source: choice.source,
-                        desc: selectedOption.desc ? [selectedOption.desc] : [],
-                        effects: passiveEffects,
-                        revertData: { choiceId }
-                    };
-                    additionalUpdates.classFeatures = [...(additionalUpdates.classFeatures || character.classFeatures), newFeature];
-                    if (!revertData) revertData = {};
-                    revertData.features = [...(revertData.features || []), newFeature];
-                }
+                const optEffects = (found.effects && found.effects.length > 0) ? found.effects : inferOptionEffects(found.name || found.index || '', found.desc);
+                return { ...found, effects: optEffects };
             }
-        }
+            const valStr = typeof val === 'string' ? val : (val?.name || val?.index || '');
+            return { name: valStr, desc: '', effects: inferOptionEffects(valStr) };
+        }).filter(o => o && o.name);
+
+        matchingOptions.forEach(selectedOption => {
+            const effects = selectedOption.effects || [];
+            const triggerEffects = effects.filter((e: any) => e.type.endsWith('_choice') || e.type === 'spell_access');
+            if (triggerEffects.length > 0) {
+                const newSubChoices = triggerEffects.map((e: any, idx: number) => {
+                    let opts: any[] = [];
+                    if (e.options) opts = e.options;
+                    else if (e.type === 'spell_access') {
+                        let filtered = allSpells;
+                        if (e.filter_class) {
+                            filtered = filtered.filter(s => s.classes?.some((c: any) => c.name === e.filter_class) || 
+                                                       s.sourceClassIndex?.toLowerCase() === e.filter_class.toLowerCase());
+                        }
+                        if (e.level !== undefined) filtered = filtered.filter(s => s.level === e.level);
+                        opts = filtered.map(s => ({ index: s.index, name: s.name }));
+                    } else if (e.type === 'proficiency_choice') {
+                        if (e.category === 'skill') opts = SKILL_LIST.map(s => s.name);
+                        else if (e.category === 'tool') opts = ARTISAN_TOOLS;
+                        else if (e.category === 'language') opts = STANDARD_LANGUAGES;
+                    } else if (e.type === 'expertise_choice') {
+                        if (e.category === 'skill') opts = SKILL_LIST.map(s => s.name);
+                    }
+
+                    return {
+                        id: `${choiceId}-sub-${idx}-${Date.now()}`,
+                        level: choice.level,
+                        source: `${choice.label}: ${selectedOption.name}`,
+                        type: (e.type === 'asi_choice' ? 'asi' : 
+                               e.type === 'proficiency_choice' ? (e.category === 'skill' ? 'skill' : e.category === 'language' ? 'language' : 'other') :
+                               e.type === 'expertise_choice' ? 'expertise' :
+                               e.type === 'spell_access' ? 'spell' : 'other') as LevelChoice['type'],
+                        label: e.name || (e.type === 'spell_access' ? (e.level === 0 ? 'Cantrip' : 'Spell') : e.type.replace('_', ' ')),
+                        value: null,
+                        options: opts,
+                        count: e.count || 1,
+                        revertData: { parentChoiceId: choiceId, isSubChoice: true }
+                    };
+                });
+                additionalUpdates.choices = [...(additionalUpdates.choices || character.choices), ...newSubChoices];
+            }
+
+            // Passive effects handled as features
+            const passiveEffects = effects.filter((e: any) => !e.type.endsWith('_choice') && e.type !== 'spell_access');
+            if (passiveEffects.length > 0 || selectedOption.desc) {
+                const newFeature = {
+                    index: `${choiceId}-${selectedOption.name}`.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+                    name: `${choice.label}: ${selectedOption.name}`,
+                    level: choice.level,
+                    source: choice.source,
+                    desc: selectedOption.desc ? [selectedOption.desc] : [],
+                    effects: passiveEffects,
+                    revertData: { choiceId }
+                };
+                additionalUpdates.classFeatures = [...(additionalUpdates.classFeatures || character.classFeatures), newFeature];
+                if (!revertData) revertData = {};
+                revertData.features = [...(revertData.features || []), newFeature];
+            }
+        });
 
         // Special handling for subclass to fetch features
         if (choice.type === 'subclass' && value) {

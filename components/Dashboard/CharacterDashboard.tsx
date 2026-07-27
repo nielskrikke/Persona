@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { loadCharacters, deleteCharacter, saveCharacterToDb, fetchAllUsers, fetchShares, shareCharacter, unshareCharacter } from '../../services/supabase';
 import { CharacterState } from '../../types';
 import HomebrewManagerModal from './HomebrewManagerModal';
+import { CampaignModal } from './CampaignModal';
 import { Download, Share2, Copy, Trash2, X, Users, Check, Shield } from 'lucide-react';
 
 interface CharacterDashboardProps {
@@ -106,6 +107,8 @@ const CharacterDashboard: React.FC<CharacterDashboardProps> = ({ onLoadCharacter
     const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [showHomebrew, setShowHomebrew] = useState(false);
+    const [showCampaignModal, setShowCampaignModal] = useState(false);
+    const [selectedCharForCampaign, setSelectedCharForCampaign] = useState<any | null>(null);
     const [sharingChar, setSharingChar] = useState<any | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const previousTheme = useRef<{primary: string, secondary: string} | null>(null);
@@ -291,6 +294,15 @@ const CharacterDashboard: React.FC<CharacterDashboardProps> = ({ onLoadCharacter
                 currentUser={currentUser} 
             />
 
+            <CampaignModal
+                isOpen={showCampaignModal}
+                onClose={() => { setShowCampaignModal(false); setSelectedCharForCampaign(null); }}
+                characters={characters}
+                userId={currentUser?.id}
+                onRefreshCharacters={refreshList}
+                selectedCharacterForLinking={selectedCharForCampaign}
+            />
+
             <ShareModal 
                 isOpen={!!sharingChar} 
                 onClose={() => setSharingChar(null)} 
@@ -325,6 +337,9 @@ const CharacterDashboard: React.FC<CharacterDashboardProps> = ({ onLoadCharacter
                         <button onClick={handleDownloadAll} className="bg-gray-800 border border-gray-700 hover:border-dnd-gold text-gray-300 hover:text-white px-5 py-2.5 rounded font-black uppercase text-[10px] tracking-widest transition-all transform active:scale-95 flex items-center gap-2">
                             <Download size={14} />
                             Download All
+                        </button>
+                        <button onClick={() => setShowCampaignModal(true)} className="bg-purple-900/20 border border-purple-800 hover:border-purple-500 text-purple-300 px-5 py-2.5 rounded font-black uppercase text-[10px] tracking-widest transition-all transform active:scale-95 flex items-center gap-1.5">
+                            <Users size={14} /> Campaigns
                         </button>
                         <button onClick={() => setShowHomebrew(true)} className="bg-blue-900/20 border border-blue-800 hover:border-blue-500 text-blue-400 px-5 py-2.5 rounded font-black uppercase text-[10px] tracking-widest transition-all transform active:scale-95">Content Library</button>
                         <div className="w-px h-8 bg-gray-800 hidden sm:block"></div>
@@ -370,7 +385,23 @@ const CharacterDashboard: React.FC<CharacterDashboardProps> = ({ onLoadCharacter
                                     )}
                                 </div>
                                 <h3 className="text-xl font-serif text-white mb-1 truncate pr-8">{char.name || 'Unnamed'}</h3>
-                                <div className="text-xs text-dnd-gold font-bold uppercase mb-4 truncate" title={classString}>{classString}</div>
+                                <div className="text-xs text-dnd-gold font-bold uppercase mb-2 truncate" title={classString}>{classString}</div>
+                                {char.data?.campaign_id ? (
+                                    <div className="mb-4">
+                                        <span className="text-[9px] bg-purple-900/30 text-purple-300 border border-purple-800/60 px-2 py-0.5 rounded font-bold uppercase tracking-wide inline-flex items-center gap-1">
+                                            <Users size={10} /> Campaign: {char.data.campaign_name || 'Active'}
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <div className="mb-4">
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); setSelectedCharForCampaign(char); setShowCampaignModal(true); }}
+                                            className="text-[9px] text-gray-500 hover:text-purple-300 border border-gray-800 hover:border-purple-800 px-2 py-0.5 rounded uppercase font-bold transition-colors"
+                                        >
+                                            + Link Campaign
+                                        </button>
+                                    </div>
+                                )}
                                 <div className="mt-auto text-[10px] text-gray-600 pt-4 border-t border-gray-800 flex justify-between"><span>{char.data.race?.name}</span><span>Updated: {new Date(char.updated_at).toLocaleDateString()}</span></div>
                             </div>
                         );

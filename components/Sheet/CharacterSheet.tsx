@@ -8,7 +8,7 @@ import CreatureManagerModal from './Modals/CreatureManagerModal';
 import { WIDGET_LABELS, DEFAULT_LAYOUT, STANDARD_CONDITIONS, CLASS_FEATURES, STANDARD_ACTIONS, STATIC_RULES, WIDGET_BG, PICK_A_CARD_TABLE } from '../../data/constants';
 import { Library, fetchEquipment, fetchEquipmentDetail } from '../../data/index';
 import DiceRoller3D, { QueuedRoll } from './Shared/DiceRoller3D';
-import { saveCharacterToDb } from '../../services/supabase';
+import { saveCharacterToDb, addPartyRoll, loadPartyInventory, savePartyInventory } from '../../services/supabase';
 
 import { HeaderStatBox, SquareStatBox } from './Widgets/StatBoxes';
 import { RollHistory } from './Widgets/RollHistory';
@@ -50,6 +50,14 @@ const cleanProficiencyName = (name: string) => {
                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
                .join(' ')
                .trim();
+};
+
+const getTextString = (val: any): string => {
+    if (!val) return '';
+    if (typeof val === 'string') return val;
+    if (Array.isArray(val)) return val.map(getTextString).join(' ');
+    if (typeof val === 'object') return JSON.stringify(val);
+    return String(val);
 };
 
 const getCharacterSpecificRules = (character: CharacterState): RuleEntry[] => {
@@ -537,21 +545,71 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const activeModifiers = React.useMemo(() => {
         const mods: any[] = [];
 
+        const processEffects = (effects: any[]) => {
+            if (!effects) return;
+            effects.forEach((e: any) => {
+                mods.push(e);
+                if ((e.type === 'feature_choice' || e.type === 'proficiency_choice' || e.options) && Array.isArray(e.options)) {
+                    e.options.forEach((opt: any) => {
+                        const optName = opt.name || opt.item?.name;
+                        if (!optName) return;
+
+                        const isSelectedInChoices = character.choices?.some((c: any) => {
+                            const val = c.value;
+                            if (typeof val === 'string') {
+                                return val.toLowerCase() === optName.toLowerCase() || val.toLowerCase().includes(optName.toLowerCase());
+                            }
+                            if (Array.isArray(val)) {
+                                return val.some((v: any) => typeof v === 'string' ? (v.toLowerCase() === optName.toLowerCase() || v.toLowerCase().includes(optName.toLowerCase())) : (v?.name?.toLowerCase() === optName.toLowerCase()));
+                            }
+                            if (val && typeof val === 'object' && val.name) {
+                                return val.name.toLowerCase() === optName.toLowerCase();
+                            }
+                            return false;
+                        });
+
+                        const isSelectedInClassFeatures = character.classFeatures?.some((f: any) => {
+                            const fn = f.name.toLowerCase();
+                            const on = optName.toLowerCase();
+                            return fn === on || fn.endsWith(`: ${on}`) || fn.includes(`(${on})`);
+                        });
+
+                        if (isSelectedInChoices || isSelectedInClassFeatures) {
+                            if (opt.effects && Array.isArray(opt.effects)) {
+                                opt.effects.forEach((subE: any) => mods.push(subE));
+                            }
+                            if (opt.modifiers && Array.isArray(opt.modifiers)) {
+                                opt.modifiers.forEach((subM: any) => mods.push(subM));
+                            }
+                        }
+                    });
+                }
+            });
+        };
+
         // 1. Racial Traits
         if (character.race) {
             const race = character.race as any;
             race.traits?.forEach((trait: any) => {
-                if (trait.effects) trait.effects.forEach((e: any) => mods.push(e));
                 if (trait.modifiers) trait.modifiers.forEach((m: any) => mods.push(m));
+                processEffects(trait.effects);
             });
+        }
+
+        // 1b. Background Features / Effects
+        if (character.background) {
+            const bg = character.background as any;
+            if (bg.modifiers) bg.modifiers.forEach((m: any) => mods.push(m));
+            processEffects(bg.effects);
+            if (bg.feature) processEffects(bg.feature.effects);
         }
 
         // 2. Subracial Traits
         if (character.subrace) {
             const subrace = character.subrace as any;
             subrace.traits?.forEach((trait: any) => {
-                if (trait.effects) trait.effects.forEach((e: any) => mods.push(e));
                 if (trait.modifiers) trait.modifiers.forEach((m: any) => mods.push(m));
+                processEffects(trait.effects);
             });
         }
 
@@ -560,16 +618,16 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             // Base Class Features
             const classFeatures = cls.definition.feature_details || [];
             classFeatures.forEach(f => {
-                if (f.level <= cls.level && f.effects) {
-                    f.effects.forEach((e: any) => mods.push(e));
+                if (f.level <= cls.level) {
+                    processEffects(f.effects);
                 }
             });
             // Subclass Features
             if (cls.subclass) {
                 const subFeatures = cls.subclass.feature_details || [];
                 subFeatures.forEach(f => {
-                    if (f.level <= cls.level && f.effects) {
-                        f.effects.forEach((e: any) => mods.push(e));
+                    if (f.level <= cls.level) {
+                        processEffects(f.effects);
                     }
                 });
             }
@@ -577,8 +635,21 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
         // 3b. Features with Choices / Custom Features
         character.classFeatures?.forEach(f => {
-            if (f.effects) {
-                f.effects.forEach((e: any) => mods.push(e));
+            processEffects(f.effects);
+        });
+
+        // Direct choices
+        character.choices?.forEach((c: any) => {
+            if (c.value && typeof c.value === 'object' && !Array.isArray(c.value)) {
+                if (c.value.effects && Array.isArray(c.value.effects)) c.value.effects.forEach((subE: any) => mods.push(subE));
+                if (c.value.modifiers && Array.isArray(c.value.modifiers)) c.value.modifiers.forEach((subM: any) => mods.push(subM));
+            } else if (Array.isArray(c.value)) {
+                c.value.forEach((v: any) => {
+                    if (v && typeof v === 'object') {
+                        if (v.effects && Array.isArray(v.effects)) v.effects.forEach((subE: any) => mods.push(subE));
+                        if (v.modifiers && Array.isArray(v.modifiers)) v.modifiers.forEach((subM: any) => mods.push(subM));
+                    }
+                });
             }
         });
 
@@ -586,14 +657,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         character.inventory.forEach(item => {
             if (item.equipped && (!item.requires_attunement || item.attuned)) {
                 if (item.modifiers) item.modifiers.forEach(m => mods.push(m));
-                // Handle effects too
-                if ((item as any).effects) (item as any).effects.forEach((e: any) => mods.push(e));
+                processEffects((item as any).effects);
             }
         });
 
         // 5. Feats
         character.feats?.forEach(feat => {
-            if (feat.effects) feat.effects.forEach((e: any) => mods.push(e));
+            processEffects(feat.effects);
             if (feat.modifiers) feat.modifiers.forEach((m: any) => mods.push(m));
         });
 
@@ -636,9 +706,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     let extraSpellAttack = 0;
     let extraSpellSave = 0;
     activeModifiers.forEach(m => {
-        if (m.type === 'bonus') {
-            if (m.target === 'spell_attack') extraSpellAttack += Number(m.value);
-            if (m.target === 'spell_save_dc') extraSpellSave += Number(m.value);
+        if (m.type === 'bonus' || m.type === 'stat_bonus') {
+            if (m.target === 'spell_attack' || m.stat === 'spell_attack') extraSpellAttack += Number(m.value || 0);
+            if (m.target === 'spell_save_dc' || m.stat === 'spell_save_dc' || m.stat === 'spell_save') extraSpellSave += Number(m.value || 0);
         }
     });
 
@@ -648,13 +718,87 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
     const strMod = calculateModifier(getStat('str'));
     const dexMod = calculateModifier(getStat('dex'));
-    const initAdv = activeModifiers.some(m => m.type === 'advantage' && m.target === 'initiative');
+    let extraInitiative = 0;
+    activeModifiers.forEach(m => {
+        if ((m.type === 'bonus' || m.type === 'stat_bonus') && (m.target === 'initiative' || m.stat === 'initiative')) {
+            extraInitiative += Number(m.value || 0);
+        }
+    });
+    const initAdv = activeModifiers.some(m => m.type === 'advantage' && (m.target === 'initiative' || m.stat === 'initiative'));
     const conMod = calculateModifier(getStat('con'));
     const wisMod = calculateModifier(getStat('wis'));
     const intMod = calculateModifier(getStat('int'));
     const chaMod = calculateModifier(getStat('cha'));
     const conSaveBonus = conMod + (character.classes.some(c => c.definition.saving_throws.some(s => s.index === 'con' || s.name === 'CON')) ? prof : 0);
     
+    const checkModifierRule = (
+        m: any, 
+        itemContext?: { isOneHanded?: boolean; isTwoHanded?: boolean; isMeleeWeapon?: boolean; isRangedWeapon?: boolean; versatileDamage?: any; isUnarmed?: boolean; isMelee?: boolean; [key: string]: any }
+    ) => {
+        const ruleCond = (m.rule || m.condition || m.filter || '').toLowerCase().trim();
+        const condList: string[] = Array.isArray(m.conditions) ? m.conditions.map((c: string) => String(c).toLowerCase().trim()) : [];
+
+        if (!ruleCond && condList.length === 0) return true;
+
+        const equippedItems = character.inventory.filter((i: any) => i.equipped);
+
+        const hasArmorEquipped = equippedItems.some((i: any) => i.armor_class && !(i.armor_category?.toLowerCase().includes('shield') || i.name?.toLowerCase().includes('shield')));
+        const hasShieldEquipped = equippedItems.some((i: any) => (i.armor_category?.toLowerCase().includes('shield') || i.name?.toLowerCase().includes('shield')));
+
+        const heavyArmorEquipped = equippedItems.some((i: any) => i.armor_class && (i.armor_category?.toLowerCase().includes('heavy') || i.name?.toLowerCase().includes('plate')));
+        const mediumArmorEquipped = equippedItems.some((i: any) => i.armor_class && i.armor_category?.toLowerCase().includes('medium'));
+        const lightArmorEquipped = equippedItems.some((i: any) => i.armor_class && i.armor_category?.toLowerCase().includes('light'));
+
+        const equippedWeapons = equippedItems.filter((i: any) => i.damage || i.weapon_category || i.equipment_category?.index === 'weapon');
+        const hasTwoHandedWeapon = equippedWeapons.some((i: any) => i.properties?.some((p: any) => (typeof p === 'string' ? p : p.name) === 'Two-Handed') || i.wieldedTwoHanded);
+        const hasOneHandedWeapon = equippedWeapons.some((i: any) => !i.properties?.some((p: any) => (typeof p === 'string' ? p : p.name) === 'Two-Handed') && !i.wieldedTwoHanded);
+        const hasMeleeWeapon = equippedWeapons.some((i: any) => i.weapon_category?.toLowerCase().includes('melee') || i.range === 'Melee' || (!i.range && !i.weapon_category?.toLowerCase().includes('ranged')));
+        const hasRangedWeapon = equippedWeapons.some((i: any) => i.weapon_category?.toLowerCase().includes('ranged') || (i.range && i.range !== 'Melee'));
+        const hasVersatileWeapon = equippedWeapons.some((i: any) => i.properties?.some((p: any) => (typeof p === 'string' ? p : p.name) === 'Versatile') || i.versatileDamage);
+        const hasFinesseWeapon = equippedWeapons.some((i: any) => i.properties?.some((p: any) => (typeof p === 'string' ? p : p.name) === 'Finesse'));
+        const isDualWielding = equippedWeapons.length >= 2;
+        const isUnarmed = itemContext ? !!itemContext.isUnarmed : (equippedWeapons.length === 0);
+
+        const evalCond = (posKeys: string[], negKeys: string[], ruleMatchStr: string, isTrue: boolean) => {
+            const reqPos = condList.some(c => posKeys.includes(c)) || (ruleMatchStr && ruleCond.includes(ruleMatchStr) && !ruleCond.includes(`not ${ruleMatchStr}`) && !ruleCond.includes(`no ${ruleMatchStr}`));
+            const reqNeg = condList.some(c => negKeys.includes(c) || posKeys.some(pk => c === `not:${pk}`)) || (ruleMatchStr && (ruleCond.includes(`not ${ruleMatchStr}`) || ruleCond.includes(`no ${ruleMatchStr}`)));
+
+            if (reqPos && !isTrue) return false;
+            if (reqNeg && isTrue) return false;
+            return true;
+        };
+
+        if (!evalCond(['wearing_armor', 'armor'], ['no_armor', 'not:wearing_armor'], 'wearing armor', hasArmorEquipped)) return false;
+        if (!evalCond(['heavy_armor', 'wearing_heavy_armor'], ['no_heavy_armor', 'not:heavy_armor', 'not:wearing_heavy_armor'], 'heavy armor', heavyArmorEquipped)) return false;
+        if (!evalCond(['medium_armor', 'wearing_medium_armor'], ['not:medium_armor', 'not:wearing_medium_armor'], 'medium armor', mediumArmorEquipped)) return false;
+        if (!evalCond(['light_armor', 'wearing_light_armor'], ['not:light_armor', 'not:wearing_light_armor'], 'light armor', lightArmorEquipped)) return false;
+
+        if (!evalCond(['using_shield', 'shield'], ['no_shield', 'not:using_shield'], 'shield', hasShieldEquipped)) return false;
+
+        const isTwoH = itemContext ? !!itemContext.isTwoHanded : hasTwoHandedWeapon;
+        if (!evalCond(['two_handed'], ['not:two_handed'], 'two-handed', isTwoH)) return false;
+
+        const isOneH = itemContext ? !!itemContext.isOneHanded : hasOneHandedWeapon;
+        if (!evalCond(['one_handed'], ['not:one_handed'], 'one-handed', isOneH)) return false;
+
+        const isMel = itemContext ? !!itemContext.isMeleeWeapon : hasMeleeWeapon;
+        if (!evalCond(['melee'], ['not:melee'], 'melee', isMel)) return false;
+
+        const isRan = itemContext ? !!itemContext.isRangedWeapon : hasRangedWeapon;
+        if (!evalCond(['ranged'], ['not:ranged'], 'ranged', isRan)) return false;
+
+        const isVer = itemContext ? !!itemContext.versatileDamage : hasVersatileWeapon;
+        if (!evalCond(['versatile'], ['not:versatile'], 'versatile', isVer)) return false;
+
+        if (!evalCond(['finesse'], ['not:finesse'], 'finesse', hasFinesseWeapon)) return false;
+        if (!evalCond(['dual_wielding'], ['not:dual_wielding'], 'dual wielding', isDualWielding)) return false;
+        if (!evalCond(['unarmed', 'unarmed_attack', 'unarmed_strike', 'open_hand'], ['not:unarmed', 'not:unarmed_attack'], 'unarmed', isUnarmed)) return false;
+        if (!evalCond(['no_weapon'], ['not:no_weapon'], 'no weapon', equippedWeapons.length === 0)) return false;
+        if (!evalCond(['no_shield'], ['not:no_shield'], 'no shield', !hasShieldEquipped)) return false;
+
+        return true;
+    };
+
     const calculateAC = () => {
         const armor = character.inventory.find(i => i.equipped && i.armor_class && !i.name.toLowerCase().includes('shield'));
         const shield = character.inventory.find(i => i.equipped && i.armor_class && i.name.toLowerCase().includes('shield'));
@@ -670,8 +814,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
         // Check for 'set' AC modifiers (like Natural Armor)
         activeModifiers.forEach(m => {
-            if (m.type === 'set' && m.target === 'ac') {
-                baseAC = Math.max(baseAC, Number(m.value));
+            if (m.type === 'set' && (m.target === 'ac' || m.stat === 'ac')) {
+                if (checkModifierRule(m)) {
+                    baseAC = Math.max(baseAC, Number(m.value || 0));
+                }
             }
         });
 
@@ -690,8 +836,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
              // Check for stat_bonus_attribute (e.g., Unarmored Defense)
              let attrBonus = 0;
              activeModifiers.forEach(m => {
-                 if (m.type === 'stat_bonus_attribute' && m.stat === 'ac' && m.attribute) {
-                     attrBonus = Math.max(attrBonus, calculateModifier(getStat(m.attribute)));
+                 if (m.type === 'stat_bonus_attribute' && (m.stat === 'ac' || m.target === 'ac') && m.attribute) {
+                     if (checkModifierRule(m)) {
+                         attrBonus = Math.max(attrBonus, calculateModifier(getStat(m.attribute)));
+                     }
                  }
              });
 
@@ -710,10 +858,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             total += shield.armor_class.base;
         }
 
-        // Item/Trait Bonuses
+        // Item/Trait/Feature/Option Bonuses
         activeModifiers.forEach(m => {
-            if (m.type === 'bonus' && m.target === 'ac') {
-                total += Number(m.value);
+            if ((m.type === 'bonus' || m.type === 'stat_bonus') && (m.target === 'ac' || m.stat === 'ac')) {
+                if (checkModifierRule(m)) {
+                    total += Number(m.value || 0);
+                }
             }
         });
 
@@ -810,12 +960,51 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
         // Item/Trait Bonuses
         activeModifiers.forEach(m => {
-            if (m.type === 'bonus' && m.target === 'ac') {
-                breakdown.push({ label: 'Bonus', value: Number(m.value) });
+            if ((m.type === 'bonus' || m.type === 'stat_bonus') && (m.target === 'ac' || m.stat === 'ac')) {
+                if (checkModifierRule(m)) {
+                    breakdown.push({ label: m.name || m.source?.name || 'AC Bonus', value: Number(m.value || 0) });
+                }
             }
         });
 
         return breakdown;
+    };
+
+    const calculateSpeed = () => {
+        let baseSpeed = character.race?.speed || 30;
+        
+        const monk = character.classes.find(c => c.definition.index === 'monk');
+        const ranger = character.classes.find(c => c.definition.index === 'ranger');
+
+        if (monk && monk.level >= 2) {
+            const hasArmor = character.inventory.some(i => i.equipped && i.armor_class && !i.name.toLowerCase().includes('shield'));
+            const hasShield = character.inventory.some(i => i.equipped && i.armor_class && i.name.toLowerCase().includes('shield'));
+            if (!hasArmor && !hasShield) {
+                if (monk.level >= 18) baseSpeed += 30;
+                else if (monk.level >= 14) baseSpeed += 25;
+                else if (monk.level >= 10) baseSpeed += 20;
+                else if (monk.level >= 6) baseSpeed += 15;
+                else baseSpeed += 10;
+            }
+        }
+
+        if (ranger && ranger.level >= 6) {
+            const hasHeavy = character.inventory.some(i => i.equipped && i.armor_class && i.name.toLowerCase().includes('plate'));
+            if (!hasHeavy) baseSpeed += 10;
+        }
+
+        let total = baseSpeed;
+        activeModifiers.forEach(m => {
+            const stat = (m.stat || m.target || '').toLowerCase();
+            if (stat === 'speed' || stat === 'walk_speed' || stat === 'walking_speed') {
+                if (checkModifierRule(m)) {
+                    if (m.type === 'bonus' || m.type === 'stat_bonus') total += Number(m.value || 0);
+                    else if (m.type === 'set') total = Math.max(total, Number(m.value || 0));
+                }
+            }
+        });
+
+        return total;
     };
 
     const getSpeedBreakdown = () => {
@@ -849,55 +1038,95 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
         // Item/Trait Bonuses
         activeModifiers.forEach(m => {
-            if (m.target === 'speed') {
-                if (m.type === 'bonus') breakdown.push({ label: 'Bonus', value: formatModifier(Number(m.value)) });
-                if (m.type === 'set') breakdown.push({ label: 'Set', value: m.value });
+            const stat = (m.stat || m.target || '').toLowerCase();
+            if (stat === 'speed' || stat === 'walk_speed' || stat === 'walking_speed') {
+                if (checkModifierRule(m)) {
+                    if (m.type === 'bonus' || m.type === 'stat_bonus') breakdown.push({ label: m.name || m.source?.name || 'Bonus', value: formatModifier(Number(m.value || 0)) });
+                    if (m.type === 'set') breakdown.push({ label: m.name || m.source?.name || 'Set', value: m.value });
+                }
             }
         });
 
         return breakdown;
     };
 
-    const acValue = calculateAC();
-    const acBreakdown = getACBreakdown();
-    const globalSaveBonus = getGlobalSaveBonus();
-    
-    const calculateSpeed = () => {
-        let baseSpeed = character.race?.speed || 30;
-        
-        const monk = character.classes.find(c => c.definition.index === 'monk');
-        const ranger = character.classes.find(c => c.definition.index === 'ranger');
+    const getSpecialSpeeds = () => {
+        const walkingSpeed = calculateSpeed();
+        const speeds: { type: string; speed: number; source: string }[] = [];
 
-        if (monk && monk.level >= 2) {
-            const hasArmor = character.inventory.some(i => i.equipped && i.armor_class && !i.name.toLowerCase().includes('shield'));
-            const hasShield = character.inventory.some(i => i.equipped && i.armor_class && i.name.toLowerCase().includes('shield'));
-            if (!hasArmor && !hasShield) {
-                if (monk.level >= 18) baseSpeed += 30;
-                else if (monk.level >= 14) baseSpeed += 25;
-                else if (monk.level >= 10) baseSpeed += 20;
-                else if (monk.level >= 6) baseSpeed += 15;
-                else baseSpeed += 10;
-            }
+        const race = character.race as any;
+        const subrace = character.subrace as any;
+
+        if (race?.climb_speed || subrace?.climb_speed) {
+            const val = race?.climb_speed || subrace?.climb_speed;
+            speeds.push({ type: 'Climbing', speed: val === true ? walkingSpeed : Number(val) || walkingSpeed, source: race?.name || 'Race' });
+        }
+        if (race?.swim_speed || subrace?.swim_speed) {
+            const val = race?.swim_speed || subrace?.swim_speed;
+            speeds.push({ type: 'Swimming', speed: val === true ? walkingSpeed : Number(val) || walkingSpeed, source: race?.name || 'Race' });
+        }
+        if (race?.fly_speed || subrace?.fly_speed) {
+            const val = race?.fly_speed || subrace?.fly_speed;
+            speeds.push({ type: 'Flying', speed: val === true ? walkingSpeed : Number(val) || walkingSpeed, source: race?.name || 'Race' });
         }
 
-        if (ranger && ranger.level >= 6) {
-            const hasHeavy = character.inventory.some(i => i.equipped && i.armor_class && i.name.toLowerCase().includes('plate'));
-            if (!hasHeavy) baseSpeed += 10;
-        }
-
-        let total = baseSpeed;
         activeModifiers.forEach(m => {
-            if (m.target === 'speed') {
-                if (m.type === 'bonus') total += Number(m.value);
-                else if (m.type === 'set') total = Math.max(total, Number(m.value));
+            const stat = (m.stat || m.target || '').toLowerCase();
+            const isSwim = stat === 'swim_speed' || stat === 'swimming_speed' || stat === 'swim';
+            const isClimb = stat === 'climb_speed' || stat === 'climbing_speed' || stat === 'climb';
+            const isFly = stat === 'fly_speed' || stat === 'flying_speed' || stat === 'fly';
+
+            if (isSwim || isClimb || isFly) {
+                if (checkModifierRule(m)) {
+                    let valNum = Number(m.value || 0);
+                    if (typeof m.value === 'string' && (m.value.includes('equal') || m.value.includes('speed') || m.value.includes('normal'))) {
+                        valNum = walkingSpeed;
+                    } else if (valNum === 0) {
+                        valNum = walkingSpeed;
+                    }
+                    const typeLabel = isSwim ? 'Swimming' : isClimb ? 'Climbing' : 'Flying';
+                    const existing = speeds.find(s => s.type === typeLabel);
+                    if (!existing) {
+                        speeds.push({ type: typeLabel, speed: valNum, source: m.name || m.source?.name || 'Feature' });
+                    } else {
+                        existing.speed = Math.max(existing.speed, valNum);
+                    }
+                }
             }
         });
 
-        return total;
+        const allTraits = [
+            ...(race?.traits || []),
+            ...(subrace?.traits || []),
+            ...character.classFeatures,
+            ...(character.feats || [])
+        ];
+        allTraits.forEach((t: any) => {
+            const rawText = getTextString(t.desc) || getTextString(t.description) || getTextString(t.name);
+            const text = rawText.toLowerCase();
+            const climbMatch = text.match(/climb(?:ing)?\s+speed\s+(?:of\s+)?(\d+)\s*ft/i);
+            if (climbMatch && !speeds.some(s => s.type === 'Climbing')) {
+                speeds.push({ type: 'Climbing', speed: parseInt(climbMatch[1]), source: t.name || 'Feature' });
+            }
+            const swimMatch = text.match(/swim(?:ming)?\s+speed\s+(?:of\s+)?(\d+)\s*ft/i);
+            if (swimMatch && !speeds.some(s => s.type === 'Swimming')) {
+                speeds.push({ type: 'Swimming', speed: parseInt(swimMatch[1]), source: t.name || 'Feature' });
+            }
+            const flyMatch = text.match(/fly(?:ing)?\s+speed\s+(?:of\s+)?(\d+)\s*ft/i);
+            if (flyMatch && !speeds.some(s => s.type === 'Flying')) {
+                speeds.push({ type: 'Flying', speed: parseInt(flyMatch[1]), source: t.name || 'Feature' });
+            }
+        });
+
+        return speeds;
     };
 
+    const acValue = calculateAC();
+    const acBreakdown = getACBreakdown();
+    const globalSaveBonus = getGlobalSaveBonus();
     const speed = calculateSpeed();
     const speedBreakdown = getSpeedBreakdown();
+    const specialSpeeds = getSpecialSpeeds();
     const currentWeight = character.inventory.reduce((sum: number, item) => sum + (item.weight || 0) * (item.quantity || 1), 0);
     const maxWeight = getStat('str') * 15;
 
@@ -931,6 +1160,23 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         }
         setLogs(prev => [...prev, result]);
         setRollHistory(prev => [result, ...prev].slice(0, 50)); 
+        if (character.campaign_id) {
+            addPartyRoll(character.campaign_id, {
+                id: `roll-${result.timestamp}-${Math.random().toString(36).substring(2,6)}`,
+                campaign_id: character.campaign_id,
+                character_id: character.id || '',
+                character_name: character.name || 'Hero',
+                formula: result.formula,
+                die: result.die,
+                rolls: result.rolls,
+                modifier: result.modifier,
+                total: result.total,
+                isCrit: result.isCrit,
+                isFail: result.isFail,
+                label: result.label,
+                timestamp: result.timestamp
+            }).catch(console.error);
+        }
         setTimeout(() => { setLogs(current => current.filter(l => l.timestamp !== result.timestamp)); }, 5000);
     };
 
@@ -1956,6 +2202,20 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     </div>
                                 }
                             />
+                            {specialSpeeds.map((sp, idx) => (
+                                <SquareStatBox 
+                                    key={idx}
+                                    label={sp.type} 
+                                    subLabel="Speed" 
+                                    value={`${sp.speed} ft.`} 
+                                    tooltip={
+                                        <div className="text-[10px]">
+                                            <span className="text-gray-400">Source: </span>
+                                            <span className="text-white font-mono">{sp.source}</span>
+                                        </div>
+                                    }
+                                />
+                            ))}
                         </div>
                     </div>
                 );
@@ -2085,17 +2345,127 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
         const monk = character.classes.find(c => c.definition.index === 'monk');
         let unarmedDie = '1';
+        let unarmedDieVal = 1;
+        let unarmedDmgType = 'Bludgeoning';
         let unarmedHitMod = strMod;
+        let unarmedDmgMod = strMod;
+        let unarmedHitBonus = 0;
+        let unarmedDmgBonus = 0;
+        let extraUnarmedParts: string[] = [];
+        let customUnarmedName = 'Unarmed Strike';
+
         if (monk) {
             const ml = monk.level;
-            if (ml >= 17) unarmedDie = '1d12';
-            else if (ml >= 11) unarmedDie = '1d10';
-            else if (ml >= 5) unarmedDie = '1d8';
-            else unarmedDie = '1d6';
-            unarmedHitMod = Math.max(strMod, dexMod);
+            if (ml >= 17) { unarmedDie = '1d12'; unarmedDieVal = 12; }
+            else if (ml >= 11) { unarmedDie = '1d10'; unarmedDieVal = 10; }
+            else if (ml >= 5) { unarmedDie = '1d8'; unarmedDieVal = 8; }
+            else { unarmedDie = '1d6'; unarmedDieVal = 6; }
+            
+            if (dexMod > strMod) {
+                unarmedHitMod = dexMod;
+                unarmedDmgMod = dexMod;
+            }
         }
 
-        const { hit: unarmedHit, damage: unarmedDmg } = applyOverrides(prof + unarmedHitMod, `${unarmedDie}${formatModifier(unarmedHitMod)}`);
+        // Process activeModifiers for unarmed_strike / natural_weapon or stat_bonus
+        activeModifiers.forEach((m: any) => {
+            const type = m.type;
+            const target = (m.target || m.stat || '').toLowerCase();
+
+            if (checkModifierRule(m, { isUnarmed: true, isMeleeWeapon: true, isMelee: true })) {
+                if (type === 'unarmed_strike' || type === 'natural_weapon' || target === 'unarmed_strike' || target === 'natural_weapon') {
+                    const dieStr = m.die || m.damage_die || m.value;
+                    if (typeof dieStr === 'string') {
+                        const match = dieStr.match(/(\d*d\d+)/i);
+                        if (match) {
+                            const dieNumMatch = dieStr.match(/d(\d+)/i);
+                            const dieSize = dieNumMatch ? parseInt(dieNumMatch[1]) : 4;
+                            if (dieSize > unarmedDieVal || unarmedDie === '1') {
+                                unarmedDie = match[1];
+                                unarmedDieVal = dieSize;
+                            }
+                        }
+                    }
+
+                    if (m.damage_type) {
+                        unarmedDmgType = m.damage_type;
+                    }
+
+                    if (m.ability || m.stat) {
+                        const ab = (m.ability || m.stat).toLowerCase().substring(0, 3);
+                        if (ab === 'highest') {
+                            const bestMod = Math.max(strMod, dexMod);
+                            unarmedHitMod = bestMod;
+                            unarmedDmgMod = bestMod;
+                        } else if (['str', 'dex', 'con', 'int', 'wis', 'cha'].includes(ab)) {
+                            const modVal = getStat(ab);
+                            unarmedHitMod = modVal;
+                            unarmedDmgMod = modVal;
+                        }
+                    }
+
+                    if (m.name && m.name !== 'Stat Bonus' && m.name !== 'Unarmed Strike') {
+                        customUnarmedName = `Unarmed Strike (${m.name})`;
+                    }
+                }
+
+                if (type === 'stat_bonus') {
+                    if (target === 'unarmed_attack') {
+                        unarmedHitBonus += Number(m.value) || 0;
+                    } else if (target === 'unarmed_damage') {
+                        if (typeof m.value === 'number') {
+                            unarmedDmgBonus += m.value;
+                        } else if (typeof m.value === 'string') {
+                            if (m.value.includes('d')) {
+                                extraUnarmedParts.push(m.value);
+                            } else {
+                                unarmedDmgBonus += parseInt(m.value) || 0;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Trait/Feature description text fallback
+        const raceObj = character.race as any;
+        const subraceObj = character.subrace as any;
+        const allTraits = [
+            ...(raceObj?.traits || []),
+            ...(subraceObj?.traits || []),
+            ...character.classFeatures,
+            ...(character.feats || [])
+        ];
+        allTraits.forEach((t: any) => {
+            const rawText = getTextString(t.desc) || getTextString(t.description) || getTextString(t.name);
+            const text = rawText.toLowerCase();
+            if (text.includes('unarmed strike') || text.includes('unarmed strikes') || text.includes('cat\'s claws') || text.includes('natural weapon') || text.includes('hungry jaws') || text.includes('talons')) {
+                if (text.includes('1d4') && unarmedDieVal < 4) { unarmedDie = '1d4'; unarmedDieVal = 4; }
+                else if (text.includes('1d6') && unarmedDieVal < 6) { unarmedDie = '1d6'; unarmedDieVal = 6; }
+                else if (text.includes('1d8') && unarmedDieVal < 8) { unarmedDie = '1d8'; unarmedDieVal = 8; }
+
+                if (text.includes('slashing')) unarmedDmgType = 'Slashing';
+                else if (text.includes('piercing')) unarmedDmgType = 'Piercing';
+                else if (text.includes('bludgeoning')) unarmedDmgType = 'Bludgeoning';
+
+                if (t.name && (text.includes('cat\'s claws') || text.includes('hungry jaws') || text.includes('talons'))) {
+                    customUnarmedName = `Unarmed Strike (${t.name})`;
+                }
+            }
+        });
+
+        let baseUnarmedDmgStr = '';
+        const totalDmgMod = unarmedDmgMod + unarmedDmgBonus;
+        if (unarmedDie === '1') {
+            baseUnarmedDmgStr = `${1 + totalDmgMod}`;
+        } else {
+            baseUnarmedDmgStr = `${unarmedDie}${formatModifier(totalDmgMod)}`;
+        }
+        if (extraUnarmedParts.length > 0) {
+            baseUnarmedDmgStr += ` + ${extraUnarmedParts.join(' + ')}`;
+        }
+
+        const { hit: unarmedHit, damage: unarmedDmg } = applyOverrides(prof + unarmedHitMod + unarmedHitBonus, baseUnarmedDmgStr);
         
         const getAttackModifiers = (attack: any) => {
             const modifiers: { name: string, desc: string }[] = [];
@@ -2185,7 +2555,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             return modifiers;
         };
 
-        // Calculate Attack Count
+        // Calculate Attack Count (Extra / Additional Attacks)
         let attackCount = 1;
         const fighter = character.classes.find(c => c.definition.index === 'fighter');
         const paladin = character.classes.find(c => c.definition.index === 'paladin');
@@ -2208,16 +2578,46 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             if (hasExtraAttack) attackCount = 2;
         }
 
+        let additionalAttackBonus = 0;
+        let maxSetAttacks = attackCount;
+
+        activeModifiers.forEach((m: any) => {
+            const type = m.type;
+            const target = (m.stat || m.target || '').toLowerCase();
+
+            if (
+                type === 'extra_attack' || 
+                type === 'additional_attack' || 
+                target === 'extra_attack' || 
+                target === 'additional_attack' || 
+                target === 'extra_attacks' || 
+                target === 'additional_attacks' || 
+                target === 'attacks_per_action' || 
+                target === 'attack_count'
+            ) {
+                if (checkModifierRule(m)) {
+                    const val = Number(m.value !== undefined ? m.value : (m.count !== undefined ? m.count : 1));
+                    if (m.mode === 'set' || m.mode === 'override') {
+                        maxSetAttacks = Math.max(maxSetAttacks, val);
+                    } else {
+                        additionalAttackBonus += (val > 0 ? val : 1);
+                    }
+                }
+            }
+        });
+
+        attackCount = Math.max(attackCount, maxSetAttacks) + additionalAttackBonus;
+
         const unarmedAttack = { 
             id: 'action-unarmed', 
-            name: 'Unarmed Strike', 
+            name: customUnarmedName, 
             range: '5 ft.', 
             hit: unarmedHit, 
             damage: unarmedDmg, 
-            type: 'Bludgeoning', 
+            type: unarmedDmgType, 
             attackCount,
             notes: [], 
-            source: { name: 'Unarmed Strike', desc: 'A punch, kick, head-butt, or similar forceful blow.' } 
+            source: { name: customUnarmedName, desc: 'A punch, kick, head-butt, or similar forceful blow.' } 
         };
         (unarmedAttack as any).modifiers = getAttackModifiers(unarmedAttack);
         attacks.push(unarmedAttack);
@@ -2451,12 +2851,61 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             let itemHitBonus = 0; let itemDamageBonus = 0;
             item.modifiers?.forEach(mod => { if (mod.type === 'bonus') { if (mod.target === 'attack') itemHitBonus += Number(mod.value); if (mod.target === 'damage') itemDamageBonus += Number(mod.value); } });
 
-            const baseHit = prof + statMod + itemHitBonus + archeryBonus;
+            const isTwoHanded = Boolean(item.wieldedTwoHanded || notes.includes('Two-Handed') || properties.some((p: any) => typeof p === 'string' ? p.toLowerCase().includes('two-handed') : (p?.name || '').toLowerCase().includes('two-handed')));
+            const isOneHanded = !isTwoHanded;
+            const isRangedWeapon = Boolean(isRanged || properties.some((p: any) => typeof p === 'string' ? p.toLowerCase().includes('ammunition') || p.toLowerCase().includes('ranged') : (p?.name || '').toLowerCase().includes('ammunition')));
+            const isMeleeWeapon = !isRangedWeapon;
+
+            let extraAttackBonus = 0;
+            let extraDamageBonus = 0;
+
+            activeModifiers.forEach(m => {
+                if (m.type === 'bonus' || m.type === 'stat_bonus') {
+                    const stat = (m.stat || m.target || '').toLowerCase();
+                    const passesRule = checkModifierRule(m, { isOneHanded, isTwoHanded, isMeleeWeapon, isRangedWeapon, versatileDamage: item.versatileDamage });
+
+                    if (passesRule) {
+                        const val = Number(m.value || 0);
+
+                        // ATTACK BONUSES
+                        if (stat === 'attack' || stat === 'weapon_attack') {
+                            extraAttackBonus += val;
+                        } else if (stat === 'ranged_attack' && isRangedWeapon) {
+                            extraAttackBonus += val;
+                        } else if (stat === 'melee_attack' && isMeleeWeapon) {
+                            extraAttackBonus += val;
+                        } else if (stat === 'one_handed_attack' && isOneHanded) {
+                            extraAttackBonus += val;
+                        } else if (stat === 'two_handed_attack' && isTwoHanded) {
+                            extraAttackBonus += val;
+                        }
+
+                        // DAMAGE / BONUS DAMAGE
+                        if (stat === 'weapon_damage' || stat === 'damage' || stat === 'bonus_damage') {
+                            extraDamageBonus += val;
+                        } else if (stat === 'melee_damage' && isMeleeWeapon) {
+                            extraDamageBonus += val;
+                        } else if (stat === 'ranged_damage' && isRangedWeapon) {
+                            extraDamageBonus += val;
+                        } else if (stat === 'one_handed_damage' && isOneHanded) {
+                            extraDamageBonus += val;
+                        } else if (stat === 'two_handed_damage' && isTwoHanded) {
+                            extraDamageBonus += val;
+                        } else if (stat === 'one_handed_melee_damage' && isOneHanded && isMeleeWeapon) {
+                            extraDamageBonus += val;
+                        } else if (stat === 'two_handed_melee_damage' && isTwoHanded && isMeleeWeapon) {
+                            extraDamageBonus += val;
+                        }
+                    }
+                }
+            });
+
+            const baseHit = prof + statMod + itemHitBonus + archeryBonus + extraAttackBonus;
             
             const isWieldingTwoHanded = item.wieldedTwoHanded || notes.includes('Two-Handed');
             
             let currentDamageDice = damageDice;
-            let currentDmgBonus = itemDamageBonus;
+            let currentDmgBonus = itemDamageBonus + extraDamageBonus;
 
             if (isWieldingTwoHanded && item.versatileDamage) {
                 currentDamageDice = item.versatileDamage.damage_dice;
@@ -2762,11 +3211,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                  }
              }
 
-             // Check effects for bonus_action type
+             // Check effects for bonus_action, action, or extra_attack types
              if (enriched.effects) {
                  enriched.effects.forEach((eff: any) => {
-                     if (eff.type === 'bonus_action') {
-                         if (!list.some(item => item.name === eff.name)) {
+                     if (eff.type === 'bonus_action' || eff.type === 'action' || eff.type === 'extra_attack' || eff.type === 'additional_attack') {
+                         if (eff.name && !list.some(item => item.name === eff.name)) {
                              list.push({
                                  id: `effect-${eff.name.toLowerCase().replace(/\s+/g, '-')}`,
                                  name: eff.name,
@@ -2926,7 +3375,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             
             <DiceRoller3D rollQueue={activeRoll} onRollComplete={() => setActiveRoll(null)} />
             {rollMenu && <RollContextMenu x={rollMenu.x} y={rollMenu.y} onClose={() => setRollMenu(null)} onOptionSelect={handleContextMenuRoll} />}
-            <RollHistory history={rollHistory} onClear={() => setRollHistory([])} />
+            <RollHistory history={rollHistory} onClear={() => setRollHistory([])} campaignId={character.campaign_id} characterName={character.name} />
             <DiceTray logs={logs} onRoll={(f) => roll(f, 'Manual')} />
             
             <ManageCharacterModal isOpen={showManageCharacterModal} character={character} onClose={() => setShowManageCharacterModal(false)} onUpdate={(updates) => setCharacter(prev => ({...prev, ...updates}))} onLevelUp={performLevelUp} />
@@ -3174,15 +3623,20 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     </div>
                                 }
                              />
-                             <div 
-                                onClick={() => roll(initAdv ? `2d20kh1${formatModifier(dexMod)}` : `1d20${formatModifier(dexMod)}`, "Initiative Roll")} 
-                                onContextMenu={(e) => triggerRollMenu(e, initAdv ? `2d20kh1${formatModifier(dexMod)}` : `1d20${formatModifier(dexMod)}`, "Initiative Roll")} 
-                                className="flex flex-col items-center justify-center w-16 h-16 md:w-20 md:h-20 border border-gray-600 rounded bg-[#1b1c20]/80 cursor-pointer hover:border-dnd-gold group transition-colors relative"
-                             >
-                                {initAdv && <span className="absolute top-1 right-1 text-[7px] bg-gray-800/60 text-gray-500 px-0.5 rounded border border-gray-700/50">ADV</span>}
-                                <div className="text-xl font-bold text-white group-hover:text-dnd-gold leading-none">{formatModifier(dexMod)}</div>
-                                <div className="text-[9px] font-bold text-gray-500 uppercase mt-1 text-center leading-tight group-hover:text-dnd-gold">Initiative<br/>Roll</div>
-                             </div>
+                             {(() => {
+                                const totalInitMod = dexMod + extraInitiative;
+                                return (
+                                 <div 
+                                    onClick={() => roll(initAdv ? `2d20kh1${formatModifier(totalInitMod)}` : `1d20${formatModifier(totalInitMod)}`, "Initiative Roll")} 
+                                    onContextMenu={(e) => triggerRollMenu(e, initAdv ? `2d20kh1${formatModifier(totalInitMod)}` : `1d20${formatModifier(totalInitMod)}`, "Initiative Roll")} 
+                                    className="flex flex-col items-center justify-center w-16 h-16 md:w-20 md:h-20 border border-gray-600 rounded bg-[#1b1c20]/80 cursor-pointer hover:border-dnd-gold group transition-colors relative"
+                                 >
+                                    {initAdv && <span className="absolute top-1 right-1 text-[7px] bg-gray-800/60 text-gray-500 px-0.5 rounded border border-gray-700/50">ADV</span>}
+                                    <div className="text-xl font-bold text-white group-hover:text-dnd-gold leading-none">{formatModifier(totalInitMod)}</div>
+                                    <div className="text-[9px] font-bold text-gray-500 uppercase mt-1 text-center leading-tight group-hover:text-dnd-gold">Initiative<br/>Roll</div>
+                                 </div>
+                                );
+                             })()}
                              <SquareStatBox label="Proficiency" subLabel="Bonus" value={`+${prof}`} />
                              <SquareStatBox 
                                 label="Walking" 
@@ -3204,6 +3658,21 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     </div>
                                 }
                              />
+                             {specialSpeeds.map((sp, idx) => (
+                                 <SquareStatBox 
+                                     key={idx}
+                                     label={sp.type} 
+                                     subLabel="Speed" 
+                                     value={`${sp.speed} ft.`} 
+                                     tooltipPosition="bottom"
+                                     tooltip={
+                                         <div className="text-[10px]">
+                                             <span className="text-gray-400">Source: </span>
+                                             <span className="text-white font-mono">{sp.source}</span>
+                                         </div>
+                                     }
+                                 />
+                             ))}
                              <div onClick={() => setCharacter(p => ({...p, inspiration: !p.inspiration}))} className="flex flex-col items-center justify-center w-16 h-16 md:w-20 md:h-20 border border-gray-600 rounded bg-[#1b1c20]/80 cursor-pointer hover:border-dnd-gold"><div className={`w-6 h-6 border-2 transform rotate-45 ${character.inspiration ? 'bg-dnd-gold border-dnd-gold' : 'border-gray-500'}`}></div><div className="text-[8px] font-bold text-gray-500 uppercase mt-1 text-center leading-none">Heroic<br/>Inspiration</div></div>
                              <div className={`flex flex-col h-16 md:h-20 border rounded bg-[#1b1c20]/80 overflow-hidden min-w-[140px] cursor-pointer transition-colors border-gray-600 hover:border-dnd-gold`} onClick={() => setShowHealthManager(true)}>
                                  <div className="flex-grow flex items-center justify-between px-3 gap-2"><div className="flex flex-col items-center"><span className="text-[9px] font-bold text-gray-500 uppercase">Current</span><span className={`text-xl font-bold text-white`}>{character.currentHp}</span></div><span className="text-gray-600 text-xl font-light">/</span><div className="flex flex-col items-center"><span className="text-[9px] font-bold text-gray-500 uppercase">Max</span><span className="text-xl font-bold text-gray-400">{character.maxHp}</span></div><div className="w-px h-8 bg-gray-700/50 mx-1"></div><div className="flex flex-col items-center"><span className="text-[9px] font-bold text-gray-500 uppercase">Temp</span><span className="text-lg font-bold text-gray-300">{character.tempHp || '--'}</span></div></div>
@@ -3347,6 +3816,85 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 }
                             }
                         }
+                        if (action === 'transferToParty') {
+                            if (character.campaign_id) {
+                                const cmpId = character.campaign_id;
+                                const itemToTransfer = itm;
+                                const requestedQty = typeof itm.transferQty === 'number' ? itm.transferQty : (typeof itm.amount === 'number' ? itm.amount : 1);
+                                let actualTransfer = requestedQty;
+                                const newPersonalInv = character.inventory.map(i => {
+                                    if (i.id === itemToTransfer.id) {
+                                        actualTransfer = Math.min(i.quantity, requestedQty);
+                                        return { ...i, quantity: i.quantity - actualTransfer };
+                                    }
+                                    return i;
+                                }).filter(i => i.quantity > 0);
+                                setCharacter(prev => ({ ...prev, inventory: newPersonalInv }));
+                                
+                                loadPartyInventory(cmpId).then(async (data) => {
+                                    const partyCopy = [...(data.inventory || [])];
+                                    const existingIdx = partyCopy.findIndex(i => i.name.toLowerCase() === itemToTransfer.name.toLowerCase());
+                                    if (existingIdx >= 0) {
+                                        partyCopy[existingIdx] = {
+                                            ...partyCopy[existingIdx],
+                                            quantity: partyCopy[existingIdx].quantity + actualTransfer
+                                        };
+                                    } else {
+                                        partyCopy.push({
+                                            ...itemToTransfer,
+                                            id: `party-item-${Date.now()}-${Math.random().toString(36).substring(2,6)}`,
+                                            quantity: actualTransfer,
+                                            equipped: false,
+                                            attuned: false
+                                        });
+                                    }
+                                    await savePartyInventory(cmpId, partyCopy, data.currency || { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 });
+                                });
+                            }
+                            setSelectedDetail(null);
+                        }
+                        if (action === 'claimToPersonal') {
+                            if (character.campaign_id) {
+                                const cmpId = character.campaign_id;
+                                const partyItem = itm;
+                                const requestedQty = typeof partyItem.transferQty === 'number' ? partyItem.transferQty : (typeof partyItem.amount === 'number' ? partyItem.amount : 1);
+                                
+                                loadPartyInventory(cmpId).then(async (data) => {
+                                    const partyCopy = data.inventory || [];
+                                    let actualClaim = requestedQty;
+                                    const updatedParty = partyCopy.map((i: any) => {
+                                        if (i.id === partyItem.id || i.name.toLowerCase() === partyItem.name.toLowerCase()) {
+                                            actualClaim = Math.min(i.quantity, requestedQty);
+                                            return { ...i, quantity: i.quantity - actualClaim };
+                                        }
+                                        return i;
+                                    }).filter((i: any) => i.quantity > 0);
+                                    
+                                    await savePartyInventory(cmpId, updatedParty, data.currency || { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 });
+                                    
+                                    setCharacter(prev => {
+                                        const personalCopy = [...prev.inventory];
+                                        const existingIdx = personalCopy.findIndex(i => i.name.toLowerCase() === partyItem.name.toLowerCase());
+                                        if (existingIdx >= 0) {
+                                            personalCopy[existingIdx] = {
+                                                ...personalCopy[existingIdx],
+                                                quantity: personalCopy[existingIdx].quantity + actualClaim
+                                            };
+                                        } else {
+                                            personalCopy.push({
+                                                ...partyItem,
+                                                id: `item-${Date.now()}-${Math.random().toString(36).substring(2,6)}`,
+                                                quantity: actualClaim,
+                                                equipped: false,
+                                                attuned: false
+                                            });
+                                        }
+                                        return { ...prev, inventory: personalCopy };
+                                    });
+                                });
+                            }
+                            setSelectedDetail(null);
+                        }
                         if (action === 'remove') { 
                             if ('quantity' in itm) updateQuantity(itm.id, 0); 
                             else setCharacter(prev => ({ ...prev, spells: prev.spells.filter(s => s.index !== itm.index || s.sourceClassIndex !== itm.sourceClassIndex) })); 
@@ -3428,7 +3976,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 {getAllFeaturesSorted()
                                     .filter(f => 
                                         f.name.toLowerCase().includes(fullScreenFeaturesSearch.toLowerCase()) || 
-                                        (f.desc && f.desc[0]?.toLowerCase().includes(fullScreenFeaturesSearch.toLowerCase()))
+                                        getTextString(f.desc).toLowerCase().includes(fullScreenFeaturesSearch.toLowerCase())
                                     )
                                     .map(feat => (
                                     <div 
@@ -3463,7 +4011,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 ))}
                                 {getAllFeaturesSorted().filter(f => 
                                     f.name.toLowerCase().includes(fullScreenFeaturesSearch.toLowerCase()) || 
-                                    (f.desc && f.desc[0]?.toLowerCase().includes(fullScreenFeaturesSearch.toLowerCase()))
+                                    getTextString(f.desc).toLowerCase().includes(fullScreenFeaturesSearch.toLowerCase())
                                 ).length === 0 && (
                                     <div className="col-span-full py-20 text-center">
                                         <div className="text-4xl mb-4 opacity-20">🔍</div>

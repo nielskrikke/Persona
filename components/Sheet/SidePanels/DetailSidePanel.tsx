@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Sparkles, ArrowRightLeft, PackageCheck } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import SidePanelLayout from '../Shared/SidePanelLayout';
 import { SpellDetail, InventoryItem, APIReference, RuleEntry, CharacterState, FeatureEffect } from '../../../types';
@@ -47,29 +47,38 @@ const DetailSidePanel = ({
 }) => {
     const [fullDetail, setFullDetail] = useState<any>(null);
     const [loading, setLoading] = useState(false);
+    const [transferQtyPopover, setTransferQtyPopover] = useState<{ mode: 'claimToPersonal' | 'transferToParty'; maxQty: number; qty: number } | null>(null);
+
+    useEffect(() => {
+        setTransferQtyPopover(null);
+    }, [item?.id, item?.name]);
+
+    const handleTransferClick = (mode: 'claimToPersonal' | 'transferToParty') => {
+        const maxQty = typeof fullDetail?.quantity === 'number' ? fullDetail.quantity : (typeof item?.quantity === 'number' ? item.quantity : 1);
+        if (maxQty > 1) {
+            setTransferQtyPopover({ mode, maxQty, qty: 1 });
+        } else {
+            onAction?.(mode, { ...item, transferQty: 1 });
+        }
+    };
+
+    const loadedKeyRef = useRef<string | null>(null);
 
     useEffect(() => {
         if (!item) {
+            loadedKeyRef.current = null;
             setFullDetail(null);
             return;
         }
 
-        // If we already have a fullDetail for this item, just update it with latest item props
-        // This prevents resetting to null and re-fetching when only a flag or property changed
-        if (fullDetail && (
-            (item.id && fullDetail.id === item.id) || 
-            (item.index && fullDetail.index === item.index) ||
-            (item.name && fullDetail.name === item.name && !item.id && !item.index)
-        )) {
-            const propsToSync = ['equipped', 'attuned', 'quantity', 'wieldedTwoHanded', 'isMonkWeapon', 'isKenseiWeapon', 'isPactWeapon', 'isHexWeapon', 'isSpellFocus', 'isInfusion', 'isShillelagh', 'isBattleReady', 'thrownRange', 'thrownDamage'];
-            const hasChanged = propsToSync.some(key => (item as any)[key] !== (fullDetail as any)[key]);
-            
-            if (hasChanged) {
-                setFullDetail(prev => ({ ...prev, ...item }));
-            }
+        const itemKey = item.id || item.index || item.name || null;
+
+        if (itemKey && loadedKeyRef.current === itemKey) {
+            setFullDetail((prev: any) => prev ? { ...prev, ...item } : item);
             return;
         }
 
+        loadedKeyRef.current = itemKey;
         setFullDetail(null);
         
         // Standard Action / Rule Mock / Simple Objects without Index
@@ -169,14 +178,14 @@ const DetailSidePanel = ({
                      if (!data) data = await fetchTraitDetail(item.index);
                 }
                 
-                setFullDetail(data || item);
+                setFullDetail(data ? { ...data, ...item } : item);
                 setLoading(false);
             } else {
                 setFullDetail(item);
             }
         };
         load();
-    }, [item, fullDetail]);
+    }, [item]);
 
     // Helper to check if it looks like an equipment detail (has cost/weight/category) or is an InventoryItem
     const isItemLike = (i: any) => i && ('quantity' in i || 'equipment_category' in i || 'weight' in i || 'cost' in i);
@@ -434,7 +443,103 @@ const DetailSidePanel = ({
                         </button>
                     )}
 
-                    <div className="flex gap-2 w-full">
+                    <div className="flex gap-2 w-full relative">
+                        {transferQtyPopover && (
+                            <div className="absolute bottom-full mb-3 left-0 right-0 z-50 bg-[#1e2026] border border-purple-600/60 rounded-xl p-3 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-[11px] font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
+                                        {transferQtyPopover.mode === 'claimToPersonal' ? <PackageCheck size={14} className="text-dnd-gold" /> : <ArrowRightLeft size={14} className="text-purple-400" />}
+                                        {transferQtyPopover.mode === 'claimToPersonal' ? 'Claim Quantity' : 'Send to Party'}
+                                    </span>
+                                    <span className="text-[10px] text-gray-400 font-mono">
+                                        Max: {transferQtyPopover.maxQty}
+                                    </span>
+                                </div>
+
+                                <div className="flex items-center gap-2 mb-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setTransferQtyPopover(p => p ? { ...p, qty: Math.max(1, p.qty - 1) } : null)}
+                                        className="w-8 h-8 rounded-lg bg-black/40 border border-gray-700 hover:border-gray-500 text-white font-bold text-sm flex items-center justify-center transition-colors"
+                                    >
+                                        -
+                                    </button>
+                                    <input 
+                                        type="number"
+                                        min={1}
+                                        max={transferQtyPopover.maxQty}
+                                        value={transferQtyPopover.qty}
+                                        onChange={(e) => {
+                                            const v = parseInt(e.target.value) || 1;
+                                            const clamped = Math.max(1, Math.min(transferQtyPopover.maxQty, v));
+                                            setTransferQtyPopover(p => p ? { ...p, qty: clamped } : null);
+                                        }}
+                                        className="w-16 h-8 text-center bg-black/60 border border-gray-700 rounded-lg text-white font-mono font-bold text-sm focus:border-purple-500 outline-none"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setTransferQtyPopover(p => p ? { ...p, qty: Math.min(p.maxQty, p.qty + 1) } : null)}
+                                        className="w-8 h-8 rounded-lg bg-black/40 border border-gray-700 hover:border-gray-500 text-white font-bold text-sm flex items-center justify-center transition-colors"
+                                    >
+                                        +
+                                    </button>
+                                    
+                                    <button
+                                        type="button"
+                                        onClick={() => setTransferQtyPopover(p => p ? { ...p, qty: p.maxQty } : null)}
+                                        className="px-2.5 h-8 rounded-lg bg-purple-950/60 border border-purple-700/60 text-purple-300 font-bold text-[10px] uppercase hover:bg-purple-900 transition-colors"
+                                    >
+                                        All ({transferQtyPopover.maxQty})
+                                    </button>
+                                </div>
+
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setTransferQtyPopover(null)}
+                                        className="flex-1 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-[10px] font-bold uppercase transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const action = transferQtyPopover.mode;
+                                            const transferQty = transferQtyPopover.qty;
+                                            setTransferQtyPopover(null);
+                                            onAction?.(action, { ...item, transferQty });
+                                        }}
+                                        className={`flex-1 py-1.5 rounded text-[10px] font-bold uppercase transition-colors shadow ${
+                                            transferQtyPopover.mode === 'claimToPersonal' 
+                                                ? 'bg-dnd-gold hover:bg-amber-400 text-black' 
+                                                : 'bg-purple-600 hover:bg-purple-500 text-white'
+                                        }`}
+                                    >
+                                        Confirm ({transferQtyPopover.qty})
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {character?.campaign_id && isItemLike(fullDetail) && (
+                            (fullDetail?.isPartyItem || item?.isPartyItem) ? (
+                                <button 
+                                    onClick={() => handleTransferClick('claimToPersonal')}
+                                    className="flex-1 py-1.5 bg-dnd-gold hover:bg-amber-400 text-black rounded font-bold uppercase text-[10px] tracking-wider transition-colors flex items-center justify-center gap-1.5 shadow"
+                                    title="Claim item to Personal Inventory"
+                                >
+                                    <PackageCheck size={12} /> Claim
+                                </button>
+                            ) : (
+                                <button 
+                                    onClick={() => handleTransferClick('transferToParty')}
+                                    className="flex-1 py-1.5 bg-purple-900/30 hover:bg-purple-900/60 border border-purple-700/50 text-purple-300 rounded font-bold uppercase text-[10px] tracking-wider transition-colors flex items-center justify-center gap-1.5"
+                                    title="Transfer item to Party Inventory"
+                                >
+                                    <ArrowRightLeft size={12} /> Send to Party
+                                </button>
+                            )
+                        )}
                         {isItemLike(fullDetail) && (
                             <button 
                                 onClick={() => onAction('toggleEquip', item)}

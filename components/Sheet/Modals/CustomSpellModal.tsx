@@ -104,9 +104,9 @@ const CustomSpellModal = ({ isOpen, onClose, onSave, currentUser, initialSpell }
         }
 
         // Save to Homebrew Forge if toggled
-        if (isSavingToHomebrew && currentUser) {
+        if (isSavingToHomebrew) {
             try {
-                await saveHomebrew('custom_spells', currentUser.id, newSpell, isSharedGlobally);
+                await saveHomebrew('custom_spells', currentUser?.id, newSpell, isSharedGlobally);
             } catch (err) {
                 console.error("Failed to save spell to Homebrew Forge:", err);
             }

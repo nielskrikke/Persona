@@ -222,9 +222,9 @@ const ItemSearchModal: React.FC<ItemSearchModalProps> = ({ isOpen, onClose, item
         }
 
         // Save to Homebrew Forge if toggled
-        if (isSavingToHomebrew && currentUser) {
+        if (isSavingToHomebrew) {
             try {
-                await saveHomebrew('custom_equipment', currentUser.id, newItem, isSharedGlobally);
+                await saveHomebrew('custom_equipment', currentUser?.id, newItem, isSharedGlobally);
             } catch (err) {
                 console.error("Failed to save to Homebrew Forge:", err);
             }

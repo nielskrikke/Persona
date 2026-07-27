@@ -5,6 +5,55 @@ export const calculateModifier = (score: number): number => {
     return Math.floor((score - 10) / 2);
 };
 
+export const inferOptionEffects = (optionName: string, optionDesc?: string): FeatureEffect[] => {
+    if (!optionName) return [];
+    const nameLower = optionName.toLowerCase();
+    const descLower = (optionDesc || '').toLowerCase();
+    const effects: FeatureEffect[] = [];
+
+    // Fighting Styles & Features
+    if (nameLower.includes('archery')) {
+        effects.push({ type: 'stat_bonus', stat: 'ranged_attack', value: 2 });
+    } else if (nameLower.includes('defense') || descLower.includes('+1 bonus to ac')) {
+        effects.push({ type: 'stat_bonus', stat: 'ac', value: 1 });
+    } else if (nameLower.includes('dueling')) {
+        effects.push({ type: 'stat_bonus', stat: 'weapon_damage', value: 2 });
+    } else if (nameLower.includes('mariner')) {
+        effects.push({ type: 'stat_bonus', stat: 'ac', value: 1 });
+        effects.push({ type: 'stat_bonus', stat: 'speed', value: 5 });
+    } else if (nameLower.includes('thrown weapon')) {
+        effects.push({ type: 'stat_bonus', stat: 'weapon_damage', value: 2 });
+    } else if (nameLower.includes('close quarters shooter')) {
+        effects.push({ type: 'stat_bonus', stat: 'ranged_attack', value: 1 });
+    } else if (nameLower.includes('fleet of foot') || (nameLower.includes('mobile') && !nameLower.includes('armor'))) {
+        effects.push({ type: 'stat_bonus', stat: 'speed', value: nameLower.includes('mobile') ? 10 : 5 });
+    } else if (nameLower.includes('fast movement') || nameLower.includes('unarmored movement')) {
+        effects.push({ type: 'stat_bonus', stat: 'speed', value: 10 });
+    } else if (nameLower.includes('tough')) {
+        effects.push({ type: 'stat_bonus', stat: 'hp_per_level', value: 2 });
+    } else if (nameLower.includes('alert')) {
+        effects.push({ type: 'stat_bonus', stat: 'initiative', value: 5 });
+        effects.push({ type: 'advantage', stat: 'initiative', target: 'initiative' });
+    } else if (nameLower.includes('red') || nameLower.includes('gold') || nameLower.includes('brass') || nameLower.includes('fire resistance') || descLower.includes('fire resistance')) {
+        effects.push({ type: 'resistance', value: 'Fire', damage_type: 'Fire' });
+    } else if (nameLower.includes('white') || nameLower.includes('silver') || nameLower.includes('cold resistance') || descLower.includes('cold resistance')) {
+        effects.push({ type: 'resistance', value: 'Cold', damage_type: 'Cold' });
+    } else if (nameLower.includes('blue') || nameLower.includes('bronze') || nameLower.includes('lightning resistance') || descLower.includes('lightning resistance')) {
+        effects.push({ type: 'resistance', value: 'Lightning', damage_type: 'Lightning' });
+    } else if (nameLower.includes('black') || nameLower.includes('copper') || nameLower.includes('acid resistance') || descLower.includes('acid resistance')) {
+        effects.push({ type: 'resistance', value: 'Acid', damage_type: 'Acid' });
+    } else if (nameLower.includes('green') || nameLower.includes('poison resistance') || descLower.includes('poison resistance')) {
+        effects.push({ type: 'resistance', value: 'Poison', damage_type: 'Poison' });
+    } else if (nameLower.includes('armor of shadows')) {
+        effects.push({ type: 'set', stat: 'ac', value: 13, target: 'ac' });
+    } else if (nameLower.includes('draconic resilience') || nameLower.includes('natural armor')) {
+        effects.push({ type: 'set', stat: 'ac', value: 13, target: 'ac' });
+        effects.push({ type: 'stat_bonus', stat: 'hp_per_level', value: 1 });
+    }
+
+    return effects;
+};
+
 export const getEffectiveAbilities = (character: CharacterState): AbilityScores => {
     const abilities = { ...character.abilities };
     
@@ -20,41 +69,122 @@ export const getEffectiveAbilities = (character: CharacterState): AbilityScores 
 
     // 2. Modifiers from traits and items
     const mods: any[] = [];
+
+    const processEffects = (effects: any[]) => {
+        if (!effects) return;
+        effects.forEach((e: any) => {
+            mods.push(e);
+            if ((e.type === 'feature_choice' || e.type === 'proficiency_choice' || e.options) && Array.isArray(e.options)) {
+                e.options.forEach((opt: any) => {
+                    const optName = opt.name || opt.item?.name;
+                    if (!optName) return;
+
+                    const isSelectedInChoices = character.choices?.some((c: any) => {
+                        const val = c.value;
+                        if (typeof val === 'string') {
+                            return val.toLowerCase() === optName.toLowerCase() || val.toLowerCase().includes(optName.toLowerCase());
+                        }
+                        if (Array.isArray(val)) {
+                            return val.some((v: any) => typeof v === 'string' ? (v.toLowerCase() === optName.toLowerCase() || v.toLowerCase().includes(optName.toLowerCase())) : (v?.name?.toLowerCase() === optName.toLowerCase()));
+                        }
+                        if (val && typeof val === 'object' && val.name) {
+                            return val.name.toLowerCase() === optName.toLowerCase();
+                        }
+                        return false;
+                    });
+
+                    const isSelectedInClassFeatures = character.classFeatures?.some((f: any) => {
+                        const fn = f.name.toLowerCase();
+                        const on = optName.toLowerCase();
+                        return fn === on || fn.endsWith(`: ${on}`) || fn.includes(`(${on})`);
+                    });
+
+                    if (isSelectedInChoices || isSelectedInClassFeatures) {
+                        if (opt.effects && Array.isArray(opt.effects)) {
+                            opt.effects.forEach((subE: any) => mods.push(subE));
+                        }
+                        if (opt.modifiers && Array.isArray(opt.modifiers)) {
+                            opt.modifiers.forEach((subM: any) => mods.push(subM));
+                        }
+                    }
+                });
+            }
+        });
+    };
     
     // Racial Traits
     if (character.race) {
         (character.race as any).traits?.forEach((trait: any) => {
             trait.modifiers?.forEach((m: any) => mods.push(m));
+            processEffects(trait.effects);
         });
     }
     // Subracial Traits
     if (character.subrace) {
         (character.subrace as any).traits?.forEach((trait: any) => {
             trait.modifiers?.forEach((m: any) => mods.push(m));
+            processEffects(trait.effects);
         });
     }
-    // Class Features
+    // Class & Subclass Features
+    character.classes?.forEach(cls => {
+        cls.definition.feature_details?.forEach(f => {
+            if (f.level <= cls.level) {
+                processEffects(f.effects);
+            }
+        });
+        if (cls.subclass) {
+            cls.subclass.feature_details?.forEach(f => {
+                if (f.level <= cls.level) {
+                    processEffects(f.effects);
+                }
+            });
+        }
+    });
+    // Class Features / Virtual choice features
     character.classFeatures?.forEach(feat => {
-        feat.effects?.forEach(e => mods.push(e));
+        processEffects(feat.effects);
+    });
+    // Direct choices
+    character.choices?.forEach((c: any) => {
+        if (c.value && typeof c.value === 'object' && !Array.isArray(c.value)) {
+            if (c.value.effects && Array.isArray(c.value.effects)) c.value.effects.forEach((subE: any) => mods.push(subE));
+            if (c.value.modifiers && Array.isArray(c.value.modifiers)) c.value.modifiers.forEach((subM: any) => mods.push(subM));
+        } else if (Array.isArray(c.value)) {
+            c.value.forEach((v: any) => {
+                if (v && typeof v === 'object') {
+                    if (v.effects && Array.isArray(v.effects)) v.effects.forEach((subE: any) => mods.push(subE));
+                    if (v.modifiers && Array.isArray(v.modifiers)) v.modifiers.forEach((subM: any) => mods.push(subM));
+                }
+            });
+        }
     });
     // Equipped & Attuned Items
-    character.inventory.forEach(item => {
+    character.inventory?.forEach(item => {
         if (item.equipped && (!item.requires_attunement || item.attuned)) {
             item.modifiers?.forEach(m => mods.push(m));
+            processEffects((item as any).effects);
         }
+    });
+    // Feats
+    character.feats?.forEach(feat => {
+        processEffects(feat.effects);
+        feat.modifiers?.forEach(m => mods.push(m));
     });
 
     // Apply bonuses
     mods.forEach(m => {
-        if (m.type === 'bonus' && (m.target as any) in abilities) {
-            abilities[m.target as AbilityName] += Number(m.value);
+        const targetStat = (m.target || m.stat || m.attribute || '').toLowerCase();
+        if ((m.type === 'bonus' || m.type === 'stat_bonus' || m.type === 'asi' || m.type === 'stat_bonus_attribute') && targetStat in abilities) {
+            abilities[targetStat as AbilityName] += Number(m.value || m.amount || 0);
         }
     });
 
     // Apply overrides
     mods.forEach(m => {
-        if (m.type === 'set' && (m.target as any) in abilities) {
-            abilities[m.target as AbilityName] = Math.max(abilities[m.target as AbilityName], Number(m.value));
+        const targetStat = (m.target || m.stat || m.attribute || '').toLowerCase();
+        if (m.type === 'set' && targetStat in abilities) {
+            abilities[targetStat as AbilityName] = Math.max(abilities[targetStat as AbilityName], Number(m.value || 0));
         }
     });
 

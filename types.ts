@@ -375,6 +375,8 @@ export interface CharacterState {
     xp: number;
     equipment: string[];
     customActions: CustomAction[];
+    campaign_id?: string | null;
+    campaign_name?: string | null;
     layout: { left: string[], right: string[], mobile: string[] };
     favorites: string[];
     backstory: string;
@@ -510,3 +512,27 @@ export interface SessionNote {
     locationsDiscovered?: string;
     generalNotes?: string;
 }
+
+export interface Campaign {
+    id: string;
+    name: string;
+    description?: string;
+    code: string;
+    created_at?: string;
+    created_by?: string;
+    characters?: { id: string; name: string; avatarUrl?: string; user_id?: string; race?: string; className?: string; level?: number }[];
+}
+
+export interface CampaignPartyInventory {
+    campaign_id: string;
+    inventory: InventoryItem[];
+    currency: Currency;
+}
+
+export interface CampaignRoll extends RollResult {
+    id: string;
+    campaign_id: string;
+    character_id: string;
+    character_name: string;
+}
+

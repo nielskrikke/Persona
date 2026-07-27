@@ -111,52 +111,105 @@ export const fetchSubraceDetail = async (index: string, userId?: string): Promis
 
 export const fetchClasses = async (userId?: string): Promise<APIReference[]> => {
     try {
-        const classes = await loadHomebrew('custom_classes', userId);
-        if (classes && classes.length > 0) {
-            return classes.map((c: any) => ({ index: c.index, name: c.name, url: "", isCustom: c.isCustom, is_homebrew: c.is_homebrew }));
-        }
+        const custom = await loadHomebrew('custom_classes', userId);
+        const customRefs = (custom || []).map((c: any) => ({
+            index: c.index || c.id || (c.name ? c.name.toLowerCase().replace(/\s+/g, '-') : ''),
+            name: c.name,
+            url: "",
+            isCustom: true,
+            is_homebrew: c.is_homebrew ?? false
+        }));
+        const standardRefs = CLASSES.map(c => ({ index: c.index, name: c.name, url: "" }));
+        const customIndices = new Set(customRefs.map(c => c.index.toLowerCase()));
+        const filteredStandard = standardRefs.filter(s => !customIndices.has(s.index.toLowerCase()));
+        return [...filteredStandard, ...customRefs];
     } catch (e) {}
-    return [];
+    return CLASSES.map(c => ({ index: c.index, name: c.name, url: "" }));
 };
 
 export const fetchClassDetail = async (index: string, userId?: string): Promise<ClassDetail | null> => {
+    const cleanIndex = index.toLowerCase().replace(/\s+/g, '-');
     try {
         const classes = await loadHomebrew('custom_classes', userId);
-        const found = classes.find((c: any) => c.index === index);
+        const found = classes.find((c: any) => 
+            c.index === index || 
+            c.id === index || 
+            c.index === cleanIndex ||
+            c.id === cleanIndex ||
+            (c.name && c.name.toLowerCase().replace(/\s+/g, '-') === cleanIndex)
+        );
         if (found) return found;
     } catch (e) {}
-    return null;
+    return CLASSES.find(c => c.index === index || c.index === cleanIndex || c.name.toLowerCase().replace(/\s+/g, '-') === cleanIndex) || null;
 };
 
 export const fetchSubclasses = async (classIndex: string, userId?: string): Promise<APIReference[]> => {
+    const cleanClassIndex = classIndex ? classIndex.toLowerCase().replace(/\s+/g, '-') : '';
     try {
-        const subclasses = await loadHomebrew('custom_subclasses', userId);
-        if (subclasses && subclasses.length > 0) {
-            return subclasses
-                .filter((s: any) => !classIndex || s.class?.index === classIndex || s.class_index === classIndex)
-                .map((s: any) => ({ index: s.index || s.id, name: s.name, url: "", isCustom: true, is_homebrew: s.is_homebrew ?? true }));
-        }
+        const custom = await loadHomebrew('custom_subclasses', userId);
+        const standardFiltered = SUBCLASSES
+            .filter(s => !classIndex || s.class?.index === classIndex || s.class_index === classIndex || s.class?.index === cleanClassIndex || s.class_index === cleanClassIndex)
+            .map(s => ({ index: s.index, name: s.name, url: "", isCustom: false }));
+
+        const customFiltered = (custom || [])
+            .filter((s: any) => !classIndex || s.class?.index === classIndex || s.class_index === classIndex || s.class?.index === cleanClassIndex || s.class_index === cleanClassIndex)
+            .map((s: any) => ({ 
+                index: s.index || s.id || (s.name ? s.name.toLowerCase().replace(/\s+/g, '-') : ''), 
+                name: s.name, 
+                url: "", 
+                isCustom: true, 
+                is_homebrew: s.is_homebrew ?? true 
+            }));
+
+        const customIndices = new Set(customFiltered.map(c => c.index));
+        const filteredStandard = standardFiltered.filter(s => !customIndices.has(s.index));
+        return [...filteredStandard, ...customFiltered];
     } catch (e) {}
-    return [];
+    return SUBCLASSES
+        .filter(s => !classIndex || s.class?.index === classIndex || s.class_index === classIndex || s.class?.index === cleanClassIndex || s.class_index === cleanClassIndex)
+        .map(s => ({ index: s.index, name: s.name, url: "" }));
 };
 
 export const fetchSubclassDetail = async (index: string, userId?: string): Promise<SubclassDetail | null> => {
+    const cleanIndex = index.toLowerCase().replace(/\s+/g, '-');
     try {
         const subclasses = await loadHomebrew('custom_subclasses', userId);
         const found = subclasses.find((s: any) => 
             s.index === index || 
             s.id === index || 
-            (s.name && s.name.toLowerCase().replace(/\s+/g, '-') === index)
+            s.index === cleanIndex ||
+            s.id === cleanIndex ||
+            (s.name && s.name.toLowerCase().replace(/\s+/g, '-') === cleanIndex) ||
+            (s.name && s.name.toLowerCase() === index.toLowerCase())
         );
         if (found) return found;
     } catch (e) {}
-    return null;
+    return SUBCLASSES.find(s => 
+        s.index === index || 
+        s.index === cleanIndex || 
+        (s.name && s.name.toLowerCase().replace(/\s+/g, '-') === cleanIndex) ||
+        (s.name && s.name.toLowerCase() === index.toLowerCase())
+    ) || null;
 };
 
 export const fetchEquipment = async (userId?: string): Promise<EquipmentDetail[]> => {
     try {
         const custom = await loadHomebrew('custom_equipment', userId);
-        return [...ALL_ITEMS, ...custom.map((i: any) => ({ ...i, name: `${i.name} (HB)` }))];
+        const customMap = new Map(custom.map((i: any) => [(i.index || i.name || '').toLowerCase(), i]));
+        const mergedStandard = ALL_ITEMS.map(item => {
+            const key = item.index.toLowerCase();
+            if (customMap.has(key)) {
+                const override = customMap.get(key);
+                customMap.delete(key);
+                return override;
+            }
+            return item;
+        });
+        const remainingCustom = Array.from(customMap.values()).map((i: any) => ({
+            ...i,
+            name: i.is_homebrew === false ? i.name : (i.name.endsWith('(HB)') ? i.name : `${i.name} (HB)`)
+        }));
+        return [...mergedStandard, ...remainingCustom];
     } catch (e) {}
     return ALL_ITEMS;
 };
@@ -164,11 +217,8 @@ export const fetchEquipment = async (userId?: string): Promise<EquipmentDetail[]
 export const fetchEquipmentDetail = async (index: string, userId?: string): Promise<EquipmentDetail | null> => {
     try {
         const custom = await loadHomebrew('custom_equipment', userId);
-        const item = [...ALL_ITEMS, ...custom].find(i => i.index === index);
-        if (item && custom.some((i: any) => i.index === index)) {
-            return { ...item, name: `${item.name} (HB)` };
-        }
-        return item || null;
+        const foundCustom = custom.find((i: any) => i.index === index || (i.name && i.name.toLowerCase().replace(/\s+/g, '-') === index));
+        if (foundCustom) return foundCustom;
     } catch (e) {}
     return ALL_ITEMS.find(i => i.index === index) || null;
 };
@@ -195,40 +245,50 @@ export const fetchBackgroundDetail = async (index: string, userId?: string): Pro
 export const fetchSpellsByClass = async (classIndex: string, userId?: string): Promise<SpellDetail[]> => {
     const custom = await loadHomebrew('custom_spells', userId).catch(() => []);
     const local = getLocalSpells(classIndex);
-    const customSpells = custom.map((s: any) => ({ ...s, name: `${s.name} (HB)` }));
-    return [...local, ...customSpells];
+    const customMap = new Map(custom.map((s: any) => [(s.index || s.name || '').toLowerCase(), s]));
+    const mergedLocal = local.map(s => {
+        const key = s.index.toLowerCase();
+        if (customMap.has(key)) {
+            const override = customMap.get(key);
+            customMap.delete(key);
+            return override;
+        }
+        return s;
+    });
+    const customSpells = Array.from(customMap.values()).map((s: any) => ({
+        ...s,
+        name: s.is_homebrew === false ? s.name : (s.name.endsWith('(HB)') ? s.name : `${s.name} (HB)`)
+    }));
+    return [...mergedLocal, ...customSpells];
 };
 
 export const fetchSpellsByClassAndLevel = async (classIndex: string, level: number, userId?: string): Promise<SpellDetail[]> => {
-    const custom = await loadHomebrew('custom_spells', userId).catch(() => []);
-    const local = getLocalSpells(classIndex).filter(s => s.level === level);
-    const customSpells = custom.filter((s: any) => s.level === level).map((s: any) => ({ ...s, name: `${s.name} (HB)` }));
-    return [...local, ...customSpells];
+    const spells = await fetchSpellsByClass(classIndex, userId);
+    return spells.filter(s => s.level === level);
 };
 
 export const fetchAllSpells = async (userId?: string): Promise<SpellDetail[]> => {
     const custom = await loadHomebrew('custom_spells', userId).catch(() => []);
-    const customSpells = custom.map((s: any) => ({ ...s, name: `${s.name} (HB)` }));
-    
     const classes = ['bard', 'cleric', 'druid', 'paladin', 'ranger', 'sorcerer', 'warlock', 'wizard', 'artificer'];
     const allLocal = classes.flatMap(c => getLocalSpells(c));
     
-    const all = [...allLocal, ...customSpells];
+    const customMap = new Map(custom.map((s: any) => [(s.index || s.name || '').toLowerCase(), s]));
     const spellMap = new Map<string, SpellDetail>();
     
-    all.forEach(s => {
-        const existing = spellMap.get(s.index);
-        if (existing) {
-            const existingClasses = existing.classes || [];
-            const newClasses = s.classes || [];
-            newClasses.forEach(nc => {
-                if (!existingClasses.some(ec => ec.name === nc.name)) {
-                     existing.classes = [...existingClasses, nc];
-                }
-            });
+    allLocal.forEach(s => {
+        const key = s.index.toLowerCase();
+        if (customMap.has(key)) {
+            const override = customMap.get(key);
+            customMap.delete(key);
+            spellMap.set(key, override);
         } else {
-            spellMap.set(s.index, { ...s, classes: [...(s.classes || [])] });
+            spellMap.set(key, { ...s, classes: [...(s.classes || [])] });
         }
+    });
+
+    customMap.forEach((s, key) => {
+        const displayName = s.is_homebrew === false ? s.name : (s.name.endsWith('(HB)') ? s.name : `${s.name} (HB)`);
+        spellMap.set(key, { ...s, name: displayName });
     });
 
     return Array.from(spellMap.values());
@@ -364,68 +424,90 @@ export const fetchTraitDetail = async (index: string, userId?: string): Promise<
 };
 
 export const fetchLevelFeatures = async (classIndex: string, level: number, userId?: string): Promise<any[]> => {
-    let classes: any[] = [];
+    let customClasses: any[] = [];
     try {
-        classes = await loadHomebrew('custom_classes', userId);
+        customClasses = await loadHomebrew('custom_classes', userId);
     } catch (e) {}
-    if (!classes || classes.length === 0) classes = CLASSES;
+    const allClasses = [...CLASSES, ...(customClasses || [])];
+    const cleanClassIndex = classIndex ? classIndex.toLowerCase().replace(/\s+/g, '-') : '';
 
-    const cls = classes.find((c: any) => c.index === classIndex);
+    const cls = allClasses.find((c: any) => 
+        c.index === classIndex || 
+        c.id === classIndex ||
+        c.index === cleanClassIndex ||
+        c.id === cleanClassIndex ||
+        (c.name && c.name.toLowerCase().replace(/\s+/g, '-') === cleanClassIndex)
+    );
     if (!cls) return [];
     
     const levelRow = cls.level_table?.find((l: any) => l.level === level);
-    if (!levelRow) return [];
+    if (!levelRow || !Array.isArray(levelRow.features)) return [];
 
     return levelRow.features
         .filter((fName: string) => fName !== "Subclass feature" && fName !== "Subclass Feature")
         .map((fName: string) => {
             const cleanName = fName.replace(/\s*\(.*?\)/g, '').trim();
+            const cleanFNameIndex = cleanName.toLowerCase().replace(/\s+/g, '-');
             const detail = cls.feature_details?.find((fd: any) => 
                 fd.name === fName || 
                 fd.name === cleanName ||
-                fd.name.toLowerCase() === cleanName.toLowerCase()
+                fd.name.toLowerCase() === cleanName.toLowerCase() ||
+                fd.index === cleanFNameIndex
             );
             if (detail) return detail;
-            return { index: fName.toLowerCase().replace(/\s+/g, '-'), name: fName, url: "", desc: [] };
+            return { index: cleanFNameIndex, name: fName, url: "", desc: [] };
         });
 };
 
 export const fetchClassLevels = async (classIndex: string, userId?: string): Promise<any[]> => {
-    let classes: any[] = [];
+    let customClasses: any[] = [];
     try {
-        classes = await loadHomebrew('custom_classes', userId);
+        customClasses = await loadHomebrew('custom_classes', userId);
     } catch (e) {}
-    if (!classes || classes.length === 0) classes = CLASSES;
+    const allClasses = [...CLASSES, ...(customClasses || [])];
+    const cleanClassIndex = classIndex ? classIndex.toLowerCase().replace(/\s+/g, '-') : '';
 
-    const cls = classes.find((c: any) => c.index === classIndex);
+    const cls = allClasses.find((c: any) => 
+        c.index === classIndex || 
+        c.id === classIndex ||
+        c.index === cleanClassIndex ||
+        c.id === cleanClassIndex ||
+        (c.name && c.name.toLowerCase().replace(/\s+/g, '-') === cleanClassIndex)
+    );
     if (!cls) return [];
     return (cls.level_table || []).map((row: any) => ({
         level: row.level,
-        features: row.features
+        features: (row.features || [])
             .filter((fName: string) => fName !== "Subclass feature" && fName !== "Subclass Feature")
             .map((fName: string) => {
                 const cleanName = fName.replace(/\s*\(.*?\)/g, '').trim();
+                const cleanFNameIndex = cleanName.toLowerCase().replace(/\s+/g, '-');
                 const detail = cls.feature_details?.find((fd: any) => 
                     fd.name === fName || 
-                    fd.name === cleanName
+                    fd.name === cleanName ||
+                    fd.index === cleanFNameIndex
                 );
                 if (detail) return detail;
-                return { name: fName, index: fName.toLowerCase().replace(/\s+/g, '-'), desc: [] };
+                return { name: fName, index: cleanFNameIndex, desc: [] };
             })
     }));
 };
 
 export const fetchSubclassLevels = async (subclassIndex: string, userId?: string): Promise<any[]> => {
-    let subclasses: any[] = [];
+    let customSubclasses: any[] = [];
     try {
-        subclasses = await loadHomebrew('custom_subclasses', userId);
+        customSubclasses = await loadHomebrew('custom_subclasses', userId);
     } catch (e) {}
-    if (!subclasses || subclasses.length === 0) subclasses = SUBCLASSES;
+    const allSubclasses = [...SUBCLASSES, ...(customSubclasses || [])];
+    const cleanSubIndex = subclassIndex ? subclassIndex.toLowerCase().replace(/\s+/g, '-') : '';
 
-    const sub = subclasses.find((s: any) => 
+    const sub = allSubclasses.find((s: any) => 
         s.index === subclassIndex || 
         s.id === subclassIndex || 
-        (s.name && s.name.toLowerCase().replace(/\s+/g, '-') === subclassIndex)
+        s.index === cleanSubIndex ||
+        s.id === cleanSubIndex ||
+        (s.name && s.name.toLowerCase().replace(/\s+/g, '-') === cleanSubIndex) ||
+        (s.name && s.name.toLowerCase() === subclassIndex.toLowerCase())
     );
     if (!sub) return [];
     
@@ -436,10 +518,12 @@ export const fetchSubclassLevels = async (subclassIndex: string, userId?: string
         if (!levelMap.has(lvl)) {
             levelMap.set(lvl, { level: lvl, features: [] });
         }
+        const featName = typeof feat === 'string' ? feat : (feat.name || feat.title || '');
+        const featIndex = (typeof feat === 'object' && feat.index) ? feat.index : featName.toLowerCase().replace(/\s+/g, '-');
         levelMap.get(lvl).features.push({
-            ...feat,
-            name: typeof feat === 'string' ? feat : (feat.name || ''),
-            index: feat.index || (typeof feat === 'string' ? feat : feat.name)?.toLowerCase().replace(/\s+/g, '-') || `feature-${lvl}`
+            ...(typeof feat === 'object' ? feat : {}),
+            name: featName,
+            index: featIndex
         });
     });
     return Array.from(levelMap.values());

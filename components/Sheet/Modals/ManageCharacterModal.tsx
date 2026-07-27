@@ -3,7 +3,7 @@ import Markdown from 'react-markdown';
 import { X, User, GraduationCap, Activity, Shield, Settings, Plus, Trash2, Save, Languages, Palette, Type, Dice5, Eye, EyeOff, Info, Sparkles, AlertTriangle, RotateCcw, AlertCircle } from 'lucide-react';
 import { CharacterState, APIReference, RaceDetail, SubraceDetail, BackgroundDetail, FeatDetail, ABILITY_NAMES, ABILITY_LABELS, AbilityScores, SpellDetail, LevelChoice, AbilityName } from '@/types';
 import { fetchClasses, fetchRaces, fetchSubraces, fetchBackgrounds, fetchFeatsList, fetchRaceDetail, fetchSubraceDetail, fetchBackgroundDetail, fetchSubclasses, fetchSubclassDetail, fetchSubclassLevels, fetchClassLevels, getLocalSpells, fetchLevelFeatures, fetchClassDetail, fetchAllSpells, RACES, SUBCLASSES } from '@/data/index';
-import { getSpellSlots, calculateModifier, SKILL_LIST } from '@/utils/rules';
+import { getSpellSlots, calculateModifier, SKILL_LIST, inferOptionEffects } from '@/utils/rules';
 import { CLASS_FEATURES, STANDARD_LANGUAGES, ARTISAN_TOOLS } from '../../../data/constants';
 import DiceRoller3D from '../Shared/DiceRoller3D';
 
@@ -1122,12 +1122,29 @@ const ManageCharacterModal = ({
             setLocalClassFeatures(prev => prev.filter(f => f.revertData?.choiceId !== choiceId));
         }
 
-        if (finalValue && selectedOption && typeof selectedOption !== 'string' && (selectedOption.effects || selectedOption.desc)) {
-            // Apply side effects
-            if (selectedOption.effects) {
-                const triggerEffects = selectedOption.effects.filter((e: any) => e.type.endsWith('_choice') || e.type === 'spell_access');
+        const selectedValues = Array.isArray(finalValue) ? finalValue : (finalValue ? [finalValue] : []);
+        const matchingOptions = selectedValues.map(val => {
+            const found = choice.options?.find((o: any) => {
+                if (typeof o === 'string') return o === val;
+                return (o.index || o.name) === val || o === val;
+            });
+            if (found) {
+                if (typeof found === 'string') {
+                    return { name: found, desc: '', effects: inferOptionEffects(found) };
+                }
+                const optEffects = (found.effects && found.effects.length > 0) ? found.effects : inferOptionEffects(found.name || found.index || '', found.desc);
+                return { ...found, effects: optEffects };
+            }
+            const valStr = typeof val === 'string' ? val : (val?.name || val?.index || '');
+            return { name: valStr, desc: '', effects: inferOptionEffects(valStr) };
+        }).filter(o => o && o.name);
+
+        if (matchingOptions.length > 0) {
+            const allSpells = await fetchAllSpells();
+            matchingOptions.forEach(selectedOption => {
+                const effects = selectedOption.effects || [];
+                const triggerEffects = effects.filter((e: any) => e.type.endsWith('_choice') || e.type === 'spell_access');
                 if (triggerEffects.length > 0) {
-                    const allSpells = await fetchAllSpells();
                     const newSubChoices = triggerEffects.map((e: any, idx: number) => {
                         let options: any[] = [];
                         if (e.options) {
@@ -1166,10 +1183,10 @@ const ManageCharacterModal = ({
                 }
 
                 // Passive effects
-                const passiveEffects = selectedOption.effects.filter((e: any) => !e.type.endsWith('_choice') && e.type !== 'spell_access');
+                const passiveEffects = effects.filter((e: any) => !e.type.endsWith('_choice') && e.type !== 'spell_access');
                 if (passiveEffects.length > 0 || selectedOption.desc) {
                     const virtualFeature = {
-                        index: `${choiceId}-feature`.toLowerCase(),
+                        index: `${choiceId}-${selectedOption.name}`.toLowerCase().replace(/[^a-z0-9]/g, '-'),
                         name: `${choice.label}: ${selectedOption.name}`,
                         level: choice.level,
                         source: choice.source,
@@ -1179,7 +1196,7 @@ const ManageCharacterModal = ({
                     };
                     setLocalClassFeatures(prev => [...prev, virtualFeature]);
                 }
-            }
+            });
         }
 
         if (choice.type === 'subclass') {

@@ -143,7 +143,7 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
                                     options: eff.options ? eff.options.map((o: any) => {
                                         if (typeof o === 'string') return o;
                                         // If it has a desc, preserve the whole object but ensure it has name/index
-                                        if (o.desc) return { ...o, index: o.index || o.name };
+                                        if (o.desc || o.effects) return { ...o, index: o.index || o.name, name: o.name || o.index };
                                         return (o.name || o.item?.name || o.index);
                                     }) : (eff.category === 'tool' ? TOOLS.map(t => t.name) : (eff.category === 'language' ? STANDARD_LANGUAGES : SKILL_LIST.map(s => s.name))),
                                     count: eff.count || 1,

@@ -13,63 +13,808 @@ interface HomebrewManagerModalProps {
     initialData?: any;
 }
 
+// Sub-component for defining IF condition requirements on mechanics/effects
+const CONDITION_OPTIONS = [
+    { id: 'wearing_armor', label: 'Wearing Armor' },
+    { id: 'heavy_armor', label: 'Heavy Armor' },
+    { id: 'medium_armor', label: 'Medium Armor' },
+    { id: 'light_armor', label: 'Light Armor' },
+    { id: 'using_shield', label: 'Using Shield' },
+    { id: 'two_handed', label: 'Two-Handed Weapon' },
+    { id: 'one_handed', label: 'One-Handed Weapon' },
+    { id: 'melee', label: 'Melee Weapon' },
+    { id: 'ranged', label: 'Ranged Weapon' },
+    { id: 'versatile', label: 'Versatile Weapon' },
+    { id: 'finesse', label: 'Finesse Weapon' },
+    { id: 'dual_wielding', label: 'Dual Wielding' },
+    { id: 'unarmed', label: 'Unarmed Strike / Open Hand' },
+    { id: 'unarmed_attack', label: 'Making Unarmed Attack' },
+    { id: 'no_weapon', label: 'No Weapons Held' },
+    { id: 'no_shield', label: 'No Shield Held' },
+];
+
+const RuleConditionInput: React.FC<{
+    conditions?: string[];
+    rule?: string;
+    onChange: (conditions: string[], rule: string) => void;
+}> = ({ conditions = [], rule = '', onChange }) => {
+    const generateAutoRule = (conds: string[]) => {
+        const parts = conds.map(c => {
+            const isNot = c.startsWith('not:') || c.startsWith('no_');
+            const baseId = c.replace(/^not:/, '').replace(/^no_/, '');
+            const mappedId = baseId === 'armor' ? 'wearing_armor' : baseId === 'shield' ? 'using_shield' : baseId === 'heavy_armor' ? 'heavy_armor' : baseId;
+            const label = CONDITION_OPTIONS.find(o => o.id === mappedId)?.label || mappedId.replace('_', ' ');
+            return isNot ? `NOT ${label}` : label;
+        });
+        return parts.length > 0 ? `If ${parts.join(' AND ')}` : '';
+    };
+
+    const addCondition = (id: string) => {
+        if (!id) return;
+        if (conditions.includes(id) || conditions.includes(`not:${id}`)) return;
+        const newConds = [...conditions, id];
+        const newRule = generateAutoRule(newConds);
+        onChange(newConds, newRule);
+    };
+
+    const toggleNotMode = (index: number) => {
+        const newConds = [...conditions];
+        const curr = newConds[index];
+        if (curr.startsWith('not:')) {
+            newConds[index] = curr.replace(/^not:/, '');
+        } else if (curr.startsWith('no_')) {
+            const base = curr.replace(/^no_/, '');
+            newConds[index] = base === 'armor' ? 'wearing_armor' : base === 'shield' ? 'using_shield' : base === 'heavy_armor' ? 'heavy_armor' : base;
+        } else {
+            newConds[index] = `not:${curr}`;
+        }
+        const newRule = generateAutoRule(newConds);
+        onChange(newConds, newRule);
+    };
+
+    const removeCondition = (index: number) => {
+        const newConds = conditions.filter((_, i) => i !== index);
+        const newRule = generateAutoRule(newConds);
+        onChange(newConds, newRule);
+    };
+
+    return (
+        <div className="bg-[#07080a] border border-gray-800 rounded p-2 text-xs space-y-2 mt-1 w-full">
+            <div className="flex items-center justify-between text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                <span>Requirements / Conditions:</span>
+                {conditions.length > 0 && (
+                    <span className="text-dnd-gold font-mono">{conditions.length} Active Condition{conditions.length > 1 ? 's' : ''}</span>
+                )}
+            </div>
+
+            {/* Dropdown to pick condition */}
+            <select
+                value=""
+                onChange={e => {
+                    addCondition(e.target.value);
+                }}
+                className="w-full bg-[#0d0e12] border border-gray-700 rounded p-1.5 text-[11px] text-gray-200 focus:border-dnd-gold outline-none cursor-pointer hover:border-gray-500 transition-colors"
+            >
+                <option value="">+ Add Condition / Requirement from Dropdown...</option>
+                {CONDITION_OPTIONS.map(opt => {
+                    const isAlreadyAdded = conditions.some(c => c === opt.id || c === `not:${opt.id}` || c === `no_${opt.id.replace('wearing_', '')}`);
+                    return (
+                        <option key={opt.id} value={opt.id} disabled={isAlreadyAdded}>
+                            {opt.label} {isAlreadyAdded ? '(Added)' : ''}
+                        </option>
+                    );
+                })}
+            </select>
+
+            {/* Selected conditions list */}
+            {conditions.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    {conditions.map((cond, idx) => {
+                        const isNot = cond.startsWith('not:') || cond.startsWith('no_');
+                        const baseId = cond.replace(/^not:/, '').replace(/^no_/, '');
+                        const mappedId = baseId === 'armor' ? 'wearing_armor' : baseId === 'shield' ? 'using_shield' : baseId === 'heavy_armor' ? 'heavy_armor' : baseId;
+                        const label = CONDITION_OPTIONS.find(o => o.id === mappedId)?.label || mappedId.replace('_', ' ');
+
+                        return (
+                            <div 
+                                key={`${cond}-${idx}`}
+                                className="inline-flex items-center gap-1.5 px-2 py-1 bg-[#12141a] border border-gray-700 rounded-md text-[11px] shadow-sm group"
+                            >
+                                <button
+                                    type="button"
+                                    onClick={() => toggleNotMode(idx)}
+                                    title="Click to toggle between IF and IF NOT"
+                                    className={`px-1.5 py-0.5 rounded text-[9px] font-black tracking-wider uppercase border transition-all ${
+                                        isNot 
+                                            ? 'bg-rose-950/80 text-rose-300 border-rose-600/60 hover:bg-rose-900 shadow-sm' 
+                                            : 'bg-emerald-950/80 text-emerald-300 border-emerald-600/60 hover:bg-emerald-900 shadow-sm'
+                                    }`}
+                                >
+                                    {isNot ? 'IF NOT' : 'IF'}
+                                </button>
+                                <span className="font-semibold text-gray-200">{label}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => removeCondition(idx)}
+                                    className="text-gray-500 hover:text-red-400 font-bold ml-1 text-xs transition-colors"
+                                    title="Remove condition"
+                                >
+                                    ×
+                                </button>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            <input 
+                type="text"
+                placeholder="Or custom IF statement (e.g. If Two-handed melee weapon)"
+                value={rule}
+                onChange={e => onChange(conditions, e.target.value)}
+                className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1 text-[11px] text-gray-200 placeholder-gray-600 focus:border-dnd-gold focus:outline-none"
+            />
+        </div>
+    );
+};
+
 // Sub-component for adding "Mechanics" to any feature or trait
 const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEffects: any[]) => void }) => {
-    const addEffect = () => onChange([...effects, { type: 'feature', name: '', description: '' }]);
+    const addEffect = () => onChange([...effects, { type: 'feature', name: '', desc: '' }]);
     const removeEffect = (i: number) => onChange(effects.filter((_, idx) => idx !== i));
     const updateEffect = (i: number, updates: any) => onChange(effects.map((e, idx) => idx === i ? { ...e, ...updates } : e));
 
     return (
-        <div className="space-y-3 bg-black/40 p-4 rounded-lg border border-gray-800">
-            <div className="flex justify-between items-center mb-2">
-                <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Mechanical Effects</span>
-                <button type="button" onClick={addEffect} className="text-[10px] bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-white">+ Add Logic</button>
+        <div className="space-y-4 bg-black/40 p-4 rounded-xl border border-gray-800/80">
+            <div className="flex justify-between items-center pb-2 border-b border-gray-800">
+                <span className="text-[10px] font-black text-dnd-gold uppercase tracking-widest">Mechanical Effects & Choices</span>
+                <button type="button" onClick={addEffect} className="text-[10px] bg-gray-800 hover:bg-gray-700 text-white px-2.5 py-1 rounded font-bold transition-colors">+ Add Mechanical Logic</button>
             </div>
-            {effects.map((eff, i) => (
-                <div key={i} className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-start border-b border-gray-800 pb-3 last:border-0">
-                    <select 
-                        value={eff.type} 
-                        onChange={e => updateEffect(i, { type: e.target.value })}
-                        className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-[10px] text-white"
-                    >
-                        <option value="feature">General Feature</option>
-                        <option value="stat_bonus">Stat Bonus (Flat)</option>
-                        <option value="resistance">Resistance</option>
-                        <option value="immunity">Immunity</option>
-                        <option value="bonus_action">Bonus Action</option>
-                        <option value="reaction">Reaction</option>
-                        <option value="proficiency">Proficiency</option>
-                    </select>
+            {(!effects || effects.length === 0) ? (
+                <p className="text-xs text-gray-500 italic p-2">No mechanical effects configured. Add logic for flat stat bonuses, resistances, or choice options like Fighting Styles.</p>
+            ) : (
+                effects.map((eff, i) => (
+                    <div key={i} className="bg-black/30 p-3 rounded-lg border border-gray-800 space-y-3 relative group">
+                        <div className="flex justify-between items-center gap-2">
+                            <div className="flex items-center gap-2 flex-grow">
+                                <span className="text-[9px] uppercase font-bold text-gray-500">Effect Type:</span>
+                                <select 
+                                    value={eff.type || 'feature'} 
+                                    onChange={e => {
+                                        const newType = e.target.value;
+                                        const updates: any = { type: newType };
+                                        if (newType === 'feature_choice') {
+                                            if (!eff.options) updates.options = [];
+                                            if (!eff.count) updates.count = 1;
+                                            if (!eff.name) updates.name = 'Choice Options';
+                                        }
+                                        updateEffect(i, updates);
+                                    }}
+                                    className="bg-[#0b0c0e] border border-gray-700 rounded p-1 text-xs text-white font-bold"
+                                >
+                                    <option value="feature">General Feature / Logic</option>
+                                    <option value="feature_choice">Feature Choice (Options e.g. Fighting Style, Maneuvers)</option>
+                                    <option value="unarmed_strike">Unarmed Strike / Natural Weapon Override</option>
+                                    <option value="extra_attack">Extra Attack / Additional Attack</option>
+                                    <option value="stat_bonus">Stat Bonus (Flat)</option>
+                                    <option value="resistance">Resistance</option>
+                                    <option value="immunity">Immunity</option>
+                                    <option value="proficiency">Proficiency</option>
+                                    <option value="proficiency_choice">Proficiency Choice</option>
+                                    <option value="expertise_choice">Expertise Choice</option>
+                                    <option value="bonus_action">Bonus Action</option>
+                                    <option value="action">Action</option>
+                                    <option value="reaction">Reaction</option>
+                                    <option value="advantage">Advantage</option>
+                                    <option value="spell_access">Spell Access</option>
+                                </select>
+                            </div>
+                            <button type="button" onClick={() => removeEffect(i)} className="text-red-500 text-xs hover:text-red-400 font-bold px-2 py-0.5 rounded hover:bg-red-500/10">
+                                Remove Effect
+                            </button>
+                        </div>
 
-                    {eff.type === 'stat_bonus' && (
-                        <>
-                            <select value={eff.stat} onChange={e => updateEffect(i, { stat: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-[10px] text-white">
-                                <option value="ac">AC</option>
-                                <option value="speed">Speed</option>
-                                <option value="hp_per_level">HP per Lvl</option>
-                                <option value="initiative">Initiative</option>
-                                <option value="str">Strength</option>
-                                <option value="dex">Dexterity</option>
-                                <option value="con">Constitution</option>
-                                <option value="int">Intelligence</option>
-                                <option value="wis">Wisdom</option>
-                                <option value="cha">Charisma</option>
-                            </select>
-                            <input type="number" placeholder="Value" value={eff.value} onChange={e => updateEffect(i, { value: parseInt(e.target.value) })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-[10px] text-white" />
-                        </>
-                    )}
+                        {/* General Feature */}
+                        {eff.type === 'feature' && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <input type="text" placeholder="Feature Name" value={eff.name || ''} onChange={e => updateEffect(i, { name: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white" />
+                                <input type="text" placeholder="Detail / Description" value={eff.desc || eff.description || ''} onChange={e => updateEffect(i, { desc: e.target.value, description: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white" />
+                            </div>
+                        )}
 
-                    {eff.type === 'resistance' && (
-                        <input type="text" placeholder="Type (e.g. Fire)" value={eff.value} onChange={e => updateEffect(i, { value: e.target.value })} className="col-span-2 bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-[10px] text-white" />
-                    )}
+                        {/* Feature Choice (Options) */}
+                        {eff.type === 'feature_choice' && (
+                            <div className="space-y-3 bg-black/40 p-3 rounded border border-gray-800/80">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="text-[9px] uppercase font-bold text-gray-400 block mb-1">Choice Group Title</label>
+                                        <input 
+                                            type="text" 
+                                            placeholder="Choice Title (e.g. Fighting Style)" 
+                                            value={eff.name || ''} 
+                                            onChange={e => updateEffect(i, { name: e.target.value })} 
+                                            className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" 
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[9px] uppercase font-bold text-gray-400 block mb-1">Selections Allowed</label>
+                                        <input 
+                                            type="number" 
+                                            min="1" 
+                                            placeholder="Choose Count" 
+                                            value={eff.count || 1} 
+                                            onChange={e => updateEffect(i, { count: Math.max(1, parseInt(e.target.value) || 1) })} 
+                                            className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" 
+                                        />
+                                    </div>
+                                </div>
 
-                    {eff.type !== 'stat_bonus' && eff.type !== 'resistance' && (
-                        <input type="text" placeholder="Detail" value={eff.name} onChange={e => updateEffect(i, { name: e.target.value })} className="col-span-2 bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-[10px] text-white" />
-                    )}
+                                <div className="border-t border-gray-800/80 pt-2">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-[10px] font-black text-dnd-gold uppercase tracking-wider">
+                                            Selectable Options ({eff.options?.length || 0})
+                                        </span>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => {
+                                                const currentOpts = Array.isArray(eff.options) ? eff.options : [];
+                                                updateEffect(i, { options: [...currentOpts, { name: '', desc: '', effects: [] }] });
+                                            }} 
+                                            className="text-[10px] bg-dnd-gold/20 hover:bg-dnd-gold/30 text-dnd-gold px-2 py-1 rounded font-bold transition-colors"
+                                        >
+                                            + Add Option
+                                        </button>
+                                    </div>
 
-                    <button type="button" onClick={() => removeEffect(i)} className="text-red-500 text-xs hover:text-red-400 mt-1">Remove Effect</button>
-                </div>
-            ))}
+                                    {(!eff.options || eff.options.length === 0) ? (
+                                        <p className="text-[11px] text-gray-500 italic p-2 bg-black/20 rounded border border-gray-800">
+                                            No options defined yet. Click "+ Add Option" to add selectable choices (e.g. Archery, Defense, Dueling).
+                                        </p>
+                                    ) : (
+                                        <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                                            {eff.options.map((opt: any, optIdx: number) => (
+                                                <div key={optIdx} className="bg-[#111215] p-3 rounded-lg border border-gray-800 relative group space-y-2">
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={() => {
+                                                            const newOpts = eff.options.filter((_: any, idx: number) => idx !== optIdx);
+                                                            updateEffect(i, { options: newOpts });
+                                                        }} 
+                                                        className="absolute top-2 right-2 text-red-500 hover:text-red-400 text-xs font-bold"
+                                                    >
+                                                        &times;
+                                                    </button>
+                                                    <div className="space-y-1.5 pr-6">
+                                                        <input 
+                                                            type="text" 
+                                                            placeholder="Option Name (e.g. Archery)" 
+                                                            value={opt.name || ''} 
+                                                            onChange={e => {
+                                                                const newOpts = [...eff.options];
+                                                                newOpts[optIdx] = { ...newOpts[optIdx], name: e.target.value };
+                                                                updateEffect(i, { options: newOpts });
+                                                            }} 
+                                                            className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" 
+                                                        />
+                                                        <textarea 
+                                                            placeholder="Option Description & Mechanics..." 
+                                                            value={Array.isArray(opt.desc) ? opt.desc.join('\n') : (opt.desc || opt.description || '')} 
+                                                            onChange={e => {
+                                                                const newOpts = [...eff.options];
+                                                                newOpts[optIdx] = { ...newOpts[optIdx], desc: e.target.value };
+                                                                updateEffect(i, { options: newOpts });
+                                                            }} 
+                                                            className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-gray-300 h-16 resize-y font-serif" 
+                                                        />
+                                                    </div>
+
+                                                    {/* Option-level Mechanical Effects */}
+                                                    <div className="mt-2 border-t border-gray-800/80 pt-2">
+                                                        <div className="flex justify-between items-center mb-1.5">
+                                                            <span className="text-[9px] uppercase font-bold text-dnd-gold tracking-wider">
+                                                                Option Mechanical Effects ({(opt.effects || []).length})
+                                                            </span>
+                                                            <button 
+                                                                type="button" 
+                                                                onClick={() => {
+                                                                    const newOpts = [...eff.options];
+                                                                    const currentOptEffects = newOpts[optIdx].effects || [];
+                                                                    const lastEff = currentOptEffects.length > 0 ? currentOptEffects[currentOptEffects.length - 1] : null;
+                                                                    const inheritedConditions = lastEff?.conditions ? [...lastEff.conditions] : [];
+                                                                    const inheritedRule = lastEff?.rule || lastEff?.condition || '';
+                                                                    
+                                                                    newOpts[optIdx] = { 
+                                                                        ...newOpts[optIdx], 
+                                                                        effects: [
+                                                                            ...currentOptEffects, 
+                                                                            { 
+                                                                                type: 'stat_bonus', 
+                                                                                stat: 'attack', 
+                                                                                value: 1,
+                                                                                conditions: inheritedConditions,
+                                                                                rule: inheritedRule,
+                                                                                condition: inheritedRule
+                                                                            }
+                                                                        ] 
+                                                                    };
+                                                                    updateEffect(i, { options: newOpts });
+                                                                }}
+                                                                className="text-[9px] bg-gray-800 hover:bg-gray-700 text-gray-300 px-2 py-0.5 rounded font-bold transition-colors"
+                                                            >
+                                                                + Add Option Effect
+                                                            </button>
+                                                        </div>
+                                                        {(opt.effects && opt.effects.length > 0) ? (
+                                                            <div className="space-y-1.5">
+                                                                {opt.effects.map((subEff: any, subIdx: number) => (
+                                                                    <div key={subIdx} className="bg-black/50 p-2 rounded border border-gray-800 flex flex-col gap-2 text-xs">
+                                                                        <div className="flex flex-wrap gap-2 items-center w-full">
+                                                                            <select 
+                                                                                value={subEff.type || 'stat_bonus'} 
+                                                                                onChange={e => {
+                                                                                    const newOpts = [...eff.options];
+                                                                                    const currentOptEffects = [...(newOpts[optIdx].effects || [])];
+                                                                                    currentOptEffects[subIdx] = { ...currentOptEffects[subIdx], type: e.target.value };
+                                                                                    newOpts[optIdx] = { ...newOpts[optIdx], effects: currentOptEffects };
+                                                                                    updateEffect(i, { options: newOpts });
+                                                                                }}
+                                                                                className="bg-[#0b0c0e] border border-gray-700 rounded p-1 text-[10px] text-white font-bold"
+                                                                            >
+                                                                                <option value="stat_bonus">Stat Bonus</option>
+                                                                                <option value="resistance">Resistance</option>
+                                                                                <option value="immunity">Immunity</option>
+                                                                                <option value="proficiency">Proficiency</option>
+                                                                                <option value="bonus_action">Bonus Action</option>
+                                                                                <option value="action">Action</option>
+                                                                                <option value="reaction">Reaction</option>
+                                                                                <option value="advantage">Advantage</option>
+                                                                                <option value="spell_access">Spell Access</option>
+                                                                                <option value="feature">General Logic</option>
+                                                                            </select>
+
+                                                                            {subEff.type === 'stat_bonus' && (
+                                                                                <>
+                                                                                    <select 
+                                                                                        value={subEff.stat || 'ac'} 
+                                                                                        onChange={e => {
+                                                                                            const newOpts = [...eff.options];
+                                                                                            const currentOptEffects = [...(newOpts[optIdx].effects || [])];
+                                                                                            currentOptEffects[subIdx] = { ...currentOptEffects[subIdx], stat: e.target.value };
+                                                                                            newOpts[optIdx] = { ...newOpts[optIdx], effects: currentOptEffects };
+                                                                                            updateEffect(i, { options: newOpts });
+                                                                                        }}
+                                                                                        className="bg-[#0b0c0e] border border-gray-700 rounded p-1 text-[10px] text-white"
+                                                                                    >
+                                                                                        <option value="ac">AC</option>
+                                                                                        <option value="speed">Speed (Walking)</option>
+                                                                                        <option value="swim_speed">Swimming Speed</option>
+                                                                                        <option value="climb_speed">Climbing Speed</option>
+                                                                                        <option value="fly_speed">Flying Speed</option>
+                                                                                        <option value="hp_per_level">HP/Lvl</option>
+                                                                                        <option value="initiative">Initiative</option>
+                                                                                        <option value="str">STR</option>
+                                                                                        <option value="dex">DEX</option>
+                                                                                        <option value="con">CON</option>
+                                                                                        <option value="int">INT</option>
+                                                                                        <option value="wis">WIS</option>
+                                                                                        <option value="cha">CHA</option>
+                                                                                        <option value="attack">All Weapon Attacks</option>
+                                                                                        <option value="melee_attack">Melee Attack Roll</option>
+                                                                                        <option value="ranged_attack">Ranged Attack Roll</option>
+                                                                                        <option value="one_handed_attack">One-Handed Attack Roll</option>
+                                                                                        <option value="two_handed_attack">Two-Handed Attack Roll</option>
+                                                                                        <option value="spell_attack">Spell Attack Roll</option>
+                                                                                        <option value="spell_save_dc">Spell Save DC</option>
+                                                                                        <option value="bonus_damage">Bonus Damage (All)</option>
+                                                                                        <option value="weapon_damage">All Weapon Damage</option>
+                                                                                        <option value="melee_damage">Melee Weapon Damage</option>
+                                                                                        <option value="ranged_damage">Ranged Weapon Damage</option>
+                                                                                        <option value="one_handed_damage">One-Handed Weapon Damage</option>
+                                                                                        <option value="two_handed_damage">Two-Handed Weapon Damage</option>
+                                                                                        <option value="one_handed_melee_damage">One-Handed Melee Damage</option>
+                                                                                        <option value="two_handed_melee_damage">Two-Handed Melee Damage</option>
+                                                                                    </select>
+                                                                                    <input 
+                                                                                        type="number" 
+                                                                                        placeholder="Val" 
+                                                                                        value={subEff.value !== undefined ? subEff.value : 1} 
+                                                                                        onChange={e => {
+                                                                                            const newOpts = [...eff.options];
+                                                                                            const currentOptEffects = [...(newOpts[optIdx].effects || [])];
+                                                                                            currentOptEffects[subIdx] = { ...currentOptEffects[subIdx], value: parseInt(e.target.value) || 0 };
+                                                                                            newOpts[optIdx] = { ...newOpts[optIdx], effects: currentOptEffects };
+                                                                                            updateEffect(i, { options: newOpts });
+                                                                                        }}
+                                                                                        className="w-14 bg-[#0b0c0e] border border-gray-700 rounded p-1 text-[10px] text-white font-bold text-center"
+                                                                                    />
+                                                                                </>
+                                                                            )}
+
+                                                                            {(subEff.type === 'resistance' || subEff.type === 'immunity') && (
+                                                                                <input 
+                                                                                    type="text" 
+                                                                                    placeholder="Damage Type" 
+                                                                                    value={subEff.value || subEff.damage_type || ''} 
+                                                                                    onChange={e => {
+                                                                                        const newOpts = [...eff.options];
+                                                                                        const currentOptEffects = [...(newOpts[optIdx].effects || [])];
+                                                                                        currentOptEffects[subIdx] = { ...currentOptEffects[subIdx], value: e.target.value, damage_type: e.target.value };
+                                                                                        newOpts[optIdx] = { ...newOpts[optIdx], effects: currentOptEffects };
+                                                                                        updateEffect(i, { options: newOpts });
+                                                                                    }}
+                                                                                    className="flex-grow bg-[#0b0c0e] border border-gray-700 rounded p-1 text-[10px] text-white"
+                                                                                />
+                                                                            )}
+
+                                                                            {subEff.type === 'proficiency' && (
+                                                                                <input 
+                                                                                    type="text" 
+                                                                                    placeholder="Proficiency" 
+                                                                                    value={subEff.name || subEff.value || ''} 
+                                                                                    onChange={e => {
+                                                                                        const newOpts = [...eff.options];
+                                                                                        const currentOptEffects = [...(newOpts[optIdx].effects || [])];
+                                                                                        currentOptEffects[subIdx] = { ...currentOptEffects[subIdx], name: e.target.value, value: e.target.value };
+                                                                                        newOpts[optIdx] = { ...newOpts[optIdx], effects: currentOptEffects };
+                                                                                        updateEffect(i, { options: newOpts });
+                                                                                    }}
+                                                                                    className="flex-grow bg-[#0b0c0e] border border-gray-700 rounded p-1 text-[10px] text-white"
+                                                                                />
+                                                                            )}
+
+                                                                            {(subEff.type === 'action' || subEff.type === 'bonus_action' || subEff.type === 'reaction' || subEff.type === 'feature') && (
+                                                                                <>
+                                                                                    <input 
+                                                                                        type="text" 
+                                                                                        placeholder="Name" 
+                                                                                        value={subEff.name || ''} 
+                                                                                        onChange={e => {
+                                                                                            const newOpts = [...eff.options];
+                                                                                            const currentOptEffects = [...(newOpts[optIdx].effects || [])];
+                                                                                            currentOptEffects[subIdx] = { ...currentOptEffects[subIdx], name: e.target.value };
+                                                                                            newOpts[optIdx] = { ...newOpts[optIdx], effects: currentOptEffects };
+                                                                                            updateEffect(i, { options: newOpts });
+                                                                                        }}
+                                                                                        className="bg-[#0b0c0e] border border-gray-700 rounded p-1 text-[10px] text-white font-bold"
+                                                                                    />
+                                                                                    <input 
+                                                                                        type="text" 
+                                                                                        placeholder="Desc" 
+                                                                                        value={subEff.desc || ''} 
+                                                                                        onChange={e => {
+                                                                                            const newOpts = [...eff.options];
+                                                                                            const currentOptEffects = [...(newOpts[optIdx].effects || [])];
+                                                                                            currentOptEffects[subIdx] = { ...currentOptEffects[subIdx], desc: e.target.value };
+                                                                                            newOpts[optIdx] = { ...newOpts[optIdx], effects: currentOptEffects };
+                                                                                            updateEffect(i, { options: newOpts });
+                                                                                        }}
+                                                                                        className="flex-grow bg-[#0b0c0e] border border-gray-700 rounded p-1 text-[10px] text-white"
+                                                                                    />
+                                                                                </>
+                                                                            )}
+
+                                                                            {subEff.type === 'advantage' && (
+                                                                                <input 
+                                                                                    type="text" 
+                                                                                    placeholder="Target (e.g. Perception)" 
+                                                                                    value={subEff.stat || subEff.target || ''} 
+                                                                                    onChange={e => {
+                                                                                        const newOpts = [...eff.options];
+                                                                                        const currentOptEffects = [...(newOpts[optIdx].effects || [])];
+                                                                                        currentOptEffects[subIdx] = { ...currentOptEffects[subIdx], stat: e.target.value, target: e.target.value };
+                                                                                        newOpts[optIdx] = { ...newOpts[optIdx], effects: currentOptEffects };
+                                                                                        updateEffect(i, { options: newOpts });
+                                                                                    }}
+                                                                                    className="flex-grow bg-[#0b0c0e] border border-gray-700 rounded p-1 text-[10px] text-white"
+                                                                                />
+                                                                            )}
+
+                                                                            {subEff.type === 'spell_access' && (
+                                                                                <input 
+                                                                                    type="text" 
+                                                                                    placeholder="Spell Name" 
+                                                                                    value={subEff.spell || subEff.name || ''} 
+                                                                                    onChange={e => {
+                                                                                        const newOpts = [...eff.options];
+                                                                                        const currentOptEffects = [...(newOpts[optIdx].effects || [])];
+                                                                                        currentOptEffects[subIdx] = { ...currentOptEffects[subIdx], spell: e.target.value, name: e.target.value };
+                                                                                        newOpts[optIdx] = { ...newOpts[optIdx], effects: currentOptEffects };
+                                                                                        updateEffect(i, { options: newOpts });
+                                                                                    }}
+                                                                                    className="flex-grow bg-[#0b0c0e] border border-gray-700 rounded p-1 text-[10px] text-white font-bold"
+                                                                                />
+                                                                            )}
+
+                                                                            <div className="flex items-center gap-1 ml-auto">
+                                                                                <button 
+                                                                                    type="button" 
+                                                                                    onClick={() => {
+                                                                                        const newOpts = [...eff.options];
+                                                                                        const currentOptEffects = [...(newOpts[optIdx].effects || [])];
+                                                                                        const cloned = JSON.parse(JSON.stringify(subEff));
+                                                                                        currentOptEffects.splice(subIdx + 1, 0, cloned);
+                                                                                        newOpts[optIdx] = { ...newOpts[optIdx], effects: currentOptEffects };
+                                                                                        updateEffect(i, { options: newOpts });
+                                                                                    }}
+                                                                                    className="text-[9px] bg-gray-800 hover:bg-gray-700 text-dnd-gold font-bold px-1.5 py-0.5 rounded transition-colors"
+                                                                                    title="Duplicate this effect with its rules"
+                                                                                >
+                                                                                    + Duplicate
+                                                                                </button>
+                                                                                <button 
+                                                                                    type="button" 
+                                                                                    onClick={() => {
+                                                                                        const newOpts = [...eff.options];
+                                                                                        const currentOptEffects = (newOpts[optIdx].effects || []).filter((_: any, sIdx: number) => sIdx !== subIdx);
+                                                                                        newOpts[optIdx] = { ...newOpts[optIdx], effects: currentOptEffects };
+                                                                                        updateEffect(i, { options: newOpts });
+                                                                                    }}
+                                                                                    className="text-red-500 hover:text-red-400 font-bold px-1 text-sm"
+                                                                                    title="Remove effect"
+                                                                                >
+                                                                                    &times;
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        <RuleConditionInput 
+                                                                            conditions={subEff.conditions || []}
+                                                                            rule={subEff.rule || subEff.condition || ''}
+                                                                            onChange={(newConditions, newRule) => {
+                                                                                const newOpts = [...eff.options];
+                                                                                const currentOptEffects = [...(newOpts[optIdx].effects || [])];
+                                                                                currentOptEffects[subIdx] = { ...currentOptEffects[subIdx], conditions: newConditions, rule: newRule, condition: newRule };
+                                                                                newOpts[optIdx] = { ...newOpts[optIdx], effects: currentOptEffects };
+                                                                                updateEffect(i, { options: newOpts });
+                                                                            }}
+                                                                        />
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <p className="text-[10px] text-gray-500 italic">No specific mechanical effects for this option. Click "+ Add Option Effect" to attach mechanics (e.g. +1 AC, Fire Resistance).</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Unarmed Strike / Natural Weapon Override */}
+                        {(eff.type === 'unarmed_strike' || eff.type === 'natural_weapon') && (
+                            <div className="space-y-3 bg-black/40 p-3 rounded border border-gray-800">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <div>
+                                        <label className="text-[9px] uppercase font-bold text-gray-400 block mb-1">Feature / Attack Name</label>
+                                        <input 
+                                            type="text" 
+                                            placeholder="e.g. Cat's Claws, Hungry Jaws, Unarmed Strike" 
+                                            value={eff.name || ''} 
+                                            onChange={e => updateEffect(i, { name: e.target.value })} 
+                                            className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" 
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[9px] uppercase font-bold text-gray-400 block mb-1">Damage Die</label>
+                                        <select 
+                                            value={eff.die || eff.damage_die || '1d4'} 
+                                            onChange={e => updateEffect(i, { die: e.target.value, damage_die: e.target.value })} 
+                                            className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold cursor-pointer"
+                                        >
+                                            <option value="1d4">1d4</option>
+                                            <option value="1d6">1d6</option>
+                                            <option value="1d8">1d8</option>
+                                            <option value="1d10">1d10</option>
+                                            <option value="1d12">1d12</option>
+                                            <option value="2d4">2d4</option>
+                                            <option value="2d6">2d6</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <div>
+                                        <label className="text-[9px] uppercase font-bold text-gray-400 block mb-1">Damage Type</label>
+                                        <select 
+                                            value={eff.damage_type || 'Slashing'} 
+                                            onChange={e => updateEffect(i, { damage_type: e.target.value })} 
+                                            className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold cursor-pointer"
+                                        >
+                                            <option value="Slashing">Slashing</option>
+                                            <option value="Piercing">Piercing</option>
+                                            <option value="Bludgeoning">Bludgeoning</option>
+                                            <option value="Acid">Acid</option>
+                                            <option value="Cold">Cold</option>
+                                            <option value="Fire">Fire</option>
+                                            <option value="Force">Force</option>
+                                            <option value="Lightning">Lightning</option>
+                                            <option value="Necrotic">Necrotic</option>
+                                            <option value="Poison">Poison</option>
+                                            <option value="Psychic">Psychic</option>
+                                            <option value="Radiant">Radiant</option>
+                                            <option value="Thunder">Thunder</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-[9px] uppercase font-bold text-gray-400 block mb-1">Ability Modifier</label>
+                                        <select 
+                                            value={eff.ability || 'str'} 
+                                            onChange={e => updateEffect(i, { ability: e.target.value, stat: e.target.value })} 
+                                            className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold cursor-pointer"
+                                        >
+                                            <option value="str">Strength (STR)</option>
+                                            <option value="dex">Dexterity (DEX)</option>
+                                            <option value="con">Constitution (CON)</option>
+                                            <option value="int">Intelligence (INT)</option>
+                                            <option value="wis">Wisdom (WIS)</option>
+                                            <option value="cha">Charisma (CHA)</option>
+                                            <option value="highest">Highest of STR / DEX</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <RuleConditionInput 
+                                    conditions={eff.conditions || []}
+                                    rule={eff.rule || eff.condition || ''}
+                                    onChange={(newConditions, newRule) => updateEffect(i, { conditions: newConditions, rule: newRule, condition: newRule })}
+                                />
+                            </div>
+                        )}
+
+                        {/* Extra / Additional Attack */}
+                        {(eff.type === 'extra_attack' || eff.type === 'additional_attack') && (
+                            <div className="space-y-3 bg-black/40 p-3 rounded border border-gray-800">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <div>
+                                        <label className="text-[9px] uppercase font-bold text-gray-400 block mb-1">Calculation Mode</label>
+                                        <select 
+                                            value={eff.mode || 'bonus'} 
+                                            onChange={e => updateEffect(i, { mode: e.target.value })} 
+                                            className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold cursor-pointer"
+                                        >
+                                            <option value="bonus">Bonus (+X Attacks per Attack Action)</option>
+                                            <option value="set">Set Total Attacks (e.g. 2, 3, 4)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-[9px] uppercase font-bold text-gray-400 block mb-1">Number of Attacks</label>
+                                        <input 
+                                            type="number" 
+                                            min="1" 
+                                            placeholder="e.g. 1 (for +1 additional attack)" 
+                                            value={eff.value !== undefined ? eff.value : (eff.count !== undefined ? eff.count : 1)} 
+                                            onChange={e => updateEffect(i, { value: parseInt(e.target.value) || 1, count: parseInt(e.target.value) || 1 })} 
+                                            className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" 
+                                        />
+                                    </div>
+                                </div>
+
+                                <RuleConditionInput 
+                                    conditions={eff.conditions || []}
+                                    rule={eff.rule || eff.condition || ''}
+                                    onChange={(newConditions, newRule) => updateEffect(i, { conditions: newConditions, rule: newRule, condition: newRule })}
+                                />
+                            </div>
+                        )}
+
+                        {/* Stat Bonus */}
+                        {eff.type === 'stat_bonus' && (
+                            <div className="space-y-2">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <select value={eff.stat || 'ac'} onChange={e => updateEffect(i, { stat: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white">
+                                        <option value="ac">Armor Class (AC)</option>
+                                        <option value="extra_attack">Additional Attacks (+1 per Attack Action)</option>
+                                        <option value="speed">Speed (Walking)</option>
+                                        <option value="swim_speed">Swimming Speed</option>
+                                        <option value="climb_speed">Climbing Speed</option>
+                                        <option value="fly_speed">Flying Speed</option>
+                                        <option value="unarmed_attack">Unarmed Strike Attack Roll</option>
+                                        <option value="unarmed_damage">Unarmed Strike Damage</option>
+                                        <option value="hp_per_level">HP / Level</option>
+                                        <option value="initiative">Initiative Bonus</option>
+                                        <option value="str">Strength</option>
+                                        <option value="dex">Dexterity</option>
+                                        <option value="con">Constitution</option>
+                                        <option value="int">Intelligence</option>
+                                        <option value="wis">Wisdom</option>
+                                        <option value="cha">Charisma</option>
+                                        <option value="attack">All Weapon Attacks</option>
+                                        <option value="melee_attack">Melee Attack Roll</option>
+                                        <option value="ranged_attack">Ranged Attack Roll</option>
+                                        <option value="one_handed_attack">One-Handed Attack Roll</option>
+                                        <option value="two_handed_attack">Two-Handed Attack Roll</option>
+                                        <option value="spell_attack">Spell Attack Roll</option>
+                                        <option value="spell_save_dc">Spell Save DC</option>
+                                        <option value="bonus_damage">Bonus Damage (All)</option>
+                                        <option value="weapon_damage">All Weapon Damage</option>
+                                        <option value="melee_damage">Melee Weapon Damage</option>
+                                        <option value="ranged_damage">Ranged Weapon Damage</option>
+                                        <option value="one_handed_damage">One-Handed Weapon Damage</option>
+                                        <option value="two_handed_damage">Two-Handed Weapon Damage</option>
+                                        <option value="one_handed_melee_damage">One-Handed Melee Damage</option>
+                                        <option value="two_handed_melee_damage">Two-Handed Melee Damage</option>
+                                    </select>
+                                    <input type="number" placeholder="Bonus Value (e.g. 1 or 2)" value={eff.value !== undefined ? eff.value : ''} onChange={e => updateEffect(i, { value: parseInt(e.target.value) || 0 })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" />
+                                </div>
+                                <RuleConditionInput 
+                                    conditions={eff.conditions || []}
+                                    rule={eff.rule || eff.condition || ''}
+                                    onChange={(newConditions, newRule) => updateEffect(i, { conditions: newConditions, rule: newRule, condition: newRule })}
+                                />
+                            </div>
+                        )}
+
+                        {/* Resistance or Immunity */}
+                        {(eff.type === 'resistance' || eff.type === 'immunity') && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <input type="text" placeholder="Damage Type (e.g. Fire, Poison, Slashing)" value={eff.value || eff.damage_type || ''} onChange={e => updateEffect(i, { value: e.target.value, damage_type: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white" />
+                                <input type="text" placeholder="Condition / Context (optional)" value={eff.condition || ''} onChange={e => updateEffect(i, { condition: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white" />
+                            </div>
+                        )}
+
+                        {/* Proficiency */}
+                        {eff.type === 'proficiency' && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <input type="text" placeholder="Proficiency Name (e.g. Athletics, Heavy Armor, Perception)" value={eff.name || eff.value || ''} onChange={e => updateEffect(i, { name: e.target.value, value: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white" />
+                                <select value={eff.category || 'skill'} onChange={e => updateEffect(i, { category: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white">
+                                    <option value="skill">Skill</option>
+                                    <option value="armor">Armor</option>
+                                    <option value="weapon">Weapon</option>
+                                    <option value="tool">Tool</option>
+                                    <option value="saving_throw">Saving Throw</option>
+                                </select>
+                            </div>
+                        )}
+
+                        {/* Proficiency Choice */}
+                        {eff.type === 'proficiency_choice' && (
+                            <div className="grid grid-cols-2 gap-2">
+                                <input type="number" min="1" placeholder="Choice Count (e.g. 2)" value={eff.count || 1} onChange={e => updateEffect(i, { count: parseInt(e.target.value) || 1 })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" />
+                                <select value={eff.category || 'skill'} onChange={e => updateEffect(i, { category: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white">
+                                    <option value="skill">Skill Choice</option>
+                                    <option value="tool">Tool Choice</option>
+                                    <option value="language">Language Choice</option>
+                                </select>
+                            </div>
+                        )}
+
+                        {/* Expertise Choice */}
+                        {eff.type === 'expertise_choice' && (
+                            <div>
+                                <label className="text-[9px] uppercase font-bold text-gray-400 block mb-1">Number of Expertise Skills to Choose</label>
+                                <input type="number" min="1" placeholder="Count (e.g. 2)" value={eff.count || 1} onChange={e => updateEffect(i, { count: parseInt(e.target.value) || 1 })} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" />
+                            </div>
+                        )}
+
+                        {/* Actions / Bonus Actions / Reactions */}
+                        {(eff.type === 'bonus_action' || eff.type === 'action' || eff.type === 'reaction') && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <input type="text" placeholder="Action Name" value={eff.name || ''} onChange={e => updateEffect(i, { name: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" />
+                                <input type="text" placeholder="Action Description" value={eff.desc || eff.description || ''} onChange={e => updateEffect(i, { desc: e.target.value, description: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white" />
+                            </div>
+                        )}
+
+                        {/* Advantage */}
+                        {eff.type === 'advantage' && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <input type="text" placeholder="Stat / Roll (e.g. Perception, DEX Saves)" value={eff.stat || eff.target || ''} onChange={e => updateEffect(i, { stat: e.target.value, target: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white" />
+                                <input type="text" placeholder="Condition (e.g. against magic)" value={eff.condition || ''} onChange={e => updateEffect(i, { condition: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white" />
+                            </div>
+                        )}
+
+                        {/* Spell Access */}
+                        {eff.type === 'spell_access' && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <input type="text" placeholder="Spell Name (e.g. Misty Step)" value={eff.spell || eff.name || ''} onChange={e => updateEffect(i, { spell: e.target.value, name: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" />
+                                <input type="text" placeholder="Free Casts / Usage (e.g. 1/Long Rest)" value={eff.condition || eff.reset || ''} onChange={e => updateEffect(i, { condition: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white" />
+                            </div>
+                        )}
+                    </div>
+                ))
+            )}
         </div>
     );
 };
@@ -166,6 +911,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     const [bgTools, setBgTools] = useState<string[]>([]);
     const [bgFeatureName, setBgFeatureName] = useState('');
     const [bgEquipment, setBgEquipment] = useState('');
+    const [bgEffects, setBgEffects] = useState<any[]>([]);
 
     // Feat fields
     const [featPrerequisite, setFeatPrerequisite] = useState('');
@@ -255,7 +1001,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
             creature: 'custom_beasts',
             feat: 'custom_feats'
         };
-        const data = await loadHomebrew(tableMap[activeTab] as any, currentUser.id);
+        const data = await loadHomebrew(tableMap[activeTab] as any, currentUser?.id);
         setList(data);
         setLoading(false);
     };
@@ -285,7 +1031,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
         setAbilityBonuses([]); setTraits([]); setSize('Medium');
         setSaves([]); setLevelFeatures([]); setHitDie(8);
         setCasterType('none'); setCasterAbility('int');
-        setBgSkills([]); setBgFeatureName(''); setBgTools([]); setBgEquipment('');
+        setBgSkills([]); setBgFeatureName(''); setBgTools([]); setBgEquipment(''); setBgEffects([]);
         setArmorProfs([]); setWeaponProfs([]);
         setSpellLevel(0); setSpellSchool('Evocation'); setSpellCastTime('1 Action'); setSpellRange('60 feet'); setSpellDuration('Instantaneous'); setSpellRitual(false); setSpellConcentration(false);
         setSpellComponents(['V', 'S']); setSpellMaterial(''); setSpellHigherLevel(''); setSpellHasAttack(false); setSpellHasSave(false); setSpellDmgFormula('');
@@ -418,6 +1164,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
             setBgTools(item.tool_proficiencies || []);
             setBgFeatureName(item.feature?.name || '');
             setBgEquipment(Array.isArray(item.equipment) ? item.equipment.join(', ') : (item.equipment || ''));
+            setBgEffects(item.effects || item.feature?.effects || []);
         } else if (activeTab === 'feat') {
             setFeatPrerequisite(item.prerequisite || '');
             setFeatEffects(item.effects || []);
@@ -464,13 +1211,11 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                 creature: 'custom_beasts',
                 feat: 'custom_feats'
             };
-            await deleteHomebrew(tableMap[activeTab] as any, id, currentUser.id);
+            await deleteHomebrew(tableMap[activeTab] as any, id, currentUser?.id);
             setDeleteConfirmId(null);
             fetchList();
         } catch (err) {
             console.error(err);
-            // We can't use alert() in iframe easily, so we'll just log it for now or use a toast if available
-            // For now, let's just reset the confirm state
             setDeleteConfirmId(null);
         } finally {
             setLoading(false);
@@ -503,7 +1248,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                 payload = { 
                     ...payload, speed: speeds.walk, size, alignment: description,
                     ability_bonuses: abilityBonuses.map(ab => ({ ability_score: { index: ab.stat, name: ab.stat.toUpperCase() }, bonus: ab.bonus })),
-                    traits: traits.map(t => ({ index: t.name.toLowerCase().replace(/\s+/g, '-'), name: t.name, desc: [t.desc], modifiers: t.effects })),
+                    traits: traits.map(t => ({ index: t.name.toLowerCase().replace(/\s+/g, '-'), name: t.name, desc: [t.desc], modifiers: t.effects, effects: t.effects })),
                     fly_speed: speeds.fly > 0 ? speeds.fly : undefined,
                     swim_speed: speeds.swim > 0 ? speeds.swim : undefined,
                     climb_speed: speeds.climb > 0 ? speeds.climb : undefined
@@ -530,9 +1275,13 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                 };
             } else if (activeTab === 'background') {
                 payload = { 
-                    ...payload, skill_proficiencies: bgSkills, equipment: bgEquipment.split(',').map(s => s.trim()), 
+                    ...payload, 
+                    skill_proficiencies: bgSkills, 
+                    tool_proficiencies: bgTools,
+                    equipment: bgEquipment.split(',').filter(Boolean).map(s => s.trim()), 
                     currency: { cp: 0, sp: 0, ep: 0, gp: 10, pp: 0 }, 
-                    feature: { name: bgFeatureName || 'Custom Feature', desc: [description] } 
+                    effects: bgEffects,
+                    feature: { name: bgFeatureName || 'Custom Feature', desc: [description], effects: bgEffects } 
                 };
             } else if (activeTab === 'spell') {
                 payload = {
@@ -594,7 +1343,11 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                 };
             }
 
-            await saveHomebrew(tableMap[activeTab] as any, currentUser.id, payload, isSharedGlobally, editingId || undefined);
+            if (editingId) {
+                payload.id = editingId;
+            }
+
+            await saveHomebrew(tableMap[activeTab] as any, currentUser?.id, payload, isSharedGlobally, editingId || undefined);
             alert(`${name} has been ${editingId ? 'updated in' : 'added to'} the Persona network.`);
             resetForm();
             fetchList();
@@ -723,7 +1476,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                             {item.is_homebrew && <span className="text-[9px] bg-dnd-gold/20 text-dnd-gold px-1.5 py-0.5 rounded font-mono">(HB)</span>}
                                         </div>
                                         <div className="flex justify-between items-center mt-1">
-                                            <div className="text-[8px] text-gray-600 uppercase font-black">By {item.user_id === currentUser.id ? 'You' : item.user_id?.substring(0,8)}</div>
+                                            <div className="text-[8px] text-gray-600 uppercase font-black">By {currentUser?.id && item.user_id === currentUser.id ? 'You' : (item.user_id?.substring(0,8) || 'Archive')}</div>
                                             <div className="flex items-center gap-2">
                                                 {item.is_public ? (
                                                     <span className="text-[7px] bg-green-900/30 text-green-500 px-1 rounded border border-green-900/50 uppercase font-black">Global</span>
@@ -737,7 +1490,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                 >
                                                     <Copy size={12} />
                                                 </button>
-                                                {item.user_id === currentUser.id && (
+                                                {currentUser?.id && item.user_id === currentUser.id && (
                                                     <div className="flex items-center gap-1">
                                                         {deleteConfirmId === item.id ? (
                                                             <div className="flex items-center gap-1 animate-in fade-in slide-in-from-right-2 duration-200">
@@ -816,7 +1569,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                          {activeTab !== 'spell' && (
                                              <div className="md:col-span-2">
                                                  <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Flavor Text / Lore</label>
-                                                 <textarea required value={description} onChange={e => setDescription(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-800 rounded-lg p-4 text-sm text-gray-400 h-32 resize-none outline-none focus:border-dnd-gold shadow-inner font-serif italic" placeholder="The origins of this legend date back to..." />
+                                                 <textarea value={description} onChange={e => setDescription(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-800 rounded-lg p-4 text-sm text-gray-400 h-32 resize-none outline-none focus:border-dnd-gold shadow-inner font-serif italic" placeholder="The origins of this legend date back to..." />
                                              </div>
                                          )}
                                      </div>
@@ -1021,7 +1774,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                             <div className="space-y-4">
                                                 <div>
                                                     <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Spell Effect</label>
-                                                    <textarea required value={description} onChange={e => setDescription(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-800 rounded-lg p-4 text-sm text-gray-300 h-40 resize-none outline-none focus:border-dnd-gold shadow-inner font-serif leading-relaxed" placeholder="Describe the magical effect..." />
+                                                    <textarea value={description} onChange={e => setDescription(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-800 rounded-lg p-4 text-sm text-gray-300 h-40 resize-none outline-none focus:border-dnd-gold shadow-inner font-serif leading-relaxed" placeholder="Describe the magical effect..." />
                                                 </div>
                                                 <div>
                                                     <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">At Higher Levels</label>
@@ -1449,102 +2202,11 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                 <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Special Feature Name</label>
                                                 <input type="text" value={bgFeatureName} onChange={e => setBgFeatureName(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-800 rounded p-3 text-white text-sm font-serif" placeholder="e.g. Position of Privilege" />
                                             </div>
+                                            <div>
+                                                <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Mechanical Effects & Choices</label>
+                                                <EffectEditor effects={bgEffects} onChange={setBgEffects} />
+                                            </div>
                                         </section>
-                                    </div>
-                                )}
-
-                                {activeTab === 'spell' && (
-                                    <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block">Level</label>
-                                                <select value={spellLevel} onChange={e => setSpellLevel(parseInt(e.target.value))} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-3 text-white">
-                                                    <option value={0}>Cantrip</option>
-                                                    {[1,2,3,4,5,6,7,8,9].map(l => <option key={l} value={l}>Level {l}</option>)}
-                                                </select>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block">School</label>
-                                                <select value={spellSchool} onChange={e => setSpellSchool(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-3 text-white">
-                                                    {SPELL_SCHOOLS.map(s => <option key={s} value={s}>{s}</option>)}
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block">Casting Time</label>
-                                                <input type="text" value={spellCastTime} onChange={e => setSpellCastTime(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-3 text-white" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block">Range</label>
-                                                <input type="text" value={spellRange} onChange={e => setSpellRange(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-3 text-white" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block">Duration</label>
-                                                <input type="text" value={spellDuration} onChange={e => setSpellDuration(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-3 text-white" />
-                                            </div>
-                                        </div>
-                                        <div className="flex gap-6">
-                                            <label className="flex items-center gap-3 cursor-pointer">
-                                                <input type="checkbox" checked={spellConcentration} onChange={e => setSpellConcentration(e.target.checked)} className="w-4 h-4 rounded border-gray-700 bg-black" />
-                                                <span className="text-[10px] font-black uppercase text-gray-400">Concentration</span>
-                                            </label>
-                                            <label className="flex items-center gap-3 cursor-pointer">
-                                                <input type="checkbox" checked={spellRitual} onChange={e => setSpellRitual(e.target.checked)} className="w-4 h-4 rounded border-gray-700 bg-black" />
-                                                <span className="text-[10px] font-black uppercase text-gray-400">Ritual</span>
-                                            </label>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {activeTab === 'item' && (
-                                    <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block">Category</label>
-                                                <select value={itemCategory} onChange={e => setItemCategory(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-3 text-white">
-                                                    <option>Wondrous Item</option><option>Weapon</option><option>Armor</option><option>Consumable</option><option>Tool</option>
-                                                </select>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block">Rarity</label>
-                                                <select value={itemRarity} onChange={e => setItemRarity(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-3 text-white">
-                                                    <option>Common</option><option>Uncommon</option><option>Rare</option><option>Very Rare</option><option>Legendary</option><option>Artifact</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block">Weight (lb)</label>
-                                                <input type="number" value={itemWeight} onChange={e => setItemWeight(parseFloat(e.target.value))} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-3 text-white" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block">Cost (e.g. 10 gp)</label>
-                                                <input type="text" value={itemCost} onChange={e => setItemCost(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-3 text-white" />
-                                            </div>
-                                            <div className="flex items-center pt-6">
-                                                <label className="flex items-center gap-3 cursor-pointer">
-                                                    <input type="checkbox" checked={itemAttunement} onChange={e => setItemAttunement(e.target.checked)} className="w-4 h-4 rounded border-gray-700 bg-black" />
-                                                    <span className="text-[10px] font-black uppercase text-gray-400">Requires Attunement</span>
-                                                </label>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-4">
-                                            <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block">Modifiers</label>
-                                            <div className="space-y-2">
-                                                {itemModifiers.map((mod, i) => (
-                                                    <div key={i} className="flex gap-2 items-center bg-black/20 p-2 rounded border border-gray-800">
-                                                        <select value={mod.type} onChange={e => { const n = [...itemModifiers]; n[i].type = e.target.value; setItemModifiers(n); }} className="bg-[#0b0c0e] text-white border border-gray-700 rounded p-1 text-[10px]">
-                                                            <option value="bonus">Bonus</option><option value="set">Set</option><option value="resistance">Resistance</option>
-                                                        </select>
-                                                        <input type="text" placeholder="Target" value={mod.target} onChange={e => { const n = [...itemModifiers]; n[i].target = e.target.value; setItemModifiers(n); }} className="flex-grow bg-[#0b0c0e] text-white border border-gray-700 rounded p-1 text-[10px]" />
-                                                        <input type="text" placeholder="Value" value={mod.value} onChange={e => { const n = [...itemModifiers]; n[i].value = e.target.value; setItemModifiers(n); }} className="w-16 bg-[#0b0c0e] text-white border border-gray-700 rounded p-1 text-[10px] text-center" />
-                                                        <button type="button" onClick={() => setItemModifiers(itemModifiers.filter((_, idx) => idx !== i))} className="text-red-500 px-2">&times;</button>
-                                                    </div>
-                                                ))}
-                                                <button type="button" onClick={() => setItemModifiers([...itemModifiers, { type: 'bonus', target: 'ac', value: 1 }])} className="text-[10px] text-dnd-gold hover:underline">+ Add Modifier</button>
-                                            </div>
-                                        </div>
                                     </div>
                                 )}
 
