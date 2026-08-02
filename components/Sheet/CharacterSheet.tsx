@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Markdown from 'react-markdown';
-import { Sparkles, Plus, X, Maximize, Search, Info } from 'lucide-react';
+import { Sparkles, Plus, X, Maximize, Search, Info, Heart, Skull, AlertOctagon } from 'lucide-react';
 import { CharacterState, ABILITY_NAMES, ABILITY_LABELS, RollResult, AbilityName, SpellDetail, InventoryItem, Currency, RuleEntry, CreatureDetail, EldritchCannonDetail, SteelDefenderDetail, EquipmentDetail, ItemModifier } from '../../types';
 import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount } from '../../utils/rules';
 import { rollDice } from '../../utils/dice';
@@ -58,6 +58,72 @@ const getTextString = (val: any): string => {
     if (Array.isArray(val)) return val.map(getTextString).join(' ');
     if (typeof val === 'object') return JSON.stringify(val);
     return String(val);
+};
+
+const parseDamageBonus = (val: any): { flat: number; dice: string[] } => {
+    if (val === null || val === undefined || val === '') {
+        return { flat: 0, dice: [] };
+    }
+    if (typeof val === 'number') {
+        return { flat: isNaN(val) ? 0 : val, dice: [] };
+    }
+    const str = String(val).trim();
+    if (!str) return { flat: 0, dice: [] };
+
+    const diceRegex = /([+-]?\s*\d*d\d+)/gi;
+    const diceMatches = (str.match(diceRegex) || []) as string[];
+    const dice: string[] = [];
+    
+    diceMatches.forEach((m: string) => {
+        let clean = m.replace(/\s+/g, '');
+        if (clean.startsWith('+')) clean = clean.substring(1);
+        if (clean) dice.push(clean);
+    });
+
+    const remainingStr = str.replace(diceRegex, ' ');
+    const numMatches = (remainingStr.match(/([+-]?\s*\d+)/g) || []) as string[];
+    let flat = 0;
+    numMatches.forEach((n: string) => {
+        const cleanNum = n.replace(/\s+/g, '');
+        if (cleanNum && cleanNum !== '+' && cleanNum !== '-') {
+            const parsed = parseInt(cleanNum, 10);
+            if (!isNaN(parsed)) {
+                flat += parsed;
+            }
+        }
+    });
+
+    return { flat, dice };
+};
+
+const combineDamageParts = (baseDmg: string, extraFlat: number, extraDice: string[]): string => {
+    if (!baseDmg || baseDmg === 'None' || baseDmg === '0') {
+        if (extraDice.length === 0 && extraFlat === 0) return '0';
+        if (extraDice.length === 0) return `${extraFlat}`;
+        const diceStr = extraDice.join(' + ');
+        return extraFlat !== 0 ? `${diceStr} ${formatModifier(extraFlat)}` : diceStr;
+    }
+
+    if (baseDmg === 'See Desc') {
+        if (extraDice.length === 0 && extraFlat === 0) return 'See Desc';
+        const diceStr = extraDice.length > 0 ? ` + ${extraDice.join(' + ')}` : '';
+        const flatStr = extraFlat !== 0 ? ` ${formatModifier(extraFlat)}` : '';
+        return `See Desc${diceStr}${flatStr}`;
+    }
+
+    const parsedBase = parseDamageBonus(baseDmg);
+    const allDice = [...parsedBase.dice, ...extraDice];
+    const totalFlat = parsedBase.flat + extraFlat;
+
+    if (allDice.length === 0) {
+        return totalFlat !== 0 ? `${totalFlat}` : '0';
+    }
+
+    const diceStr = allDice.join(' + ');
+    if (totalFlat !== 0) {
+        return `${diceStr} ${formatModifier(totalFlat)}`;
+    }
+    return diceStr;
 };
 
 const getCharacterSpecificRules = (character: CharacterState): RuleEntry[] => {
@@ -1141,7 +1207,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
     useEffect(() => { setVisualRules([...STATIC_RULES, ...getCharacterSpecificRules(character)]); }, [character]);
 
-    const roll = (formula: string, label: string, preResult?: RollResult) => {
+    const roll = (formula: string, label: string, preResult?: RollResult): RollResult => {
         const result = preResult || rollDice(formula, label);
         const diceToRoll: { type: string, result: number }[] = [];
         const parts = formula.toLowerCase().split('+');
@@ -1178,6 +1244,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             }).catch(console.error);
         }
         setTimeout(() => { setLogs(current => current.filter(l => l.timestamp !== result.timestamp)); }, 5000);
+        return result;
     };
 
     const handlePickACard = (isFree = false, specificCardName?: string, cost = 1) => {
@@ -2409,19 +2476,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     }
                 }
 
-                if (type === 'stat_bonus') {
-                    if (target === 'unarmed_attack') {
+                if (type === 'stat_bonus' || type === 'bonus') {
+                    if (target === 'unarmed_attack' || target === 'melee_attack' || target === 'attack') {
                         unarmedHitBonus += Number(m.value) || 0;
-                    } else if (target === 'unarmed_damage') {
-                        if (typeof m.value === 'number') {
-                            unarmedDmgBonus += m.value;
-                        } else if (typeof m.value === 'string') {
-                            if (m.value.includes('d')) {
-                                extraUnarmedParts.push(m.value);
-                            } else {
-                                unarmedDmgBonus += parseInt(m.value) || 0;
-                            }
-                        }
+                    } else if (target === 'unarmed_damage' || target === 'melee_damage' || target === 'damage' || target === 'bonus_damage') {
+                        const parsed = parseDamageBonus(m.value !== undefined ? m.value : (m.bonus !== undefined ? m.bonus : m.die));
+                        unarmedDmgBonus += parsed.flat;
+                        extraUnarmedParts.push(...parsed.dice);
                     }
                 }
             }
@@ -2457,12 +2518,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         let baseUnarmedDmgStr = '';
         const totalDmgMod = unarmedDmgMod + unarmedDmgBonus;
         if (unarmedDie === '1') {
-            baseUnarmedDmgStr = `${1 + totalDmgMod}`;
+            if (extraUnarmedParts.length > 0) {
+                baseUnarmedDmgStr = combineDamageParts('', totalDmgMod, extraUnarmedParts);
+            } else {
+                baseUnarmedDmgStr = `${1 + totalDmgMod}`;
+            }
         } else {
-            baseUnarmedDmgStr = `${unarmedDie}${formatModifier(totalDmgMod)}`;
-        }
-        if (extraUnarmedParts.length > 0) {
-            baseUnarmedDmgStr += ` + ${extraUnarmedParts.join(' + ')}`;
+            baseUnarmedDmgStr = combineDamageParts(unarmedDie, totalDmgMod, extraUnarmedParts);
         }
 
         const { hit: unarmedHit, damage: unarmedDmg } = applyOverrides(prof + unarmedHitMod + unarmedHitBonus, baseUnarmedDmgStr);
@@ -2848,8 +2910,17 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 }
             }
 
-            let itemHitBonus = 0; let itemDamageBonus = 0;
-            item.modifiers?.forEach(mod => { if (mod.type === 'bonus') { if (mod.target === 'attack') itemHitBonus += Number(mod.value); if (mod.target === 'damage') itemDamageBonus += Number(mod.value); } });
+            let itemHitBonus = 0; let itemDamageBonus = 0; let itemExtraDamageDice: string[] = [];
+            item.modifiers?.forEach(mod => { 
+                if (mod.type === 'bonus') { 
+                    if (mod.target === 'attack') itemHitBonus += Number(mod.value) || 0; 
+                    if (mod.target === 'damage') {
+                        const parsed = parseDamageBonus(mod.value);
+                        itemDamageBonus += parsed.flat;
+                        itemExtraDamageDice.push(...parsed.dice);
+                    }
+                } 
+            });
 
             const isTwoHanded = Boolean(item.wieldedTwoHanded || notes.includes('Two-Handed') || properties.some((p: any) => typeof p === 'string' ? p.toLowerCase().includes('two-handed') : (p?.name || '').toLowerCase().includes('two-handed')));
             const isOneHanded = !isTwoHanded;
@@ -2858,6 +2929,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
             let extraAttackBonus = 0;
             let extraDamageBonus = 0;
+            let extraDamageDice: string[] = [];
 
             activeModifiers.forEach(m => {
                 if (m.type === 'bonus' || m.type === 'stat_bonus') {
@@ -2865,36 +2937,36 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     const passesRule = checkModifierRule(m, { isOneHanded, isTwoHanded, isMeleeWeapon, isRangedWeapon, versatileDamage: item.versatileDamage });
 
                     if (passesRule) {
-                        const val = Number(m.value || 0);
+                        const valStr = m.value !== undefined ? m.value : (m.bonus !== undefined ? m.bonus : m.die);
 
                         // ATTACK BONUSES
                         if (stat === 'attack' || stat === 'weapon_attack') {
-                            extraAttackBonus += val;
+                            extraAttackBonus += Number(valStr) || 0;
                         } else if (stat === 'ranged_attack' && isRangedWeapon) {
-                            extraAttackBonus += val;
+                            extraAttackBonus += Number(valStr) || 0;
                         } else if (stat === 'melee_attack' && isMeleeWeapon) {
-                            extraAttackBonus += val;
+                            extraAttackBonus += Number(valStr) || 0;
                         } else if (stat === 'one_handed_attack' && isOneHanded) {
-                            extraAttackBonus += val;
+                            extraAttackBonus += Number(valStr) || 0;
                         } else if (stat === 'two_handed_attack' && isTwoHanded) {
-                            extraAttackBonus += val;
+                            extraAttackBonus += Number(valStr) || 0;
                         }
 
                         // DAMAGE / BONUS DAMAGE
-                        if (stat === 'weapon_damage' || stat === 'damage' || stat === 'bonus_damage') {
-                            extraDamageBonus += val;
-                        } else if (stat === 'melee_damage' && isMeleeWeapon) {
-                            extraDamageBonus += val;
-                        } else if (stat === 'ranged_damage' && isRangedWeapon) {
-                            extraDamageBonus += val;
-                        } else if (stat === 'one_handed_damage' && isOneHanded) {
-                            extraDamageBonus += val;
-                        } else if (stat === 'two_handed_damage' && isTwoHanded) {
-                            extraDamageBonus += val;
-                        } else if (stat === 'one_handed_melee_damage' && isOneHanded && isMeleeWeapon) {
-                            extraDamageBonus += val;
-                        } else if (stat === 'two_handed_melee_damage' && isTwoHanded && isMeleeWeapon) {
-                            extraDamageBonus += val;
+                        const isDamageStat = (
+                            stat === 'weapon_damage' || stat === 'damage' || stat === 'bonus_damage' ||
+                            (stat === 'melee_damage' && isMeleeWeapon) ||
+                            (stat === 'ranged_damage' && isRangedWeapon) ||
+                            (stat === 'one_handed_damage' && isOneHanded) ||
+                            (stat === 'two_handed_damage' && isTwoHanded) ||
+                            (stat === 'one_handed_melee_damage' && isOneHanded && isMeleeWeapon) ||
+                            (stat === 'two_handed_melee_damage' && isTwoHanded && isMeleeWeapon)
+                        );
+
+                        if (isDamageStat) {
+                            const parsed = parseDamageBonus(valStr);
+                            extraDamageBonus += parsed.flat;
+                            extraDamageDice.push(...parsed.dice);
                         }
                     }
                 }
@@ -2905,17 +2977,14 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const isWieldingTwoHanded = item.wieldedTwoHanded || notes.includes('Two-Handed');
             
             let currentDamageDice = damageDice;
-            let currentDmgBonus = itemDamageBonus + extraDamageBonus;
-
             if (isWieldingTwoHanded && item.versatileDamage) {
                 currentDamageDice = item.versatileDamage.damage_dice;
             }
 
-            if (hasDueling && !isWieldingTwoHanded) {
-                currentDmgBonus += 2;
-            }
+            const allExtraDice = [...itemExtraDamageDice, ...extraDamageDice];
+            const totalFlatDmgMod = statMod + itemDamageBonus + extraDamageBonus + (hasDueling && !isWieldingTwoHanded ? 2 : 0);
 
-            const baseDamage = currentDamageDice === '0' ? '0' : `${currentDamageDice}${formatModifier(statMod + currentDmgBonus)}`;
+            const baseDamage = combineDamageParts(currentDamageDice, totalFlatDmgMod, allExtraDice);
             const { hit: finalHit, damage: finalDamage } = applyOverrides(baseHit, baseDamage);
 
             const finalNotes = [...notes];
@@ -2928,7 +2997,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
             let displayDamage = finalDamage === '0' ? 'None' : finalDamage;
             if (isThrown && item.thrownDamage && item.thrownDamage !== currentDamageDice) {
-                const { damage: finalThrownDamage } = applyOverrides(null, `${item.thrownDamage}${formatModifier(statMod + currentDmgBonus)}`);
+                const thrownBase = combineDamageParts(item.thrownDamage, totalFlatDmgMod, allExtraDice);
+                const { damage: finalThrownDamage } = applyOverrides(null, thrownBase);
                 displayDamage = `${finalDamage} / ${finalThrownDamage}`;
             }
 
@@ -2957,13 +3027,34 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             if (desc.includes('spell attack') || spell.attack_type !== undefined) {
                 let dmgStr = getSpellDamageString(spell, character.level, spell.level || 1);
                 
+                let spellFlatBonus = 0;
+                let spellExtraDice: string[] = [];
+                let spellAttackBonus = 0;
+
+                activeModifiers.forEach(m => {
+                    if (m.type === 'bonus' || m.type === 'stat_bonus') {
+                        const stat = (m.stat || m.target || '').toLowerCase();
+                        if (checkModifierRule(m, { isSpell: true })) {
+                            const valStr = m.value !== undefined ? m.value : (m.bonus !== undefined ? m.bonus : m.die);
+                            if (stat === 'spell_attack') {
+                                spellAttackBonus += Number(valStr) || 0;
+                            } else if (stat === 'spell_damage' || stat === 'bonus_damage' || stat === 'damage') {
+                                const parsed = parseDamageBonus(valStr);
+                                spellFlatBonus += parsed.flat;
+                                spellExtraDice.push(...parsed.dice);
+                            }
+                        }
+                    }
+                });
+
                 // Agonizing Blast damage bonus
                 if (spell.name === 'Eldritch Blast' && character.classFeatures.some(f => f.name === 'Agonizing Blast')) {
-                    dmgStr = `${dmgStr}${formatModifier(chaMod)}`;
+                    spellFlatBonus += chaMod;
                 }
 
+                const combinedSpellDmg = combineDamageParts(dmgStr || '', spellFlatBonus, spellExtraDice);
                 const dc = (spell as any).dc?.dc_type?.name?.substring(0, 3).toUpperCase();
-                const { hit: spellHit, damage: spellDmg } = applyOverrides(spellAttack, dmgStr || 'See Desc');
+                const { hit: spellHit, damage: spellDmg } = applyOverrides(spellAttack + spellAttackBonus, combinedSpellDmg || 'See Desc');
                 
                 let spellAttackCount = 1;
                 if (spell.name === 'Eldritch Blast') {
@@ -3005,7 +3096,24 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 hit = (action.isProficient ? prof : 0) + mod + (action.bonus || 0);
             }
 
-            const { hit: finalHit, damage: finalDamage } = applyOverrides(hit, action.damage || '0');
+            let actionFlatBonus = 0;
+            let actionExtraDice: string[] = [];
+            activeModifiers.forEach(m => {
+                if (m.type === 'bonus' || m.type === 'stat_bonus') {
+                    const stat = (m.stat || m.target || '').toLowerCase();
+                    if (checkModifierRule(m)) {
+                        if (stat === 'damage' || stat === 'bonus_damage') {
+                            const valStr = m.value !== undefined ? m.value : (m.bonus !== undefined ? m.bonus : m.die);
+                            const parsed = parseDamageBonus(valStr);
+                            actionFlatBonus += parsed.flat;
+                            actionExtraDice.push(...parsed.dice);
+                        }
+                    }
+                }
+            });
+
+            const combinedActionDmg = combineDamageParts(action.damage || '0', actionFlatBonus, actionExtraDice);
+            const { hit: finalHit, damage: finalDamage } = applyOverrides(hit, combinedActionDmg);
 
             attacks.push({ 
                 id: action.id, 
@@ -3385,6 +3493,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 onClose={() => setShowHealthManager(false)} 
                 onUpdate={(updates) => setCharacter(prev => ({ ...prev, ...updates }))} 
                 onTakeDamage={handleDamageTrigger} 
+                onRoll={roll}
             />
             <ShortRestModal isOpen={showShortRestModal} character={character} onUpdate={(updates) => setCharacter(prev => ({...prev, ...updates}))} onClose={() => setShowShortRestModal(false)} onRoll={roll} />
             <CustomActionModal 
@@ -3673,10 +3782,86 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                      }
                                  />
                              ))}
-                             <div onClick={() => setCharacter(p => ({...p, inspiration: !p.inspiration}))} className="flex flex-col items-center justify-center w-16 h-16 md:w-20 md:h-20 border border-gray-600 rounded bg-[#1b1c20]/80 cursor-pointer hover:border-dnd-gold"><div className={`w-6 h-6 border-2 transform rotate-45 ${character.inspiration ? 'bg-dnd-gold border-dnd-gold' : 'border-gray-500'}`}></div><div className="text-[8px] font-bold text-gray-500 uppercase mt-1 text-center leading-none">Heroic<br/>Inspiration</div></div>
-                             <div className={`flex flex-col h-16 md:h-20 border rounded bg-[#1b1c20]/80 overflow-hidden min-w-[140px] cursor-pointer transition-colors border-gray-600 hover:border-dnd-gold`} onClick={() => setShowHealthManager(true)}>
-                                 <div className="flex-grow flex items-center justify-between px-3 gap-2"><div className="flex flex-col items-center"><span className="text-[9px] font-bold text-gray-500 uppercase">Current</span><span className={`text-xl font-bold text-white`}>{character.currentHp}</span></div><span className="text-gray-600 text-xl font-light">/</span><div className="flex flex-col items-center"><span className="text-[9px] font-bold text-gray-500 uppercase">Max</span><span className="text-xl font-bold text-gray-400">{character.maxHp}</span></div><div className="w-px h-8 bg-gray-700/50 mx-1"></div><div className="flex flex-col items-center"><span className="text-[9px] font-bold text-gray-500 uppercase">Temp</span><span className="text-lg font-bold text-gray-300">{character.tempHp || '--'}</span></div></div>
-                                 <div className={`py-0.5 text-center border-t bg-[#0b0c0e]/50 border-gray-600/50`}><span className={`text-[9px] font-bold uppercase text-gray-500`}>Hit Points</span></div>
+                             <div 
+                                 onClick={() => setCharacter(p => ({...p, inspiration: !p.inspiration}))} 
+                                 title={character.inspiration ? "Heroic Inspiration Active (Click to toggle)" : "Click to toggle Heroic Inspiration"}
+                                 className={`flex flex-col items-center justify-between w-16 h-16 md:w-20 md:h-20 p-1.5 md:p-2 border rounded cursor-pointer transition-all duration-200 select-none group ${
+                                     character.inspiration 
+                                         ? 'bg-[#232018] border-dnd-gold shadow-[0_0_12px_rgba(201,173,106,0.25)]' 
+                                         : 'bg-[#1b1c20]/80 border-gray-600 hover:border-dnd-gold/70 hover:bg-[#1f2025]'
+                                 }`}
+                             >
+                                 <div className="flex-1 flex items-center justify-center">
+                                     <div 
+                                         className={`w-3.5 h-3.5 md:w-4 md:h-4 border-2 transform rotate-45 transition-all duration-200 ${
+                                             character.inspiration 
+                                                 ? 'bg-dnd-gold border-dnd-gold scale-110 shadow-[0_0_8px_rgba(201,173,106,0.8)]' 
+                                                 : 'border-gray-500 group-hover:border-dnd-gold group-hover:scale-105'
+                                         }`}
+                                     />
+                                 </div>
+                                 <div className={`text-[8px] md:text-[9px] font-bold uppercase text-center leading-tight transition-colors ${
+                                     character.inspiration ? 'text-dnd-gold' : 'text-gray-500 group-hover:text-gray-400'
+                                 }`}>
+                                     Heroic<br/>Inspiration
+                                 </div>
+                             </div>
+                             <div 
+                                 className={`flex flex-col h-16 md:h-20 border rounded overflow-hidden min-w-[150px] cursor-pointer transition-all duration-200 select-none ${
+                                     character.currentHp === 0 
+                                         ? 'bg-red-950/40 border-red-600 shadow-[0_0_12px_rgba(239,68,68,0.3)] hover:border-red-400' 
+                                         : 'bg-[#1b1c20]/80 border-gray-600 hover:border-dnd-gold'
+                                 }`} 
+                                 onClick={() => setShowHealthManager(true)}
+                             >
+                                 {character.currentHp === 0 ? (
+                                     <>
+                                         <div className="flex-grow flex items-center justify-between px-2.5 gap-2">
+                                             <div className="flex flex-col">
+                                                 <span className="text-[8px] font-extrabold text-red-400 uppercase tracking-widest flex items-center gap-1">
+                                                     <AlertOctagon className="w-2.5 h-2.5" /> DYING
+                                                 </span>
+                                                 <span className="text-lg font-black text-white font-serif">0 <span className="text-gray-500 text-xs">/ {character.maxHp}</span></span>
+                                             </div>
+                                             <div className="flex flex-col gap-1 items-end">
+                                                 {/* Mini hearts */}
+                                                 <div className="flex items-center gap-0.5" title={`${character.deathSaves?.successes || 0}/3 Successes`}>
+                                                     {[1, 2, 3].map(n => (
+                                                         <Heart 
+                                                             key={`hs-${n}`} 
+                                                             className={`w-3 h-3 ${n <= (character.deathSaves?.successes || 0) ? 'fill-emerald-500 text-emerald-400' : 'text-gray-600'}`} 
+                                                         />
+                                                     ))}
+                                                 </div>
+                                                 {/* Mini skulls */}
+                                                 <div className="flex items-center gap-0.5" title={`${character.deathSaves?.failures || 0}/3 Failures`}>
+                                                     {[1, 2, 3].map(n => (
+                                                         <Skull 
+                                                             key={`fs-${n}`} 
+                                                             className={`w-3 h-3 ${n <= (character.deathSaves?.failures || 0) ? 'fill-red-600 text-red-500' : 'text-gray-600'}`} 
+                                                         />
+                                                     ))}
+                                                 </div>
+                                             </div>
+                                         </div>
+                                         <div className="py-0.5 text-center border-t bg-red-950/80 border-red-800/60">
+                                             <span className="text-[9px] font-bold uppercase text-red-300 tracking-wider">Death Saves (Click)</span>
+                                         </div>
+                                     </>
+                                 ) : (
+                                     <>
+                                         <div className="flex-grow flex items-center justify-between px-3 gap-2">
+                                             <div className="flex flex-col items-center"><span className="text-[9px] font-bold text-gray-500 uppercase">Current</span><span className="text-xl font-bold text-white">{character.currentHp}</span></div>
+                                             <span className="text-gray-600 text-xl font-light">/</span>
+                                             <div className="flex flex-col items-center"><span className="text-[9px] font-bold text-gray-500 uppercase">Max</span><span className="text-xl font-bold text-gray-400">{character.maxHp}</span></div>
+                                             <div className="w-px h-8 bg-gray-700/50 mx-1"></div>
+                                             <div className="flex flex-col items-center"><span className="text-[9px] font-bold text-gray-500 uppercase">Temp</span><span className="text-lg font-bold text-gray-300">{character.tempHp || '--'}</span></div>
+                                         </div>
+                                         <div className="py-0.5 text-center border-t bg-[#0b0c0e]/50 border-gray-600/50">
+                                             <span className="text-[9px] font-bold uppercase text-gray-500">Hit Points</span>
+                                         </div>
+                                     </>
+                                 )}
                              </div>
                         </div>
                     </div>

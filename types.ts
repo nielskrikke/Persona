@@ -363,6 +363,7 @@ export interface CharacterState {
     maxHp: number;
     currentHp: number;
     tempHp: number;
+    deathSaves?: { successes: number; failures: number };
     inspiration: boolean;
     inventory: InventoryItem[];
     currency: Currency;

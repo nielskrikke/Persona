@@ -737,7 +737,7 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                         <option value="one_handed_melee_damage">One-Handed Melee Damage</option>
                                         <option value="two_handed_melee_damage">Two-Handed Melee Damage</option>
                                     </select>
-                                    <input type="number" placeholder="Bonus Value (e.g. 1 or 2)" value={eff.value !== undefined ? eff.value : ''} onChange={e => updateEffect(i, { value: parseInt(e.target.value) || 0 })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" />
+                                    <input type="text" placeholder="Value or Dice (e.g. +1, 1d4, 4d4, +1 + 1d4)" value={eff.value !== undefined ? eff.value : ''} onChange={e => updateEffect(i, { value: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" />
                                 </div>
                                 <RuleConditionInput 
                                     conditions={eff.conditions || []}
