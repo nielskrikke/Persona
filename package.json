@@ -4,16 +4,17 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "sync:dice-assets": "node scripts/sync-dice-box-assets.mjs",
+    "postinstall": "npm run sync:dice-assets",
     "dev": "DISABLE_HMR=true tsx server.ts",
-    "build": "vite build",
+    "build": "npm run sync:dice-assets && vite build",
     "preview": "vite preview",
     "start": "tsx server.ts",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@3d-dice/dice-box": "1.1.4",
     "@google/genai": "^1.44.0",
-    "@react-three/drei": "9.99.0",
-    "@react-three/fiber": "8.15.16",
     "@supabase/supabase-js": "^2.94.0",
     "axios": "^1.13.6",
     "cheerio": "^1.2.0",

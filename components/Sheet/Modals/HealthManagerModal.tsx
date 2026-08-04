@@ -17,11 +17,12 @@ const HealthManagerModal = ({
     character: CharacterState, 
     onUpdate: (updates: Partial<CharacterState>) => void,
     onTakeDamage: (dmg: number) => void,
-    onRoll?: (formula: string, label: string) => RollResult
+    onRoll?: (formula: string, label: string, onComplete?: (result: RollResult) => void) => RollResult
 }) => {
     const [amount, setAmount] = useState<string>('');
     const [mode, setMode] = useState<'hp' | 'max' | 'deathsaves'>('hp');
     const [lastRollMsg, setLastRollMsg] = useState<string | null>(null);
+    const [isRolling, setIsRolling] = useState(false);
 
     if (!isOpen) return null;
 
@@ -117,33 +118,43 @@ const HealthManagerModal = ({
     };
 
     const handleRollDeathSave = () => {
-        const rollRes = onRoll ? onRoll('1d20', 'Death Save') : rollDice('1d20', 'Death Save');
-        const result = rollRes.rolls[0];
-        let newSuccesses = successes;
-        let newFailures = failures;
-        let msg = '';
+        setIsRolling(true);
+        const processResult = (rollRes: RollResult) => {
+            const result = rollRes.rolls && rollRes.rolls.length > 0 ? rollRes.rolls[0] : rollRes.total;
+            let newSuccesses = successes;
+            let newFailures = failures;
+            let msg = '';
 
-        if (result === 20) {
-            newSuccesses = Math.min(3, successes + 2);
-            msg = `NAT 20! Critical Save! (+2 Saves)`;
-        } else if (result >= 10) {
-            newSuccesses = Math.min(3, successes + 1);
-            msg = `Rolled ${result}: Save (+1 Save)`;
-        } else if (result === 1) {
-            newFailures = Math.min(3, failures + 2);
-            msg = `NAT 1! Critical Failure! (+2 Failures)`;
-        } else {
-            newFailures = Math.min(3, failures + 1);
-            msg = `Rolled ${result}: Failure (+1 Failure)`;
-        }
-
-        setLastRollMsg(msg);
-        onUpdate({
-            deathSaves: {
-                successes: newSuccesses,
-                failures: newFailures
+            if (result === 20) {
+                newSuccesses = Math.min(3, successes + 2);
+                msg = `NAT 20! Critical Save! (+2 Saves)`;
+            } else if (result >= 10) {
+                newSuccesses = Math.min(3, successes + 1);
+                msg = `Rolled ${result}: Save (+1 Save)`;
+            } else if (result === 1) {
+                newFailures = Math.min(3, failures + 2);
+                msg = `NAT 1! Critical Failure! (+2 Failures)`;
+            } else {
+                newFailures = Math.min(3, failures + 1);
+                msg = `Rolled ${result}: Failure (+1 Failure)`;
             }
-        });
+
+            setLastRollMsg(msg);
+            onUpdate({
+                deathSaves: {
+                    successes: newSuccesses,
+                    failures: newFailures
+                }
+            });
+            setIsRolling(false);
+        };
+
+        if (onRoll) {
+            onRoll('1d20', 'Death Save', processResult);
+        } else {
+            const rollRes = rollDice('1d20', 'Death Save');
+            processResult(rollRes);
+        }
     };
 
     return (
@@ -260,11 +271,11 @@ const HealthManagerModal = ({
                             {/* Digital Roll Button */}
                             <button
                                 onClick={handleRollDeathSave}
-                                disabled={successes >= 3 || failures >= 3}
+                                disabled={successes >= 3 || failures >= 3 || isRolling}
                                 className="w-full py-2.5 bg-gradient-to-r from-red-900/80 to-amber-900/80 hover:from-red-800 hover:to-amber-800 border border-red-600/60 text-white rounded-lg font-black uppercase text-xs tracking-wider flex items-center justify-center gap-2 shadow-md transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                <Dices className="w-4 h-4 text-dnd-gold" />
-                                Roll Death Save (d20)
+                                <Dices className={`w-4 h-4 text-dnd-gold ${isRolling ? 'animate-spin' : ''}`} />
+                                {isRolling ? 'Rolling 3D Dice...' : 'Roll Death Save (d20)'}
                             </button>
 
                             {lastRollMsg && (

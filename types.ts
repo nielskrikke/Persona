@@ -343,6 +343,18 @@ export interface LevelChoice {
     revertData?: any;
 }
 
+export interface DiceCustomizationOptions {
+    color?: string;
+    labelColor?: string;
+    finish?: 'solid' | 'metallic' | 'glossy' | 'shadow';
+    scale?: number;
+    lightIntensity?: number;
+    shadowTransparency?: number;
+    spinForce?: number;
+    throwForce?: number;
+    soundEnabled?: boolean;
+}
+
 export interface CharacterState {
     id?: string;
     user_id?: string;
@@ -392,6 +404,7 @@ export interface CharacterState {
     show3DDice: boolean;
     diceColor?: string;
     diceEffect?: string;
+    diceCustomization?: DiceCustomizationOptions;
     backgroundColor?: string;
     backgroundImageUrl?: string;
     fontScale?: number;

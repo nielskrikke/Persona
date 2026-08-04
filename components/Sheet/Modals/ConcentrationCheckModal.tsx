@@ -19,12 +19,16 @@ const ConcentrationCheckModal = ({
     onSuccess: () => void, 
     onFail: () => void,
     conSaveModifier: number,
-    onRoll: (formula: string, label: string) => void
+    onRoll: (formula: string, label: string, onComplete?: (result: RollResult) => void) => void
 }) => {
     const [result, setResult] = useState<RollResult | null>(null);
+    const [isRolling, setIsRolling] = useState(false);
 
     useEffect(() => {
-        if (isOpen) setResult(null);
+        if (isOpen) {
+            setResult(null);
+            setIsRolling(false);
+        }
     }, [isOpen]);
 
     if (!isOpen) return null;
@@ -34,9 +38,17 @@ const ConcentrationCheckModal = ({
     const handleRoll = () => {
         const formula = `1d20${modStr}`;
         const label = "Concentration Check";
-        const rollRes = rollDice(formula, label);
-        setResult(rollRes);
-        onRoll(formula, label);
+        setIsRolling(true);
+        if (onRoll) {
+            onRoll(formula, label, (rollRes: RollResult) => {
+                setResult(rollRes);
+                setIsRolling(false);
+            });
+        } else {
+            const rollRes = rollDice(formula, label);
+            setResult(rollRes);
+            setIsRolling(false);
+        }
     };
 
     return (
@@ -61,9 +73,10 @@ const ConcentrationCheckModal = ({
                     <div className="mb-6">
                         <button 
                             onClick={handleRoll}
-                            className="w-full py-3 bg-blue-900/40 border border-blue-500 hover:bg-blue-800 text-blue-100 font-bold uppercase rounded transition-colors flex items-center justify-center gap-2"
+                            disabled={isRolling}
+                            className="w-full py-3 bg-blue-900/40 border border-blue-500 hover:bg-blue-800 disabled:opacity-50 text-blue-100 font-bold uppercase rounded transition-colors flex items-center justify-center gap-2"
                         >
-                            <span>Roll 1d20 {modStr}</span>
+                            <span>{isRolling ? 'Rolling 3D Dice...' : `Roll 1d20 ${modStr}`}</span>
                         </button>
                     </div>
                 ) : (

@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { CharacterState } from '@/types';
+import React, { useState } from 'react';
+import { CharacterState, RollResult } from '@/types';
 import { calculateModifier, formatModifier } from '@/utils/rules';
 import { CLASS_FEATURES } from '../../../data/constants';
 import { rollDice } from '../../../utils/dice';
@@ -16,8 +16,10 @@ const ShortRestModal = ({
     onClose: () => void, 
     character: CharacterState, 
     onUpdate: (updates: Partial<CharacterState>) => void,
-    onRoll: (formula: string, label: string) => void
+    onRoll?: (formula: string, label: string, preResult?: any, onComplete?: (result: RollResult) => void) => void
 }) => {
+    const [rollingSize, setRollingSize] = useState<string | null>(null);
+
     if (!isOpen) return null;
 
     // Group available hit dice
@@ -31,21 +33,30 @@ const ShortRestModal = ({
     });
 
     const handleSpend = (size: string) => {
-        if ((dieGroups[size].max - dieGroups[size].spent) <= 0) return;
+        if ((dieGroups[size].max - dieGroups[size].spent) <= 0 || rollingSize !== null) return;
 
-        // Roll HD
-        const result = rollDice(`1d${size}`, `Hit Die (d${size})`);
-        onRoll(`1d${size}${formatModifier(conMod)}`, `Hit Die (d${size})`);
-        
-        const healing = Math.max(0, result.total + conMod);
-        
-        onUpdate({
-            currentHp: Math.min(character.maxHp, character.currentHp + healing),
-            hitDiceUsage: {
-                ...character.hitDiceUsage,
-                [size]: (character.hitDiceUsage[size] || 0) + 1
-            }
-        });
+        setRollingSize(size);
+        const formula = `1d${size}${formatModifier(conMod)}`;
+        const label = `Hit Die (d${size})`;
+
+        const processResult = (rollRes: RollResult) => {
+            const healing = Math.max(0, rollRes.total);
+            onUpdate({
+                currentHp: Math.min(character.maxHp, character.currentHp + healing),
+                hitDiceUsage: {
+                    ...character.hitDiceUsage,
+                    [size]: (character.hitDiceUsage[size] || 0) + 1
+                }
+            });
+            setRollingSize(null);
+        };
+
+        if (onRoll) {
+            onRoll(formula, label, undefined, processResult);
+        } else {
+            const result = rollDice(formula, label);
+            processResult(result);
+        }
     };
 
     const handleFinish = () => {
@@ -100,10 +111,10 @@ const ShortRestModal = ({
                             </div>
                             <button 
                                 onClick={() => handleSpend(size)}
-                                disabled={usage.max - usage.spent <= 0 || character.currentHp >= character.maxHp}
-                                className="px-4 py-2 bg-emerald-900/40 hover:bg-emerald-800 border border-emerald-700 text-emerald-100 rounded text-xs font-bold uppercase disabled:opacity-30 disabled:hover:bg-emerald-900/40"
+                                disabled={usage.max - usage.spent <= 0 || character.currentHp >= character.maxHp || rollingSize !== null}
+                                className="px-4 py-2 bg-emerald-900/40 hover:bg-emerald-800 border border-emerald-700 text-emerald-100 rounded text-xs font-bold uppercase disabled:opacity-30 disabled:hover:bg-emerald-900/40 transition-colors"
                             >
-                                Roll & Heal
+                                {rollingSize === size ? 'Rolling 3D...' : 'Roll & Heal'}
                             </button>
                         </div>
                     ))}

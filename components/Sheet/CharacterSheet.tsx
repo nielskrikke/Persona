@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Markdown from 'react-markdown';
 import { Sparkles, Plus, X, Maximize, Search, Info, Heart, Skull, AlertOctagon } from 'lucide-react';
-import { CharacterState, ABILITY_NAMES, ABILITY_LABELS, RollResult, AbilityName, SpellDetail, InventoryItem, Currency, RuleEntry, CreatureDetail, EldritchCannonDetail, SteelDefenderDetail, EquipmentDetail, ItemModifier } from '../../types';
+import { CharacterState, ABILITY_NAMES, ABILITY_LABELS, RollResult, AbilityName, SpellDetail, InventoryItem, Currency, RuleEntry, CreatureDetail, EldritchCannonDetail, SteelDefenderDetail, EquipmentDetail, ItemModifier, DiceCustomizationOptions } from '../../types';
 import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount } from '../../utils/rules';
 import { rollDice } from '../../utils/dice';
 import CreatureManagerModal from './Modals/CreatureManagerModal';
 import { WIDGET_LABELS, DEFAULT_LAYOUT, STANDARD_CONDITIONS, CLASS_FEATURES, STANDARD_ACTIONS, STATIC_RULES, WIDGET_BG, PICK_A_CARD_TABLE } from '../../data/constants';
 import { Library, fetchEquipment, fetchEquipmentDetail } from '../../data/index';
-import DiceRoller3D, { QueuedRoll } from './Shared/DiceRoller3D';
+import DiceRoller3D, { DiceBoxRollRequest } from './Shared/DiceRoller3D';
+import { DiceBoxGroupResult } from '@3d-dice/dice-box';
+import { parseRollFormula, evaluateParsedFormula, evaluateFallbackRoll, ParsedRollFormula } from '../../utils/diceNotation';
 import { saveCharacterToDb, addPartyRoll, loadPartyInventory, savePartyInventory } from '../../services/supabase';
 
 import { HeaderStatBox, SquareStatBox } from './Widgets/StatBoxes';
@@ -20,6 +22,7 @@ import CustomActionModal from './Modals/CustomActionModal';
 import ItemSearchModal from '../Builder/ItemSearchModal';
 import LayoutManagerModal from './Modals/LayoutManagerModal';
 import CustomSpellModal from './Modals/CustomSpellModal';
+import DiceCustomizerModal from './Modals/DiceCustomizerModal';
 import ConcentrationCheckModal from './Modals/ConcentrationCheckModal';
 import CreatureStatBlockModal from './Modals/CreatureStatBlockModal';
 import EldritchCannonModal from './Modals/EldritchCannonModal';
@@ -539,8 +542,37 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     }, [!!character.activeFamiliar]);
 
     const [isSidePanelPinned, setIsSidePanelPinned] = useState(false);
+    const [showDiceCustomizerModal, setShowDiceCustomizerModal] = useState(false);
     const [rollMenu, setRollMenu] = useState<{x: number, y: number, formula: string, label: string} | null>(null);
-    const [activeRoll, setActiveRoll] = useState<QueuedRoll | null>(null);
+    const [current3DRequest, setCurrent3DRequest] = useState<DiceBoxRollRequest | null>(null);
+    const [rollQueue, setRollQueue] = useState<Array<{
+        id: string;
+        formula: string;
+        label: string;
+        parsed: ParsedRollFormula;
+        diceBoxNotation: Array<{ qty: number; sides: number; modifier: number }>;
+        color: string;
+        customization?: DiceCustomizationOptions;
+        timestamp: number;
+        onCompleteCallback?: (result: RollResult) => void;
+    }>>([]);
+    const [activeRollItem, setActiveRollItem] = useState<{
+        id: string;
+        formula: string;
+        label: string;
+        parsed: ParsedRollFormula;
+        diceBoxNotation: Array<{ qty: number; sides: number; modifier: number }>;
+        color: string;
+        customization?: DiceCustomizationOptions;
+        timestamp: number;
+        onCompleteCallback?: (result: RollResult) => void;
+    } | null>(null);
+
+    const activeRollItemRef = useRef<typeof activeRollItem>(null);
+    useEffect(() => {
+        activeRollItemRef.current = activeRollItem;
+    }, [activeRollItem]);
+
     const [allEquipment, setAllEquipment] = useState<EquipmentDetail[]>([]);
 
     useEffect(() => {
@@ -1207,25 +1239,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
     useEffect(() => { setVisualRules([...STATIC_RULES, ...getCharacterSpecificRules(character)]); }, [character]);
 
-    const roll = (formula: string, label: string, preResult?: RollResult): RollResult => {
-        const result = preResult || rollDice(formula, label);
-        const diceToRoll: { type: string, result: number }[] = [];
-        const parts = formula.toLowerCase().split('+');
-        let rollIndex = 0;
-        parts.forEach(part => {
-             const match = part.match(/(\d*)d(\d+)/);
-             if (match) {
-                 const count = match[1] ? parseInt(match[1]) : 1;
-                 const sides = match[2];
-                 const type = `d${sides}`;
-                 for(let i=0; i<count; i++) { if (rollIndex < result.rolls.length) { diceToRoll.push({ type, result: result.rolls[rollIndex] }); rollIndex++; } }
-             }
-        });
-        if (diceToRoll.length > 0 && character.show3DDice !== false) {
-            setActiveRoll({ id: result.timestamp.toString(), dice: diceToRoll, color: character.diceColor || character.themeColor || '#c9ad6a', effect: character.diceEffect || 'standard' });
-        }
+    const finalizeRoll = useCallback((result: RollResult) => {
         setLogs(prev => [...prev, result]);
-        setRollHistory(prev => [result, ...prev].slice(0, 50)); 
+        setRollHistory(prev => [result, ...prev].slice(0, 50));
         if (character.campaign_id) {
             addPartyRoll(character.campaign_id, {
                 id: `roll-${result.timestamp}-${Math.random().toString(36).substring(2,6)}`,
@@ -1244,7 +1260,132 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             }).catch(console.error);
         }
         setTimeout(() => { setLogs(current => current.filter(l => l.timestamp !== result.timestamp)); }, 5000);
-        return result;
+    }, [character.campaign_id, character.id, character.name]);
+
+    const handle3DRollComplete = useCallback((id: string, groupResults: any[]) => {
+        if (activeRollItemRef.current && activeRollItemRef.current.id === id) {
+            const currentItem = activeRollItemRef.current;
+            let physicalRolls: number[][] = [];
+
+            if (Array.isArray(groupResults) && groupResults.length > 0) {
+                if (groupResults[0].rolls && Array.isArray(groupResults[0].rolls)) {
+                    physicalRolls = groupResults.map(g => g.rolls.map((r: any) => Number(r.value || r)));
+                } else if (groupResults[0].value !== undefined) {
+                    const groupsMap: { [groupId: number]: number[] } = {};
+                    groupResults.forEach((die: any) => {
+                        const gIdx = typeof die.groupId === 'number' ? die.groupId : 0;
+                        if (!groupsMap[gIdx]) groupsMap[gIdx] = [];
+                        groupsMap[gIdx].push(Number(die.value));
+                    });
+                    physicalRolls = currentItem.parsed.groups.map((_, idx) => groupsMap[idx] || []);
+                    if (physicalRolls.every(arr => arr.length === 0)) {
+                        const allVals = groupResults.map(d => Number(d.value));
+                        let currentOffset = 0;
+                        physicalRolls = currentItem.parsed.groups.map(g => {
+                            const slice = allVals.slice(currentOffset, currentOffset + g.count);
+                            currentOffset += g.count;
+                            return slice;
+                        });
+                    }
+                }
+            }
+
+            const result = evaluateParsedFormula(currentItem.parsed, physicalRolls, currentItem.label, currentItem.timestamp);
+            finalizeRoll(result);
+            if (currentItem.onCompleteCallback) {
+                currentItem.onCompleteCallback(result);
+            }
+            setCurrent3DRequest(null);
+            setActiveRollItem(null);
+        }
+    }, [finalizeRoll]);
+
+    const handle3DRollError = useCallback((id: string, error: Error) => {
+        console.warn('3D dice roll fallback due to:', error);
+        if (activeRollItemRef.current && activeRollItemRef.current.id === id) {
+            const currentItem = activeRollItemRef.current;
+            const fallbackResult = evaluateFallbackRoll(currentItem.parsed, currentItem.label, currentItem.timestamp);
+            finalizeRoll(fallbackResult);
+            if (currentItem.onCompleteCallback) {
+                currentItem.onCompleteCallback(fallbackResult);
+            }
+            setCurrent3DRequest(null);
+            setActiveRollItem(null);
+        }
+    }, [finalizeRoll]);
+
+    useEffect(() => {
+        if (!activeRollItem && rollQueue.length > 0) {
+            const [nextItem, ...remaining] = rollQueue;
+            setRollQueue(remaining);
+            setActiveRollItem(nextItem);
+            setCurrent3DRequest({
+                id: nextItem.id,
+                notation: nextItem.diceBoxNotation,
+                color: nextItem.color,
+                customization: nextItem.customization,
+            });
+        }
+    }, [activeRollItem, rollQueue]);
+
+    const roll = (
+        formula: string, 
+        label: string, 
+        preResultOptions?: RollResult | ((result: RollResult) => void), 
+        onCompleteCallback?: (result: RollResult) => void
+    ): RollResult => {
+        let preResult: RollResult | undefined;
+        let callback = onCompleteCallback;
+
+        if (typeof preResultOptions === 'function') {
+            callback = preResultOptions;
+        } else if (preResultOptions) {
+            preResult = preResultOptions;
+        }
+
+        if (preResult) {
+            finalizeRoll(preResult);
+            if (callback) callback(preResult);
+            return preResult;
+        }
+
+        const parsed = parseRollFormula(formula);
+        const is3DEnabled = character.show3DDice !== false;
+        const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        if (!parsed || !is3DEnabled || prefersReducedMotion) {
+            const fallbackResult = parsed ? evaluateFallbackRoll(parsed, label) : rollDice(formula, label);
+            finalizeRoll(fallbackResult);
+            if (callback) callback(fallbackResult);
+            return fallbackResult;
+        }
+
+        const requestId = `roll-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
+        const newItem = {
+            id: requestId,
+            formula,
+            label,
+            parsed,
+            diceBoxNotation: parsed.groups.map(g => ({
+                qty: g.count,
+                sides: g.sides,
+                modifier: 0,
+            })),
+            color: character.diceColor || character.themeColor || '#c9ad6a',
+            customization: character.diceCustomization,
+            timestamp: Date.now(),
+            onCompleteCallback: callback,
+        };
+
+        setRollQueue(prev => [...prev, newItem]);
+
+        return {
+            formula,
+            label,
+            total: 0,
+            rolls: [],
+            timestamp: newItem.timestamp,
+        };
     };
 
     const handlePickACard = (isFree = false, specificCardName?: string, cost = 1) => {
@@ -3481,12 +3622,25 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             {saving && <div className="fixed top-2 left-1/2 transform -translate-x-1/2 z-[1000] bg-black/80 text-dnd-gold px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest border border-dnd-gold shadow-lg animate-pulse">Saving...</div>}
             {character.backgroundImageUrl && <div className="fixed inset-0 z-0 pointer-events-none" style={{ backgroundImage: `url('${character.backgroundImageUrl}')`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }}/>}
             
-            <DiceRoller3D rollQueue={activeRoll} onRollComplete={() => setActiveRoll(null)} />
+            <DiceRoller3D request={current3DRequest} onComplete={handle3DRollComplete} onError={handle3DRollError} />
             {rollMenu && <RollContextMenu x={rollMenu.x} y={rollMenu.y} onClose={() => setRollMenu(null)} onOptionSelect={handleContextMenuRoll} />}
             <RollHistory history={rollHistory} onClear={() => setRollHistory([])} campaignId={character.campaign_id} characterName={character.name} />
             <DiceTray logs={logs} onRoll={(f) => roll(f, 'Manual')} />
             
-            <ManageCharacterModal isOpen={showManageCharacterModal} character={character} onClose={() => setShowManageCharacterModal(false)} onUpdate={(updates) => setCharacter(prev => ({...prev, ...updates}))} onLevelUp={performLevelUp} />
+            <DiceCustomizerModal 
+                isOpen={showDiceCustomizerModal}
+                onClose={() => setShowDiceCustomizerModal(false)}
+                character={character}
+                onUpdate={(updates) => setCharacter(prev => ({ ...prev, ...updates }))}
+            />
+            <ManageCharacterModal 
+                isOpen={showManageCharacterModal} 
+                character={character} 
+                onClose={() => setShowManageCharacterModal(false)} 
+                onUpdate={(updates) => setCharacter(prev => ({...prev, ...updates}))} 
+                onLevelUp={performLevelUp} 
+                onOpenDiceCustomizer={() => setShowDiceCustomizerModal(true)}
+            />
             <HealthManagerModal 
                 isOpen={showHealthManager} 
                 character={character} 
@@ -3494,6 +3648,22 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 onUpdate={(updates) => setCharacter(prev => ({ ...prev, ...updates }))} 
                 onTakeDamage={handleDamageTrigger} 
                 onRoll={roll}
+            />
+            <ConcentrationCheckModal 
+                isOpen={!!concentrationCheck}
+                dc={concentrationCheck?.dc || 10}
+                spellName={concentrationCheck?.spellName || ''}
+                conSaveModifier={conSaveBonus + globalSaveBonus}
+                onSuccess={() => {
+                    setConcentrationCheck(null);
+                }}
+                onFail={() => {
+                    setCharacter(prev => ({ ...prev, activeConcentration: null }));
+                    setConcentrationCheck(null);
+                }}
+                onRoll={(formula, label, callback) => {
+                    roll(formula, label, undefined, callback);
+                }}
             />
             <ShortRestModal isOpen={showShortRestModal} character={character} onUpdate={(updates) => setCharacter(prev => ({...prev, ...updates}))} onClose={() => setShowShortRestModal(false)} onRoll={roll} />
             <CustomActionModal 

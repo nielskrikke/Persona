@@ -18,13 +18,15 @@ const ManageCharacterModal = ({
     isOpen, 
     onClose, 
     onUpdate, 
-    onLevelUp 
+    onLevelUp,
+    onOpenDiceCustomizer
 }: { 
     character: CharacterState, 
     isOpen: boolean, 
     onClose: () => void, 
     onUpdate: (data: any) => void, 
-    onLevelUp: (classIndex: string, updates: Partial<CharacterState>) => Promise<void> 
+    onLevelUp: (classIndex: string, updates: Partial<CharacterState>) => Promise<void>,
+    onOpenDiceCustomizer?: () => void
 }) => {
     const [tab, setTab] = useState<'identity' | 'classes' | 'abilities' | 'proficiencies' | 'trackers' | 'choices' | 'theme' | 'combat'>('identity');
     
@@ -3168,6 +3170,27 @@ const ManageCharacterModal = ({
                                             <input type="text" value={diceColor} onChange={e => setDiceColor(e.target.value)} className="flex-grow bg-transparent text-xs font-mono text-gray-400 uppercase outline-none" />
                                         </div>
                                     </div>
+
+                                    {onOpenDiceCustomizer && (
+                                        <div className="md:col-span-2 p-4 bg-gradient-to-r from-amber-950/40 via-purple-950/30 to-black rounded-2xl border border-dnd-gold/40 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-3 bg-dnd-gold/10 border border-dnd-gold/30 rounded-xl text-dnd-gold">
+                                                    <Sparkles size={20} />
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-sm font-bold text-white uppercase tracking-wider font-serif">3D Dice Forge & Customizer</h4>
+                                                    <p className="text-xs text-gray-400">Custom 3D materials, glowing auras, lighting, physics, and spin torque</p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={onOpenDiceCustomizer}
+                                                className="w-full sm:w-auto px-5 py-2.5 bg-dnd-gold hover:bg-yellow-500 text-black font-black uppercase text-xs tracking-wider rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 whitespace-nowrap"
+                                            >
+                                                <Palette size={16} /> Open Dice Studio
+                                            </button>
+                                        </div>
+                                    )}
 
                                     <div className="md:col-span-2 space-y-4">
                                         <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-500">

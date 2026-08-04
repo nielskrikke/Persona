@@ -1,8 +1,15 @@
 import React, { useState } from 'react';
 import { RollResult } from '@/types';
 import RollContextMenu from '../Shared/RollContextMenu';
+import { Sliders, Palette } from 'lucide-react';
 
-export const DiceTray = ({ logs, onRoll }: { logs: RollResult[], onRoll: (formula: string) => void }) => {
+export const DiceTray = ({ 
+    logs, 
+    onRoll 
+}: { 
+    logs: RollResult[], 
+    onRoll: (formula: string) => void
+}) => {
     const [isOpen, setIsOpen] = useState(false);
     const [counts, setCounts] = useState<Record<string, number>>({ d20: 0, d12: 0, d10: 0, d8: 0, d6: 0, d4: 0 });
     const [menuPos, setMenuPos] = useState<{x: number, y: number} | null>(null);
