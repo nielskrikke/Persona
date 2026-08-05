@@ -4083,7 +4083,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         </nav>
 
                     <div className="flex-grow overflow-y-auto custom-scrollbar p-4 bg-fixed bg-cover">
-                        {activeTab === 'stats' && <StatsTab character={character} roll={roll} layout={layout} renderWidget={renderWidget} setShowLayoutManager={setShowLayoutManager} />}
+                        {activeTab === 'stats' && <StatsTab character={character} roll={roll} triggerRollMenu={triggerRollMenu} layout={layout} renderWidget={renderWidget} setShowLayoutManager={setShowLayoutManager} />}
                         {activeTab === 'actions' && (
                             <ErrorBoundary>
                                 <ActionsTab character={character} roll={roll} triggerRollMenu={triggerRollMenu} setSelectedDetail={setSelectedDetail} getAttacks={getAttacks} bonusActionList={getBonusActions()} setShowCustomActionModal={setShowCustomActionModal} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} spellSave={spellSave} spellMod={spellMod} />

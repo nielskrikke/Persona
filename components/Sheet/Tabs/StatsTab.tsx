@@ -6,12 +6,13 @@ import { formatModifier, calculateModifier } from '../../../utils/rules';
 interface StatsTabProps {
     character: CharacterState;
     roll: (formula: string, label: string) => void;
+    triggerRollMenu?: (e: React.MouseEvent, formula: string, label: string) => void;
     layout: {left: string[], right: string[], mobile?: string[]};
     renderWidget: (type: string, key?: string) => React.ReactNode;
     setShowLayoutManager: (val: boolean) => void;
 }
 
-const StatsTab: React.FC<StatsTabProps> = ({ character, roll, layout, renderWidget, setShowLayoutManager }) => {
+const StatsTab: React.FC<StatsTabProps> = ({ character, roll, triggerRollMenu, layout, renderWidget, setShowLayoutManager }) => {
     // Filter mobile layout widgets to only those that meet requirements
     const isArtillerist = character.classes.some(c => c.definition.index === 'artificer' && c.subclass?.index === 'artillerist' && c.level >= 3);
     
@@ -29,7 +30,17 @@ const StatsTab: React.FC<StatsTabProps> = ({ character, roll, layout, renderWidg
                  {ABILITY_NAMES.map(stat => {
                      const val = character.abilities[stat]; // Use raw for mobile check simplified
                      return (
-                         <div key={stat} className="flex flex-col items-center bg-[#1b1c20] p-1 rounded border border-gray-700" onClick={() => roll(`1d20${formatModifier(calculateModifier(val))}`, `${ABILITY_LABELS[stat]} Check`)}>
+                         <div 
+                             key={stat} 
+                             className="flex flex-col items-center bg-[#1b1c20] p-1 rounded border border-gray-700 cursor-pointer hover:border-dnd-gold transition-colors" 
+                             onClick={() => roll(`1d20${formatModifier(calculateModifier(val))}`, `${ABILITY_LABELS[stat]} Check`)}
+                             onContextMenu={(e) => {
+                                 if (triggerRollMenu) {
+                                     e.preventDefault();
+                                     triggerRollMenu(e, `1d20${formatModifier(calculateModifier(val))}`, `${ABILITY_LABELS[stat]} Check`);
+                                 }
+                             }}
+                         >
                              <span className="text-[10px] text-gray-500 font-bold uppercase">{stat}</span>
                              <span className="text-lg font-bold text-white">{formatModifier(calculateModifier(val))}</span>
                              <span className="text-[9px] text-gray-600 bg-black/40 px-1 rounded">{val}</span>

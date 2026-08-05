@@ -343,9 +343,14 @@ export interface LevelChoice {
     revertData?: any;
 }
 
+export type DiceSurface = 'solid' | 'marble';
+export type DiceEdgeStyle = 'rounded' | 'classic' | 'sharp';
+
 export interface DiceCustomizationOptions {
     color?: string;
     labelColor?: string;
+    surface?: DiceSurface;
+    edgeStyle?: DiceEdgeStyle;
     finish?: 'solid' | 'metallic' | 'glossy' | 'shadow';
     scale?: number;
     lightIntensity?: number;

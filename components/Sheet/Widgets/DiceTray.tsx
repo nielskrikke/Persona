@@ -12,7 +12,7 @@ export const DiceTray = ({
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [counts, setCounts] = useState<Record<string, number>>({ d20: 0, d12: 0, d10: 0, d8: 0, d6: 0, d4: 0 });
-    const [menuPos, setMenuPos] = useState<{x: number, y: number} | null>(null);
+    const [menuPos, setMenuPos] = useState<{x: number, y: number, targetDie?: string | null} | null>(null);
 
     const hasSelection = Object.values(counts).some((v: number) => v > 0);
 
@@ -23,21 +23,37 @@ export const DiceTray = ({
         }));
     };
 
-    const handleRoll = (mode: 'normal' | 'advantage' | 'disadvantage' = 'normal') => {
-        const parts = Object.entries(counts)
-            .filter(([_, count]: [string, number]) => count > 0)
-            .map(([die, count]) => {
-                // Apply Advantage/Disadvantage logic specifically to d20s if selected
-                if (die === 'd20' && (mode === 'advantage' || mode === 'disadvantage')) {
-                    // For Advantage/Disadvantage on d20, we assume standard 2d20kh1 or 2d20kl1
-                    const suffix = mode === 'advantage' ? 'kh1' : 'kl1';
-                    return `2${die}${suffix}`;
-                }
-                return `${count}${die}`;
-            });
+    const handleRoll = (mode: 'normal' | 'advantage' | 'disadvantage' = 'normal', dieOverride?: string | null) => {
+        const targetDie = dieOverride !== undefined ? dieOverride : menuPos?.targetDie;
+        let formula = '';
+
+        if (targetDie) {
+            // Roll specific die right-clicked
+            const count = counts[targetDie] || 1;
+            if (mode === 'advantage') {
+                formula = `2${targetDie}kh1`;
+            } else if (mode === 'disadvantage') {
+                formula = `2${targetDie}kl1`;
+            } else {
+                formula = `${count}${targetDie}`;
+            }
+        } else {
+            // Roll all selected dice
+            const parts = Object.entries(counts)
+                .filter(([_, count]: [string, number]) => count > 0)
+                .map(([die, count]) => {
+                    if (mode === 'advantage') {
+                        return `2${die}kh1`;
+                    } else if (mode === 'disadvantage') {
+                        return `2${die}kl1`;
+                    }
+                    return `${count}${die}`;
+                });
+            formula = parts.join('+');
+        }
         
-        if (parts.length > 0) {
-            onRoll(parts.join('+'));
+        if (formula) {
+            onRoll(formula);
             setCounts({ d20: 0, d12: 0, d10: 0, d8: 0, d6: 0, d4: 0 });
             setIsOpen(false);
             setMenuPos(null);
@@ -84,7 +100,14 @@ export const DiceTray = ({
                         <div key={d} className="relative group">
                             <button 
                                 onClick={() => updateCount(d, 1)}
-                                onContextMenu={(e) => { e.preventDefault(); updateCount(d, -1); }}
+                                onContextMenu={(e) => { 
+                                    e.preventDefault(); 
+                                    if (e.shiftKey) {
+                                        updateCount(d, -1);
+                                    } else {
+                                        setMenuPos({ x: e.clientX, y: e.clientY, targetDie: d });
+                                    }
+                                }}
                                 className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all shadow-xl bg-[#1b1c20] hover:bg-[#25262b] hover:scale-110 ${counts[d] > 0 ? 'border-dnd-gold text-dnd-gold' : 'border-gray-600 text-gray-400'}`}
                             >
                                 <span className="font-bold font-serif text-sm uppercase">{d}</span>
@@ -94,10 +117,6 @@ export const DiceTray = ({
                                     </div>
                                 )}
                             </button>
-                            {/* Hover Label */}
-                            <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-white text-black font-bold px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg z-50 uppercase">
-                                {d}
-                            </div>
                         </div>
                     ))}
                 </div>
@@ -132,10 +151,10 @@ export const DiceTray = ({
                     </button>
                     
                     <button 
-                        onClick={() => handleRoll('normal')}
+                        onClick={() => handleRoll('normal', null)}
                         onContextMenu={(e) => {
                             e.preventDefault();
-                            setMenuPos({ x: e.clientX, y: e.clientY });
+                            setMenuPos({ x: e.clientX, y: e.clientY, targetDie: null });
                         }}
                         className="flex items-center bg-[#5c4033] hover:bg-[#6d4c3d] text-white pl-6 pr-4 py-3 rounded-full shadow-2xl border-2 border-[#3e2b22] transition-colors gap-4 group"
                     >

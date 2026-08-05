@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import DiceBox, { DiceBoxGroupResult } from '@3d-dice/dice-box';
 import { DiceCustomizationOptions } from '@/types';
+import { normalizeDiceCustomization, resolvePersonaDiceTheme } from '@/utils/diceThemes';
 
 export interface DiceBoxRollRequest {
   id: string;
@@ -21,7 +22,6 @@ export default function DiceRoller3D({ request, onComplete, onError }: Props) {
   const initRef = useRef<Promise<DiceBox> | null>(null);
   const handledRequestRef = useRef<string | null>(null);
   const [active, setActive] = useState(false);
-  const [activeCustomization, setActiveCustomization] = useState<DiceCustomizationOptions | null>(null);
 
   useEffect(() => {
     if (!hostRef.current || boxRef.current || initRef.current) return;
@@ -61,8 +61,8 @@ export default function DiceRoller3D({ request, onComplete, onError }: Props) {
           throw new Error('Dice Box initialization failed');
         }
 
-        const cust = request.customization || { color: request.color };
-        setActiveCustomization(cust);
+        const normalized = normalizeDiceCustomization(request.customization, request.color);
+        const resolvedTheme = resolvePersonaDiceTheme(normalized.surface, normalized.edgeStyle);
 
         const timeoutPromise = new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error('Dice Box timeout')), 10000)
@@ -73,25 +73,52 @@ export default function DiceRoller3D({ request, onComplete, onError }: Props) {
           if (!box || cancelled) throw new Error('Dice Box unavailable');
           setActive(true);
 
-          const diceColor = cust.color || request.color || '#c9ad6a';
-          const diceScale = cust.scale || 5;
-          const lightIntensity = cust.lightIntensity ?? 1.2;
-          const shadowTransparency = cust.shadowTransparency ?? 0.8;
+          const diceColor = normalized.color;
+          const diceScale = normalized.scale;
+          const lightIntensity = normalized.lightIntensity;
+          const shadowTransparency = normalized.shadowTransparency;
 
-          await box.updateConfig({
-            theme: 'default',
-            themeColor: diceColor,
+          const configObj: Record<string, any> = {
+            theme: resolvedTheme.diceBoxTheme,
             scale: diceScale,
             lightIntensity,
             shadowTransparency,
-            spinForce: cust.spinForce || 6,
-            throwForce: cust.throwForce || 5,
-          } as any);
+            spinForce: normalized.spinForce,
+            throwForce: normalized.throwForce,
+          };
+          if (resolvedTheme.supportsThemeColor) {
+            configObj.themeColor = diceColor;
+          }
 
-          return await box.roll(request.notation, {
-            theme: 'default',
-            themeColor: diceColor,
-          } as any);
+          try {
+            await box.updateConfig(configObj as any);
+
+            const rollOpts: Record<string, any> = {
+              theme: resolvedTheme.diceBoxTheme,
+            };
+            if (resolvedTheme.supportsThemeColor) {
+              rollOpts.themeColor = diceColor;
+            }
+
+            return await box.roll(request.notation, rollOpts as any);
+          } catch (themeErr) {
+            console.warn(`Failed to roll with theme ${resolvedTheme.diceBoxTheme}. Retrying with default theme:`, themeErr);
+            // Fallback retry with default theme
+            await box.updateConfig({
+              theme: 'default',
+              themeColor: diceColor,
+              scale: diceScale,
+              lightIntensity,
+              shadowTransparency,
+              spinForce: normalized.spinForce,
+              throwForce: normalized.throwForce,
+            } as any);
+
+            return await box.roll(request.notation, {
+              theme: 'default',
+              themeColor: diceColor,
+            } as any);
+          }
         })();
 
         const results = await Promise.race([rollPromise, timeoutPromise]);
@@ -107,7 +134,6 @@ export default function DiceRoller3D({ request, onComplete, onError }: Props) {
           window.setTimeout(() => {
             boxRef.current?.clear();
             setActive(false);
-            setActiveCustomization(null);
           }, 1200);
         }
       }
@@ -117,29 +143,6 @@ export default function DiceRoller3D({ request, onComplete, onError }: Props) {
       cancelled = true;
     };
   }, [request, onComplete, onError]);
-
-  // Compute container overlay filters for finish shader
-  const getFilterStyle = () => {
-    const cust = activeCustomization || request?.customization;
-    if (!cust) return '';
-    let filterStr = '';
-
-    switch (cust.finish) {
-      case 'metallic':
-        filterStr += 'brightness(1.2) contrast(1.25) saturate(1.2)';
-        break;
-      case 'glossy':
-        filterStr += 'brightness(1.15) saturate(1.3)';
-        break;
-      case 'shadow':
-        filterStr += 'brightness(0.7) contrast(1.35)';
-        break;
-      default:
-        break;
-    }
-
-    return filterStr.trim();
-  };
 
   return (
     <>
@@ -155,7 +158,6 @@ export default function DiceRoller3D({ request, onComplete, onError }: Props) {
         id="dice-box-host"
         ref={hostRef}
         aria-hidden="true"
-        style={{ filter: getFilterStyle() }}
         className={`fixed inset-0 z-[1000] pointer-events-none overflow-hidden transition-opacity duration-200 ${
           active ? 'opacity-100' : 'opacity-0'
         }`}

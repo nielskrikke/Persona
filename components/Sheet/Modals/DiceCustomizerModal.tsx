@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import DiceBox from '@3d-dice/dice-box';
-import { CharacterState, DiceCustomizationOptions } from '@/types';
-import { Dices, Palette, Volume2, VolumeX, Check, RotateCcw, Sliders, Sun } from 'lucide-react';
+import { CharacterState, DiceCustomizationOptions, DiceSurface, DiceEdgeStyle } from '@/types';
+import { normalizeDiceCustomization, resolvePersonaDiceTheme, THEME_DEFINITIONS } from '@/utils/diceThemes';
+import { Dices, Palette, Volume2, VolumeX, Check, RotateCcw, Sliders, Sun, Info } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -9,17 +10,6 @@ interface Props {
   character: CharacterState;
   onUpdate: (updates: Partial<CharacterState>) => void;
 }
-
-const DEFAULT_CUSTOMIZATION: DiceCustomizationOptions = {
-  color: '#eab308',
-  finish: 'metallic',
-  scale: 6,
-  lightIntensity: 1.4,
-  shadowTransparency: 0.7,
-  spinForce: 6,
-  throwForce: 5,
-  soundEnabled: true,
-};
 
 const QUICK_COLORS = [
   '#c9ad6a', '#eab308', '#dc2626', '#991b1b', '#2563eb', 
@@ -29,12 +19,7 @@ const QUICK_COLORS = [
 
 export default function DiceCustomizerModal({ isOpen, onClose, character, onUpdate }: Props) {
   const [config, setConfig] = useState<DiceCustomizationOptions>(() => {
-    const baseColor = character.diceColor || DEFAULT_CUSTOMIZATION.color;
-    return {
-      ...DEFAULT_CUSTOMIZATION,
-      color: baseColor,
-      ...(character.diceCustomization || {}),
-    };
+    return normalizeDiceCustomization(character.diceCustomization, character.diceColor);
   });
 
   const [activeTab, setActiveTab] = useState<'colors' | 'lighting' | 'physics'>('colors');
@@ -43,6 +28,7 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
 
   const previewBoxRef = useRef<DiceBox | null>(null);
   const initRef = useRef<Promise<DiceBox> | null>(null);
+  const rollDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Initialize preview DiceBox
   useEffect(() => {
@@ -89,8 +75,10 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
 
   // Roll preview dice
   const handleRollPreview = async (overrideConfig?: DiceCustomizationOptions) => {
-    const activeCfg = overrideConfig || config;
     if (isRollingPreview) return;
+    const activeCfg = normalizeDiceCustomization(overrideConfig || config);
+    const resolvedTheme = resolvePersonaDiceTheme(activeCfg.surface, activeCfg.edgeStyle);
+
     setIsRollingPreview(true);
     setPreviewResult(null);
 
@@ -101,20 +89,29 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
       const box = await initRef.current;
       box.clear();
 
-      await box.updateConfig({
-        theme: 'default',
-        themeColor: activeCfg.color || '#eab308',
+      const configObj: Record<string, any> = {
+        theme: resolvedTheme.diceBoxTheme,
         scale: 10,
-        lightIntensity: activeCfg.lightIntensity ?? 1.4,
-        shadowTransparency: activeCfg.shadowTransparency ?? 0.7,
-        spinForce: activeCfg.spinForce || 6,
-        throwForce: activeCfg.throwForce || 5,
-      } as any);
+        lightIntensity: activeCfg.lightIntensity,
+        shadowTransparency: activeCfg.shadowTransparency,
+        spinForce: activeCfg.spinForce,
+        throwForce: activeCfg.throwForce,
+      };
 
-      const results = await box.roll(['1d20', '1d6'], {
-        theme: 'default',
-        themeColor: activeCfg.color || '#eab308',
-      } as any);
+      if (resolvedTheme.supportsThemeColor) {
+        configObj.themeColor = activeCfg.color;
+      }
+
+      await box.updateConfig(configObj as any);
+
+      const rollOpts: Record<string, any> = {
+        theme: resolvedTheme.diceBoxTheme,
+      };
+      if (resolvedTheme.supportsThemeColor) {
+        rollOpts.themeColor = activeCfg.color;
+      }
+
+      const results = await box.roll(['1d20', '1d6'], rollOpts as any);
 
       if (results && results.length > 0) {
         const values = results.map((r: any) => r.value || 0);
@@ -128,10 +125,51 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
     }
   };
 
+  const updateConfigAndDebounceRoll = (newConfig: DiceCustomizationOptions) => {
+    setConfig(newConfig);
+    if (rollDebounceTimerRef.current) {
+      clearTimeout(rollDebounceTimerRef.current);
+    }
+    rollDebounceTimerRef.current = setTimeout(() => {
+      handleRollPreview(newConfig);
+    }, 400);
+  };
+
+  const handleSelectSurface = (surface: DiceSurface) => {
+    if (surface === 'marble') {
+      // Marble is only available with 'sharp' edge style
+      const nextConfig: DiceCustomizationOptions = {
+        ...config,
+        surface: 'marble',
+        edgeStyle: 'sharp',
+      };
+      updateConfigAndDebounceRoll(nextConfig);
+    } else {
+      const nextConfig: DiceCustomizationOptions = {
+        ...config,
+        surface: 'solid',
+      };
+      updateConfigAndDebounceRoll(nextConfig);
+    }
+  };
+
+  const handleSelectEdgeStyle = (edgeStyle: DiceEdgeStyle) => {
+    if (config.surface === 'marble' && edgeStyle !== 'sharp') {
+      // Marble requires sharp gemstone geometry
+      return;
+    }
+    const nextConfig: DiceCustomizationOptions = {
+      ...config,
+      edgeStyle,
+    };
+    updateConfigAndDebounceRoll(nextConfig);
+  };
+
   const handleSave = () => {
+    const normalized = normalizeDiceCustomization(config);
     onUpdate({
-      diceColor: config.color,
-      diceCustomization: config,
+      diceColor: normalized.color,
+      diceCustomization: normalized,
       show3DDice: true,
     });
     onClose();
@@ -139,26 +177,8 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
 
   if (!isOpen) return null;
 
-  // Compute container overlay filter
-  const getFilterStyle = () => {
-    let filterStr = '';
-
-    switch (config.finish) {
-      case 'metallic':
-        filterStr += 'brightness(1.2) contrast(1.25) saturate(1.2)';
-        break;
-      case 'glossy':
-        filterStr += 'brightness(1.15) saturate(1.3)';
-        break;
-      case 'shadow':
-        filterStr += 'brightness(0.7) contrast(1.35)';
-        break;
-      default:
-        break;
-    }
-
-    return filterStr.trim();
-  };
+  const currentNormalized = normalizeDiceCustomization(config);
+  const currentResolvedTheme = resolvePersonaDiceTheme(currentNormalized.surface, currentNormalized.edgeStyle);
 
   return (
     <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-[500] flex items-center justify-center p-3 md:p-6 animate-in fade-in duration-200">
@@ -177,7 +197,7 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
                   Studio
                 </span>
               </h2>
-              <p className="text-xs text-gray-400">Customize dice colors, material finishes, lighting and physics</p>
+              <p className="text-xs text-gray-400">Customize dice surface materials, edge sharpness, lighting and physics</p>
             </div>
           </div>
           <button 
@@ -210,7 +230,6 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
               <div 
                 id="dice-preview-host" 
                 className="absolute inset-0 w-full h-full pointer-events-none"
-                style={{ filter: getFilterStyle() }}
               />
 
               {/* Preview Status Banner */}
@@ -252,7 +271,7 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
             {/* Category Tabs */}
             <div className="flex bg-black/40 p-1 rounded-xl border border-gray-800 gap-1">
               {[
-                { id: 'colors', label: 'Colors & Finish', icon: Palette },
+                { id: 'colors', label: 'Surface & Edges', icon: Palette },
                 { id: 'lighting', label: 'Lighting & Shadow', icon: Sun },
                 { id: 'physics', label: 'Scale & Physics', icon: Sliders },
               ].map(tab => {
@@ -278,71 +297,156 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
             {/* Tab Contents */}
             <div className="flex-1 space-y-6 min-h-[280px]">
 
-              {/* COLORS & FINISH TAB */}
+              {/* SURFACE & EDGES TAB */}
               {activeTab === 'colors' && (
                 <div className="space-y-5">
-                  {/* Main Dice Color */}
+
+                  {/* Surface Material Selection */}
                   <div>
                     <label className="text-xs font-bold text-gray-400 uppercase tracking-widest block mb-2">
-                      Main Dice Color
+                      Dice Surface
                     </label>
-                    <div className="flex items-center gap-3 mb-2.5">
-                      <div className="flex items-center gap-2 bg-black/40 p-2 rounded-xl border border-gray-800 flex-1">
-                        <input 
-                          type="color" 
-                          value={config.color || '#eab308'} 
-                          onChange={e => setConfig(prev => ({ ...prev, color: e.target.value }))}
-                          className="w-8 h-8 rounded-lg border-0 bg-transparent cursor-pointer"
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Solid Colour Option */}
+                      <button
+                        type="button"
+                        onClick={() => handleSelectSurface('solid')}
+                        className={`p-3 rounded-xl border text-left transition-all flex items-center gap-3 ${
+                          currentNormalized.surface === 'solid'
+                            ? 'bg-dnd-gold/10 border-dnd-gold text-white shadow-md'
+                            : 'bg-gray-900/50 border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800/50'
+                        }`}
+                      >
+                        <div 
+                          className="w-8 h-8 rounded-lg border border-white/20 shrink-0 shadow-inner"
+                          style={{ backgroundColor: currentNormalized.color }}
                         />
-                        <input 
-                          type="text" 
-                          value={config.color || '#eab308'} 
-                          onChange={e => setConfig(prev => ({ ...prev, color: e.target.value }))}
-                          className="bg-transparent text-xs font-mono text-gray-300 outline-none uppercase w-full"
+                        <div>
+                          <div className="text-xs font-bold text-white uppercase">Solid Colour</div>
+                          <div className="text-[10px] text-gray-400">Customizable tint</div>
+                        </div>
+                      </button>
+
+                      {/* Rainbow Marble Option */}
+                      <button
+                        type="button"
+                        onClick={() => handleSelectSurface('marble')}
+                        className={`p-3 rounded-xl border text-left transition-all flex items-center gap-3 ${
+                          currentNormalized.surface === 'marble'
+                            ? 'bg-dnd-gold/10 border-dnd-gold text-white shadow-md'
+                            : 'bg-gray-900/50 border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800/50'
+                        }`}
+                      >
+                        <div 
+                          className="w-8 h-8 rounded-lg border border-white/20 shrink-0 shadow-inner bg-cover bg-center"
+                          style={{ backgroundImage: `url(/assets/dice-box/themes/gemstoneMarble/diffuse.jpg)` }}
                         />
-                      </div>
-                    </div>
-                    {/* Swatches */}
-                    <div className="flex flex-wrap gap-1.5">
-                      {QUICK_COLORS.map(hex => (
-                        <button
-                          key={hex}
-                          onClick={() => setConfig(prev => ({ ...prev, color: hex }))}
-                          className={`w-7 h-7 rounded-lg border transition-transform ${
-                            config.color === hex ? 'border-white scale-110 shadow-md' : 'border-black/40 hover:scale-105'
-                          }`}
-                          style={{ backgroundColor: hex }}
-                        />
-                      ))}
+                        <div>
+                          <div className="text-xs font-bold text-white uppercase">Rainbow Marble</div>
+                          <div className="text-[10px] text-gray-400">Gemstone texture</div>
+                        </div>
+                      </button>
                     </div>
                   </div>
 
-                  {/* Material Finish Shader */}
+                  {/* Main Dice Color (Only for Solid Surface) */}
+                  {currentNormalized.surface === 'solid' ? (
+                    <div>
+                      <label className="text-xs font-bold text-gray-400 uppercase tracking-widest block mb-2">
+                        Main Dice Color
+                      </label>
+                      <div className="flex items-center gap-3 mb-2.5">
+                        <div className="flex items-center gap-2 bg-black/40 p-2 rounded-xl border border-gray-800 flex-1">
+                          <input 
+                            type="color" 
+                            value={currentNormalized.color} 
+                            onChange={e => updateConfigAndDebounceRoll({ ...config, color: e.target.value })}
+                            className="w-8 h-8 rounded-lg border-0 bg-transparent cursor-pointer"
+                          />
+                          <input 
+                            type="text" 
+                            value={currentNormalized.color} 
+                            onChange={e => updateConfigAndDebounceRoll({ ...config, color: e.target.value })}
+                            className="bg-transparent text-xs font-mono text-gray-300 outline-none uppercase w-full"
+                          />
+                        </div>
+                      </div>
+                      {/* Swatches */}
+                      <div className="flex flex-wrap gap-1.5">
+                        {QUICK_COLORS.map(hex => (
+                          <button
+                            key={hex}
+                            onClick={() => updateConfigAndDebounceRoll({ ...config, color: hex })}
+                            className={`w-7 h-7 rounded-lg border transition-transform ${
+                              currentNormalized.color === hex ? 'border-white scale-110 shadow-md' : 'border-black/40 hover:scale-105'
+                            }`}
+                            style={{ backgroundColor: hex }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-gray-900/60 rounded-xl border border-gray-800 flex items-start gap-2 text-xs text-gray-400">
+                      <Info size={16} className="text-dnd-gold shrink-0 mt-0.5" />
+                      <span>This official Rainbow Marble gemstone texture has its own built-in multicolor pattern.</span>
+                    </div>
+                  )}
+
+                  {/* Edge Sharpness Presets */}
                   <div className="pt-2 border-t border-gray-800/60">
                     <label className="text-xs font-bold text-gray-400 uppercase tracking-widest block mb-2">
-                      Material Finish
+                      Edge Shape
                     </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div className="grid grid-cols-3 gap-2">
                       {[
-                        { id: 'solid', name: 'Solid' },
-                        { id: 'metallic', name: 'Metallic' },
-                        { id: 'glossy', name: 'Glossy' },
-                        { id: 'shadow', name: 'Dark Shadow' },
-                      ].map(f => (
-                        <button
-                          key={f.id}
-                          onClick={() => setConfig(prev => ({ ...prev, finish: f.id as any }))}
-                          className={`py-3 px-3 rounded-xl border text-center font-bold text-xs transition-all ${
-                            config.finish === f.id
-                              ? 'bg-dnd-gold text-black border-dnd-gold shadow-md'
-                              : 'bg-gray-900/50 border-gray-800 text-gray-300 hover:text-white hover:bg-gray-800/50'
-                          }`}
-                        >
-                          {f.name}
-                        </button>
-                      ))}
+                        { 
+                          id: 'rounded' as DiceEdgeStyle, 
+                          name: 'Rounded', 
+                          desc: 'Soft, smooth edges',
+                        },
+                        { 
+                          id: 'classic' as DiceEdgeStyle, 
+                          name: 'Classic', 
+                          desc: 'Standard tabletop edges',
+                        },
+                        { 
+                          id: 'sharp' as DiceEdgeStyle, 
+                          name: 'Sharp', 
+                          desc: 'Crisp gemstone edges',
+                        },
+                      ].map(edge => {
+                        const isSelected = currentNormalized.edgeStyle === edge.id;
+                        const isDisabled = currentNormalized.surface === 'marble' && edge.id !== 'sharp';
+
+                        return (
+                          <button
+                            key={edge.id}
+                            type="button"
+                            disabled={isDisabled}
+                            onClick={() => handleSelectEdgeStyle(edge.id)}
+                            className={`p-3 rounded-xl border text-left transition-all ${
+                              isSelected
+                                ? 'bg-dnd-gold text-black border-dnd-gold shadow-md font-bold'
+                                : isDisabled
+                                ? 'bg-gray-900/20 border-gray-800/40 text-gray-600 opacity-50 cursor-not-allowed'
+                                : 'bg-gray-900/50 border-gray-800 text-gray-300 hover:text-white hover:bg-gray-800/50'
+                            }`}
+                          >
+                            <div className="text-xs font-bold uppercase">{edge.name}</div>
+                            <div className={`text-[10px] mt-0.5 ${isSelected ? 'text-black/80' : 'text-gray-400'}`}>
+                              {edge.desc}
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
+                    {currentNormalized.surface === 'marble' && (
+                      <p className="text-[11px] text-gray-400 mt-2 italic">
+                        * Rainbow Marble surface is designed for the Sharp gemstone geometry.
+                      </p>
+                    )}
                   </div>
+
                 </div>
               )}
 
@@ -355,12 +459,12 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
                       <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">
                         Key Light Intensity
                       </label>
-                      <span className="text-xs font-mono text-dnd-gold font-bold">{config.lightIntensity ?? 1.4}x</span>
+                      <span className="text-xs font-mono text-dnd-gold font-bold">{currentNormalized.lightIntensity}x</span>
                     </div>
                     <input 
                       type="range" min="0.5" max="2.5" step="0.1" 
-                      value={config.lightIntensity ?? 1.4}
-                      onChange={e => setConfig(prev => ({ ...prev, lightIntensity: parseFloat(e.target.value) }))}
+                      value={currentNormalized.lightIntensity}
+                      onChange={e => updateConfigAndDebounceRoll({ ...config, lightIntensity: parseFloat(e.target.value) })}
                       className="w-full accent-dnd-gold cursor-pointer"
                     />
                   </div>
@@ -371,12 +475,12 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
                       <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">
                         Surface Shadow Opacity
                       </label>
-                      <span className="text-xs font-mono text-dnd-gold font-bold">{Math.round((config.shadowTransparency ?? 0.7) * 100)}%</span>
+                      <span className="text-xs font-mono text-dnd-gold font-bold">{Math.round(currentNormalized.shadowTransparency * 100)}%</span>
                     </div>
                     <input 
                       type="range" min="0.0" max="1.0" step="0.05" 
-                      value={config.shadowTransparency ?? 0.7}
-                      onChange={e => setConfig(prev => ({ ...prev, shadowTransparency: parseFloat(e.target.value) }))}
+                      value={currentNormalized.shadowTransparency}
+                      onChange={e => updateConfigAndDebounceRoll({ ...config, shadowTransparency: parseFloat(e.target.value) })}
                       className="w-full accent-dnd-gold cursor-pointer"
                     />
                   </div>
@@ -392,12 +496,12 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
                       <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">
                         Screen Dice Scale
                       </label>
-                      <span className="text-xs font-mono text-dnd-gold font-bold">{config.scale || 6}x</span>
+                      <span className="text-xs font-mono text-dnd-gold font-bold">{currentNormalized.scale}x</span>
                     </div>
                     <input 
                       type="range" min="4.0" max="10.0" step="0.5" 
-                      value={config.scale || 6}
-                      onChange={e => setConfig(prev => ({ ...prev, scale: parseFloat(e.target.value) }))}
+                      value={currentNormalized.scale}
+                      onChange={e => updateConfigAndDebounceRoll({ ...config, scale: parseFloat(e.target.value) })}
                       className="w-full accent-dnd-gold cursor-pointer"
                     />
                   </div>
@@ -408,12 +512,12 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
                       <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">
                         Throw Velocity
                       </label>
-                      <span className="text-xs font-mono text-dnd-gold font-bold">{config.throwForce || 5}x</span>
+                      <span className="text-xs font-mono text-dnd-gold font-bold">{currentNormalized.throwForce}x</span>
                     </div>
                     <input 
                       type="range" min="1" max="10" step="1" 
-                      value={config.throwForce || 5}
-                      onChange={e => setConfig(prev => ({ ...prev, throwForce: parseInt(e.target.value) }))}
+                      value={currentNormalized.throwForce}
+                      onChange={e => updateConfigAndDebounceRoll({ ...config, throwForce: parseInt(e.target.value) })}
                       className="w-full accent-dnd-gold cursor-pointer"
                     />
                   </div>
@@ -424,12 +528,12 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
                       <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">
                         Spin / Tumble Torque
                       </label>
-                      <span className="text-xs font-mono text-dnd-gold font-bold">{config.spinForce || 6}x</span>
+                      <span className="text-xs font-mono text-dnd-gold font-bold">{currentNormalized.spinForce}x</span>
                     </div>
                     <input 
                       type="range" min="1" max="10" step="1" 
-                      value={config.spinForce || 6}
-                      onChange={e => setConfig(prev => ({ ...prev, spinForce: parseInt(e.target.value) }))}
+                      value={currentNormalized.spinForce}
+                      onChange={e => updateConfigAndDebounceRoll({ ...config, spinForce: parseInt(e.target.value) })}
                       className="w-full accent-dnd-gold cursor-pointer"
                     />
                   </div>
@@ -437,20 +541,20 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
                   {/* Sound Effect Toggle */}
                   <div className="flex items-center justify-between p-3.5 bg-gray-900/50 rounded-xl border border-gray-800">
                     <div className="flex items-center gap-3">
-                      {config.soundEnabled ? <Volume2 size={20} className="text-dnd-gold" /> : <VolumeX size={20} className="text-gray-500" />}
+                      {currentNormalized.soundEnabled ? <Volume2 size={20} className="text-dnd-gold" /> : <VolumeX size={20} className="text-gray-500" />}
                       <div>
                         <div className="text-xs font-bold text-white uppercase">Dice Roll Sound FX</div>
                         <div className="text-[10px] text-gray-400">Audible clatter audio effects when dice impact the surface</div>
                       </div>
                     </div>
                     <button
-                      onClick={() => setConfig(prev => ({ ...prev, soundEnabled: !prev.soundEnabled }))}
+                      onClick={() => updateConfigAndDebounceRoll({ ...config, soundEnabled: !config.soundEnabled })}
                       className={`w-12 h-6 rounded-full p-1 transition-colors ${
-                        config.soundEnabled ? 'bg-dnd-gold' : 'bg-gray-800'
+                        currentNormalized.soundEnabled ? 'bg-dnd-gold' : 'bg-gray-800'
                       }`}
                     >
                       <div className={`w-4 h-4 rounded-full bg-black transition-transform ${
-                        config.soundEnabled ? 'translate-x-6' : 'translate-x-0'
+                        currentNormalized.soundEnabled ? 'translate-x-6' : 'translate-x-0'
                       }`} />
                     </button>
                   </div>
@@ -463,7 +567,7 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
             <div className="flex items-center justify-between pt-4 border-t border-gray-800/80 gap-3">
               <button
                 onClick={() => {
-                  const resetCfg = { ...DEFAULT_CUSTOMIZATION, color: character.diceColor || DEFAULT_CUSTOMIZATION.color };
+                  const resetCfg = normalizeDiceCustomization(undefined, '#eab308');
                   setConfig(resetCfg);
                   handleRollPreview(resetCfg);
                 }}
