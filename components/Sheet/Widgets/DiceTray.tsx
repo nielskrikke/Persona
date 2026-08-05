@@ -11,7 +11,7 @@ export const DiceTray = ({
     onRoll: (formula: string) => void
 }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [counts, setCounts] = useState<Record<string, number>>({ d20: 0, d12: 0, d10: 0, d8: 0, d6: 0, d4: 0 });
+    const [counts, setCounts] = useState<Record<string, number>>({ d100: 0, d20: 0, d12: 0, d10: 0, d8: 0, d6: 0, d4: 0 });
     const [menuPos, setMenuPos] = useState<{x: number, y: number, targetDie?: string | null} | null>(null);
 
     const hasSelection = Object.values(counts).some((v: number) => v > 0);
@@ -54,15 +54,15 @@ export const DiceTray = ({
         
         if (formula) {
             onRoll(formula);
-            setCounts({ d20: 0, d12: 0, d10: 0, d8: 0, d6: 0, d4: 0 });
+            setCounts({ d100: 0, d20: 0, d12: 0, d10: 0, d8: 0, d6: 0, d4: 0 });
             setIsOpen(false);
             setMenuPos(null);
         }
     };
 
-    const clearCounts = () => setCounts({ d20: 0, d12: 0, d10: 0, d8: 0, d6: 0, d4: 0 });
+    const clearCounts = () => setCounts({ d100: 0, d20: 0, d12: 0, d10: 0, d8: 0, d6: 0, d4: 0 });
 
-    const dice = ['d20', 'd12', 'd10', 'd8', 'd6', 'd4'];
+    const dice = ['d100', 'd20', 'd12', 'd10', 'd8', 'd6', 'd4'];
 
     return (
         <>
@@ -110,7 +110,7 @@ export const DiceTray = ({
                                 }}
                                 className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all shadow-xl bg-[#1b1c20] hover:bg-[#25262b] hover:scale-110 ${counts[d] > 0 ? 'border-dnd-gold text-dnd-gold' : 'border-gray-600 text-gray-400'}`}
                             >
-                                <span className="font-bold font-serif text-sm uppercase">{d}</span>
+                                <span className={`font-bold font-serif uppercase ${d.length > 3 ? 'text-[11px]' : 'text-sm'}`}>{d}</span>
                                 {counts[d] > 0 && (
                                     <div className="absolute -top-1 -right-1 w-5 h-5 bg-dnd-red text-white text-[10px] font-bold flex items-center justify-center rounded-full border border-[#1b1c20] shadow-sm">
                                         {counts[d]}

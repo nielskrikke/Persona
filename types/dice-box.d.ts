@@ -29,7 +29,18 @@ declare module '@3d-dice/dice-box' {
     scale?: number;
     delay?: number;
     offscreen?: boolean;
+    spinForce?: number;
+    throwForce?: number;
+    suspendSimulation?: boolean;
+    preloadThemes?: string[];
+    externalThemes?: Record<string, string>;
     onRollComplete?: (results: DiceBoxGroupResult[]) => void;
+  }
+
+  export interface DiceBoxRollOptions {
+    theme?: string;
+    themeColor?: string;
+    newStartPoint?: boolean;
   }
 
   export default class DiceBox {
@@ -37,11 +48,12 @@ declare module '@3d-dice/dice-box' {
     init(): Promise<this>;
     roll(
       notation: string | Array<string | { qty: number; sides: number | string; modifier?: number }>,
-      options?: { theme?: string; themeColor?: string; newStartPoint?: boolean }
+      options?: DiceBoxRollOptions
     ): Promise<DiceBoxGroupResult[]>;
     clear(): this;
     show(): this;
     hide(className?: string): this;
     updateConfig(options: Partial<DiceBoxOptions>): Promise<this>;
+    loadTheme(theme: string): Promise<this>;
   }
 }

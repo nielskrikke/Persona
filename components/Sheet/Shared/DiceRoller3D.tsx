@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import DiceBox, { DiceBoxGroupResult } from '@3d-dice/dice-box';
 import { DiceCustomizationOptions } from '@/types';
-import { normalizeDiceCustomization, resolvePersonaDiceTheme } from '@/utils/diceThemes';
+import { normalizeDiceCustomization, resolveDiceTheme } from '@/utils/diceThemes';
 
 export interface DiceBoxRollRequest {
   id: string;
@@ -21,7 +21,20 @@ export default function DiceRoller3D({ request, onComplete, onError }: Props) {
   const boxRef = useRef<DiceBox | null>(null);
   const initRef = useRef<Promise<DiceBox> | null>(null);
   const handledRequestRef = useRef<string | null>(null);
+  const fadeTimeoutRef = useRef<number | null>(null);
+  const clearTimeoutRef = useRef<number | null>(null);
   const [active, setActive] = useState(false);
+
+  const clearPendingTimers = () => {
+    if (fadeTimeoutRef.current !== null) {
+      window.clearTimeout(fadeTimeoutRef.current);
+      fadeTimeoutRef.current = null;
+    }
+    if (clearTimeoutRef.current !== null) {
+      window.clearTimeout(clearTimeoutRef.current);
+      clearTimeoutRef.current = null;
+    }
+  };
 
   useEffect(() => {
     if (!hostRef.current || boxRef.current || initRef.current) return;
@@ -48,12 +61,19 @@ export default function DiceRoller3D({ request, onComplete, onError }: Props) {
       initRef.current = null;
       boxRef.current = null;
     }
+
+    return () => {
+      clearPendingTimers();
+    };
   }, []);
 
   useEffect(() => {
     if (!request || handledRequestRef.current === request.id) return;
-    handledRequestRef.current = request.id;
-    let cancelled = false;
+    const requestId = request.id;
+    handledRequestRef.current = requestId;
+    let isRequestActive = true;
+
+    clearPendingTimers();
 
     (async () => {
       try {
@@ -62,7 +82,7 @@ export default function DiceRoller3D({ request, onComplete, onError }: Props) {
         }
 
         const normalized = normalizeDiceCustomization(request.customization, request.color);
-        const resolvedTheme = resolvePersonaDiceTheme(normalized.surface, normalized.edgeStyle);
+        const resolved = resolveDiceTheme(normalized.theme);
 
         const timeoutPromise = new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error('Dice Box timeout')), 10000)
@@ -70,77 +90,96 @@ export default function DiceRoller3D({ request, onComplete, onError }: Props) {
 
         const rollPromise = (async () => {
           const box = await initRef.current;
-          if (!box || cancelled) throw new Error('Dice Box unavailable');
+          if (!box || !isRequestActive) throw new Error('Dice Box unavailable');
+
+          try {
+            await box.clear();
+          } catch (_) {
+            // ignore clear error
+          }
+
           setActive(true);
 
-          const diceColor = normalized.color;
-          const diceScale = normalized.scale;
-          const lightIntensity = normalized.lightIntensity;
-          const shadowTransparency = normalized.shadowTransparency;
-
           const configObj: Record<string, any> = {
-            theme: resolvedTheme.diceBoxTheme,
-            scale: diceScale,
-            lightIntensity,
-            shadowTransparency,
+            theme: resolved.runtimeTheme,
+            enableShadows: normalized.enableShadows,
+            shadowTransparency: normalized.shadowTransparency,
+            lightIntensity: normalized.lightIntensity,
+            scale: normalized.scale,
             spinForce: normalized.spinForce,
             throwForce: normalized.throwForce,
           };
-          if (resolvedTheme.supportsThemeColor) {
-            configObj.themeColor = diceColor;
+
+          if (resolved.supportsThemeColor) {
+            configObj.themeColor = normalized.color;
+          }
+
+          if (resolved.preloadThemes && resolved.preloadThemes.length > 0) {
+            configObj.preloadThemes = resolved.preloadThemes;
           }
 
           try {
             await box.updateConfig(configObj as any);
 
             const rollOpts: Record<string, any> = {
-              theme: resolvedTheme.diceBoxTheme,
+              theme: resolved.runtimeTheme,
             };
-            if (resolvedTheme.supportsThemeColor) {
-              rollOpts.themeColor = diceColor;
+            if (resolved.supportsThemeColor) {
+              rollOpts.themeColor = normalized.color;
             }
 
             return await box.roll(request.notation, rollOpts as any);
           } catch (themeErr) {
-            console.warn(`Failed to roll with theme ${resolvedTheme.diceBoxTheme}. Retrying with default theme:`, themeErr);
-            // Fallback retry with default theme
+            console.warn(`Failed to roll with theme ${resolved.runtimeTheme}. Retrying with default theme:`, themeErr);
             await box.updateConfig({
               theme: 'default',
-              themeColor: diceColor,
-              scale: diceScale,
-              lightIntensity,
-              shadowTransparency,
+              themeColor: normalized.color,
+              enableShadows: normalized.enableShadows,
+              shadowTransparency: normalized.shadowTransparency,
+              lightIntensity: normalized.lightIntensity,
+              scale: normalized.scale,
               spinForce: normalized.spinForce,
               throwForce: normalized.throwForce,
             } as any);
 
             return await box.roll(request.notation, {
               theme: 'default',
-              themeColor: diceColor,
+              themeColor: normalized.color,
             } as any);
           }
         })();
 
         const results = await Promise.race([rollPromise, timeoutPromise]);
-        if (!cancelled) {
-          onComplete(request.id, results);
+        
+        if (isRequestActive) {
+          onComplete(requestId, results);
+        }
+
+        if (isRequestActive) {
+          // Extended hold duration of rolled 3D dice on screen to 3 seconds post-roll
+          fadeTimeoutRef.current = window.setTimeout(() => {
+            fadeTimeoutRef.current = null;
+            // Begin smooth 700ms ease-out opacity transition
+            setActive(false);
+
+            // Clear physics scene after 700ms opacity fade out completes to prevent pop-out artifacting
+            clearTimeoutRef.current = window.setTimeout(() => {
+              clearTimeoutRef.current = null;
+              boxRef.current?.clear();
+            }, 700);
+          }, 3000);
         }
       } catch (cause) {
-        if (!cancelled) {
-          onError(request.id, cause instanceof Error ? cause : new Error(String(cause)));
-        }
-      } finally {
-        if (!cancelled) {
-          window.setTimeout(() => {
-            boxRef.current?.clear();
-            setActive(false);
-          }, 1200);
+        if (isRequestActive) {
+          onError(requestId, cause instanceof Error ? cause : new Error(String(cause)));
+          setActive(false);
+          boxRef.current?.clear();
         }
       }
     })();
 
     return () => {
-      cancelled = true;
+      isRequestActive = false;
     };
   }, [request, onComplete, onError]);
 
@@ -158,7 +197,7 @@ export default function DiceRoller3D({ request, onComplete, onError }: Props) {
         id="dice-box-host"
         ref={hostRef}
         aria-hidden="true"
-        className={`fixed inset-0 z-[1000] pointer-events-none overflow-hidden transition-opacity duration-200 ${
+        className={`fixed inset-0 z-[1000] pointer-events-none overflow-hidden transition-opacity duration-700 ease-out ${
           active ? 'opacity-100' : 'opacity-0'
         }`}
       />

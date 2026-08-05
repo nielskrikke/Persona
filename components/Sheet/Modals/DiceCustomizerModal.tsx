@@ -1,8 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import DiceBox from '@3d-dice/dice-box';
-import { CharacterState, DiceCustomizationOptions, DiceSurface, DiceEdgeStyle } from '@/types';
-import { normalizeDiceCustomization, resolvePersonaDiceTheme, THEME_DEFINITIONS } from '@/utils/diceThemes';
-import { Dices, Palette, Volume2, VolumeX, Check, RotateCcw, Sliders, Sun, Info } from 'lucide-react';
+import { CharacterState, DiceCustomizationOptions, OfficialDiceThemeId } from '@/types';
+import {
+  normalizeDiceCustomization,
+  resolveDiceTheme,
+  OFFICIAL_DICE_THEMES,
+  DiceThemeDefinition,
+} from '@/utils/diceThemes';
+import { Dices, Palette, Volume2, VolumeX, Check, RotateCcw, Sliders, Sun, Info, Moon, Sparkles } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -22,13 +27,15 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
     return normalizeDiceCustomization(character.diceCustomization, character.diceColor);
   });
 
-  const [activeTab, setActiveTab] = useState<'colors' | 'lighting' | 'physics'>('colors');
+  const [activeTab, setActiveTab] = useState<'theme' | 'lighting' | 'physics'>('theme');
   const [previewResult, setPreviewResult] = useState<string | null>(null);
   const [isRollingPreview, setIsRollingPreview] = useState(false);
+  const [previewNotice, setPreviewNotice] = useState<string | null>(null);
 
   const previewBoxRef = useRef<DiceBox | null>(null);
   const initRef = useRef<Promise<DiceBox> | null>(null);
   const rollDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const rollRequestIdRef = useRef(0);
 
   // Initialize preview DiceBox
   useEffect(() => {
@@ -44,8 +51,8 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
           assetPath: '/assets/dice-box/',
           theme: 'default',
           enableShadows: true,
-          shadowTransparency: config.shadowTransparency ?? 0.7,
-          lightIntensity: config.lightIntensity ?? 1.4,
+          shadowTransparency: config.shadowTransparency ?? 0.8,
+          lightIntensity: config.lightIntensity ?? 1,
           scale: 10,
           delay: 10,
           offscreen: true,
@@ -75,12 +82,15 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
 
   // Roll preview dice
   const handleRollPreview = async (overrideConfig?: DiceCustomizationOptions) => {
-    if (isRollingPreview) return;
+    rollRequestIdRef.current += 1;
+    const currentRequestId = rollRequestIdRef.current;
+
     const activeCfg = normalizeDiceCustomization(overrideConfig || config);
-    const resolvedTheme = resolvePersonaDiceTheme(activeCfg.surface, activeCfg.edgeStyle);
+    const resolved = resolveDiceTheme(activeCfg.theme);
 
     setIsRollingPreview(true);
     setPreviewResult(null);
+    setPreviewNotice(null);
 
     try {
       if (!initRef.current) {
@@ -89,29 +99,39 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
       const box = await initRef.current;
       box.clear();
 
+      if (currentRequestId !== rollRequestIdRef.current) return;
+
       const configObj: Record<string, any> = {
-        theme: resolvedTheme.diceBoxTheme,
-        scale: 10,
-        lightIntensity: activeCfg.lightIntensity,
+        theme: resolved.runtimeTheme,
+        enableShadows: activeCfg.enableShadows,
         shadowTransparency: activeCfg.shadowTransparency,
+        lightIntensity: activeCfg.lightIntensity,
+        scale: 10,
         spinForce: activeCfg.spinForce,
         throwForce: activeCfg.throwForce,
       };
 
-      if (resolvedTheme.supportsThemeColor) {
+      if (resolved.supportsThemeColor) {
         configObj.themeColor = activeCfg.color;
+      }
+
+      if (resolved.preloadThemes && resolved.preloadThemes.length > 0) {
+        configObj.preloadThemes = resolved.preloadThemes;
       }
 
       await box.updateConfig(configObj as any);
 
+      if (currentRequestId !== rollRequestIdRef.current) return;
+
       const rollOpts: Record<string, any> = {
-        theme: resolvedTheme.diceBoxTheme,
+        theme: resolved.runtimeTheme,
       };
-      if (resolvedTheme.supportsThemeColor) {
+      if (resolved.supportsThemeColor) {
         rollOpts.themeColor = activeCfg.color;
       }
 
       const results = await box.roll(['1d20', '1d6'], rollOpts as any);
+      if (currentRequestId !== rollRequestIdRef.current) return;
 
       if (results && results.length > 0) {
         const values = results.map((r: any) => r.value || 0);
@@ -120,8 +140,13 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
       }
     } catch (err) {
       console.warn('Preview roll error:', err);
+      if (currentRequestId === rollRequestIdRef.current) {
+        setPreviewNotice('Failed to load theme preview. Recovering with default...');
+      }
     } finally {
-      setIsRollingPreview(false);
+      if (currentRequestId === rollRequestIdRef.current) {
+        setIsRollingPreview(false);
+      }
     }
   };
 
@@ -135,32 +160,15 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
     }, 400);
   };
 
-  const handleSelectSurface = (surface: DiceSurface) => {
-    if (surface === 'marble') {
-      // Marble is only available with 'sharp' edge style
-      const nextConfig: DiceCustomizationOptions = {
-        ...config,
-        surface: 'marble',
-        edgeStyle: 'sharp',
-      };
-      updateConfigAndDebounceRoll(nextConfig);
-    } else {
-      const nextConfig: DiceCustomizationOptions = {
-        ...config,
-        surface: 'solid',
-      };
-      updateConfigAndDebounceRoll(nextConfig);
-    }
-  };
-
-  const handleSelectEdgeStyle = (edgeStyle: DiceEdgeStyle) => {
-    if (config.surface === 'marble' && edgeStyle !== 'sharp') {
-      // Marble requires sharp gemstone geometry
-      return;
+  const handleSelectTheme = (themeId: OfficialDiceThemeId) => {
+    let nextColor = config.color;
+    if (themeId === 'rust' && !config.color) {
+      nextColor = '#aa4f4a';
     }
     const nextConfig: DiceCustomizationOptions = {
       ...config,
-      edgeStyle,
+      theme: themeId,
+      color: nextColor,
     };
     updateConfigAndDebounceRoll(nextConfig);
   };
@@ -178,11 +186,11 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
   if (!isOpen) return null;
 
   const currentNormalized = normalizeDiceCustomization(config);
-  const currentResolvedTheme = resolvePersonaDiceTheme(currentNormalized.surface, currentNormalized.edgeStyle);
+  const currentResolved = resolveDiceTheme(currentNormalized.theme);
 
   return (
     <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-[500] flex items-center justify-center p-3 md:p-6 animate-in fade-in duration-200">
-      <div className="bg-[#121318] border border-dnd-gold/40 rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden relative">
+      <div className="bg-[#121318] border border-dnd-gold/40 rounded-2xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden relative">
         
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800/80 bg-gradient-to-r from-gray-900/90 to-[#161820]">
@@ -194,10 +202,10 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
               <h2 className="text-xl font-serif text-white font-bold flex items-center gap-2">
                 3D Dice Forge
                 <span className="text-[10px] font-mono px-2 py-0.5 bg-dnd-gold/20 text-dnd-gold border border-dnd-gold/30 rounded-full uppercase tracking-wider">
-                  Studio
+                  Official Catalog
                 </span>
               </h2>
-              <p className="text-xs text-gray-400">Customize dice surface materials, edge sharpness, lighting and physics</p>
+              <p className="text-xs text-gray-400">Select official 3D themes, material colors, lighting and physics</p>
             </div>
           </div>
           <button 
@@ -212,10 +220,10 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
         <div className="flex-1 overflow-y-auto grid grid-cols-1 lg:grid-cols-12 gap-0">
           
           {/* Left Column: Interactive 3D Preview Canvas */}
-          <div className="lg:col-span-5 bg-[#0a0b0e] p-6 flex flex-col justify-between items-center border-b lg:border-b-0 lg:border-r border-gray-800/80 relative min-h-[300px]">
+          <div className="lg:col-span-5 bg-[#0a0b0e] p-6 flex flex-col justify-between items-center border-b lg:border-b-0 lg:border-r border-gray-800/80 relative min-h-[320px]">
             
             {/* Background Canvas Host */}
-            <div className="w-full flex-1 relative flex items-center justify-center min-h-[240px] overflow-hidden rounded-xl border border-gray-800/60 bg-gradient-to-b from-gray-950 via-[#0d0f14] to-black">
+            <div className="w-full flex-1 relative flex items-center justify-center min-h-[250px] overflow-hidden rounded-xl border border-gray-800/60 bg-gradient-to-b from-gray-950 via-[#0d0f14] to-black">
               
               <style>{`
                 #dice-preview-host canvas {
@@ -244,8 +252,15 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
                 )}
               </div>
 
+              {/* Notice Overlay */}
+              {previewNotice && (
+                <div className="absolute bottom-3 left-3 right-3 text-[11px] text-amber-300 bg-black/90 backdrop-blur-md p-2 rounded-lg border border-amber-500/30 z-10 text-center">
+                  {previewNotice}
+                </div>
+              )}
+
               {/* Center Roll Prompt if empty */}
-              {!previewResult && !isRollingPreview && (
+              {!previewResult && !isRollingPreview && !previewNotice && (
                 <p className="text-xs text-gray-500 italic pointer-events-none z-10 text-center px-4">
                   Click 'Roll Test Dice' below to test d20 + d6 in preview
                 </p>
@@ -271,8 +286,8 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
             {/* Category Tabs */}
             <div className="flex bg-black/40 p-1 rounded-xl border border-gray-800 gap-1">
               {[
-                { id: 'colors', label: 'Surface & Edges', icon: Palette },
-                { id: 'lighting', label: 'Lighting & Shadow', icon: Sun },
+                { id: 'theme', label: 'Theme & Color', icon: Palette },
+                { id: 'lighting', label: 'Lighting & Shadows', icon: Sun },
                 { id: 'physics', label: 'Scale & Physics', icon: Sliders },
               ].map(tab => {
                 const Icon = tab.icon;
@@ -295,65 +310,67 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
             </div>
 
             {/* Tab Contents */}
-            <div className="flex-1 space-y-6 min-h-[280px]">
+            <div className="flex-1 space-y-6 min-h-[300px]">
 
-              {/* SURFACE & EDGES TAB */}
-              {activeTab === 'colors' && (
+              {/* THEME & COLOR TAB */}
+              {activeTab === 'theme' && (
                 <div className="space-y-5">
 
-                  {/* Surface Material Selection */}
+                  {/* Official Theme Catalog */}
                   <div>
                     <label className="text-xs font-bold text-gray-400 uppercase tracking-widest block mb-2">
-                      Dice Surface
+                      Official Dice Theme
                     </label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {/* Solid Colour Option */}
-                      <button
-                        type="button"
-                        onClick={() => handleSelectSurface('solid')}
-                        className={`p-3 rounded-xl border text-left transition-all flex items-center gap-3 ${
-                          currentNormalized.surface === 'solid'
-                            ? 'bg-dnd-gold/10 border-dnd-gold text-white shadow-md'
-                            : 'bg-gray-900/50 border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800/50'
-                        }`}
-                      >
-                        <div 
-                          className="w-8 h-8 rounded-lg border border-white/20 shrink-0 shadow-inner"
-                          style={{ backgroundColor: currentNormalized.color }}
-                        />
-                        <div>
-                          <div className="text-xs font-bold text-white uppercase">Solid Colour</div>
-                          <div className="text-[10px] text-gray-400">Customizable tint</div>
-                        </div>
-                      </button>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[220px] overflow-y-auto pr-1">
+                      {OFFICIAL_DICE_THEMES.map((themeDef: DiceThemeDefinition) => {
+                        const isSelected = currentNormalized.theme === themeDef.id;
 
-                      {/* Rainbow Marble Option */}
-                      <button
-                        type="button"
-                        onClick={() => handleSelectSurface('marble')}
-                        className={`p-3 rounded-xl border text-left transition-all flex items-center gap-3 ${
-                          currentNormalized.surface === 'marble'
-                            ? 'bg-dnd-gold/10 border-dnd-gold text-white shadow-md'
-                            : 'bg-gray-900/50 border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800/50'
-                        }`}
-                      >
-                        <div 
-                          className="w-8 h-8 rounded-lg border border-white/20 shrink-0 shadow-inner bg-cover bg-center"
-                          style={{ backgroundImage: `url(/assets/dice-box/themes/gemstoneMarble/diffuse.jpg)` }}
-                        />
-                        <div>
-                          <div className="text-xs font-bold text-white uppercase">Rainbow Marble</div>
-                          <div className="text-[10px] text-gray-400">Gemstone texture</div>
-                        </div>
-                      </button>
+                        return (
+                          <button
+                            key={themeDef.id}
+                            type="button"
+                            onClick={() => handleSelectTheme(themeDef.id)}
+                            className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                              isSelected
+                                ? 'bg-dnd-gold/15 border-dnd-gold text-white shadow-md ring-1 ring-dnd-gold'
+                                : 'bg-gray-900/50 border-gray-800 text-gray-300 hover:text-white hover:bg-gray-800/50'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-bold uppercase tracking-wide text-white">
+                                {themeDef.label}
+                              </span>
+                              <div className="flex items-center gap-1 shrink-0">
+                                {themeDef.supportsThemeColor ? (
+                                  <span className="text-[9px] font-mono px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded">
+                                    Colorable
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] font-mono px-1.5 py-0.5 bg-gray-800 text-gray-400 border border-gray-700 rounded">
+                                    Fixed
+                                  </span>
+                                )}
+                                {themeDef.extends && (
+                                  <span className="text-[9px] font-mono px-1.5 py-0.5 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded">
+                                    Extends {themeDef.extends}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <p className="text-[10px] text-gray-400 mt-1 line-clamp-2">
+                              {themeDef.description}
+                            </p>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
-                  {/* Main Dice Color (Only for Solid Surface) */}
-                  {currentNormalized.surface === 'solid' ? (
-                    <div>
+                  {/* Main Dice Color (Only for Colorable Themes) */}
+                  {currentResolved.supportsThemeColor ? (
+                    <div className="pt-2 border-t border-gray-800/60">
                       <label className="text-xs font-bold text-gray-400 uppercase tracking-widest block mb-2">
-                        Main Dice Color
+                        Theme Color
                       </label>
                       <div className="flex items-center gap-3 mb-2.5">
                         <div className="flex items-center gap-2 bg-black/40 p-2 rounded-xl border border-gray-800 flex-1">
@@ -371,7 +388,7 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
                           />
                         </div>
                       </div>
-                      {/* Swatches */}
+                      {/* Quick Swatches */}
                       <div className="flex flex-wrap gap-1.5">
                         {QUICK_COLORS.map(hex => (
                           <button
@@ -386,66 +403,11 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
                       </div>
                     </div>
                   ) : (
-                    <div className="p-3 bg-gray-900/60 rounded-xl border border-gray-800 flex items-start gap-2 text-xs text-gray-400">
+                    <div className="pt-2 border-t border-gray-800/60 p-3 bg-gray-900/60 rounded-xl border border-gray-800 flex items-start gap-2 text-xs text-gray-400">
                       <Info size={16} className="text-dnd-gold shrink-0 mt-0.5" />
-                      <span>This official Rainbow Marble gemstone texture has its own built-in multicolor pattern.</span>
+                      <span>This official theme uses fixed colors supplied by its asset bundle.</span>
                     </div>
                   )}
-
-                  {/* Edge Sharpness Presets */}
-                  <div className="pt-2 border-t border-gray-800/60">
-                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest block mb-2">
-                      Edge Shape
-                    </label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        { 
-                          id: 'rounded' as DiceEdgeStyle, 
-                          name: 'Rounded', 
-                          desc: 'Soft, smooth edges',
-                        },
-                        { 
-                          id: 'classic' as DiceEdgeStyle, 
-                          name: 'Classic', 
-                          desc: 'Standard tabletop edges',
-                        },
-                        { 
-                          id: 'sharp' as DiceEdgeStyle, 
-                          name: 'Sharp', 
-                          desc: 'Crisp gemstone edges',
-                        },
-                      ].map(edge => {
-                        const isSelected = currentNormalized.edgeStyle === edge.id;
-                        const isDisabled = currentNormalized.surface === 'marble' && edge.id !== 'sharp';
-
-                        return (
-                          <button
-                            key={edge.id}
-                            type="button"
-                            disabled={isDisabled}
-                            onClick={() => handleSelectEdgeStyle(edge.id)}
-                            className={`p-3 rounded-xl border text-left transition-all ${
-                              isSelected
-                                ? 'bg-dnd-gold text-black border-dnd-gold shadow-md font-bold'
-                                : isDisabled
-                                ? 'bg-gray-900/20 border-gray-800/40 text-gray-600 opacity-50 cursor-not-allowed'
-                                : 'bg-gray-900/50 border-gray-800 text-gray-300 hover:text-white hover:bg-gray-800/50'
-                            }`}
-                          >
-                            <div className="text-xs font-bold uppercase">{edge.name}</div>
-                            <div className={`text-[10px] mt-0.5 ${isSelected ? 'text-black/80' : 'text-gray-400'}`}>
-                              {edge.desc}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {currentNormalized.surface === 'marble' && (
-                      <p className="text-[11px] text-gray-400 mt-2 italic">
-                        * Rainbow Marble surface is designed for the Sharp gemstone geometry.
-                      </p>
-                    )}
-                  </div>
 
                 </div>
               )}
@@ -453,6 +415,27 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
               {/* LIGHTING & SHADOW TAB */}
               {activeTab === 'lighting' && (
                 <div className="space-y-6">
+                  {/* Enable Shadows Toggle */}
+                  <div className="flex items-center justify-between p-3.5 bg-gray-900/50 rounded-xl border border-gray-800">
+                    <div className="flex items-center gap-3">
+                      <Moon size={20} className={currentNormalized.enableShadows ? 'text-dnd-gold' : 'text-gray-500'} />
+                      <div>
+                        <div className="text-xs font-bold text-white uppercase">Cast Directional Shadows</div>
+                        <div className="text-[10px] text-gray-400">Render dynamic contact shadows under dice on tray surface</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => updateConfigAndDebounceRoll({ ...config, enableShadows: !currentNormalized.enableShadows })}
+                      className={`w-12 h-6 rounded-full p-1 transition-colors ${
+                        currentNormalized.enableShadows ? 'bg-dnd-gold' : 'bg-gray-800'
+                      }`}
+                    >
+                      <div className={`w-4 h-4 rounded-full bg-black transition-transform ${
+                        currentNormalized.enableShadows ? 'translate-x-6' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+
                   {/* Light Intensity */}
                   <div>
                     <div className="flex justify-between items-center mb-1.5">

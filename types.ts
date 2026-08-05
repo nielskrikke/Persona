@@ -343,10 +343,25 @@ export interface LevelChoice {
     revertData?: any;
 }
 
+export type OfficialDiceThemeId =
+  | 'default'
+  | 'default-extras'
+  | 'blueGreenMetal'
+  | 'diceOfRolling'
+  | 'diceOfRolling-fate'
+  | 'gemstone'
+  | 'gemstoneMarble'
+  | 'rock'
+  | 'rust'
+  | 'smooth'
+  | 'smooth-pip'
+  | 'wooden';
+
 export type DiceSurface = 'solid' | 'marble';
 export type DiceEdgeStyle = 'rounded' | 'classic' | 'sharp';
 
 export interface DiceCustomizationOptions {
+    theme?: OfficialDiceThemeId;
     color?: string;
     labelColor?: string;
     surface?: DiceSurface;
@@ -355,6 +370,7 @@ export interface DiceCustomizationOptions {
     scale?: number;
     lightIntensity?: number;
     shadowTransparency?: number;
+    enableShadows?: boolean;
     spinForce?: number;
     throwForce?: number;
     soundEnabled?: boolean;
