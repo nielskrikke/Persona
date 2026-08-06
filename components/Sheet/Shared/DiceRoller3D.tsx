@@ -71,8 +71,8 @@ export default function DiceRoller3D({ request, onComplete, onError }: Props) {
     if (!request || handledRequestRef.current === request.id) return;
     const requestId = request.id;
     handledRequestRef.current = requestId;
-    let isRequestActive = true;
 
+    // Clear any previous fade/clear timers when a new roll starts
     clearPendingTimers();
 
     (async () => {
@@ -90,7 +90,7 @@ export default function DiceRoller3D({ request, onComplete, onError }: Props) {
 
         const rollPromise = (async () => {
           const box = await initRef.current;
-          if (!box || !isRequestActive) throw new Error('Dice Box unavailable');
+          if (!box) throw new Error('Dice Box unavailable');
 
           try {
             await box.clear();
@@ -150,37 +150,27 @@ export default function DiceRoller3D({ request, onComplete, onError }: Props) {
         })();
 
         const results = await Promise.race([rollPromise, timeoutPromise]);
-        
-        if (isRequestActive) {
-          onComplete(requestId, results);
-        }
 
-        if (isRequestActive) {
-          // Extended hold duration of rolled 3D dice on screen to 3 seconds post-roll
-          fadeTimeoutRef.current = window.setTimeout(() => {
-            fadeTimeoutRef.current = null;
-            // Begin smooth 700ms ease-out opacity transition
-            setActive(false);
+        onComplete(requestId, results);
 
-            // Clear physics scene after 700ms opacity fade out completes to prevent pop-out artifacting
-            clearTimeoutRef.current = window.setTimeout(() => {
-              clearTimeoutRef.current = null;
-              boxRef.current?.clear();
-            }, 700);
-          }, 3000);
-        }
-      } catch (cause) {
-        if (isRequestActive) {
-          onError(requestId, cause instanceof Error ? cause : new Error(String(cause)));
+        // Extended hold duration of rolled 3D dice on screen to 3 seconds post-roll
+        fadeTimeoutRef.current = window.setTimeout(() => {
+          fadeTimeoutRef.current = null;
+          // Begin smooth 700ms ease-out opacity transition
           setActive(false);
-          boxRef.current?.clear();
-        }
+
+          // Clear physics scene after 700ms opacity fade out completes to prevent pop-out artifacting
+          clearTimeoutRef.current = window.setTimeout(() => {
+            clearTimeoutRef.current = null;
+            boxRef.current?.clear();
+          }, 700);
+        }, 3000);
+      } catch (cause) {
+        onError(requestId, cause instanceof Error ? cause : new Error(String(cause)));
+        setActive(false);
+        boxRef.current?.clear();
       }
     })();
-
-    return () => {
-      isRequestActive = false;
-    };
   }, [request, onComplete, onError]);
 
   return (
