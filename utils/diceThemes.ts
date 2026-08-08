@@ -91,6 +91,13 @@ export const OFFICIAL_DICE_THEMES: readonly DiceThemeDefinition[] = [
     description: 'Swirled rainbow marble gemstone texture',
   },
   {
+    id: 'genesys',
+    label: 'Genesys',
+    supportsThemeColor: false,
+    diceAvailable: ['d4', 'd6', 'd8', 'd10', 'd12', 'd20', 'd100'],
+    description: 'Custom symbol dice theme for narrative gameplay',
+  },
+  {
     id: 'rock',
     label: 'Rock',
     supportsThemeColor: true,

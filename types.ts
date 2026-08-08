@@ -351,6 +351,7 @@ export type OfficialDiceThemeId =
   | 'diceOfRolling-fate'
   | 'gemstone'
   | 'gemstoneMarble'
+  | 'genesys'
   | 'rock'
   | 'rust'
   | 'smooth'
