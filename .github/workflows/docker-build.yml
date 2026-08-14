@@ -1,0 +1,18 @@
+name: Docker build check
+
+on:
+  push:
+    branches: ["**"]
+
+jobs:
+  docker-build:
+    name: Build Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Same build as the production deploy (Dockerfile): if this fails,
+      # the deploy to the server would fail too. Full log is shown here.
+      - name: Build Docker image
+        run: docker build -t persona-build-check .
