@@ -2,6 +2,8 @@
 FROM node:24-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
+# postinstall hook ("sync:dice-assets") needs scripts/ present before npm ci
+COPY scripts/ ./scripts/
 RUN npm ci
 COPY . .
 RUN npm run build
