@@ -14,7 +14,6 @@ const sources = {
     'diceOfRolling-fate': resolve(root, 'node_modules/@3d-dice/theme-dice-of-rolling-fate'),
     'gemstone': resolve(root, 'node_modules/@3d-dice/theme-gemstone'),
     'gemstoneMarble': resolve(root, 'node_modules/@3d-dice/theme-gemstone-marble'),
-    'genesys': resolve(root, 'node_modules/@3d-dice/theme-genesys'),
     'rock': resolve(root, 'node_modules/@3d-dice/theme-rock'),
     'rust': resolve(root, 'node_modules/@3d-dice/theme-rust'),
     'smooth': resolve(root, 'node_modules/@3d-dice/theme-smooth'),

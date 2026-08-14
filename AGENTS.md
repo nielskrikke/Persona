@@ -14,7 +14,6 @@ This document contains project guidelines, architectural decisions, and key tech
 ## 2. Docker & Build Reliability (`npm ci` & Lockfile Sync)
 - **Problem Context**: Docker builds execute `RUN npm ci`, which strictly validates that `package.json` and `package-lock.json` are in 100% sync. Missing dependencies (e.g., `@3d-dice/theme-*` packages) cause `npm ci` to fail with code `EUSAGE`.
 - **Rule**: Whenever any `@3d-dice` theme, asset sync script, or npm dependency is modified or added in `package.json`, `package-lock.json` MUST be updated using `npm install` before completing the turn.
-- **Theme Asset Syncing**: The `scripts/sync-dice-box-assets.mjs` script runs automatically during `postinstall` and `build`. All 13 `@3d-dice` theme packages (including `genesys`) MUST be mapped in `sources.themes`, `OfficialDiceThemeId` in `types.ts`, and `OFFICIAL_DICE_THEMES` in `utils/diceThemes.ts` to ensure consistent bundle creation.
 
 ---
 
