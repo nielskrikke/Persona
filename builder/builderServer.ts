@@ -659,13 +659,19 @@ export async function gitPush(message?: string, cwd: string = REPO_ROOT): Promis
   if (!add.ok) return { ok: false, output: add.output };
   const status = await runGit(["status", "--short"], cwd);
   const files = status.output.split("\n").filter((l) => l.trim());
-  if (files.length === 0) return { ok: true, pushed: false, output: "Working tree is clean — nothing to push." };
-  const commit = await runGit(["commit", "-m", msg], cwd);
-  if (!commit.ok && !/nothing to commit/i.test(commit.output)) return { ok: false, output: commit.output };
-  // `-u origin HEAD` makes the first push set the upstream (and is a no-op
-  // thereafter), so pushes work on freshly cloned branches too.
+  if (files.length > 0) {
+    const commit = await runGit(["commit", "-m", msg], cwd);
+    if (!commit.ok && !/nothing to commit/i.test(commit.output)) return { ok: false, output: commit.output };
+  }
+  // Push even with a clean tree: a failed push can leave commits ahead of
+  // origin (the commit step already ran before the push errored), and the
+  // button must still deliver them.
   const push = await runGit(["push", "-u", "origin", "HEAD"], cwd);
-  return { ok: push.ok, pushed: true, output: push.output };
+  if (!push.ok) return { ok: false, output: push.output };
+  if (/everything up-to-date/i.test(push.output)) {
+    return { ok: true, pushed: false, output: "Working tree is clean — nothing to push." };
+  }
+  return { ok: true, pushed: true, output: push.output };
 }
 
 /** Pull the latest changes from the configured remote. */
