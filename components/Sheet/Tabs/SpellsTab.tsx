@@ -44,15 +44,15 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                     <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Modifier</span>
                     <span className="text-2xl font-bold text-dnd-gold">{spellAttackStr}</span>
                 </div>
-                <div className="flex flex-col items-center justify-center p-2 border-l border-gray-800">
+                <div className="flex flex-col items-center justify-center p-2 sm:border-l sm:border-gray-800">
                     <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Spell Attack</span>
                     <span className="text-2xl font-bold text-white">{spellAttackStr}</span>
                 </div>
-                <div className="flex flex-col items-center justify-center p-2 border-l border-gray-800">
+                <div className="flex flex-col items-center justify-center p-2 sm:border-l sm:border-gray-800">
                     <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Save DC</span>
                     <span className="text-2xl font-bold text-white">{spellSave}</span>
                 </div>
-                <div className="flex flex-col items-center justify-center p-2 border-l border-gray-800">
+                <div className="flex flex-col items-center justify-center p-2 sm:border-l sm:border-gray-800">
                     <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Level</span>
                     <span className="text-2xl font-bold text-gray-400">{character.level}</span>
                 </div>
@@ -140,7 +140,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                                 const newCurrent = isSpent ? Number(slots.current) + 1 : Number(slots.current) - 1; 
                                                                 setCharacter(prev => ({ ...prev, spellSlots: { ...prev.spellSlots, [lvl]: { ...slots, current: newCurrent } } })); 
                                                             }} 
-                                                            className={`w-3.5 h-3.5 rounded-full border transition-all ${isSpent ? 'bg-dnd-red border-dnd-red' : 'bg-transparent border-gray-600 hover:border-gray-400'}`} 
+                                                            className={`w-5 h-5 sm:w-3.5 sm:h-3.5 rounded-full border transition-all ${isSpent ? 'bg-dnd-red border-dnd-red' : 'bg-transparent border-gray-600 hover:border-gray-400'}`} 
                                                         />
                                                     ); 
                                                 })}
@@ -150,7 +150,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                     <span className="text-[10px] text-gray-500 uppercase border-l border-gray-700/50 pl-4 py-2 shrink-0">{spells.length} known / prepared</span>
                                 </div>
                             </div>
-                            <div className="overflow-x-auto custom-scrollbar">
+                            <div className="hidden lg:block overflow-x-auto custom-scrollbar">
                                 <div className={`grid gap-2 px-6 py-2 bg-[#121316]/50 text-[10px] font-bold text-gray-500 uppercase tracking-wider grid-cols-[1fr_60px_80px_60px] md:grid-cols-[1fr_80px_120px_80px] min-w-[500px]`}>
                                     <div>Spell</div><div className="text-center">DC</div><div className="text-center">Damage</div><div className="text-center">Cast</div>
                                 </div>
@@ -228,6 +228,55 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                         ); 
                                     })}
                                 </div>
+                            </div>
+                            {/* Mobile: tappable spell rows (tap row for details) */}
+                            <div className="lg:hidden divide-y divide-[#2e3036]/60">
+                                {spells.map(spell => { 
+                                    const dmg = getSpellDamageString(spell, character.level, spell.level === 0 ? character.level : Math.max(spell.level, 1)); 
+                                    const dcType = getDcType(spell); 
+                                    const ebCount = spell.name === 'Eldritch Blast' ? (character.level >= 17 ? 4 : character.level >= 11 ? 3 : character.level >= 5 ? 2 : 1) : 0;
+                                    return (
+                                        <div key={spell.index} onClick={() => setSelectedDetail(spell)} className="flex items-center gap-3 px-4 py-3 active:bg-[#2e3036]/60 transition-colors cursor-pointer">
+                                            <div className="flex-1 min-w-0">
+                                                <div className="font-bold text-sm text-gray-200 truncate flex items-center gap-1.5">
+                                                    {spell.name}
+                                                    {ebCount > 0 && <span className="text-[10px] text-dnd-gold font-black">x{ebCount}</span>}
+                                                    {spell.concentration && <span className="text-[8px] bg-blue-900/40 text-blue-400 border border-blue-800/60 px-1 rounded">C</span>}
+                                                    {spell.ritual && <span className="text-[8px] bg-yellow-900/40 text-yellow-500 border border-yellow-800/60 px-1 rounded">R</span>}
+                                                </div>
+                                                <div className="text-[10px] text-gray-500 truncate">{spell.casting_time} • {spell.range} • {spell.duration}</div>
+                                                {dmg && (
+                                                    <div className="text-[10px] text-gray-400 truncate">Dmg: <span className="text-white font-bold">{dmg}</span>{dcType ? ` • ${dcType} ${spellSave}` : ''}</div>
+                                                )}
+                                            </div>
+                                            <button 
+                                                onClick={(e) => { 
+                                                    e.stopPropagation(); 
+                                                    if (lvl > 0 && slots && Number(slots.current) > 0) { 
+                                                        setCharacter(prev => ({ 
+                                                            ...prev, 
+                                                            spellSlots: { ...prev.spellSlots, [lvl]: { ...slots, current: Number(slots.current) - 1 } }, 
+                                                            activeConcentration: spell.concentration ? spell : prev.activeConcentration 
+                                                        })); 
+                                                    } else if (lvl > 0) { 
+                                                        alert("No spell slots!"); 
+                                                        return; 
+                                                    } else if (spell.concentration) {
+                                                        setCharacter(p => ({ ...p, activeConcentration: spell })); 
+                                                    }
+                                                    const descText = spell.desc?.join(' ').toLowerCase() || ''; 
+                                                    if (descText.includes('spell attack')) roll(`1d20${spellAttackStr}`, `Attack: ${spell.name}`); 
+                                                    if (spell.name.toLowerCase() === 'polymorph' && onPolymorphCast) {
+                                                        onPolymorphCast();
+                                                    }
+                                                }} 
+                                                className="text-[10px] font-bold uppercase bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold active:bg-dnd-gold active:text-black px-4 py-2 rounded-lg transition-colors shrink-0"
+                                            >
+                                                Cast
+                                            </button>
+                                        </div>
+                                    ); 
+                                })}
                             </div>
                         </div>
                     );

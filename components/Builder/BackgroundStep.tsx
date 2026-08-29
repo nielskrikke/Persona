@@ -294,7 +294,7 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
                                                         {STANDARD_LANGUAGES.map(l => <option key={l} value={l} />)}
                                                     </datalist>
                                                 </div>
-                                                <button onClick={addExtraLanguage} className="bg-gray-800 hover:bg-gray-700 px-4 rounded-lg text-xs font-bold uppercase text-white transition-colors">Add</button>
+                                                <button onClick={addExtraLanguage} className="bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg text-xs font-bold uppercase text-white transition-colors shrink-0">Add</button>
                                             </div>
                                             <div className="flex flex-wrap gap-2">
                                                 {extraPersonalLanguages.map(lang => (

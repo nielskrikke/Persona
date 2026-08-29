@@ -488,7 +488,7 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
                                 </div>
                                 <button 
                                     onClick={() => handleRevertChoice(choice.id)}
-                                    className="p-2 text-gray-600 hover:text-red-400 hover:bg-red-400/10 rounded-full transition-all opacity-0 group-hover:opacity-100"
+                                    className="p-3 text-gray-600 hover:text-red-400 hover:bg-red-400/10 rounded-full transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
                                     title="Revert Choice"
                                 >
                                     <RotateCcw className="w-4 h-4" />
@@ -617,13 +617,13 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onMakeChoice, allFeats,
                                         <div className="flex items-center gap-3">
                                             <button 
                                                 onClick={() => setAsiIncreases(prev => ({ ...prev, [stat]: Math.max(0, (prev[stat] || 0) - 1) }))}
-                                                className="w-6 h-6 rounded bg-gray-800 text-white hover:bg-gray-700 disabled:opacity-30"
+                                                className="w-9 h-9 sm:w-8 sm:h-8 rounded bg-gray-800 text-white hover:bg-gray-700 disabled:opacity-30 flex items-center justify-center"
                                                 disabled={(asiIncreases[stat] || 0) === 0}
                                             >-</button>
                                             <span className="font-bold text-white">+{asiIncreases[stat] || 0}</span>
                                             <button 
                                                 onClick={() => setAsiIncreases(prev => ({ ...prev, [stat]: (prev[stat] || 0) + 1 }))}
-                                                className="w-6 h-6 rounded bg-gray-800 text-white hover:bg-gray-700 disabled:opacity-30"
+                                                className="w-9 h-9 sm:w-8 sm:h-8 rounded bg-gray-800 text-white hover:bg-gray-700 disabled:opacity-30 flex items-center justify-center"
                                                 disabled={total >= 2}
                                             >+</button>
                                         </div>
@@ -766,6 +766,8 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onMakeChoice, allFeats,
                                                         <span>{opt.name}</span>
                                                         <Info size={12} className="text-gray-600 group-hover/mm:text-purple-400 transition-colors" />
                                                     </div>
+                                                    {/* Inline description for touch devices (no hover) */}
+                                                    <div className="sm:hidden text-[10px] text-gray-400 mt-1.5 leading-relaxed">{opt.desc}</div>
                                                 </button>
                                                 {/* Metamagic Tooltip */}
                                                 <div className="absolute bottom-full left-0 mb-2 w-64 p-3 bg-gray-900 border border-purple-900/50 rounded-xl shadow-2xl opacity-0 group-hover/mm:opacity-100 pointer-events-none transition-opacity z-[999] pointer-events-none">
@@ -851,7 +853,7 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onMakeChoice, allFeats,
 
     return (
         <div className="bg-[#1b1c20] border-2 border-dnd-gold/30 rounded-xl shadow-xl animate-in slide-in-from-bottom-4 duration-300 relative">
-            <div className="p-4 bg-dnd-gold/5 border-b border-dnd-gold/20 flex items-center justify-between rounded-t-xl overflow-hidden">
+            <div className="p-4 bg-dnd-gold/5 border-b border-dnd-gold/20 flex flex-wrap items-center justify-between rounded-t-xl gap-2">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-dnd-gold/20 flex items-center justify-center">
                         <Sparkles className="text-dnd-gold w-5 h-5" />
@@ -865,8 +867,10 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onMakeChoice, allFeats,
                             <h3 className="text-lg font-serif text-white">{choice.label}</h3>
                             {choice.revertData?.featIndex && (
                                 <div className="group relative">
-                                    <Info size={14} className="text-gray-500 hover:text-dnd-gold cursor-help" />
-                                    <div className="absolute left-0 bottom-full mb-2 w-64 p-3 bg-black border border-gray-800 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+                                    <button type="button" className="cursor-help focus:outline-none p-0.5" aria-label="View feat details">
+                                        <Info size={14} className="text-gray-500 hover:text-dnd-gold group-focus-within:text-dnd-gold" />
+                                    </button>
+                                    <div className="absolute left-0 bottom-full mb-2 w-64 p-3 bg-black border border-gray-800 rounded-xl shadow-2xl opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
                                         <h6 className="text-dnd-gold font-bold text-[10px] mb-1">{allFeats.find(f => f.index === choice.revertData.featIndex)?.name}</h6>
                                         <p className="text-[9px] text-gray-400 leading-relaxed">
                                             {allFeats.find(f => f.index === choice.revertData.featIndex)?.desc.join(' ')}

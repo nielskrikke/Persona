@@ -381,7 +381,7 @@ const CustomSpellModal = ({ isOpen, onClose, onSave, currentUser, initialSpell }
                         )}
                     </div>
 
-                    <div className="flex justify-between w-full">
+                    <div className="flex flex-col sm:flex-row justify-between w-full gap-3 sm:items-center">
                         <button 
                             onClick={onClose} 
                             className="px-8 py-3 text-gray-500 hover:text-white font-black uppercase text-[10px] tracking-widest transition-colors"
@@ -390,7 +390,7 @@ const CustomSpellModal = ({ isOpen, onClose, onSave, currentUser, initialSpell }
                         </button>
                         <button 
                             onClick={handleSubmit} 
-                            className="px-12 py-4 bg-dnd-gold hover:bg-white text-black font-black uppercase text-sm tracking-widest rounded-xl shadow-2xl transition-all flex items-center gap-3"
+                            className="px-12 py-4 bg-dnd-gold hover:bg-white text-black font-black uppercase text-sm tracking-widest rounded-xl shadow-2xl transition-all flex items-center justify-center gap-3"
                         >
                             <Sparkles size={18} />
                             Inscribe Spell

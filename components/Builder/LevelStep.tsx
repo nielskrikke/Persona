@@ -8,7 +8,8 @@ interface LevelStepProps {
 
 const LevelStep: React.FC<LevelStepProps> = ({ onSelect, onBack }) => {
     return (
-        <div className="flex flex-col items-center justify-center h-full max-w-4xl mx-auto px-6 text-center animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="flex flex-col items-center h-full max-w-4xl mx-auto px-6 text-center overflow-y-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="my-auto w-full py-28 flex flex-col items-center">
             <h2 className="text-5xl font-serif text-dnd-gold mb-4 leading-tight">Forge Your Hero</h2>
             <p className="text-gray-400 mb-12 text-lg max-w-lg mx-auto font-serif italic">
                 At what stage of legend does your journey truly begin? Select your starting level to proceed.
@@ -26,12 +27,13 @@ const LevelStep: React.FC<LevelStepProps> = ({ onSelect, onBack }) => {
                     </button>
                 ))}
             </div>
+            </div>
             
-            <div className="fixed bottom-0 left-0 right-0 p-8 flex justify-center bg-gradient-to-t from-[#0b0c0e] to-transparent">
+            <div className="fixed bottom-0 left-0 right-0 p-8 pb-safe flex justify-center bg-gradient-to-t from-[#0b0c0e] to-transparent pointer-events-none">
                  {onBack && (
                     <button 
                         onClick={onBack}
-                        className="px-10 py-4 bg-gray-800 hover:bg-gray-700 text-gray-300 font-black uppercase text-xs tracking-widest rounded-lg shadow-lg transition-all"
+                        className="px-10 py-4 bg-gray-800 hover:bg-gray-700 text-gray-300 font-black uppercase text-xs tracking-widest rounded-lg shadow-lg transition-all pointer-events-auto"
                     >
                         &larr; Back to Landing
                     </button>

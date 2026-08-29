@@ -13,6 +13,7 @@ export const DiceTray = ({
     const [isOpen, setIsOpen] = useState(false);
     const [counts, setCounts] = useState<Record<string, number>>({ d100: 0, d20: 0, d12: 0, d10: 0, d8: 0, d6: 0, d4: 0 });
     const [menuPos, setMenuPos] = useState<{x: number, y: number, targetDie?: string | null} | null>(null);
+    const [rollMode, setRollMode] = useState<'normal' | 'advantage' | 'disadvantage'>('normal');
 
     const hasSelection = Object.values(counts).some((v: number) => v > 0);
 
@@ -92,7 +93,7 @@ export const DiceTray = ({
             </div>
 
             {/* Dice Tray Container */}
-            <div className="fixed bottom-24 md:bottom-6 left-6 z-[190] flex flex-col items-center gap-4">
+            <div className="fixed bottom-safe-24 lg:bottom-6 left-6 z-[190] flex flex-col items-center gap-4">
                 
                 {/* The Stack (Collapsible) */}
                 <div className={`flex flex-col-reverse gap-3 transition-all duration-300 origin-bottom ${isOpen || hasSelection ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-10 pointer-events-none'}`}>
@@ -141,29 +142,54 @@ export const DiceTray = ({
 
             {/* Roll Action Bar */}
             {hasSelection && (
-                <div className="fixed bottom-[100px] md:bottom-7 left-24 z-[210] flex items-center gap-2 animate-in slide-in-from-left-10 fade-in duration-300">
+                <div className="fixed bottom-safe-100 lg:bottom-7 right-4 lg:right-auto lg:left-24 z-[210] flex items-center gap-2 animate-in slide-in-from-right-10 lg:slide-in-from-left-10 fade-in duration-300">
+                    {/* Advantage/Disadvantage selector — mobile only (desktop keeps the right-click menu) */}
+                    <div className="lg:hidden flex gap-0.5 bg-[#1b1c20] border border-gray-600 rounded-full p-1 shadow-xl shrink-0">
+                        {([
+                            { id: 'normal' as const, label: 'N', title: 'Normal Roll' },
+                            { id: 'advantage' as const, label: 'A', title: 'Advantage (2d20 keep highest)' },
+                            { id: 'disadvantage' as const, label: 'D', title: 'Disadvantage (2d20 keep lowest)' },
+                        ]).map(m => (
+                            <button 
+                                key={m.id}
+                                onClick={() => setRollMode(m.id)}
+                                title={m.title}
+                                className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black transition-colors ${rollMode === m.id ? 'bg-dnd-gold text-black' : 'text-gray-400 hover:text-white'}`}
+                            >
+                                {m.label}
+                            </button>
+                        ))}
+                        <button 
+                            onClick={clearCounts}
+                            title="Clear Dice"
+                            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-red-400 transition-colors"
+                        >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    </div>
+
                     <button 
                         onClick={clearCounts}
-                        className="w-10 h-10 rounded-full bg-[#1b1c20] border border-gray-600 hover:border-gray-400 text-gray-400 hover:text-white flex items-center justify-center shadow-xl transition-colors"
+                        className="hidden lg:flex w-10 h-10 rounded-full bg-[#1b1c20] border border-gray-600 hover:border-gray-400 text-gray-400 hover:text-white items-center justify-center shadow-xl transition-colors shrink-0"
                         title="Clear Dice"
                     >
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     </button>
-                    
+
                     <button 
-                        onClick={() => handleRoll('normal', null)}
+                        onClick={() => handleRoll(rollMode, null)}
                         onContextMenu={(e) => {
                             e.preventDefault();
                             setMenuPos({ x: e.clientX, y: e.clientY, targetDie: null });
                         }}
-                        className="flex items-center bg-[#5c4033] hover:bg-[#6d4c3d] text-white pl-6 pr-4 py-3 rounded-full shadow-2xl border-2 border-[#3e2b22] transition-colors gap-4 group"
+                        className="flex items-center bg-[#5c4033] hover:bg-[#6d4c3d] text-white pl-5 lg:pl-6 pr-4 py-2.5 lg:py-3 rounded-full shadow-2xl border-2 border-[#3e2b22] transition-colors gap-3 lg:gap-4 group shrink-0"
                     >
                         <div className="flex flex-col items-start">
-                            <span className="text-[9px] uppercase font-bold text-gray-300 tracking-widest leading-tight">To: Everyone</span>
-                            <span className="text-2xl font-black uppercase tracking-wide leading-none font-serif">ROLL</span>
+                            <span className="text-[8px] lg:text-[9px] uppercase font-bold text-gray-300 tracking-widest leading-tight">{rollMode === 'advantage' ? 'Advantage' : rollMode === 'disadvantage' ? 'Disadvantage' : 'To: Everyone'}</span>
+                            <span className="text-xl lg:text-2xl font-black uppercase tracking-wide leading-none font-serif">ROLL</span>
                         </div>
-                        <div className="border-l border-[#7d5c4d] pl-4">
-                             <svg className="w-6 h-6 text-gray-300 group-hover:translate-y-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7"></path></svg>
+                        <div className="border-l border-[#7d5c4d] pl-3 lg:pl-4">
+                             <svg className="w-5 h-5 lg:w-6 lg:h-6 text-gray-300 group-hover:translate-y-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7"></path></svg>
                         </div>
                     </button>
                 </div>

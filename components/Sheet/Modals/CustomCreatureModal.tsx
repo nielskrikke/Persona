@@ -114,7 +114,7 @@ const CustomCreatureModal: React.FC<CustomCreatureModalProps> = ({ isOpen, onClo
                     </div>
 
                     {/* Combat Stats */}
-                    <div className="grid grid-cols-4 gap-4 bg-gray-800/50 p-4 rounded-lg border border-gray-700">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-gray-800/50 p-4 rounded-lg border border-gray-700">
                         <div>
                             <label className="text-[10px] font-bold text-gray-400 uppercase">Armor Class</label>
                             <input type="number" value={ac} onChange={e => setAc(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-600 rounded p-2 text-white text-center" placeholder="10" />
@@ -130,7 +130,7 @@ const CustomCreatureModal: React.FC<CustomCreatureModalProps> = ({ isOpen, onClo
                     </div>
 
                     {/* Speed */}
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                             <label className="text-[10px] font-bold text-gray-400 uppercase">Walk Speed</label>
                             <input type="text" value={speed} onChange={e => setSpeed(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-600 rounded p-2 text-white" placeholder="30 ft." />
@@ -148,7 +148,7 @@ const CustomCreatureModal: React.FC<CustomCreatureModalProps> = ({ isOpen, onClo
                     {/* Abilities */}
                     <div>
                         <h3 className="text-xs font-bold text-dnd-gold uppercase tracking-widest border-b border-gray-700 pb-1 mb-3">Ability Scores</h3>
-                        <div className="grid grid-cols-6 gap-2">
+                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                             {ABILITY_NAMES.map(stat => (
                                 <div key={stat} className="text-center">
                                     <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">{stat}</label>

@@ -163,7 +163,7 @@ const HealthManagerModal = ({
             onClick={onClose}
         >
             <div 
-                className="bg-[#1b1c20] border border-[#3e4149] rounded-xl w-full max-w-sm shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200"
+                className="bg-[#1b1c20] border border-[#3e4149] rounded-xl w-full max-w-sm shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col"
                 onClick={(e) => e.stopPropagation()}
             >
                 <button 
@@ -198,7 +198,7 @@ const HealthManagerModal = ({
                     )}
                 </div>
 
-                <div className="p-4 space-y-4">
+                <div className="flex-grow overflow-y-auto overscroll-contain p-4 space-y-4">
                     {/* Input */}
                     <div className="relative">
                         <input 

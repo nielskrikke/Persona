@@ -10,7 +10,7 @@ const WidgetCard = ({ id, onRemove }: { id: string, onRemove?: () => void }) => 
             {onRemove && (
                 <button 
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(); }}
-                    className="absolute top-2 right-2 text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-2 right-2 text-gray-600 hover:text-red-500 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10"
                 >
                     &times;
                 </button>
@@ -36,7 +36,7 @@ const LayoutManagerModal = ({
     onSave: (layout: {left: string[], right: string[], mobile: string[]}) => void,
     character: CharacterState 
 }) => {
-    const [tab, setTab] = useState<'desktop' | 'mobile'>('desktop');
+    const [tab, setTab] = useState<'desktop' | 'mobile'>(() => typeof window !== 'undefined' && window.innerWidth < 768 ? 'mobile' : 'desktop');
     const [leftCol, setLeftCol] = useState<string[]>([]);
     const [rightCol, setRightCol] = useState<string[]>([]);
     const [mobileLayout, setMobileLayout] = useState<string[]>([]);
@@ -139,10 +139,10 @@ const LayoutManagerModal = ({
                     </div>
                 </div>
 
-                <div className="flex-grow flex overflow-hidden">
+                <div className="flex-grow flex flex-col lg:flex-row overflow-hidden">
                     {tab === 'desktop' ? (
                         <>
-                        <div className="w-1/3 border-r border-gray-800 flex flex-col bg-[#16171a]">
+                        <div className="lg:w-1/3 lg:border-r border-b lg:border-b-0 border-gray-800 flex flex-col bg-[#16171a] max-h-56 lg:max-h-none">
                             <div className="p-4 border-b border-gray-800">
                                 <input 
                                     type="text" 
@@ -162,6 +162,8 @@ const LayoutManagerModal = ({
                                         key={item} 
                                         draggable 
                                         onDragStart={(e) => dragItem.current = { col: 'unused', idx }}
+                                        onClick={() => { setLeftCol(prev => [...prev, item]); setUnused(prev => prev.filter(w => w !== item)); }}
+                                        title="Tap to add to Left Column"
                                     >
                                         <WidgetCard id={item} />
                                     </div>
@@ -172,8 +174,8 @@ const LayoutManagerModal = ({
                             </div>
                         </div>
 
-                        <div className="w-2/3 flex flex-col p-6 bg-[#121316]">
-                            <div className="grid grid-cols-2 gap-6 h-full">
+                        <div className="lg:w-2/3 flex flex-col p-4 lg:p-6 bg-[#121316]">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 h-full">
                                 <div className="flex flex-col h-full">
                                     <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 text-center">Left Column</h3>
                                     <div 
@@ -182,7 +184,7 @@ const LayoutManagerModal = ({
                                         onDrop={(e) => handleDrop(e, 'left')}
                                     >
                                         {leftCol.map((item, idx) => (
-                                            <div key={item} draggable onDragStart={(e) => handleDragStart(e, 'left', idx)}>
+                                            <div key={item} draggable onDragStart={(e) => handleDragStart(e, 'left', idx)} onClick={() => { setUnused(prev => [...prev, item]); setLeftCol(prev => prev.filter((_, i) => i !== idx)); }} title="Tap to return to Available">
                                                 <WidgetCard id={item} onRemove={() => setLeftCol(prev => prev.filter((_, i) => i !== idx))} />
                                             </div>
                                         ))}
@@ -196,7 +198,7 @@ const LayoutManagerModal = ({
                                         onDrop={(e) => handleDrop(e, 'right')}
                                     >
                                         {rightCol.map((item, idx) => (
-                                            <div key={item} draggable onDragStart={(e) => handleDragStart(e, 'right', idx)}>
+                                            <div key={item} draggable onDragStart={(e) => handleDragStart(e, 'right', idx)} onClick={() => { setUnused(prev => [...prev, item]); setRightCol(prev => prev.filter((_, i) => i !== idx)); }} title="Tap to return to Available">
                                                 <WidgetCard id={item} onRemove={() => setRightCol(prev => prev.filter((_, i) => i !== idx))} />
                                             </div>
                                         ))}
@@ -206,7 +208,7 @@ const LayoutManagerModal = ({
                         </div>
                         </>
                     ) : (
-                        <div className="flex-grow flex flex-col p-8 bg-[#121316] overflow-y-auto custom-scrollbar">
+                        <div className="flex-grow flex flex-col p-4 sm:p-8 bg-[#121316] overflow-y-auto custom-scrollbar">
                             <h3 className="text-xl font-serif text-white mb-2">Configure Mobile View</h3>
                             <p className="text-sm text-gray-400 mb-8">Select the widgets you want to appear on your mobile home screen ("Stats" tab).</p>
                             

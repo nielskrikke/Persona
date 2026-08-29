@@ -262,11 +262,11 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
                 ></div>
             </div>
             
-            <div className="mt-8 flex gap-4">
+            <div className="mt-8 flex gap-4 max-w-full overflow-x-auto pb-1 px-2">
                 {queue.map((item, idx) => (
                     <div 
                         key={idx}
-                        className={`w-2 h-2 rounded-full transition-all duration-500 ${idx <= currentStepIndex ? 'bg-dnd-gold scale-125' : 'bg-gray-700'}`}
+                        className={`w-2 h-2 rounded-full transition-all duration-500 shrink-0 ${idx <= currentStepIndex ? 'bg-dnd-gold scale-125' : 'bg-gray-700'}`}
                     ></div>
                 ))}
             </div>

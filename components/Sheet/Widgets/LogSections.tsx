@@ -90,7 +90,7 @@ export const QuestLogSection = ({
                                     <td className="px-6 py-4 text-right">
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); removeItem(item.id); }}
-                                            className="text-gray-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                                            className="text-gray-600 hover:text-red-400 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100 px-2 py-1"
                                         >
                                             &times;
                                         </button>
@@ -105,7 +105,7 @@ export const QuestLogSection = ({
             {selectedItem && (
                 <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-[#1b1c20] border border-[#3e4149] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col animate-in zoom-in-95 duration-200">
-                        <div className="bg-[#121316] px-8 py-6 border-b border-[#3e4149] flex justify-between items-center">
+                        <div className="bg-[#121316] px-4 sm:px-8 py-4 sm:py-6 border-b border-[#3e4149] flex justify-between items-center gap-3">
                             <AutoSaveInput 
                                 value={selectedItem.name} 
                                 onSave={(val) => updateItem(selectedItem.id, { name: val })}
@@ -257,7 +257,7 @@ export const ContactLogSection = ({
                                     <td className="px-6 py-4 text-right">
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); removeItem(item.id); }}
-                                            className="text-gray-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                                            className="text-gray-600 hover:text-red-400 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100 px-2 py-1"
                                         >
                                             &times;
                                         </button>
@@ -272,7 +272,7 @@ export const ContactLogSection = ({
             {selectedItem && (
                 <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-[#1b1c20] border border-[#3e4149] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col animate-in zoom-in-95 duration-200">
-                        <div className="bg-[#121316] px-8 py-6 border-b border-[#3e4149] flex justify-between items-center">
+                        <div className="bg-[#121316] px-4 sm:px-8 py-4 sm:py-6 border-b border-[#3e4149] flex justify-between items-center gap-3">
                             <AutoSaveInput 
                                 value={selectedItem.name} 
                                 onSave={(val) => updateItem(selectedItem.id, { name: val })}
@@ -288,7 +288,7 @@ export const ContactLogSection = ({
                         </div>
 
                         <div className="p-8 overflow-y-auto custom-scrollbar space-y-6">
-                            <div className="grid grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase text-gray-500">Relationship</label>
                                     <select 
@@ -440,7 +440,7 @@ export const CreatureLogSection = ({
                                     <td className="px-6 py-4 text-right">
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); removeItem(item.id); }}
-                                            className="text-gray-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                                            className="text-gray-600 hover:text-red-400 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100 px-2 py-1"
                                         >
                                             &times;
                                         </button>
@@ -455,7 +455,7 @@ export const CreatureLogSection = ({
             {selectedItem && (
                 <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-[#1b1c20] border border-[#3e4149] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col animate-in zoom-in-95 duration-200">
-                        <div className="bg-[#121316] px-8 py-6 border-b border-[#3e4149] flex justify-between items-center">
+                        <div className="bg-[#121316] px-4 sm:px-8 py-4 sm:py-6 border-b border-[#3e4149] flex justify-between items-center gap-3">
                             <AutoSaveInput 
                                 value={selectedItem.name} 
                                 onSave={(val) => updateItem(selectedItem.id, { name: val })}
@@ -632,7 +632,7 @@ export const SessionNoteLogSection = ({
                                     <td className="px-6 py-4 text-right">
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); removeItem(item.id); }}
-                                            className="text-gray-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                                            className="text-gray-600 hover:text-red-400 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100 px-2 py-1"
                                         >
                                             &times;
                                         </button>
@@ -647,9 +647,9 @@ export const SessionNoteLogSection = ({
             {selectedNote && (
                 <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-[#1b1c20] border border-[#3e4149] rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col animate-in zoom-in-95 duration-200">
-                        <div className="bg-[#121316] px-8 py-6 border-b border-[#3e4149] flex justify-between items-center">
-                            <div className="flex items-center gap-6">
-                                <div className="flex items-center gap-2">
+                        <div className="bg-[#121316] px-4 sm:px-8 py-4 sm:py-6 border-b border-[#3e4149] flex flex-wrap justify-between items-center gap-3">
+                            <div className="flex items-center gap-3 sm:gap-6 min-w-0 flex-1">
+                                <div className="flex items-center gap-2 shrink-0">
                                     <span className="text-[10px] font-black uppercase text-gray-500 tracking-tighter">Session</span>
                                     <AutoSaveInput 
                                         type="number"
@@ -661,7 +661,7 @@ export const SessionNoteLogSection = ({
                                 <AutoSaveInput 
                                     value={selectedNote.title || ''} 
                                     onSave={(val) => updateItem(selectedNote.id, { title: val })}
-                                    className="bg-transparent border-b border-transparent hover:border-gray-600 focus:border-dnd-gold outline-none text-xl font-bold text-white min-w-[300px]"
+                                    className="bg-transparent border-b border-transparent hover:border-gray-600 focus:border-dnd-gold outline-none text-lg sm:text-xl font-bold text-white min-w-0 w-full"
                                     placeholder="Session Title..."
                                 />
                             </div>

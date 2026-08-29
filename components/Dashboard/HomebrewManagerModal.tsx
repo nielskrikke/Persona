@@ -703,7 +703,7 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                         {/* Stat Bonus */}
                         {eff.type === 'stat_bonus' && (
                             <div className="space-y-2">
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     <select value={eff.stat || 'ac'} onChange={e => updateEffect(i, { stat: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white">
                                         <option value="ac">Armor Class (AC)</option>
                                         <option value="extra_attack">Additional Attacks (+1 per Attack Action)</option>
@@ -771,7 +771,7 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
 
                         {/* Proficiency Choice */}
                         {eff.type === 'proficiency_choice' && (
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                 <input type="number" min="1" placeholder="Choice Count (e.g. 2)" value={eff.count || 1} onChange={e => updateEffect(i, { count: parseInt(e.target.value) || 1 })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" />
                                 <select value={eff.category || 'skill'} onChange={e => updateEffect(i, { category: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white">
                                     <option value="skill">Skill Choice</option>
@@ -1361,13 +1361,13 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
 
     return (
         <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4 backdrop-blur-md">
-            <div ref={modalRef} className="bg-[#1b1c20] border border-gray-800 rounded-xl w-full max-w-6xl shadow-2xl flex flex-col h-[90vh]">
+            <div ref={modalRef} className="bg-[#1b1c20] border border-gray-800 rounded-xl w-full max-w-6xl shadow-2xl flex flex-col h-90dvh">
                 
                 {/* Forge Header */}
-                <div className="p-6 border-b border-gray-800 bg-[#121316] rounded-t-xl shrink-0 flex justify-between items-center">
-                    <div className="flex items-center gap-6">
-                        <div>
-                            <h2 className="text-3xl font-serif text-dnd-gold flex items-center gap-3">
+                <div className="p-4 sm:p-6 border-b border-gray-800 bg-[#121316] rounded-t-xl shrink-0 flex justify-between items-center gap-4">
+                    <div className="flex items-center gap-4 min-w-0">
+                        <div className="min-w-0">
+                            <h2 className="text-2xl sm:text-3xl font-serif text-dnd-gold flex items-center gap-3">
                                 {showForm ? 'Forging Mode' : 'Content Library'}
                             </h2>
                             <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mt-1 italic">
@@ -1375,8 +1375,8 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                             </p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                        <button onClick={onClose} className="text-gray-500 hover:text-white text-3xl transition-colors">&times;</button>
+                    <div className="flex items-center gap-4 shrink-0">
+                        <button onClick={onClose} className="text-gray-500 hover:text-white text-3xl transition-colors p-1">&times;</button>
                     </div>
                 </div>
 
@@ -1395,7 +1395,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                 <div className="flex-grow overflow-hidden flex flex-col md:flex-row">
                     
                     {/* Public Archive Sidebar */}
-                    <div className="md:w-72 border-r border-gray-800 bg-black/20 flex flex-col shrink-0">
+                    <div className="md:w-72 border-r border-gray-800 bg-black/20 flex flex-col shrink-0 max-h-64 md:max-h-none">
                         <div className="p-4 border-b border-gray-800 flex justify-between items-center">
                             <h3 className="text-[10px] font-black uppercase text-gray-500 tracking-widest">The Archives</h3>
                             <div className="flex gap-2">
@@ -1485,7 +1485,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                 )}
                                                 <button 
                                                     onClick={(e) => handleDuplicate(item, e)}
-                                                    className="text-gray-400 hover:text-dnd-gold opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                                                    className="text-gray-400 hover:text-dnd-gold opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity p-1.5"
                                                     title="Duplicate Entry"
                                                 >
                                                     <Copy size={12} />
@@ -1510,7 +1510,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                         ) : (
                                                             <button 
                                                                 onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(item.id); }}
-                                                                className="text-red-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                                                                className="text-red-500 hover:text-red-400 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity p-1.5"
                                                             >
                                                                 <Trash2 size={12} />
                                                             </button>
@@ -1536,7 +1536,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                 <button onClick={() => setShowForm(true)} className="px-12 py-5 bg-dnd-gold text-black rounded-xl font-black uppercase text-xs tracking-[0.2em] hover:scale-105 active:scale-95 transition-all shadow-2xl">Initialize Craft</button>
                             </div>
                         ) : (
-                            <form onSubmit={handleSave} className="p-8 space-y-12 max-w-4xl mx-auto pb-40 animate-in fade-in duration-300">
+                            <form onSubmit={handleSave} className="p-4 sm:p-8 space-y-12 max-w-4xl mx-auto pb-40 animate-in fade-in duration-300">
                                 
                                  {/* IDENTITY SECTION */}
                                  <section className="space-y-6">
@@ -2109,7 +2109,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                             </div>
                                             <div className="space-y-6">
                                                 {levelFeatures.map((f, i) => (
-                                                    <div key={i} className="bg-black/20 p-6 rounded-xl border border-gray-800 grid grid-cols-[80px_1fr] gap-6 relative">
+                                                    <div key={i} className="bg-black/20 p-6 rounded-xl border border-gray-800 grid grid-cols-1 sm:grid-cols-[80px_1fr] gap-6 relative">
                                                         <button type="button" onClick={() => setLevelFeatures(levelFeatures.filter((_, idx) => idx !== i))} className="absolute top-2 right-4 text-red-500">&times;</button>
                                                         <div>
                                                             <label className="text-[8px] uppercase font-black text-gray-600 block mb-1">Level</label>
@@ -2160,7 +2160,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                     <p className="text-xs text-gray-500 italic p-4 bg-black/20 rounded-xl border border-gray-800">No subclass features added yet. Click "+ Add Subclass Feature" above to define features gained at specific levels.</p>
                                                 ) : (
                                                     levelFeatures.map((f, i) => (
-                                                        <div key={i} className="bg-black/20 p-6 rounded-xl border border-gray-800 grid grid-cols-[80px_1fr] gap-6 relative">
+                                                        <div key={i} className="bg-black/20 p-6 rounded-xl border border-gray-800 grid grid-cols-1 sm:grid-cols-[80px_1fr] gap-6 relative">
                                                             <button type="button" onClick={() => setLevelFeatures(levelFeatures.filter((_, idx) => idx !== i))} className="absolute top-2 right-4 text-red-500 hover:text-red-400">&times;</button>
                                                             <div>
                                                                 <label className="text-[8px] uppercase font-black text-gray-600 block mb-1">Level</label>

@@ -1695,7 +1695,7 @@ const ManageCharacterModal = ({
                     
                     {/* IDENTITY TAB */}
                     {tab === 'identity' && (
-                        <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                        <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300 p-4 sm:p-0">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Character Name</label>
@@ -1769,7 +1769,7 @@ const ManageCharacterModal = ({
 
                     {/* CLASSES TAB */}
                     {tab === 'classes' && (
-                        <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                        <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300 p-4 sm:p-0">
                             <div className="space-y-4">
                                 {character.classes.map((cls) => {
                                     const requiredLevel = SUBCLASS_LEVELS[cls.definition.name] || 3;
@@ -1852,7 +1852,7 @@ const ManageCharacterModal = ({
                         const customLanguages = languages.filter(l => !choiceLanguages.includes(l));
 
                         return (
-                            <div className="max-w-4xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                            <div className="max-w-4xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-300 p-4 sm:p-0">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     <section className="bg-black/20 p-6 rounded-2xl border border-gray-800 space-y-4">
                                         <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-500">
@@ -1971,7 +1971,7 @@ const ManageCharacterModal = ({
                     
                     {/* PROFICIENCIES TAB */}
                     {tab === 'proficiencies' && (
-                        <div className="max-w-4xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                        <div className="max-w-4xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-300 p-4 sm:p-0">
                             <section className="space-y-6">
                                 <div className="flex items-center gap-3 border-b border-gray-800 pb-2">
                                     <Shield size={18} className="text-dnd-gold" />
@@ -2028,7 +2028,7 @@ const ManageCharacterModal = ({
 
                     {/* COMBAT TAB */}
                     {tab === 'combat' && (
-                        <div className="max-w-3xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                        <div className="max-w-3xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-300 p-4 sm:p-0">
                             <div className="flex items-center gap-3 border-b border-gray-800 pb-2 mb-6">
                                 <Shield size={18} className="text-dnd-gold" />
                                 <h3 className="text-[10px] font-black text-dnd-gold uppercase tracking-[0.2em]">Combat Modifiers & Overrides</h3>
@@ -2122,7 +2122,7 @@ const ManageCharacterModal = ({
 
                     {/* TRACKERS TAB */}
                     {tab === 'trackers' && (
-                        <div className="max-w-3xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                        <div className="max-w-3xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-300 p-4 sm:p-0">
                              <div className="space-y-4">
                                     <div className="flex items-center gap-3 border-b border-gray-800 pb-2 mb-6">
                                         <Activity size={18} className="text-dnd-gold" />
@@ -2244,7 +2244,7 @@ const ManageCharacterModal = ({
 
                     {/* CHOICES TAB */}
                     {tab === 'choices' && (
-                        <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                        <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300 p-4 sm:p-0">
                             <div className="flex justify-between items-center mb-4">
                                 <div>
                                     <h3 className="text-xl font-serif text-white">Character Choices</h3>
@@ -2329,18 +2329,18 @@ const ManageCharacterModal = ({
                                     </div>
                                     <div className="space-y-3">
                                         {localSpells.filter(s => s.sourceClassIndex === 'racial').map(spell => (
-                                            <div key={spell.index} className="flex items-center justify-between bg-black/20 p-5 rounded-2xl border border-gray-800">
-                                                <div className="flex-grow">
+                                            <div key={spell.index} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-black/20 p-5 rounded-2xl border border-gray-800">
+                                                <div className="flex-grow min-w-0">
                                                     <div className="font-bold text-white text-lg font-serif">{spell.name}</div>
                                                     <div className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Source: Race</div>
                                                     <div className="text-[10px] text-gray-400 leading-relaxed max-w-md markdown-body">
                                                         <Markdown>{Array.isArray(spell.desc) ? spell.desc.join('\n\n') : spell.desc}</Markdown>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-4">
+                                                <div className="flex items-center gap-3 sm:gap-4 shrink-0 flex-wrap">
                                                     <span className="text-xs text-gray-500 font-bold italic">Change to:</span>
                                                     <select 
-                                                        className="bg-black/40 border border-gray-700 rounded-xl px-4 py-2 text-xs text-white outline-none focus:border-dnd-gold/50 transition-all w-48"
+                                                        className="bg-black/40 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-dnd-gold/50 transition-all w-full sm:w-48"
                                                         onChange={(e) => replaceRacialSpell(spell.index, e.target.value)}
                                                         value=""
                                                     >
@@ -2454,8 +2454,10 @@ const ManageCharacterModal = ({
                                                                         </div>
                                                                         {choice.revertData?.featIndex && (
                                                                             <div className="group relative">
-                                                                                <Info size={12} className="text-gray-500 hover:text-dnd-gold cursor-help" />
-                                                                                <div className="absolute left-0 bottom-full mb-2 w-64 p-3 bg-black border border-gray-800 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+                                                                                <button type="button" className="cursor-help focus:outline-none p-0.5" aria-label="View feat details">
+                                                                                    <Info size={12} className="text-gray-500 hover:text-dnd-gold group-focus-within:text-dnd-gold" />
+                                                                                </button>
+                                                                                <div className="absolute left-0 bottom-full mb-2 w-64 p-3 bg-black border border-gray-800 rounded-xl shadow-2xl opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
                                                                                     <h6 className="text-dnd-gold font-bold text-[10px] mb-1">{allFeats.find(f => f.index === choice.revertData.featIndex)?.name}</h6>
                                                                                     <div className="text-[9px] text-gray-400 leading-relaxed markdown-body">
                                                                                         <Markdown>{allFeats.find(f => f.index === choice.revertData.featIndex)?.desc.join('\n\n')}</Markdown>
@@ -2507,15 +2509,15 @@ const ManageCharacterModal = ({
                                                                                     return (
                                                                                         <div key={stat} className="flex flex-col items-center bg-black/40 border border-gray-800 rounded-xl p-2">
                                                                                             <span className="text-[8px] font-black text-gray-500 uppercase mb-1">{ABILITY_LABELS[stat].substring(0, 3)}</span>
-                                                                                            <div className="flex items-center gap-2">
+                                                                                            <div className="flex items-center gap-1.5">
                                                                                                 <button 
                                                                                                     onClick={() => handleAsiEdit(choice.id, stat, -1)}
-                                                                                                    className="w-5 h-5 flex items-center justify-center bg-gray-800 rounded text-xs hover:bg-gray-700"
+                                                                                                    className="w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center bg-gray-800 rounded text-xs hover:bg-gray-700"
                                                                                                 >-</button>
                                                                                                 <span className="text-sm font-bold text-white">{currentVal}</span>
                                                                                                 <button 
                                                                                                     onClick={() => handleAsiEdit(choice.id, stat, 1)}
-                                                                                                    className="w-5 h-5 flex items-center justify-center bg-gray-800 rounded text-xs hover:bg-gray-700"
+                                                                                                    className="w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center bg-gray-800 rounded text-xs hover:bg-gray-700"
                                                                                                 >+</button>
                                                                                             </div>
                                                                                         </div>
@@ -2628,7 +2630,7 @@ const ManageCharacterModal = ({
                                                                                             <button
                                                                                                 key={typeof val === 'string' || typeof val === 'number' ? val : idx}
                                                                                                 onClick={() => handleChoiceChange(choice.id, val)}
-                                                                                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
+                                                                                                className={`px-4 py-2.5 rounded-lg text-[10px] sm:text-xs font-bold border transition-all ${
                                                                                                     isSelected 
                                                                                                         ? 'bg-dnd-gold border-dnd-gold text-black shadow-lg shadow-dnd-gold/20' 
                                                                                                         : 'bg-black/40 border-gray-800 text-gray-400 hover:border-gray-600'
@@ -2904,15 +2906,15 @@ const ManageCharacterModal = ({
                                                                                                                 return (
                                                                                                                     <div key={stat} className="flex flex-col items-center bg-black/40 border border-gray-800 rounded-xl p-2">
                                                                                                                         <span className="text-[8px] font-black text-gray-500 uppercase mb-1">{ABILITY_LABELS[stat].substring(0, 3)}</span>
-                                                                                                                        <div className="flex items-center gap-2">
+                                                                                                                        <div className="flex items-center gap-1.5">
                                                                                                                             <button 
                                                                                                                                 onClick={() => handleAsiEdit(choice.id, stat, -1)}
-                                                                                                                                className="w-5 h-5 flex items-center justify-center bg-gray-800 rounded text-xs hover:bg-gray-700"
+                                                                                                                                className="w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center bg-gray-800 rounded text-xs hover:bg-gray-700"
                                                                                                                             >-</button>
                                                                                                                             <span className="text-sm font-bold text-white">{currentVal}</span>
                                                                                                                             <button 
                                                                                                                                 onClick={() => handleAsiEdit(choice.id, stat, 1)}
-                                                                                                                                className="w-5 h-5 flex items-center justify-center bg-gray-800 rounded text-xs hover:bg-gray-700"
+                                                                                                                                className="w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center bg-gray-800 rounded text-xs hover:bg-gray-700"
                                                                                                                             >+</button>
                                                                                                                         </div>
                                                                                                                     </div>
@@ -3024,7 +3026,7 @@ const ManageCharacterModal = ({
                                                                                                                         <button
                                                                                                                             key={typeof val === 'string' || typeof val === 'number' ? val : idx}
                                                                                                                             onClick={() => handleChoiceChange(choice.id, val)}
-                                                                                                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
+                                                                                                                            className={`px-4 py-2.5 rounded-lg text-[10px] sm:text-xs font-bold border transition-all ${
                                                                                                                                 isSelected 
                                                                                                                                     ? 'bg-dnd-gold border-dnd-gold text-black shadow-lg shadow-dnd-gold/20' 
                                                                                                                                     : 'bg-black/40 border-gray-800 text-gray-400 hover:border-gray-600'
@@ -3091,7 +3093,7 @@ const ManageCharacterModal = ({
 
                     {/* THEME TAB */}
                     {tab === 'theme' && (
-                        <div className="max-w-3xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                        <div className="max-w-3xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-300 p-4 sm:p-0">
                             <section className="space-y-8">
                                 <div className="flex items-center gap-3 border-b border-gray-800 pb-2">
                                     <Palette size={18} className="text-dnd-gold" />

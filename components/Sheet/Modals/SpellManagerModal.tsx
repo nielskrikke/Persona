@@ -355,7 +355,7 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
                                             isExpanded ? 'border-gray-700 bg-black/40' : 'border-gray-800 hover:border-gray-700 hover:bg-black/30'
                                         } ${known && !showKnownOnly ? 'opacity-60' : ''}`}
                                     >
-                                        <div className="flex items-center p-4 gap-4">
+                                        <div className="flex flex-col sm:flex-row sm:items-center p-4 gap-3">
                                             <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
                                                 known ? 'bg-green-900/20 text-green-400' : 'bg-gray-800/50 text-gray-500'
                                             }`}>
@@ -363,7 +363,7 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
                                             </div>
                                             
                                             <div className="flex-grow min-w-0">
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-2 flex-wrap">
                                                     <h4 className={`font-bold text-sm truncate ${known ? 'text-green-300' : 'text-gray-200'}`}>
                                                         {spell.name}
                                                     </h4>
@@ -371,7 +371,7 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
                                                         {spell.level === 0 ? 'Cantrip' : `Level ${spell.level}`}
                                                     </span>
                                                 </div>
-                                                <div className="flex items-center gap-3 mt-1">
+                                                <div className="flex items-center gap-3 mt-1 flex-wrap">
                                                     <span className="text-[10px] text-gray-500 uppercase tracking-widest font-black">
                                                         {spell.school.name}
                                                     </span>
@@ -381,7 +381,7 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
                                                 </div>
                                             </div>
 
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-2 flex-wrap sm:ml-auto sm:shrink-0">
                                                 <div 
                                                     onClick={(e) => { e.stopPropagation(); onDuplicateToHomebrew?.(spell); }}
                                                     className="p-2 rounded-lg text-gray-500 hover:bg-gray-800 hover:text-dnd-gold transition-colors"

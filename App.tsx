@@ -499,7 +499,7 @@ const App: React.FC = () => {
       )}
 
       {phase !== 'welcome' && phase !== 'sheet' && (
-        <div className="fixed top-0 left-0 right-0 bg-[#121316] border-b border-[#3e4149] z-[100] shadow-xl">
+        <div className="fixed top-0 left-0 right-0 bg-[#121316] border-b border-[#3e4149] z-[100] shadow-xl pt-safe">
            <div className="max-w-6xl mx-auto flex items-center h-16 px-6 overflow-x-auto whitespace-nowrap no-scrollbar">
               {[
                 { key: 'level', label: 'Level' },
@@ -522,13 +522,13 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <div className={`h-screen ${phase !== 'welcome' && phase !== 'sheet' ? 'pt-16 pb-0' : ''}`}>
+      <div className={`h-screen ${phase !== 'welcome' && phase !== 'sheet' ? 'pt-safe-16 pb-0' : ''}`}>
         
         {phase === 'welcome' && (
-          <div className="h-full flex flex-col items-center justify-center relative bg-[#0b0c0e] overflow-hidden">
+          <div className="h-full flex flex-col items-center relative bg-[#0b0c0e] overflow-y-auto">
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#c9ad6a]/5 rounded-full blur-[120px] pointer-events-none"></div>
 
-            <div className="relative z-10 flex flex-col items-center animate-in fade-in zoom-in duration-1000 w-full max-w-md px-6">
+            <div className="relative z-10 my-auto flex flex-col items-center animate-in fade-in zoom-in duration-1000 w-full max-w-md px-6 py-10">
                 <div className="mb-2 relative text-center">
                      <h1 className="text-5xl md:text-9xl font-serif font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-[#e5c983] to-[#8a7238] drop-shadow-2xl">
                         PERSONA

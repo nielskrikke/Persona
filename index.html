@@ -3,7 +3,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="robots" content="noindex" />
     <link rel="icon" type="image/png" href="https://nielskrikke.com/wp-content/uploads/2026/04/persona-app-icon.png" />
     <link rel="shortcut icon" type="image/png" href="https://nielskrikke.com/wp-content/uploads/2026/04/persona-app-icon.png" />
@@ -39,6 +39,56 @@
       body {
         background-color: #1a1b1e;
         color: #c1c2c5;
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+      }
+      /* Mobile: use dynamic viewport height so fixed full-screen layouts
+         don't get clipped under iOS Safari browser chrome */
+      .h-90dvh { height: 90vh; }
+      .max-h-80dvh { max-height: 80vh; }
+      @supports (height: 100dvh) {
+        .h-screen { height: 100dvh; }
+        .h-90dvh { height: 90dvh; }
+        .max-h-80dvh { max-height: 80dvh; }
+      }
+      /* Remove tap-highlight flash and 300ms click delay on touch */
+      * {
+        -webkit-tap-highlight-color: transparent;
+      }
+      button, a, input, select, textarea {
+        touch-action: manipulation;
+      }
+      /* Safe-area helpers for notched iPhones / iPad gestures */
+      .pt-safe { padding-top: env(safe-area-inset-top); }
+      .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+      .pl-safe { padding-left: env(safe-area-inset-left); }
+      .pr-safe { padding-right: env(safe-area-inset-right); }
+      .px-safe {
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+      }
+      /* Fixed bars + their content offsets, aware of safe areas */
+      .pt-safe-16 { padding-top: calc(4rem + env(safe-area-inset-top)); }        /* builder content offset (h-16 header) */
+      .pt-safe-52 { padding-top: calc(56px + env(safe-area-inset-top)); }        /* sheet content below mobile top bar (h-[56px]) */
+      .top-safe-52 { top: calc(56px + env(safe-area-inset-top)); }               /* sheet mobile top bar height */
+      .h-minus-safe-52 { height: calc(100% - 56px - env(safe-area-inset-top)); }
+      .pb-safe-64 { padding-bottom: calc(4rem + env(safe-area-inset-bottom)); }  /* sheet content above mobile tab bar */
+      .bottom-safe-24 { bottom: calc(6rem + env(safe-area-inset-bottom)); }      /* dice tray above mobile tab bar */
+      .bottom-safe-100 { bottom: calc(100px + env(safe-area-inset-bottom)); }    /* dice roll bar */
+      /* Ensure bottom-anchored fixed UI sits above the home indicator */
+      .bottom-safe { bottom: env(safe-area-inset-bottom); }
+      /* Prevent iOS rubber-band scrolling from exposing background outside app */
+      html, body {
+        overscroll-behavior-y: none;
+        height: 100%;
+      }
+      /* Hide scrollbars on horizontally-scrolling chip/tab bars */
+      .no-scrollbar {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
       }
       /* Custom scrollbar for better aesthetics */
       ::-webkit-scrollbar {

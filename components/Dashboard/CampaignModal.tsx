@@ -226,22 +226,22 @@ export const CampaignModal: React.FC<CampaignModalProps> = ({
                 </div>
 
                 {/* Sub-header Navigation Tabs */}
-                <div className="bg-[#16171a] border-b border-[#3e4149] px-6 py-3 flex gap-3 shrink-0">
+                <div className="bg-[#16171a] border-b border-[#3e4149] px-4 sm:px-6 py-3 flex gap-3 shrink-0 overflow-x-auto no-scrollbar">
                     <button 
                         onClick={() => { setActiveTab('my_campaigns'); setStatusMsg(null); }}
-                        className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${activeTab === 'my_campaigns' ? 'bg-dnd-gold text-black shadow-md' : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700'}`}
+                        className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 whitespace-nowrap shrink-0 ${activeTab === 'my_campaigns' ? 'bg-dnd-gold text-black shadow-md' : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700'}`}
                     >
                         <Shield size={14} /> My Campaigns ({campaigns.length})
                     </button>
                     <button 
                         onClick={() => { setActiveTab('create'); setStatusMsg(null); }}
-                        className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${activeTab === 'create' ? 'bg-dnd-gold text-black shadow-md' : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700'}`}
+                        className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 whitespace-nowrap shrink-0 ${activeTab === 'create' ? 'bg-dnd-gold text-black shadow-md' : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700'}`}
                     >
                         <Plus size={14} /> Create Campaign
                     </button>
                     <button 
                         onClick={() => { setActiveTab('join'); setStatusMsg(null); }}
-                        className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${activeTab === 'join' ? 'bg-dnd-gold text-black shadow-md' : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700'}`}
+                        className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 whitespace-nowrap shrink-0 ${activeTab === 'join' ? 'bg-dnd-gold text-black shadow-md' : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700'}`}
                     >
                         <Key size={14} /> Join by Code
                     </button>
@@ -364,7 +364,7 @@ export const CampaignModal: React.FC<CampaignModalProps> = ({
                                                             </div>
                                                             <button 
                                                                 onClick={() => handleLinkCharacterDirectly(ch.id, null)}
-                                                                className="text-[10px] text-red-400 hover:text-red-300 hover:bg-red-950/30 px-2 py-1 rounded border border-red-900/40 transition-colors uppercase font-bold"
+                                                                className="text-[10px] text-red-400 hover:text-red-300 hover:bg-red-950/30 px-3 py-2 rounded border border-red-900/40 transition-colors uppercase font-bold"
                                                                 title="Unlink from Campaign"
                                                             >
                                                                 Unlink
@@ -398,14 +398,14 @@ export const CampaignModal: React.FC<CampaignModalProps> = ({
                                                             {isLinkedToThis ? (
                                                                 <button 
                                                                     onClick={() => handleLinkCharacterDirectly(charObj.id, null)}
-                                                                    className="px-2.5 py-1 bg-red-900/30 border border-red-800 text-red-400 text-[10px] font-bold uppercase rounded hover:bg-red-900/50 transition-colors"
+                                                                    className="px-3 py-2 bg-red-900/30 border border-red-800 text-red-400 text-[10px] font-bold uppercase rounded hover:bg-red-900/50 transition-colors"
                                                                 >
                                                                     Unlink
                                                                 </button>
                                                             ) : (
                                                                 <button 
                                                                     onClick={() => handleLinkCharacterDirectly(charObj.id, selectedCampaign.id)}
-                                                                    className="px-2.5 py-1 bg-dnd-gold/20 border border-dnd-gold/50 text-dnd-gold text-[10px] font-bold uppercase rounded hover:bg-dnd-gold hover:text-black transition-colors"
+                                                                    className="px-3 py-2 bg-dnd-gold/20 border border-dnd-gold/50 text-dnd-gold text-[10px] font-bold uppercase rounded hover:bg-dnd-gold hover:text-black transition-colors"
                                                                 >
                                                                     Link Here
                                                                 </button>

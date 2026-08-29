@@ -120,14 +120,14 @@ const CreatureManagerModal: React.FC<CreatureManagerModalProps> = ({
             <div className={`bg-[#1b1c20] border-2 ${theme[1]} rounded-xl w-full max-w-5xl shadow-2xl flex flex-col h-[85vh]`}>
                 
                 {/* Header */}
-                <div className="p-6 border-b border-gray-700 bg-[#121316] rounded-t-xl shrink-0 flex justify-between items-center">
-                    <div className="flex items-center gap-3">
+                <div className="p-4 sm:p-6 border-b border-gray-700 bg-[#121316] rounded-t-xl shrink-0 flex flex-wrap justify-between items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                         <div className={`${theme[0]}`}>{getThemeIcon()}</div>
                         <div>
-                            <h2 className={`text-3xl font-serif ${theme[0]}`}>
+                            <h2 className={`text-2xl sm:text-3xl font-serif ${theme[0]}`}>
                                 {mode === 'wildshape' ? 'Wild Shape' : mode === 'familiar' ? 'Summon Familiar' : 'Polymorph'}
                             </h2>
-                            <div className="flex gap-4 text-[10px] text-gray-400 mt-1 uppercase font-black tracking-widest">
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-gray-400 mt-1 uppercase font-black tracking-widest">
                                 {mode === 'wildshape' && (
                                     <>
                                         <span>Max CR: {maxCR}</span>
@@ -143,9 +143,9 @@ const CreatureManagerModal: React.FC<CreatureManagerModalProps> = ({
                     <button onClick={onClose} className="text-gray-500 hover:text-white text-3xl transition-colors">&times;</button>
                 </div>
 
-                <div className="flex flex-grow overflow-hidden">
+                <div className="flex flex-col lg:flex-row flex-grow overflow-hidden">
                     {/* Left: List */}
-                    <div className="w-1/3 border-r border-gray-700 p-4 flex flex-col bg-[#16171a]">
+                    <div className="lg:w-1/3 lg:border-r border-b lg:border-b-0 border-gray-700 p-4 flex flex-col bg-[#16171a] max-h-64 lg:max-h-none">
                         <button 
                             onClick={onOpenForge}
                             className="mb-4 w-full py-2 bg-gray-800 border border-gray-600 hover:border-white text-white font-bold uppercase text-[10px] rounded transition-colors flex items-center justify-center gap-2"
@@ -192,7 +192,7 @@ const CreatureManagerModal: React.FC<CreatureManagerModalProps> = ({
                     </div>
 
                     {/* Right: Detail */}
-                    <div className="w-2/3 p-6 overflow-y-auto custom-scrollbar bg-[#1b1c20]">
+                    <div className="lg:w-2/3 p-4 sm:p-6 overflow-y-auto custom-scrollbar bg-[#1b1c20]">
                         {selectedCreature ? (
                             <div className="max-w-2xl mx-auto">
                                 <div className="flex justify-between items-start mb-4 border-b border-gray-700 pb-4">
@@ -206,7 +206,7 @@ const CreatureManagerModal: React.FC<CreatureManagerModalProps> = ({
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-3 gap-4 mb-6 text-center">
+                                <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 text-center">
                                     <div className="bg-gray-800/50 p-2 rounded border border-gray-700">
                                         <div className="text-[10px] uppercase font-black text-gray-500">Armor Class</div>
                                         <div className="text-xl text-white font-bold">{selectedCreature.ac}</div>
@@ -222,7 +222,7 @@ const CreatureManagerModal: React.FC<CreatureManagerModalProps> = ({
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-6 gap-2 text-center mb-6 bg-gray-800/30 p-3 rounded border border-gray-700">
+                                <div className="grid grid-cols-3 lg:grid-cols-6 gap-2 text-center mb-6 bg-gray-800/30 p-3 rounded border border-gray-700">
                                     {[
                                         { l: 'STR', v: selectedCreature.str },
                                         { l: 'DEX', v: selectedCreature.dex },

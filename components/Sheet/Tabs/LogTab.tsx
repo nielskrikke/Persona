@@ -55,7 +55,7 @@ const LogTab: React.FC<LogTabProps> = ({ character, setCharacter, onOpenVault, s
                 />
             </div>
 
-            <div className="md:hidden space-y-3">
+            <div className="lg:hidden space-y-3">
                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-gray-800 pb-2">Quick Actions</h3>
                 <div className="grid grid-cols-2 gap-3">
                     <button onClick={onOpenVault} className="flex items-center justify-center gap-3 p-4 bg-[#1b1c20]/80 border border-[#3e4149] rounded-xl hover:border-dnd-gold transition-colors group"><span className="text-xs font-bold uppercase tracking-wider">Vault</span></button>

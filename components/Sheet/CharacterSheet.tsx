@@ -542,6 +542,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     }, [!!character.activeFamiliar]);
 
     const [isSidePanelPinned, setIsSidePanelPinned] = useState(false);
+    const [showMobileMenu, setShowMobileMenu] = useState(false);
     const [showDiceCustomizerModal, setShowDiceCustomizerModal] = useState(false);
     const [rollMenu, setRollMenu] = useState<{x: number, y: number, formula: string, label: string} | null>(null);
     const [current3DRequest, setCurrent3DRequest] = useState<DiceBoxRollRequest | null>(null);
@@ -3521,7 +3522,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         rules: <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>,
         log: <svg xmlns="http://www.w3.org/2000/svg" width="18" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><line x1="16" y1="8" x2="2" y2="22"/></svg>,
         stats: <svg xmlns="http://www.w3.org/2000/svg" width="18" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="3" x2="21" y1="9" y2="9"/><line x1="9" x2="9" y1="21" y2="9"/></svg>,
-        choices: <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M9 14h6"/><path d="M9 10h6"/><path d="M9 18h6"/></svg>
+        choices: <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M9 14h6"/><path d="M9 10h6"/><path d="M9 18h6"/></svg>,
+        more: <svg xmlns="http://www.w3.org/2000/svg" width="18" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
     };
 
     const getAllFeaturesSorted = () => {
@@ -3728,46 +3730,40 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 initialData={homebrewInitialData}
             />
 
-            <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-[#121316] border-b border-[#3e4149] px-4 py-2 flex items-center justify-between shadow-lg h-[52px]">
-                <div className="flex items-center gap-3 overflow-hidden">
-                    <div className="w-8 h-8 bg-cover bg-center rounded-full border border-dnd-gold shrink-0" style={{backgroundImage: `url('${character.avatarUrl || 'https://www.dndbeyond.com/content/skins/waterdeep/images/character-placeholder.jpg'}')`}}/>
-                    <div className="flex flex-col overflow-hidden"><span className="text-sm font-bold text-white truncate">{character.name}</span><span className="text-[9px] text-gray-400 truncate">{character.race?.name} | {character.classes.map(c => `${c.definition.name} ${c.level}`).join(' / ')}</span></div>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                    <div className="text-center">
-                        <div className="text-[9px] uppercase text-gray-500 font-bold">HP</div>
-                        <div className={`text-sm font-bold ${character.currentHp < character.maxHp/2 ? 'text-red-400' : 'text-green-400'}`}>{character.currentHp}/{character.maxHp}</div>
+            <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-[#121316] border-b border-[#3e4149] shadow-lg pt-safe">
+                <div className="h-[56px] px-3 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div className="w-9 h-9 bg-cover bg-center rounded-full border border-dnd-gold shrink-0" style={{backgroundImage: `url('${character.avatarUrl || 'https://www.dndbeyond.com/content/skins/waterdeep/images/character-placeholder.jpg'}')`}}/>
+                        <div className="min-w-0">
+                            <div className="text-sm font-bold text-white truncate leading-tight">{character.name}</div>
+                            <div className="text-[9px] text-gray-400 truncate leading-tight">{character.race?.name} | {character.classes.map(c => `${c.definition.name} ${c.level}`).join(' / ')}</div>
+                        </div>
                     </div>
-                    <SquareStatBox 
-                        label="Armor" 
-                        subLabel="Class" 
-                        value={`${acValue}`} 
-                        tooltipPosition="bottom"
-                        tooltip={
-                            <div className="space-y-1">
-                                {acBreakdown.map((entry, i) => (
-                                    <div key={i} className="flex justify-between text-[10px]">
-                                        <span className="text-gray-400">{entry.label}</span>
-                                        <span className="text-white font-mono">{formatModifier(entry.value)}</span>
-                                    </div>
-                                ))}
-                                <div className="border-t border-gray-700 mt-1 pt-1 flex justify-between text-[10px] font-bold">
-                                    <span className="text-dnd-gold">Total</span>
-                                    <span className="text-white">{acValue}</span>
-                                </div>
-                            </div>
-                        }
-                    />
-                    <button onClick={() => setShowManageCharacterModal(true)} className="text-gray-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
-                    </button>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                        <button 
+                            onClick={() => setShowHealthManager(true)}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-700 bg-black/40 active:scale-95 transition-transform"
+                            title="Manage Health"
+                        >
+                            <Heart size={12} className="text-red-400 shrink-0" />
+                            <span className={`text-xs font-bold leading-none ${character.currentHp < character.maxHp/2 ? 'text-red-400' : 'text-green-400'}`}>{character.currentHp}</span>
+                            <span className="text-[9px] text-gray-500 leading-none">/{character.maxHp}</span>
+                        </button>
+                        <div className="flex flex-col items-center px-2 py-1 rounded-lg border border-gray-700 bg-black/40">
+                            <span className="text-[7px] uppercase text-gray-500 font-bold leading-none">AC</span>
+                            <span className="text-xs font-bold text-white leading-tight">{acValue}</span>
+                        </div>
+                        <button onClick={() => setShowManageCharacterModal(true)} className="p-2 rounded-lg border border-gray-700 bg-black/40 text-gray-300 active:scale-95 transition-transform" aria-label="Manage Character">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <header className="hidden md:block shrink-0 z-[100] shadow-xl relative">
+            <header className="hidden lg:block shrink-0 z-[100] shadow-xl relative">
                 <div className="bg-[#121316]/80 backdrop-blur-md border-b border-[#3e4149] relative z-40">
-                     <div className="max-w-[1400px] mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4 relative z-50">
-                        <div className="flex items-center gap-6 w-full md:w-auto">
+                     <div className="max-w-[1400px] mx-auto px-4 py-4 flex flex-col lg:flex-row justify-between items-center gap-4 relative z-50">
+                        <div className="flex items-center gap-6 w-full lg:w-auto">
                             <div className={`w-20 h-20 bg-cover bg-center rounded-full border-2 shadow-[0_0_15px_rgba(201,173,106,0.3)] shrink-0 border-dnd-gold`} style={{backgroundImage: `url('${character.avatarUrl || 'https://www.dndbeyond.com/content/skins/waterdeep/images/character-placeholder.jpg'}')`}}>
                                 {!character.avatarUrl && <div className="w-full h-full flex items-center justify-center bg-black/50 text-3xl font-serif text-dnd-gold rounded-full">{character.name.charAt(0)}</div>}
                             </div>
@@ -3875,13 +3871,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 )}
                             </div>
                         </div>
-                        <div className="flex gap-4 w-full md:w-auto overflow-x-auto pb-1"><button onClick={() => handleRest('short')} className="flex items-center gap-2 px-4 py-2 bg-[#1b1c20]/80 border border-gray-600 hover:border-dnd-gold text-gray-300 hover:text-white rounded transition-colors group shrink-0"><div className="text-left"><div className="text-[10px] font-bold uppercase leading-none">Short</div><div className="text-xs font-bold uppercase leading-none">Rest</div></div></button><button onClick={() => handleRest('long')} className="flex items-center gap-2 px-4 py-2 bg-[#1b1c20]/80 border border-gray-600 hover:border-dnd-gold text-gray-300 hover:text-white rounded transition-colors group shrink-0"><div className="text-left"><div className="text-[10px] font-bold uppercase leading-none">Long</div><div className="text-xs font-bold uppercase leading-none">Rest</div></div></button></div>
+                        <div className="flex gap-4 w-full lg:w-auto overflow-x-auto pb-1"><button onClick={() => handleRest('short')} className="flex items-center gap-2 px-4 py-2 bg-[#1b1c20]/80 border border-gray-600 hover:border-dnd-gold text-gray-300 hover:text-white rounded transition-colors group shrink-0"><div className="text-left"><div className="text-[10px] font-bold uppercase leading-none">Short</div><div className="text-xs font-bold uppercase leading-none">Rest</div></div></button><button onClick={() => handleRest('long')} className="flex items-center gap-2 px-4 py-2 bg-[#1b1c20]/80 border border-gray-600 hover:border-dnd-gold text-gray-300 hover:text-white rounded transition-colors group shrink-0"><div className="text-left"><div className="text-[10px] font-bold uppercase leading-none">Long</div><div className="text-xs font-bold uppercase leading-none">Rest</div></div></button></div>
                      </div>
                 </div>
                 <div className="bg-[#121316]/80 backdrop-blur-md border-b border-[#3e4149]/40 py-3 overflow-x-auto custom-scrollbar relative z-10">
                     <div className="max-w-[1400px] mx-auto px-4 flex justify-between items-center min-w-max">
                         <div className="flex gap-3">{ABILITY_NAMES.map(stat => (<HeaderStatBox key={stat} label={stat} value={getStat(stat)} modifier={calculateModifier(getStat(stat))} onRoll={roll} onContextMenu={triggerRollMenu} />))}</div>
-                        <div className="flex gap-3 border-l border-gray-700/50 pl-4 md:pl-8">
+                        <div className="flex gap-3 border-l border-gray-700/50 pl-4 lg:pl-8">
                              <SquareStatBox 
                                 label="Armor" 
                                 subLabel="Class" 
@@ -3908,7 +3904,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                  <div 
                                     onClick={() => roll(initAdv ? `2d20kh1${formatModifier(totalInitMod)}` : `1d20${formatModifier(totalInitMod)}`, "Initiative Roll")} 
                                     onContextMenu={(e) => triggerRollMenu(e, initAdv ? `2d20kh1${formatModifier(totalInitMod)}` : `1d20${formatModifier(totalInitMod)}`, "Initiative Roll")} 
-                                    className="flex flex-col items-center justify-center w-16 h-16 md:w-20 md:h-20 border border-gray-600 rounded bg-[#1b1c20]/80 cursor-pointer hover:border-dnd-gold group transition-colors relative"
+                                    className="flex flex-col items-center justify-center w-16 h-16 lg:w-20 lg:h-20 border border-gray-600 rounded bg-[#1b1c20]/80 cursor-pointer hover:border-dnd-gold group transition-colors relative"
                                  >
                                     {initAdv && <span className="absolute top-1 right-1 text-[7px] bg-gray-800/60 text-gray-500 px-0.5 rounded border border-gray-700/50">ADV</span>}
                                     <div className="text-xl font-bold text-white group-hover:text-dnd-gold leading-none">{formatModifier(totalInitMod)}</div>
@@ -3955,7 +3951,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                              <div 
                                  onClick={() => setCharacter(p => ({...p, inspiration: !p.inspiration}))} 
                                  title={character.inspiration ? "Heroic Inspiration Active (Click to toggle)" : "Click to toggle Heroic Inspiration"}
-                                 className={`flex flex-col items-center justify-between w-16 h-16 md:w-20 md:h-20 p-1.5 md:p-2 border rounded cursor-pointer transition-all duration-200 select-none group ${
+                                 className={`flex flex-col items-center justify-between w-16 h-16 lg:w-20 lg:h-20 p-1.5 lg:p-2 border rounded cursor-pointer transition-all duration-200 select-none group ${
                                      character.inspiration 
                                          ? 'bg-[#232018] border-dnd-gold shadow-[0_0_12px_rgba(201,173,106,0.25)]' 
                                          : 'bg-[#1b1c20]/80 border-gray-600 hover:border-dnd-gold/70 hover:bg-[#1f2025]'
@@ -3963,21 +3959,21 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                              >
                                  <div className="flex-1 flex items-center justify-center">
                                      <div 
-                                         className={`w-3.5 h-3.5 md:w-4 md:h-4 border-2 transform rotate-45 transition-all duration-200 ${
+                                         className={`w-3.5 h-3.5 lg:w-4 lg:h-4 border-2 transform rotate-45 transition-all duration-200 ${
                                              character.inspiration 
                                                  ? 'bg-dnd-gold border-dnd-gold scale-110 shadow-[0_0_8px_rgba(201,173,106,0.8)]' 
                                                  : 'border-gray-500 group-hover:border-dnd-gold group-hover:scale-105'
                                          }`}
                                      />
                                  </div>
-                                 <div className={`text-[8px] md:text-[9px] font-bold uppercase text-center leading-tight transition-colors ${
+                                 <div className={`text-[8px] lg:text-[9px] font-bold uppercase text-center leading-tight transition-colors ${
                                      character.inspiration ? 'text-dnd-gold' : 'text-gray-500 group-hover:text-gray-400'
                                  }`}>
                                      Heroic<br/>Inspiration
                                  </div>
                              </div>
                              <div 
-                                 className={`flex flex-col h-16 md:h-20 border rounded overflow-hidden min-w-[150px] cursor-pointer transition-all duration-200 select-none ${
+                                 className={`flex flex-col h-16 lg:h-20 border rounded overflow-hidden min-w-[150px] cursor-pointer transition-all duration-200 select-none ${
                                      character.currentHp === 0 
                                          ? 'bg-red-950/40 border-red-600 shadow-[0_0_12px_rgba(239,68,68,0.3)] hover:border-red-400' 
                                          : 'bg-[#1b1c20]/80 border-gray-600 hover:border-dnd-gold'
@@ -4038,22 +4034,63 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 </div>
             </header>
 
-            <footer className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#121316] border-t border-[#3e4149] px-4 py-2 flex items-center justify-between shadow-lg h-[64px]">
-                {['stats', 'actions', 'spells', 'inventory', 'log'].map((tab_btn) => (
-                    <button key={tab_btn} onClick={() => setActiveTab(tab_btn as any)} className={`flex flex-col items-center justify-center p-2 min-w-[60px] rounded-lg transition-colors relative ${activeTab === tab_btn ? 'text-dnd-gold' : 'text-gray-500'}`}>
+            <footer className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#121316] border-t border-[#3e4149] shadow-lg pb-safe">
+                <div className="flex items-stretch justify-between w-full h-[64px] px-1">
+                {(['stats', 'actions', 'spells', 'inventory', 'more'] as const).map((tab_btn) => (
+                    <button key={tab_btn} onClick={() => tab_btn === 'more' ? setShowMobileMenu(true) : setActiveTab(tab_btn as any)} className={`flex flex-col items-center justify-center flex-1 rounded-lg transition-colors relative py-1 ${tab_btn === 'more' && showMobileMenu ? 'text-dnd-gold' : activeTab === tab_btn ? 'text-dnd-gold' : 'text-gray-500'}`}>
                         <div className={`${activeTab === tab_btn ? 'scale-110' : 'scale-100'} transition-transform duration-200`}>{tabIcons[tab_btn]}</div>
-                        <span className="text-[9px] font-bold uppercase mt-1 tracking-wider">{tab_btn === 'log' ? 'Journal' : tab_btn === 'inventory' ? 'Items' : tab_btn}</span>
+                        <span className="text-[8px] font-bold uppercase mt-1 tracking-wider leading-tight text-center">{tab_btn === 'inventory' ? 'Items' : tab_btn === 'stats' ? 'Home' : tab_btn === 'more' ? 'More' : tab_btn}</span>
                         {tab_btn === 'spells' && hasPendingSpells && (
-                            <span className="absolute top-1 right-4 w-2 h-2 bg-dnd-red rounded-full animate-pulse" />
+                            <span className="absolute top-1 right-1/2 translate-x-2 w-2 h-2 bg-dnd-red rounded-full animate-pulse" />
                         )}
                     </button>
                 ))}
+                </div>
             </footer>
 
-            <main className="flex-grow flex flex-col md:flex-row overflow-hidden max-w-[1400px] mx-auto w-full relative font-scalable-text z-10 pt-0 pb-[64px] md:pb-0">
+            {/* Mobile "More" bottom sheet */}
+            {showMobileMenu && (
+                <div className="lg:hidden fixed inset-0 z-[300] bg-black/60 backdrop-blur-sm" onClick={() => setShowMobileMenu(false)}>
+                    <div className="absolute bottom-0 left-0 right-0 bg-[#1b1c20] border-t border-[#3e4149] rounded-t-2xl shadow-2xl animate-in slide-in-from-bottom duration-300 pb-safe max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                        <div className="pt-3 pb-1 flex justify-center"><div className="w-10 h-1 rounded-full bg-gray-700"></div></div>
+                        <div className="px-4 pb-5">
+                            <div className="flex items-center justify-between mb-2 px-1">
+                                <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-500">More</h3>
+                                <button onClick={() => setShowMobileMenu(false)} className="text-gray-500 hover:text-white p-1" aria-label="Close menu"><X size={18} /></button>
+                            </div>
+                            <div className="divide-y divide-gray-800/80 rounded-xl overflow-hidden border border-gray-800 bg-black/20">
+                                {([
+                                    { label: 'Features & Traits', sub: 'Class features, racial traits, feats', action: () => setActiveTab('features') },
+                                    { label: 'Rules & Conditions', sub: 'Reference the rules of the game', action: () => setActiveTab('rules') },
+                                    { label: 'Journal', sub: 'Quests, contacts, session notes', action: () => setActiveTab('log') },
+                                    { label: 'Short Rest', sub: 'Spend hit dice to recover', action: () => handleRest('short') },
+                                    { label: 'Long Rest', sub: 'Recover all resources', action: () => handleRest('long') },
+                                    { label: 'Layout Manager', sub: 'Arrange widgets on your sheet', action: () => setShowLayoutManager(true) },
+                                    { label: 'Character Vault', sub: 'Open the vault', action: onOpenVault },
+                                    { label: 'Customize Dice', sub: 'Change dice colors & effects', action: () => setShowDiceCustomizerModal(true) },
+                                ] as { label: string; sub: string; action: () => void }[]).map(item => (
+                                    <button 
+                                        key={item.label}
+                                        onClick={() => { setShowMobileMenu(false); item.action(); }}
+                                        className="w-full flex items-center justify-between gap-3 px-4 py-3.5 text-left active:bg-gray-800/60 transition-colors"
+                                    >
+                                        <div className="min-w-0">
+                                            <div className="text-sm font-bold text-gray-200">{item.label}</div>
+                                            <div className="text-[10px] text-gray-500 truncate">{item.sub}</div>
+                                        </div>
+                                        <span className="text-gray-600 shrink-0">&rsaquo;</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <main className="flex-grow flex flex-col lg:flex-row overflow-hidden max-w-[1400px] mx-auto w-full relative font-scalable-text z-10 pt-safe-52 lg:pt-0 pb-safe-64 lg:pb-0">
                 <aside className={isSidePanelPinned && !!selectedDetail 
-                    ? "hidden md:flex flex-col md:w-[340px] lg:w-[320px] bg-[#121316]/50 border-r border-[#3e4149] p-4 gap-4 overflow-y-auto custom-scrollbar shrink-0 backdrop-blur-md" 
-                    : "hidden md:flex md:flex-col lg:grid lg:grid-cols-2 md:w-[340px] lg:w-[600px] bg-[#121316]/50 border-r border-[#3e4149] p-4 gap-4 overflow-y-auto custom-scrollbar shrink-0 backdrop-blur-md"
+                    ? "hidden lg:flex flex-col lg:w-[340px] xl:w-[320px] bg-[#121316]/50 border-r border-[#3e4149] p-4 gap-4 overflow-y-auto custom-scrollbar shrink-0 backdrop-blur-md" 
+                    : "hidden lg:flex lg:flex-col xl:grid xl:grid-cols-2 lg:w-[340px] xl:w-[600px] bg-[#121316]/50 border-r border-[#3e4149] p-4 gap-4 overflow-y-auto custom-scrollbar shrink-0 backdrop-blur-md"
                 }>
                     <div className="flex flex-col gap-4">
                          {/* Active Form Widget removed */}
@@ -4066,7 +4103,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 </aside>
 
                 <section className={`flex-grow flex flex-col ${character.backgroundImageUrl ? "bg-[#121316]/50" : "bg-transparent"} overflow-hidden backdrop-blur-md`}>
-                    <nav className="hidden md:flex items-center gap-2 px-4 py-2 bg-[#121316]/50 shrink-0 overflow-x-auto custom-scrollbar border-b border-[#3e4149]/40">
+                    <nav className="hidden lg:flex items-center gap-2 px-4 py-2 bg-[#121316]/50 shrink-0 overflow-x-auto custom-scrollbar border-b border-[#3e4149]/40">
             {['actions', 'spells', 'inventory', 'features', 'rules', 'log'].map(tab_key => (
                 <button 
                     key={tab_key} 

@@ -12,7 +12,7 @@ export const HeaderStatBox: React.FC<{
     onContextMenu?: (e: React.MouseEvent, formula: string, label: string) => void
 }> = ({ label, value, modifier, onRoll, onContextMenu }) => (
     <div 
-        className="flex flex-col items-center p-2 bg-[#1b1c20] border border-gray-600 rounded w-16 md:w-20 hover:border-dnd-gold cursor-pointer transition-colors group" 
+        className="flex flex-col items-center p-2 bg-[#1b1c20] border border-gray-600 rounded w-16 lg:w-20 hover:border-dnd-gold cursor-pointer transition-colors group" 
         onClick={() => onRoll(`1d20${formatModifier(modifier)}`, `${ABILITY_LABELS[label as AbilityName]} Check`)}
         onContextMenu={(e) => onContextMenu && onContextMenu(e, `1d20${formatModifier(modifier)}`, `${ABILITY_LABELS[label as AbilityName]} Check`)}
     >
@@ -43,9 +43,11 @@ export const SquareStatBox: React.FC<{
     const updateCoords = () => {
         if (containerRef.current) {
             const rect = containerRef.current.getBoundingClientRect();
+            // Keep the centered tooltip fully on-screen (w-56 = 224px, half = 112px)
+            const clampedLeft = Math.min(Math.max(rect.left + rect.width / 2, 120), (window.innerWidth || 0) - 120);
             setCoords({
                 top: tooltipPosition === 'top' ? rect.top : rect.bottom,
-                left: rect.left + rect.width / 2
+                left: clampedLeft
             });
         }
     };
@@ -65,7 +67,7 @@ export const SquareStatBox: React.FC<{
     return (
         <div 
             ref={containerRef}
-            className={`flex flex-col items-center justify-center w-16 h-16 md:w-20 md:h-20 border rounded bg-[#1b1c20] p-1 relative transition-all duration-200 outline-none select-none ${tooltip ? 'cursor-help border-gray-500 hover:border-dnd-gold hover:shadow-[0_0_15px_rgba(201,173,106,0.2)]' : 'border-gray-600'}`}
+            className={`flex flex-col items-center justify-center w-16 h-16 lg:w-20 lg:h-20 border rounded bg-[#1b1c20] p-1 relative transition-all duration-200 outline-none select-none ${tooltip ? 'cursor-help border-gray-500 hover:border-dnd-gold hover:shadow-[0_0_15px_rgba(201,173,106,0.2)]' : 'border-gray-600'}`}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
         >

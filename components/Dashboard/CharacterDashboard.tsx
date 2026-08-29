@@ -81,7 +81,7 @@ const ShareModal = ({ isOpen, onClose, character, currentUser }: any) => {
                                 </div>
                                 <button 
                                     onClick={() => toggleShare(user.id)}
-                                    className={`px-3 py-1 rounded text-[10px] font-bold uppercase transition-all ${shares.includes(user.id) ? 'bg-green-900/30 text-green-500 border border-green-900/50' : 'bg-gray-800 text-gray-500 border border-gray-700 hover:text-white hover:border-gray-500'}`}
+                                    className={`px-3 py-2 rounded text-[10px] font-bold uppercase transition-all ${shares.includes(user.id) ? 'bg-green-900/30 text-green-500 border border-green-900/50' : 'bg-gray-800 text-gray-500 border border-gray-700 hover:text-white hover:border-gray-500'}`}
                                 >
                                     {shares.includes(user.id) ? 'Shared' : 'Share'}
                                 </button>
@@ -285,7 +285,7 @@ const CharacterDashboard: React.FC<CharacterDashboardProps> = ({ onLoadCharacter
     if (loading) return <div className="fixed inset-0 flex items-center justify-center bg-[#0b0c0e] text-dnd-gold z-[200]">Accessing the archives...</div>;
 
     return (
-        <div className="fixed inset-0 bg-[#0b0c0e] z-[200] flex flex-col p-4 md:p-10 overflow-hidden">
+        <div className="fixed inset-0 bg-[#0b0c0e] z-[200] flex flex-col p-4 pt-safe pb-safe md:p-10 overflow-hidden">
             <input type="file" accept=".json" ref={fileInputRef} className="hidden" onChange={handleImportFile} />
             
             <HomebrewManagerModal 
@@ -311,15 +311,15 @@ const CharacterDashboard: React.FC<CharacterDashboardProps> = ({ onLoadCharacter
             />
 
             {confirmDeleteId && (
-                <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="bg-[#1b1c20] border border-gray-800 rounded-lg p-8 max-w-md w-full shadow-2xl text-center relative">
+                <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4 pt-safe pb-safe animate-in fade-in duration-200">
+                    <div className="bg-[#1b1c20] border border-gray-800 rounded-lg p-5 sm:p-8 max-w-md w-full shadow-2xl text-center relative">
                         <h2 className="text-2xl font-bold text-white mb-2 font-serif">Delete Character?</h2>
                         <p className="text-gray-400 mb-8 text-sm leading-relaxed">
                             Are you sure you want to permanently delete this character from the vault? This action cannot be undone.
                         </p>
-                        <div className="flex gap-4 justify-center">
-                            <button onClick={() => setConfirmDeleteId(null)} className="px-6 py-3 border border-gray-600 rounded text-gray-300 hover:text-white hover:border-gray-400 font-bold uppercase text-xs tracking-widest transition-colors">Cancel</button>
-                            <button onClick={handleExecuteDelete} className="px-6 py-3 bg-red-700 hover:bg-red-600 text-white rounded font-bold uppercase text-xs tracking-widest shadow-lg transition-colors">Delete Forever</button>
+                        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                            <button onClick={() => setConfirmDeleteId(null)} className="flex-1 px-6 py-3 border border-gray-600 rounded text-gray-300 hover:text-white hover:border-gray-400 font-bold uppercase text-xs tracking-widest transition-colors">Cancel</button>
+                            <button onClick={handleExecuteDelete} className="flex-1 px-6 py-3 bg-red-700 hover:bg-red-600 text-white rounded font-bold uppercase text-xs tracking-widest shadow-lg transition-colors">Delete Forever</button>
                         </div>
                     </div>
                 </div>
@@ -357,20 +357,20 @@ const CharacterDashboard: React.FC<CharacterDashboardProps> = ({ onLoadCharacter
 
                         return (
                             <div key={char.id} onClick={() => handleSelect(char)} className={`bg-[#1b1c20] border border-gray-700 rounded-xl p-6 cursor-pointer relative group flex flex-col min-h-[200px] transition-all ${isDeleting ? 'opacity-50 pointer-events-none' : 'hover:border-dnd-gold/50 hover:bg-[#202125]'}`}>
-                                <div className="absolute top-4 right-4 z-50 flex items-center gap-1" onClick={(e) => { e.stopPropagation(); }}>
+                                <div className="absolute top-4 right-4 z-50 flex items-center gap-1.5" onClick={(e) => { e.stopPropagation(); }}>
                                     {!char.isShared && (
-                                        <button type="button" onClick={(e) => setSharingChar(char)} className="text-gray-600 hover:text-blue-400 p-2 rounded-full hover:bg-black/40 transition-colors" title="Share Character">
+                                        <button type="button" onClick={(e) => setSharingChar(char)} className="text-gray-600 hover:text-blue-400 p-2.5 rounded-full hover:bg-black/40 transition-colors" title="Share Character">
                                             <Share2 size={16} />
                                         </button>
                                     )}
-                                    <button type="button" onClick={(e) => handleDuplicate(char, e)} className="text-gray-600 hover:text-green-400 p-2 rounded-full hover:bg-black/40 transition-colors" title="Duplicate Character">
+                                    <button type="button" onClick={(e) => handleDuplicate(char, e)} className="text-gray-600 hover:text-green-400 p-2.5 rounded-full hover:bg-black/40 transition-colors" title="Duplicate Character">
                                         <Copy size={16} />
                                     </button>
-                                    <button type="button" onClick={(e) => handleDownload(char, e)} className="text-gray-600 hover:text-dnd-gold p-2 rounded-full hover:bg-black/40 transition-colors" title="Download JSON">
+                                    <button type="button" onClick={(e) => handleDownload(char, e)} className="text-gray-600 hover:text-dnd-gold p-2.5 rounded-full hover:bg-black/40 transition-colors" title="Download JSON">
                                         <Download size={16} />
                                     </button>
                                     {!char.isShared && (
-                                        <button type="button" onClick={(e) => handleRequestDelete(char.id, e)} className="text-gray-600 hover:text-red-500 p-2 rounded-full hover:bg-black/40 transition-colors" title="Delete Character" disabled={isDeleting}>
+                                        <button type="button" onClick={(e) => handleRequestDelete(char.id, e)} className="text-gray-600 hover:text-red-500 p-2.5 rounded-full hover:bg-black/40 transition-colors" title="Delete Character" disabled={isDeleting}>
                                             {isDeleting ? <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div> : <Trash2 size={16} />}
                                         </button>
                                     )}
@@ -402,7 +402,7 @@ const CharacterDashboard: React.FC<CharacterDashboardProps> = ({ onLoadCharacter
                                         </button>
                                     </div>
                                 )}
-                                <div className="mt-auto text-[10px] text-gray-600 pt-4 border-t border-gray-800 flex justify-between"><span>{char.data.race?.name}</span><span>Updated: {new Date(char.updated_at).toLocaleDateString()}</span></div>
+                                <div className="mt-auto text-[10px] text-gray-600 pt-4 border-t border-gray-800 flex justify-between gap-2"><span className="truncate">{char.data.race?.name || 'Unknown Race'}</span><span className="shrink-0">Updated: {new Date(char.updated_at).toLocaleDateString()}</span></div>
                             </div>
                         );
                     })}

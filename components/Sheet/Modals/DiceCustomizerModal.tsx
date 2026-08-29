@@ -547,19 +547,19 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
             </div>
 
             {/* Modal Footer Actions */}
-            <div className="flex items-center justify-between pt-4 border-t border-gray-800/80 gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between pt-4 border-t border-gray-800/80 gap-3">
               <button
                 onClick={() => {
                   const resetCfg = normalizeDiceCustomization(undefined, '#eab308');
                   setConfig(resetCfg);
                   handleRollPreview(resetCfg);
                 }}
-                className="px-3.5 py-2.5 rounded-xl border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800/50 text-xs font-bold uppercase flex items-center gap-1.5 transition-colors"
+                className="px-3.5 py-2.5 rounded-xl border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800/50 text-xs font-bold uppercase flex items-center justify-center gap-1.5 transition-colors"
               >
                 <RotateCcw size={14} /> Reset Defaults
               </button>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                 <button
                   onClick={onClose}
                   className="px-4 py-2.5 rounded-xl text-gray-400 hover:text-white text-xs font-bold uppercase transition-colors"
@@ -568,7 +568,7 @@ export default function DiceCustomizerModal({ isOpen, onClose, character, onUpda
                 </button>
                 <button
                   onClick={handleSave}
-                  className="px-6 py-2.5 bg-dnd-gold hover:bg-yellow-500 text-black font-black uppercase text-xs tracking-wider rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center gap-2"
+                  className="px-6 py-2.5 bg-dnd-gold hover:bg-yellow-500 text-black font-black uppercase text-xs tracking-wider rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                 >
                   <Check size={16} /> Save & Apply Custom Dice
                 </button>

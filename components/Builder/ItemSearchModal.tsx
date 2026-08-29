@@ -291,16 +291,16 @@ const ItemSearchModal: React.FC<ItemSearchModalProps> = ({ isOpen, onClose, item
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="p-6 bg-[#121316] border-b border-gray-800 flex justify-between items-center">
-                    <div>
-                        <h2 className="text-2xl font-serif text-white">
+                <div className="p-4 sm:p-6 bg-[#121316] border-b border-gray-800 flex flex-wrap justify-between items-center gap-3">
+                    <div className="min-w-0">
+                        <h2 className="text-xl sm:text-2xl font-serif text-white">
                             {isAddingCustom ? 'Create Custom Item' : 'Armory Search'}
                         </h2>
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">
                             {isAddingCustom ? 'Define your own unique piece of gear' : 'Find gear, weapons, and magic items'}
                         </p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                         {isAddingCustom && (
                             <button 
                                 onClick={() => setIsAddingCustom(false)}

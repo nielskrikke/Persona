@@ -787,16 +787,19 @@ const DetailSidePanel = ({
                                     {fullDetail.mastery && (
                                         <div className="mt-2 group relative">
                                             <span className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Mastery</span>
-                                            <div className="inline-block px-2 py-0.5 rounded-full bg-dnd-gold/10 border border-dnd-gold/30 text-[10px] text-dnd-gold font-medium cursor-help">
+                                            <button 
+                                                type="button"
+                                                className="inline-block px-2 py-0.5 rounded-full bg-dnd-gold/10 border border-dnd-gold/30 text-[10px] text-dnd-gold font-medium cursor-help focus:outline-none"
+                                            >
                                                 {typeof fullDetail.mastery === 'string' ? fullDetail.mastery : fullDetail.mastery.name}
-                                            </div>
+                                            </button>
                                             {/* Mastery Description Tooltip */}
                                             {(() => {
                                                 const mName = typeof fullDetail.mastery === 'string' ? fullDetail.mastery : fullDetail.mastery.name;
                                                 const mDesc = MASTERY_DESCRIPTIONS[mName];
                                                 if (!mDesc) return null;
                                                 return (
-                                                    <div className="absolute left-0 top-full mt-1 w-48 p-2 bg-[#1b1c20] border border-gray-700 rounded shadow-2xl text-[10px] text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 leading-relaxed">
+                                                    <div className="absolute left-0 top-full mt-1 w-48 p-2 bg-[#1b1c20] border border-gray-700 rounded shadow-2xl text-[10px] text-gray-300 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 transition-opacity pointer-events-none z-50 leading-relaxed">
                                                         <span className="text-dnd-gold font-bold block mb-1 uppercase tracking-wider">{mName}</span>
                                                         {mDesc}
                                                     </div>

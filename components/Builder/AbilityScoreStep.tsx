@@ -148,10 +148,10 @@ const AbilityScoreStep: React.FC<AbilityScoreStepProps> = ({ race, initialScores
                                         {formatModifier(mod)}
                                     </div>
 
-                                    <div className="flex items-center gap-5 bg-[#0b0c0e] rounded-full px-5 py-2 border border-gray-700 shadow-inner">
+                                    <div className="flex items-center gap-5 bg-[#0b0c0e] rounded-full px-4 py-1.5 border border-gray-700 shadow-inner">
                                         <button 
                                             onClick={() => handleScoreChange(stat, -1)}
-                                            className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-800 hover:bg-gray-700 text-white font-black text-xl disabled:opacity-20 transition-colors"
+                                            className="w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center rounded-full bg-gray-800 hover:bg-gray-700 text-white font-black text-xl disabled:opacity-20 transition-colors"
                                             disabled={mode === 'pointbuy' && base <= 8}
                                         >
                                             &minus;
@@ -170,7 +170,7 @@ const AbilityScoreStep: React.FC<AbilityScoreStepProps> = ({ race, initialScores
                                         </div>
                                         <button 
                                             onClick={() => handleScoreChange(stat, 1)}
-                                            className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-800 hover:bg-gray-700 text-white font-black text-xl disabled:opacity-20 transition-colors"
+                                            className="w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center rounded-full bg-gray-800 hover:bg-gray-700 text-white font-black text-xl disabled:opacity-20 transition-colors"
                                             disabled={mode === 'pointbuy' && (base >= 15 || remainingPoints < (getPointBuyCost(base + 1) - getPointBuyCost(base)))}
                                         >
                                             +

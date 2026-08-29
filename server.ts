@@ -1,11 +1,13 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
+import { createServer as createHttpServer } from "http";
 import path from "path";
 import { createClient } from '@supabase/supabase-js';
 import { ALL_ITEMS } from './data/items';
 import { COMMON_CREATURES } from './data/beasts';
 import { STANDARD_FAMILIARS } from './data/familiars';
 import { getLocalSpells } from './data/spells';
+import { mountBuilder } from './builder/builderServer';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://pducitlqzhcjjeqthkof.supabase.co';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBkdWNpdGxxemhjamplcXRoa29mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxNjQ5MjksImV4cCI6MjA4NTc0MDkyOX0.akpxEEytntkNy8rDjfp4FDOLuQW2LjdYqED1F-Z811g';
@@ -354,12 +356,22 @@ async function startServer() {
 
 
 
+  // AI Studio-style app builder: /builder page + chat/session API (DeepSeek agent).
+  mountBuilder(app);
+
+  // Create the HTTP server explicitly so Vite's HMR WebSocket attaches to this
+  // app's own port (3000). Otherwise Vite's middleware mode falls back to a
+  // standalone HMR WebSocket on the shared default port 24678, which collides
+  // with the other Vite dev servers (Atlas / MiniSmith) — the page then
+  // subscribes to the wrong HMR channel and reloads endlessly.
+  const httpServer = createHttpServer(app);
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
-      server: { 
+      server: {
         middlewareMode: true,
-        hmr: false,
+        hmr: { server: httpServer },
         watch: {
           usePolling: true,
           interval: 1000
@@ -371,12 +383,12 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
+    app.get('/*splat', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  httpServer.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }

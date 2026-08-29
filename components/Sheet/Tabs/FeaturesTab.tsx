@@ -128,13 +128,14 @@ const FeaturesTab: React.FC<FeaturesTabProps> = ({ character, setCharacter, getA
                 </div>
 
                 <div className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-xl overflow-hidden shadow-2xl relative`}>
-                    <div className="grid grid-cols-[2fr_1.5fr_60px_2.5fr] gap-4 px-6 py-3 bg-[#121316]/80 border-b border-[#3e4149]/50 text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em]">
+                    <div className="hidden lg:block overflow-x-auto custom-scrollbar">
+                    <div className="grid grid-cols-[2fr_1.5fr_60px_2.5fr] gap-4 px-6 py-3 bg-[#121316]/80 border-b border-[#3e4149]/50 text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] min-w-[560px]">
                         <div>Feature</div>
                         <div>Source</div>
                         <div className="text-center">Level</div>
                         <div>Description</div>
                     </div>
-                    <div className="divide-y divide-[#2e3036]/60">
+                    <div className="divide-y divide-[#2e3036]/60 min-w-[560px]">
                         {filteredFeatures.map(feat => (
                             <div 
                                 key={feat.uniqueId} 
@@ -153,6 +154,39 @@ const FeaturesTab: React.FC<FeaturesTabProps> = ({ character, setCharacter, getA
                                 </div>
                                 <div className="text-center text-xs text-gray-500 font-mono">{feat.level === '-' ? '-' : `Lvl ${feat.level}`}</div>
                                 <div className="text-xs text-gray-500 truncate font-serif italic">
+                                    {feat.desc ? feat.desc[0] : ''}
+                                </div>
+                            </div>
+                        ))}
+                        {filteredFeatures.length === 0 && (
+                            <div className="px-6 py-12 text-center text-gray-600 italic text-sm">
+                                No records found in the current archives.
+                            </div>
+                        )}
+                    </div>
+                    </div>
+                    {/* Mobile: tappable feature cards (tap for details) */}
+                    <div className="lg:hidden divide-y divide-[#2e3036]/60">
+                        {filteredFeatures.map(feat => (
+                            <div 
+                                key={feat.uniqueId} 
+                                onClick={() => setSelectedDetail(feat)} 
+                                className="px-4 py-3.5 active:bg-[#2e3036]/60 cursor-pointer transition-colors"
+                            >
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="font-bold text-sm text-gray-200 min-w-0">{feat.name}</div>
+                                    <span className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold border shrink-0 ${
+                                        feat.type === 'Class' ? 'bg-blue-900/20 border-blue-800 text-blue-400' : 
+                                        feat.type === 'Race' ? 'bg-green-900/20 border-green-800 text-green-400' : 
+                                        'bg-orange-900/20 border-orange-800 text-orange-400'
+                                    }`}>
+                                        {feat.source || feat.type}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-[9px] text-gray-500 font-mono">{feat.level === '-' ? 'Base Feature' : `Level ${feat.level}`}</span>
+                                </div>
+                                <div className="text-xs text-gray-500 font-serif italic line-clamp-2 mt-1 leading-relaxed">
                                     {feat.desc ? feat.desc[0] : ''}
                                 </div>
                             </div>

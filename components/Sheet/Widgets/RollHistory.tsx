@@ -84,7 +84,7 @@ export const RollHistory: React.FC<RollHistoryProps> = ({
             </div>
 
             {/* Panel */}
-            <div className="w-80 h-full bg-[#1b1c20] border-l border-dnd-gold shadow-2xl flex flex-col">
+            <div className="w-72 lg:w-80 h-full bg-[#1b1c20] border-l border-dnd-gold shadow-2xl flex flex-col">
                 {/* Header */}
                 <div className="p-3 border-b border-gray-700 flex justify-between items-center bg-[#121316] shrink-0">
                     <div className="flex items-center gap-2">

@@ -25,8 +25,8 @@ const StatsTab: React.FC<StatsTabProps> = ({ character, roll, triggerRollMenu, l
     });
 
     return (
-        <div className="md:hidden space-y-4 max-w-2xl mx-auto">
-            <div className="grid grid-cols-6 gap-2 mb-6">
+        <div className="lg:hidden space-y-4 max-w-2xl mx-auto">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-6">
                  {ABILITY_NAMES.map(stat => {
                      const val = character.abilities[stat]; // Use raw for mobile check simplified
                      return (

@@ -386,7 +386,7 @@ const InventoryTab: React.FC<InventoryTabProps> = ({
                         <div className="bg-[#121316]/80 px-6 py-4 flex justify-between items-center">
                             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">{section.title}</h3>
                         </div>
-                        <div className="overflow-x-auto custom-scrollbar">
+                        <div className="hidden lg:block overflow-x-auto custom-scrollbar">
                             <div className="grid grid-cols-[1fr_50px_80px_60px_40px] gap-2 px-6 py-2 bg-[#121316]/50 text-[10px] font-bold text-gray-500 uppercase items-center min-w-[500px]">
                                 <div>Item</div>
                                 <div className="text-center">Wgt</div>
@@ -405,20 +405,54 @@ const InventoryTab: React.FC<InventoryTabProps> = ({
                                             </div>
                                             <div className="text-center text-xs text-gray-400">{item.weight}</div>
                                             <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
-                                                <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-5 h-5 flex items-center justify-center rounded bg-gray-800 text-gray-400">-</button>
+                                                <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-8 h-8 flex items-center justify-center rounded bg-gray-800 text-gray-400">-</button>
                                                 <span className="w-8 text-center text-xs text-white">{item.quantity}</span>
-                                                <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-5 h-5 flex items-center justify-center rounded bg-gray-800 text-gray-400">+</button>
+                                                <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-8 h-8 flex items-center justify-center rounded bg-gray-800 text-gray-400">+</button>
                                             </div>
                                             <div className="text-center text-xs text-gray-400">{typeof item.cost === 'object' && item.cost ? `${item.cost.quantity}${item.cost.unit}` : (typeof item.cost === 'string' ? item.cost : '-')}</div>
                                             <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
                                                 {item.requires_attunement && (
-                                                    <div onClick={() => toggleAttunement(item.id)} className={`w-4 h-4 rounded-full border cursor-pointer ${item.attuned ? 'bg-cyan-500 border-cyan-400' : 'bg-transparent border-gray-600'}`}></div>
+                                                    <div onClick={() => toggleAttunement(item.id)} className={`w-6 h-6 rounded-full border-2 cursor-pointer flex items-center justify-center ${item.attuned ? 'bg-cyan-500 border-cyan-400' : 'bg-transparent border-gray-600'}`}>
+                                                        {item.attuned && <div className="w-2 h-2 rounded-full bg-cyan-200"></div>}
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
                                     );
                                 })}
                             </div>
+                        </div>
+                        {/* Mobile: tappable item rows (tap row for details) */}
+                        <div className="lg:hidden divide-y divide-[#2e3036]/60">
+                            {filteredItems.map(item => {
+                                const isMagical = item.requires_attunement || (item.modifiers && item.modifiers.length > 0);
+                                const isWondrous = item.equipment_category?.index === 'wondrous-items' || item.equipment_category?.name?.includes('Wondrous');
+                                return (
+                                    <div key={item.id} onClick={() => setSelectedDetail({ ...item, isPartyItem: false })} className="flex items-center gap-3 px-4 py-3 active:bg-[#2e3036]/60 transition-colors cursor-pointer">
+                                        <div className="flex-1 min-w-0">
+                                            <div className={`font-bold text-sm truncate ${isWondrous ? 'text-purple-400' : isMagical ? 'text-sky-300' : 'text-gray-200'}`}>{item.name}</div>
+                                            <div className="text-[10px] text-gray-500 truncate">
+                                                {item.weight} lb{item.requires_attunement ? ' • Requires Attunement' : ''}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                            <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-8 h-8 flex items-center justify-center rounded bg-gray-800 text-gray-400">-</button>
+                                            <span className="w-7 text-center text-xs text-white">{item.quantity}</span>
+                                            <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-8 h-8 flex items-center justify-center rounded bg-gray-800 text-gray-400">+</button>
+                                        </div>
+                                        {item.requires_attunement && (
+                                            <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                <div onClick={() => toggleAttunement(item.id)} className={`w-6 h-6 rounded-full border-2 cursor-pointer flex items-center justify-center ${item.attuned ? 'bg-cyan-500 border-cyan-400' : 'bg-transparent border-gray-600'}`}>
+                                                    {item.attuned && <div className="w-2 h-2 rounded-full bg-cyan-200"></div>}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                            {filteredItems.length === 0 && (
+                                <div className="px-6 py-10 text-center text-gray-600 italic text-sm">No items match your search.</div>
+                            )}
                         </div>
                     </div>
                 );
@@ -435,7 +469,7 @@ const InventoryTab: React.FC<InventoryTabProps> = ({
                         <span className="text-[10px] text-purple-400 font-bold uppercase">{partyInventory.length} Item Type(s)</span>
                     </div>
 
-                    <div className="overflow-x-auto custom-scrollbar">
+                    <div className="hidden lg:block overflow-x-auto custom-scrollbar">
                         <div className="grid grid-cols-[1fr_60px_90px_100px] gap-2 px-6 py-2 bg-[#121316]/50 text-[10px] font-bold text-gray-500 uppercase items-center min-w-[500px]">
                             <div>Item</div>
                             <div className="text-center">Wgt</div>
@@ -554,6 +588,117 @@ const InventoryTab: React.FC<InventoryTabProps> = ({
                                 </div>
                             )}
                         </div>
+                    </div>
+
+                    {/* Mobile: tappable party rows (tap row for details) */}
+                    <div className="lg:hidden divide-y divide-[#2e3036]/60">
+                        {partyInventory
+                            .filter(i => i.name.toLowerCase().includes(inventorySearch.toLowerCase()))
+                            .map(partyItem => {
+                                const isMagical = partyItem.requires_attunement || (partyItem.modifiers && partyItem.modifiers.length > 0);
+                                const isWondrous = partyItem.equipment_category?.index === 'wondrous-items' || partyItem.equipment_category?.name?.includes('Wondrous');
+                                return (
+                                    <div key={partyItem.id} onClick={() => setSelectedDetail({ ...partyItem, isPartyItem: true })} className="flex items-center gap-3 px-4 py-3 active:bg-[#2e3036]/60 transition-colors cursor-pointer">
+                                        <div className="flex-1 min-w-0">
+                                            <div className={`font-bold text-sm truncate ${isWondrous ? 'text-purple-400' : isMagical ? 'text-sky-300' : 'text-gray-200'}`}>{partyItem.name}</div>
+                                            <div className="text-[10px] text-gray-500">{partyItem.weight || '-'} lb</div>
+                                        </div>
+                                        <div className="font-mono font-bold text-dnd-gold text-sm shrink-0">x{partyItem.quantity}</div>
+                                        <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+                                            <button 
+                                                onClick={() => {
+                                                    if (partyItem.quantity > 1) {
+                                                        setClaimPopover({ itemId: partyItem.id, qty: 1 });
+                                                    } else {
+                                                        claimToPersonal(partyItem, 1);
+                                                    }
+                                                }}
+                                                className="px-3 py-2 bg-dnd-gold hover:bg-amber-400 text-black text-[10px] font-bold uppercase rounded transition-colors flex items-center gap-1 shadow"
+                                                title="Claim item to Personal Inventory"
+                                            >
+                                                <PackageCheck size={12} /> Claim
+                                            </button>
+
+                                            {claimPopover?.itemId === partyItem.id && (
+                                                <div className="absolute right-0 bottom-full mb-2 z-50 w-56 bg-[#1e2026] border border-amber-500/50 rounded-xl p-3 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+                                                    <div className="flex justify-between items-center mb-2">
+                                                        <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1">
+                                                            <PackageCheck size={13} /> Claim Qty
+                                                        </span>
+                                                        <span className="text-[10px] text-gray-400 font-mono">
+                                                            Max: {partyItem.quantity}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-1.5 mb-2.5">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setClaimPopover(p => p ? { ...p, qty: Math.max(1, p.qty - 1) } : null)}
+                                                            className="w-7 h-7 rounded bg-black/40 border border-gray-700 hover:border-gray-500 text-white font-bold text-xs flex items-center justify-center transition-colors"
+                                                        >
+                                                            -
+                                                        </button>
+                                                        <input 
+                                                            type="number"
+                                                            min={1}
+                                                            max={partyItem.quantity}
+                                                            value={claimPopover.qty}
+                                                            onChange={(e) => {
+                                                                const v = parseInt(e.target.value) || 1;
+                                                                const clamped = Math.max(1, Math.min(partyItem.quantity, v));
+                                                                setClaimPopover(p => p ? { ...p, qty: clamped } : null);
+                                                            }}
+                                                            className="w-14 h-7 text-center bg-black/60 border border-gray-700 rounded text-white font-mono font-bold text-xs focus:border-amber-500 outline-none"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setClaimPopover(p => p ? { ...p, qty: Math.min(partyItem.quantity, p.qty + 1) } : null)}
+                                                            className="w-7 h-7 rounded bg-black/40 border border-gray-700 hover:border-gray-500 text-white font-bold text-xs flex items-center justify-center transition-colors"
+                                                        >
+                                                            +
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setClaimPopover(p => p ? { ...p, qty: partyItem.quantity } : null)}
+                                                            className="px-2 h-7 rounded bg-amber-950/60 border border-amber-600/60 text-amber-300 font-bold text-[9px] uppercase hover:bg-amber-900 transition-colors"
+                                                        >
+                                                            All
+                                                        </button>
+                                                    </div>
+
+                                                    <div className="flex gap-1.5">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setClaimPopover(null)}
+                                                            className="flex-1 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-[10px] font-bold uppercase transition-colors"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const q = claimPopover.qty;
+                                                                setClaimPopover(null);
+                                                                claimToPersonal(partyItem, q);
+                                                            }}
+                                                            className="flex-1 py-1 bg-dnd-gold hover:bg-amber-400 text-black rounded text-[10px] font-bold uppercase transition-colors shadow"
+                                                        >
+                                                            Claim ({claimPopover.qty})
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        {partyInventory.length === 0 && (
+                            <div className="text-center py-16 text-gray-500 italic text-xs space-y-2">
+                                <PackagePlus size={32} className="mx-auto text-gray-600 opacity-50" />
+                                <div>Party Inventory is currently empty.</div>
+                                <div className="text-[10px] text-gray-600">Switch to Personal Inventory and click "Party" on any item to transfer it here!</div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

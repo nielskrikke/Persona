@@ -476,9 +476,9 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
           {previewRace ? (
             <div className="flex flex-col h-full">
               <div className="p-6 bg-[#121316] border-b border-gray-800">
-                <div className="flex justify-between items-start">
-                    <h2 className="text-4xl font-serif text-white mb-2">{previewRace.name}</h2>
-                    <div className="flex gap-2">
+                <div className="flex flex-wrap justify-between items-start gap-3">
+                    <h2 className="text-3xl sm:text-4xl font-serif text-white mb-2 break-words min-w-0">{previewRace.name}</h2>
+                    <div className="flex gap-2 flex-wrap shrink-0">
                         <button 
                             onClick={() => {
                                 setIsCustomizingOrigin(!isCustomizingOrigin);
@@ -605,7 +605,7 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
                                 <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-4 border-b border-gray-800 pb-2">Proficiency Swaps</h4>
                                 <div className="space-y-4">
                                     {proficiencySwaps.map((swap, index) => (
-                                        <div key={index} className="flex gap-4 items-end bg-gray-800/20 p-4 rounded-xl border border-gray-700">
+                                        <div key={index} className="flex flex-col sm:flex-row gap-4 sm:items-end bg-gray-800/20 p-4 rounded-xl border border-gray-700">
                                             <div className="flex-grow">
                                                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">Original Proficiency</label>
                                                 <input 
@@ -643,7 +643,7 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
                                             </div>
                                             <button 
                                                 onClick={() => setProficiencySwaps(prev => prev.filter((_, i) => i !== index))}
-                                                className="p-3 text-red-500 hover:text-red-400"
+                                                className="p-3 text-red-500 hover:text-red-400 shrink-0 self-end sm:self-auto"
                                             >
                                                 ✕
                                             </button>

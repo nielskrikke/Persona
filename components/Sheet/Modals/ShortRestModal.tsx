@@ -85,7 +85,7 @@ const ShortRestModal = ({
 
     return (
         <div className="fixed inset-0 bg-black/90 z-[400] flex items-center justify-center p-4">
-            <div className="bg-[#1b1c20] border border-dnd-gold rounded-lg w-full max-w-lg shadow-2xl p-6 relative">
+            <div className="bg-[#1b1c20] border border-dnd-gold rounded-lg w-full max-w-lg shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto overscroll-contain">
                 <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white text-2xl transition-colors">&times;</button>
                 <h2 className="text-3xl font-serif text-dnd-gold mb-2 text-center">Short Rest</h2>
                 <p className="text-gray-400 text-sm mb-6 text-center italic">Take an hour to bind your wounds and gather your strength.</p>

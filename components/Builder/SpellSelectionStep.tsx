@@ -42,6 +42,7 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
     /* Fix: added missing search state */
     const [search, setSearch] = useState('');
     const [hoveredSpell, setHoveredSpell] = useState<SpellDetail | null>(null);
+    const [pinnedSpell, setPinnedSpell] = useState<SpellDetail | null>(null);
     const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
     const [validationError, setValidationError] = useState<string | null>(null);
 
@@ -168,29 +169,65 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
 
     return (
         <div className="flex flex-col h-full max-w-6xl mx-auto pb-24 md:pb-32 px-4 animate-in fade-in duration-500" onMouseMove={handleMouseMove}>
-             {hoveredSpell && (
-                <div 
-                    className="fixed w-80 bg-[#121316] border-2 border-dnd-gold rounded-xl p-5 shadow-[0_10px_30px_rgba(0,0,0,0.9)] z-[200] text-sm pointer-events-none"
-                    style={{ 
-                        top: cursorPos.y + 15, 
-                        left: cursorPos.x + 15,
-                        transform: cursorPos.x > window.innerWidth - 350 ? 'translateX(-100%)' : 'none'
-                    }}
-                >
-                    <div className="flex justify-between items-start border-b border-gray-800 pb-3 mb-3">
-                        <h4 className="font-black text-xl text-white font-serif">{hoveredSpell.name}</h4>
-                        <span className="text-[10px] text-dnd-gold font-black uppercase tracking-widest">{hoveredSpell.level === 0 ? 'Cantrip' : `Level ${hoveredSpell.level}`}</span>
+             {(hoveredSpell || pinnedSpell) && (
+                <>
+                {pinnedSpell && (
+                    <div 
+                        className="fixed inset-0 z-[300] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+                        onClick={() => setPinnedSpell(null)}
+                    >
+                        <div 
+                            className="bg-[#121316] border-2 border-dnd-gold rounded-xl p-5 shadow-[0_10px_30px_rgba(0,0,0,0.9)] w-full max-w-md max-h-[80vh] overflow-y-auto relative animate-in zoom-in-95 duration-200"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <button 
+                                onClick={() => setPinnedSpell(null)}
+                                className="absolute top-3 right-3 text-gray-500 hover:text-white text-2xl leading-none"
+                                aria-label="Close spell details"
+                            >
+                                &times;
+                            </button>
+                            <div className="flex justify-between items-start border-b border-gray-800 pb-3 mb-3 pr-8">
+                                <h4 className="font-black text-xl text-white font-serif">{pinnedSpell.name}</h4>
+                                <span className="text-[10px] text-dnd-gold font-black uppercase tracking-widest shrink-0 ml-2">{pinnedSpell.level === 0 ? 'Cantrip' : `Level ${pinnedSpell.level}`}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-y-2 text-[10px] font-black uppercase text-gray-500 mb-4">
+                                <div className="flex flex-col"><span className="text-gray-600">Time</span> <span className="text-gray-300">{pinnedSpell.casting_time}</span></div>
+                                <div className="flex flex-col"><span className="text-gray-600">Range</span> <span className="text-gray-300">{pinnedSpell.range}</span></div>
+                                <div className="flex flex-col"><span className="text-gray-600">Dur</span> <span className="text-gray-300">{pinnedSpell.duration}</span></div>
+                                <div className="flex flex-col"><span className="text-gray-600">School</span> <span className="text-gray-300">{pinnedSpell.school.name}</span></div>
+                            </div>
+                            <div className="text-gray-400 text-xs leading-relaxed font-serif italic">
+                                {pinnedSpell.desc[0]}
+                            </div>
+                        </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-y-2 text-[10px] font-black uppercase text-gray-500 mb-4">
-                        <div className="flex flex-col"><span className="text-gray-600">Time</span> <span className="text-gray-300">{hoveredSpell.casting_time}</span></div>
-                        <div className="flex flex-col"><span className="text-gray-600">Range</span> <span className="text-gray-300">{hoveredSpell.range}</span></div>
-                        <div className="flex flex-col"><span className="text-gray-600">Dur</span> <span className="text-gray-300">{hoveredSpell.duration}</span></div>
-                        <div className="flex flex-col"><span className="text-gray-600">School</span> <span className="text-gray-300">{hoveredSpell.school.name}</span></div>
+                )}
+                {hoveredSpell && !pinnedSpell && (
+                    <div 
+                        className="fixed w-80 bg-[#121316] border-2 border-dnd-gold rounded-xl p-5 shadow-[0_10px_30px_rgba(0,0,0,0.9)] z-[200] text-sm pointer-events-none"
+                        style={{ 
+                            top: cursorPos.y + 15, 
+                            left: cursorPos.x + 15,
+                            transform: cursorPos.x > window.innerWidth - 350 ? 'translateX(-100%)' : 'none'
+                        }}
+                    >
+                        <div className="flex justify-between items-start border-b border-gray-800 pb-3 mb-3">
+                            <h4 className="font-black text-xl text-white font-serif">{hoveredSpell.name}</h4>
+                            <span className="text-[10px] text-dnd-gold font-black uppercase tracking-widest">{hoveredSpell.level === 0 ? 'Cantrip' : `Level ${hoveredSpell.level}`}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-y-2 text-[10px] font-black uppercase text-gray-500 mb-4">
+                            <div className="flex flex-col"><span className="text-gray-600">Time</span> <span className="text-gray-300">{hoveredSpell.casting_time}</span></div>
+                            <div className="flex flex-col"><span className="text-gray-600">Range</span> <span className="text-gray-300">{hoveredSpell.range}</span></div>
+                            <div className="flex flex-col"><span className="text-gray-600">Dur</span> <span className="text-gray-300">{hoveredSpell.duration}</span></div>
+                            <div className="flex flex-col"><span className="text-gray-600">School</span> <span className="text-gray-300">{hoveredSpell.school.name}</span></div>
+                        </div>
+                        <div className="text-gray-400 text-xs leading-relaxed max-h-60 overflow-hidden font-serif italic">
+                            {hoveredSpell.desc[0]}
+                        </div>
                     </div>
-                    <div className="text-gray-400 text-xs leading-relaxed max-h-60 overflow-hidden font-serif italic">
-                        {hoveredSpell.desc[0]}
-                    </div>
-                </div>
+                )}
+                </>
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
@@ -239,11 +276,20 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
                                                 className={`group p-3 rounded-lg cursor-pointer flex justify-between items-center transition-all ${currentSelected.some(sel => sel.index === s.index) ? 'bg-blue-900/10 border border-blue-900 shadow-[inset_0_0_10px_rgba(59,130,246,0.1)]' : 'hover:bg-gray-800 border border-transparent'}`}
                                             >
                                                 <span className="font-bold text-sm text-gray-200">{s.name}</span>
-                                                {currentSelected.some(sel => sel.index === s.index) ? (
-                                                    <span className="text-blue-500 font-black text-xs">✓</span>
-                                                ) : (
-                                                    <span className="text-gray-800 group-hover:text-gray-600 text-xs font-black">+</span>
-                                                )}
+                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); setPinnedSpell(prev => prev?.index === s.index ? null : s); }}
+                                                        className="text-gray-600 hover:text-dnd-gold p-1 rounded transition-colors"
+                                                        aria-label={`View details for ${s.name}`}
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="16" y2="12"/><line x1="12" x2="12.01" y1="8" y2="8"/></svg>
+                                                    </button>
+                                                    {currentSelected.some(sel => sel.index === s.index) ? (
+                                                        <span className="text-blue-500 font-black text-xs">✓</span>
+                                                    ) : (
+                                                        <span className="text-gray-800 group-hover:text-gray-600 text-xs font-black">+</span>
+                                                    )}
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -267,11 +313,20 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
                                                     className={`group p-3 rounded-lg cursor-pointer flex justify-between items-center transition-all ${currentSelected.some(sel => sel.index === s.index) ? 'bg-purple-900/10 border border-purple-900 shadow-[inset_0_0_10px_rgba(168,85,247,0.1)]' : 'hover:bg-gray-800 border border-transparent'}`}
                                                 >
                                                     <span className="font-bold text-sm text-gray-200">{s.name}</span>
-                                                    {currentSelected.some(sel => sel.index === s.index) ? (
-                                                        <span className="text-purple-500 font-black text-xs">✓</span>
-                                                    ) : (
-                                                        <span className="text-gray-800 group-hover:text-gray-600 text-xs font-black">+</span>
-                                                    )}
+                                                    <div className="flex items-center gap-1.5 shrink-0">
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); setPinnedSpell(prev => prev?.index === s.index ? null : s); }}
+                                                            className="text-gray-600 hover:text-dnd-gold p-1 rounded transition-colors"
+                                                            aria-label={`View details for ${s.name}`}
+                                                        >
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="16" y2="12"/><line x1="12" x2="12.01" y1="8" y2="8"/></svg>
+                                                        </button>
+                                                        {currentSelected.some(sel => sel.index === s.index) ? (
+                                                            <span className="text-purple-500 font-black text-xs">✓</span>
+                                                        ) : (
+                                                            <span className="text-gray-800 group-hover:text-gray-600 text-xs font-black">+</span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>

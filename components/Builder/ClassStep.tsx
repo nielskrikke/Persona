@@ -293,13 +293,13 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
                                       <h3 className="text-2xl font-serif text-white">{draft.name}</h3>
                                       {idx === 0 && <span className="text-[10px] font-black text-dnd-gold uppercase tracking-[0.2em]">Origin Class</span>}
                                    </div>
-                                   <div className="flex items-center gap-3 bg-[#0b0c0e] border border-gray-800 rounded-full px-4 py-2 mr-8">
-                                       <button onClick={() => updateLevel(draft.index, -1)} className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-800 text-gray-400 hover:text-white transition-colors">-</button>
+                                   <div className="flex items-center gap-3 bg-[#0b0c0e] border border-gray-800 rounded-full px-3 py-1.5 mr-8 shrink-0">
+                                       <button onClick={() => updateLevel(draft.index, -1)} className="w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center rounded-full bg-gray-800 text-gray-400 hover:text-white transition-colors">-</button>
                                        <div className="flex flex-col items-center min-w-[30px]">
                                           <span className="text-[9px] font-black text-gray-500 uppercase leading-none mb-0.5">Lvl</span>
                                           <span className="text-lg font-black text-white leading-none">{draft.level}</span>
                                        </div>
-                                       <button onClick={() => updateLevel(draft.index, 1)} disabled={currentAssigned >= totalLevel} className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-800 text-gray-400 hover:text-white transition-colors disabled:opacity-30">+</button>
+                                       <button onClick={() => updateLevel(draft.index, 1)} disabled={currentAssigned >= totalLevel} className="w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center rounded-full bg-gray-800 text-gray-400 hover:text-white transition-colors disabled:opacity-30">+</button>
                                    </div>
                                </div>
 
