@@ -1383,7 +1383,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                 const profs = [...armorProfs.map(p => ({name: p})), ...weaponProfs.map(p => ({name: p}))];
                 payload = { 
                     ...payload, hit_die: hitDie, saving_throws: saves.map(s => ({ index: s, name: s.toUpperCase() })),
-                    proficiency_choices: [], proficiencies: profs, level_table,
+                    proficiencies: profs, level_table,
                     caster: casterType === 'none' ? { type: 'none' } : { type: casterType, ability: casterAbility },
                     subclass_level: subclassLevel,
                     subclass_label: subclassLabel,

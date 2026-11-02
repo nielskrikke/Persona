@@ -2412,7 +2412,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             return { hit: finalHit, damage: finalDamage };
         };
 
-        const monk = character.classes.find(c => ((c.definition as any).level_table || []).some((row: any) => row?.class_specific?.martial_arts));
+        const monk = character.classes.find(c => ((c.definition as any).level_table || []).some((row: any) => row?.class_specific?.martial_arts || row?.class_specific?.fisticuffs));
         let unarmedDie = '1';
         let unarmedDieVal = 1;
         let unarmedDmgType = 'Bludgeoning';
@@ -2425,7 +2425,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
         if (monk) {
             const monkRow = (monk.definition as any).level_table?.find((row: any) => row.level === monk.level);
-            const martialDie = monkRow?.class_specific?.martial_arts;
+            const martialDie = monkRow?.class_specific?.martial_arts || monkRow?.class_specific?.fisticuffs;
             if (martialDie) {
                 unarmedDie = String(martialDie);
                 unarmedDieVal = parseInt(String(martialDie).replace(/^1?d/, ''), 10) || 1;

@@ -6,7 +6,7 @@
  * Rules:
  * - fields absent from the patch are preserved;
  * - fields the form cannot edit yet are preserved even if the form sends a
- *   default/empty value (e.g. proficiency_choices: [], currency: 10 gp);
+ *   default/empty value (e.g. currency: 10 gp);
  * - structured arrays that the form does rebuild are merged by their stable
  *   identity where that identity exists (level_table by level).
  */
@@ -22,11 +22,9 @@ export const mergeContentData = (table: string, existingData: any, patch: any): 
 
     switch (table) {
         case 'custom_classes': {
-            // Preserve migrated values when a form sends an empty/default value.
-            merged.proficiency_choices =
-                Array.isArray(next.proficiency_choices) && next.proficiency_choices.length > 0
-                    ? next.proficiency_choices
-                    : existing.proficiency_choices;
+            // The builder uses `choices`; drop the legacy `proficiency_choices`
+            // key so it cannot go stale again.
+            delete merged.proficiency_choices;
             merged.source = next.source || existing.source;
             merged.multi_classing = next.multi_classing ?? existing.multi_classing;
             merged.subclasses = next.subclasses ?? existing.subclasses;
@@ -151,8 +149,10 @@ const mergeLevelTable = (existing: any, patch: any): any => {
         return {
             ...row,
             ...nextRow,
-            // class_specific is not editable in the Forge yet. Keep the data.
-            class_specific: row.class_specific ?? nextRow.class_specific,
+            // A Developer-JSON level_table may intentionally override class_specific.
+            class_specific: nextRow.class_specific !== undefined
+                ? nextRow.class_specific
+                : row.class_specific,
         };
     });
 

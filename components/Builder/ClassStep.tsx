@@ -34,7 +34,6 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
   const [subclassOptions, setSubclassOptions] = useState<Record<string, APIReference[]>>({});
   
   // Proficiency Choices State
-  const [chosenProficiencies, setChosenProficiencies] = useState<Record<number, string[]>>({});
   const [classChoices, setClassChoices] = useState<Record<string, string[]>>({});
   
   // Feature Choices State: { classIndex: { featureIndex: [selectedOptions] } }
@@ -100,18 +99,11 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
       const newDraft = { index, name, level: 1 };
       setDraftClasses([...draftClasses, newDraft]);
       await fetchClassInfoIfNeeded(index);
-      
-      if (draftClasses.length === 0) {
-          setChosenProficiencies({});
-      }
   };
 
   const removeClass = (index: string) => {
       setValidationError(null);
       setDraftClasses(prev => prev.filter(c => c.index !== index));
-      if (index === draftClasses[0]?.index) {
-          setChosenProficiencies({}); 
-      }
   };
 
   const updateLevel = (index: string, delta: number) => {
@@ -135,19 +127,6 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
       }));
   };
 
-  const toggleProficiency = (choiceIdx: number, item: string, max: number) => {
-      setValidationError(null);
-      setChosenProficiencies(prev => {
-          const current = prev[choiceIdx] || [];
-          if (current.includes(item)) {
-              return { ...prev, [choiceIdx]: current.filter(i => i !== item) };
-          } else if (current.length < max) {
-              return { ...prev, [choiceIdx]: [...current, item] };
-          }
-          return prev;
-      });
-  };
-
   const toggleClassChoice = (classIndex: string, choiceId: string, option: string, count: number) => {
       setValidationError(null);
       const key = `${classIndex}:${choiceId}`;
@@ -163,7 +142,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
       setFeatureChoices(prev => {
           const classChoices = prev[classIndex] || {};
           const currentOptions = classChoices[featureIndex] || [];
-          
+
           let newOptions;
           if (currentOptions.includes(option)) {
               newOptions = currentOptions.filter(o => o !== option);
@@ -176,7 +155,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
                   newOptions = [...currentOptions.slice(1), option];
               }
           }
-          
+
           return {
               ...prev,
               [classIndex]: {
@@ -189,21 +168,10 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
 
   const getAvailableExpertiseOptions = (classIndex: string) => {
       const raceSkills = currentSkills || [];
-      let classSkills: string[] = [];
-      if (draftClasses[0]?.index === classIndex) {
-          const primaryDetail = classDetails[classIndex];
-          const choices = primaryDetail?.proficiency_choices || [];
-          choices.forEach((choice, i) => {
-              if (choice.type === 'proficiencies') {
-                  const selected = chosenProficiencies[i] || [];
-                  selected.forEach(item => {
-                       const isSkill = ["Acrobatics", "Animal Handling", "Arcana", "Athletics", "Deception", "History", "Insight", "Intimidation", "Investigation", "Medicine", "Nature", "Perception", "Performance", "Persuasion", "Religion", "Sleight of Hand", "Stealth", "Survival"]
-                          .some(s => item.toLowerCase().includes(s.toLowerCase()));
-                      if (isSkill) classSkills.push(item.replace("Skill: ", ""));
-                  });
-              }
-          });
-      }
+      const classSkills = Object.entries(classChoices)
+          .filter(([key]) => key.startsWith(`${classIndex}:`))
+          .flatMap(([, selected]) => selected)
+          .filter(name => SKILL_LIST.some(skill => skill.name === name));
       return Array.from(new Set([...raceSkills, ...classSkills]));
   };
 

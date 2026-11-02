@@ -192,7 +192,6 @@ const contentQualityScore = (table: string, item: any): number => {
     if (item?.is_homebrew === false || item?.homebrew === false) score += 10;
     switch (table) {
         case 'custom_classes':
-            score += (item?.proficiency_choices?.length || 0) * 20;
             score += (item?.level_table || []).some((row: any) => row?.class_specific) ? 60 : 0;
             score += (item?.feature_details?.length || 0);
             score += item?.options ? Object.keys(item.options).length * 5 : 0;

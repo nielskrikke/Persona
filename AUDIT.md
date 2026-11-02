@@ -1098,6 +1098,9 @@ The earlier anon-key apply attempt was a no-op: PostgREST returned HTTP 200 with
 - Monk unarmed progression reads `level_table.class_specific.martial_arts`.
 - Arrowsmith ammunition definitions live in `options.arrows`; both attack generation and the quiver UI read the class document.
 - Warlock Eldritch Invocations are data-driven: the class has `options.invocations`, the builder/level-up queue choices from `class_specific.invocations`, and Agonizing Blast/Thirsting Blade effects are applied generically.
+- Pugilist's Iron Chin description now matches the implemented 10 + DEX + CON unarmored formula, and the unarmed die reads either `martial_arts` or `fisticuffs`.
+- Developer JSON can now intentionally override `level_table[].class_specific`; omitted values still preserve the existing data.
+- Legacy `proficiency_choices` was removed from class documents (18 rows); the builder uses `choices`. Backgrounds still use their `proficiency_choices` because its builder reads them.
 - Background feature effects are copied onto the character and rehydrated from the content library for existing characters; changing background in Manage Character also refreshes them.
 - Racial spell choices load spells by the choice's `sourceClass` instead of a hardcoded Wizard list.
 - Item flags, Artificer companion layout, and card/Artificer widget selection use data `ui`/`options` flags.
