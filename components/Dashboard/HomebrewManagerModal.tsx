@@ -758,18 +758,51 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                         )}
 
                         {/* Proficiency */}
-                        {eff.type === 'proficiency' && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                <input type="text" placeholder="Proficiency Name (e.g. Athletics, Heavy Armor, Perception)" value={eff.name || eff.value || ''} onChange={e => updateEffect(i, { name: e.target.value, value: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white" />
-                                <select value={eff.category || 'skill'} onChange={e => updateEffect(i, { category: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white">
-                                    <option value="skill">Skill</option>
-                                    <option value="armor">Armor</option>
-                                    <option value="weapon">Weapon</option>
-                                    <option value="tool">Tool</option>
-                                    <option value="saving_throw">Saving Throw</option>
-                                </select>
-                            </div>
-                        )}
+                        {eff.type === 'proficiency' && (() => {
+                            const category = eff.category === 'saving_throw' ? 'save' : (eff.category || 'skill');
+                            const currentName = eff.target || eff.name || eff.value || '';
+                            const saveAbilities = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'];
+                            return (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {category === 'save' ? (
+                                        <select
+                                            value={saveAbilities.includes(String(currentName).toUpperCase()) ? String(currentName).toUpperCase() : 'STR'}
+                                            onChange={e => updateEffect(i, { category: 'save', target: e.target.value, name: e.target.value, value: e.target.value })}
+                                            className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white"
+                                        >
+                                            {saveAbilities.map(ability => <option key={ability} value={ability}>{ability} Saving Throw</option>)}
+                                        </select>
+                                    ) : (
+                                        <input
+                                            type="text"
+                                            placeholder="Proficiency Name (e.g. Athletics, Heavy Armor, Perception)"
+                                            value={currentName}
+                                            onChange={e => updateEffect(i, { name: e.target.value, value: e.target.value, target: e.target.value, category })}
+                                            className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white"
+                                        />
+                                    )}
+                                    <select
+                                        value={category}
+                                        onChange={e => {
+                                            const nextCategory = e.target.value;
+                                            if (nextCategory === 'save') {
+                                                const save = saveAbilities.includes(String(currentName).toUpperCase()) ? String(currentName).toUpperCase() : 'STR';
+                                                updateEffect(i, { category: 'save', target: save, name: save, value: save });
+                                            } else {
+                                                updateEffect(i, { category: nextCategory, target: currentName, name: currentName, value: currentName });
+                                            }
+                                        }}
+                                        className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white"
+                                    >
+                                        <option value="skill">Skill</option>
+                                        <option value="armor">Armor</option>
+                                        <option value="weapon">Weapon</option>
+                                        <option value="tool">Tool</option>
+                                        <option value="save">Saving Throw</option>
+                                    </select>
+                                </div>
+                            );
+                        })()}
 
                         {/* Proficiency Choice */}
                         {eff.type === 'proficiency_choice' && (
