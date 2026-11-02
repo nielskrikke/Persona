@@ -448,21 +448,58 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                                                                 />
                                                                             )}
 
-                                                                            {subEff.type === 'proficiency' && (
-                                                                                <input 
-                                                                                    type="text" 
-                                                                                    placeholder="Proficiency" 
-                                                                                    value={subEff.name || subEff.value || ''} 
-                                                                                    onChange={e => {
-                                                                                        const newOpts = [...eff.options];
-                                                                                        const currentOptEffects = [...(newOpts[optIdx].effects || [])];
-                                                                                        currentOptEffects[subIdx] = { ...currentOptEffects[subIdx], name: e.target.value, value: e.target.value };
-                                                                                        newOpts[optIdx] = { ...newOpts[optIdx], effects: currentOptEffects };
-                                                                                        updateEffect(i, { options: newOpts });
-                                                                                    }}
-                                                                                    className="flex-grow bg-[#0b0c0e] border border-gray-700 rounded p-1 text-[10px] text-white"
-                                                                                />
-                                                                            )}
+                                                                            {subEff.type === 'proficiency' && (() => {
+                                                                                const category = subEff.category === 'saving_throw' ? 'save' : (subEff.category || 'skill');
+                                                                                const currentName = subEff.target || subEff.name || subEff.value || '';
+                                                                                const saveAbilities = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'];
+                                                                                const saveValue = saveAbilities.includes(String(currentName).toUpperCase()) ? String(currentName).toUpperCase() : 'STR';
+                                                                                const updateSubEffect = (patch: any) => {
+                                                                                    const newOpts = [...eff.options];
+                                                                                    const currentOptEffects = [...(newOpts[optIdx].effects || [])];
+                                                                                    currentOptEffects[subIdx] = { ...currentOptEffects[subIdx], ...patch };
+                                                                                    newOpts[optIdx] = { ...newOpts[optIdx], effects: currentOptEffects };
+                                                                                    updateEffect(i, { options: newOpts });
+                                                                                };
+                                                                                return (
+                                                                                    <div className="flex flex-wrap gap-2 flex-grow">
+                                                                                        {category === 'save' ? (
+                                                                                            <select
+                                                                                                value={saveValue}
+                                                                                                onChange={e => updateSubEffect({ category: 'save', target: e.target.value, name: e.target.value, value: e.target.value })}
+                                                                                                className="bg-[#0b0c0e] border border-gray-700 rounded p-1 text-[10px] text-white"
+                                                                                            >
+                                                                                                {saveAbilities.map(ability => <option key={ability} value={ability}>{ability} Save</option>)}
+                                                                                            </select>
+                                                                                        ) : (
+                                                                                            <input
+                                                                                                type="text"
+                                                                                                placeholder="Proficiency"
+                                                                                                value={currentName}
+                                                                                                onChange={e => updateSubEffect({ name: e.target.value, value: e.target.value, target: e.target.value, category })}
+                                                                                                className="flex-grow bg-[#0b0c0e] border border-gray-700 rounded p-1 text-[10px] text-white"
+                                                                                            />
+                                                                                        )}
+                                                                                        <select
+                                                                                            value={category}
+                                                                                            onChange={e => {
+                                                                                                const nextCategory = e.target.value;
+                                                                                                if (nextCategory === 'save') {
+                                                                                                    updateSubEffect({ category: 'save', target: saveValue, name: saveValue, value: saveValue });
+                                                                                                } else {
+                                                                                                    updateSubEffect({ category: nextCategory, target: currentName, name: currentName, value: currentName });
+                                                                                                }
+                                                                                            }}
+                                                                                            className="bg-[#0b0c0e] border border-gray-700 rounded p-1 text-[10px] text-white"
+                                                                                        >
+                                                                                            <option value="skill">Skill</option>
+                                                                                            <option value="armor">Armor</option>
+                                                                                            <option value="weapon">Weapon</option>
+                                                                                            <option value="tool">Tool</option>
+                                                                                            <option value="save">Saving Throw</option>
+                                                                                        </select>
+                                                                                    </div>
+                                                                                );
+                                                                            })()}
 
                                                                             {(subEff.type === 'action' || subEff.type === 'bonus_action' || subEff.type === 'reaction' || subEff.type === 'feature') && (
                                                                                 <>
