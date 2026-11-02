@@ -4,7 +4,7 @@ import Markdown from 'react-markdown';
 import { X, Search, Filter, Plus, Info, ChevronUp, ChevronDown, Sparkles, Book, Wand2, GraduationCap, Trash2 } from 'lucide-react';
 import { CharacterState, SpellDetail } from '../../../types';
 import { fetchSpellsByClass } from '../../../data/index';
-import { getSpellsKnownCount, getEffectiveAbilities, isPreparedCaster } from '../../../utils/rules';
+import { getSpellsKnownCount, getEffectiveAbilities, isPreparedCaster, getMaxSpellLevelForClass, getCasterProfileFor } from '../../../utils/rules';
 
 interface SpellManagerModalProps {
     isOpen: boolean;
@@ -32,19 +32,24 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
     const [expandedSpellId, setExpandedSpellId] = useState<string | null>(null);
     const [showKnownOnly, setShowKnownOnly] = useState(false);
 
+    const casterClasses = useMemo(() => character.classes.filter(c => {
+        const profile = getCasterProfileFor(c);
+        return !!profile && profile.type !== 'none';
+    }), [character.classes]);
+
     // Sync active class on open
     useEffect(() => {
-        if (isOpen && character.classes.length > 0) {
-            const valid = character.classes.find(c => c.definition.index === activeClassIndex);
+        if (isOpen && casterClasses.length > 0) {
+            const valid = casterClasses.find(c => c.definition.index === activeClassIndex);
             if (!valid) {
-                setActiveClassIndex(character.classes[0].definition.index);
+                setActiveClassIndex(casterClasses[0].definition.index);
             }
         }
-    }, [isOpen, character.classes]);
+    }, [isOpen, casterClasses]);
 
-    const activeClass = character.classes.find(c => c.definition.index === activeClassIndex);
+    const activeClass = casterClasses.find(c => c.definition.index === activeClassIndex);
     const effectiveAbilities = useMemo(() => getEffectiveAbilities(character), [character]);
-    const isPrepared = activeClass ? isPreparedCaster(activeClass.definition.index) : false;
+    const isPrepared = activeClass ? isPreparedCaster(activeClass.definition) : false;
     
     // Calculate limits for the ACTIVE class
     const limits = activeClass 
@@ -75,6 +80,8 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
     };
 
     const tryAddSpell = (spell: SpellDetail) => {
+        const profile = activeClass ? getCasterProfileFor(activeClass) : undefined;
+        if (!profile || profile.type === 'none') return;
         if (isKnown(spell)) {
             onUpdateSpells(character.spells.filter(s => !(s.index === spell.index && s.sourceClassIndex === activeClassIndex)));
             return;
@@ -104,49 +111,7 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
          onUpdateSpells(character.spells.filter(s => !(s.index === spell.index && s.sourceClassIndex === activeClassIndex)));
     };
 
-    const getMaxSpellLevel = (clsName: string, level: number) => {
-        const name = clsName.toLowerCase();
-        // Full Casters
-        if (['bard', 'cleric', 'druid', 'sorcerer', 'wizard', 'card-master', 'card master'].includes(name)) {
-            if (level >= 17) return 9;
-            if (level >= 15) return 8;
-            if (level >= 13) return 7;
-            if (level >= 11) return 6;
-            if (level >= 9) return 5;
-            if (level >= 7) return 4;
-            if (level >= 5) return 3;
-            if (level >= 3) return 2;
-            return 1;
-        }
-        // Warlock (Pact Magic up to 5th)
-        if (name === 'warlock') {
-            if (level >= 9) return 5;
-            if (level >= 7) return 4;
-            if (level >= 5) return 3;
-            if (level >= 3) return 2;
-            return 1;
-        }
-        // Half Casters
-        if (['paladin', 'ranger', 'artificer'].includes(name)) {
-            if (level >= 17) return 5;
-            if (level >= 13) return 4;
-            if (level >= 9) return 3;
-            if (level >= 5) return 2;
-            if (level >= 2) return 1;
-            return 0;
-        }
-        // Third Casters
-        if (['fighter', 'rogue'].includes(name)) {
-            if (level >= 19) return 4;
-            if (level >= 13) return 3;
-            if (level >= 7) return 2;
-            if (level >= 3) return 1;
-            return 0;
-        }
-        return 9;
-    };
-
-    const maxSpellLevel = activeClass ? getMaxSpellLevel(activeClass.definition.name, activeClass.level) : 9;
+    const maxSpellLevel = activeClass ? getMaxSpellLevelForClass(activeClass) : 0;
 
     const filteredAvailableSpells = useMemo(() => {
         return availableSpells.filter(s => {
@@ -256,7 +221,7 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                        {character.classes.map(cls => (
+                        {casterClasses.map(cls => (
                             <button
                                 key={cls.definition.index}
                                 onClick={() => setActiveClassIndex(cls.definition.index)}

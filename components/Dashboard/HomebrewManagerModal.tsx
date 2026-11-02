@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { saveHomebrew, loadHomebrew, deleteHomebrew } from '../../services/supabase';
-import { ABILITY_NAMES, ABILITY_LABELS, APIReference, SpellDetail, EquipmentDetail, CreatureDetail } from '../../types';
+import { fetchClasses } from '../../data/index';
+import { ABILITY_NAMES, ABILITY_LABELS, APIReference, SpellDetail, EquipmentDetail, CreatureDetail, ResourceDefinition, ContentChoice } from '../../types';
 import { SKILL_LIST } from '../../utils/rules';
 import { SPELL_SCHOOLS } from '../../data/constants';
+import ContentMechanicsEditor from './ContentMechanicsEditor';
 import { X, Search, Filter, Sparkles, Save, Coins, Link, Trash2, Info, ChevronUp, Plus, PawPrint, Copy } from 'lucide-react';
 
 interface HomebrewManagerModalProps {
@@ -845,14 +847,21 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     // Class Forge
     const [hitDie, setHitDie] = useState(8);
     const [saves, setSaves] = useState<string[]>([]);
-    const [casterType, setCasterType] = useState<'none' | 'full' | 'half' | 'third' | 'pact'>('none');
+    const [casterType, setCasterType] = useState<'none' | 'full' | 'half' | 'third' | 'pact' | 'custom'>('none');
     const [casterAbility, setCasterAbility] = useState('int');
+    const [subclassLevel, setSubclassLevel] = useState(3);
+    const [subclassLabel, setSubclassLabel] = useState('Subclass');
+    const [advancedJson, setAdvancedJson] = useState('');
+    const [editingIsHomebrew, setEditingIsHomebrew] = useState(true);
+    const [contentResources, setContentResources] = useState<ResourceDefinition[]>([]);
+    const [contentChoices, setContentChoices] = useState<ContentChoice[]>([]);
     const [levelFeatures, setLevelFeatures] = useState<{ level: number, name: string, desc: string, effects: any[] }[]>([]);
     const [armorProfs, setArmorProfs] = useState<string[]>([]);
     const [weaponProfs, setWeaponProfs] = useState<string[]>([]);
 
     // Subclass Forge
-    const [parentClass, setParentClass] = useState('fighter');
+    const [parentClass, setParentClass] = useState('');
+    const [parentClassOptions, setParentClassOptions] = useState<any[]>([]);
 
     // Item Forge
     const [itemCategory, setItemCategory] = useState('Other');
@@ -916,6 +925,14 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     // Feat fields
     const [featPrerequisite, setFeatPrerequisite] = useState('');
     const [featEffects, setFeatEffects] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        fetchClasses(currentUser?.id).then(options => {
+            setParentClassOptions(options);
+            setParentClass(prev => prev || options[0]?.index || '');
+        }).catch(() => {});
+    }, [isOpen, currentUser?.id]);
 
     useEffect(() => { 
         if (isOpen) {
@@ -1020,6 +1037,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
         e.stopPropagation();
         handleEdit(item);
         setEditingId(null);
+        setEditingIsHomebrew(true);
         setShowForm(true);
     };
 
@@ -1030,7 +1048,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
         setSpeeds({ walk: 30, fly: 0, swim: 0, climb: 0 });
         setAbilityBonuses([]); setTraits([]); setSize('Medium');
         setSaves([]); setLevelFeatures([]); setHitDie(8);
-        setCasterType('none'); setCasterAbility('int');
+        setCasterType('none'); setCasterAbility('int'); setSubclassLevel(3); setSubclassLabel('Subclass'); setAdvancedJson(''); setEditingIsHomebrew(true); setContentResources([]); setContentChoices([]);
         setBgSkills([]); setBgFeatureName(''); setBgTools([]); setBgEquipment(''); setBgEffects([]);
         setArmorProfs([]); setWeaponProfs([]);
         setSpellLevel(0); setSpellSchool('Evocation'); setSpellCastTime('1 Action'); setSpellRange('60 feet'); setSpellDuration('Instantaneous'); setSpellRitual(false); setSpellConcentration(false);
@@ -1047,6 +1065,9 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     const handleEdit = (item: any) => {
         resetForm();
         setEditingId(item.id);
+        setEditingIsHomebrew(item.is_homebrew ?? item.homebrew ?? true);
+        setContentResources(Array.isArray(item.resources) ? item.resources : []);
+        setContentChoices(Array.isArray(item.choices) ? item.choices : []);
         setName(item.name || '');
         setDescription(Array.isArray(item.desc) ? item.desc.join('\n') : (item.description || ''));
         setIsSharedGlobally(item.is_public || false);
@@ -1075,8 +1096,10 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
         } else if (activeTab === 'class') {
             setHitDie(item.hit_die || 8);
             setSaves(item.saving_throws?.map((s: any) => s.index) || []);
-            setCasterType(item.spellcasting ? 'full' : 'none'); // Simplified
-            setCasterAbility(item.spellcasting?.spellcasting_ability?.index || 'int');
+            setCasterType((item.caster?.type as any) || (item.spellcasting ? 'full' : 'none'));
+            setCasterAbility(item.caster?.ability || item.spellcasting?.spellcasting_ability?.index || 'int');
+            setSubclassLevel(item.subclass_level ?? 3);
+            setSubclassLabel(item.subclass_label || 'Subclass');
             if (item.feature_details) {
                 setLevelFeatures(item.feature_details.map((f: any) => ({
                     level: f.level,
@@ -1091,7 +1114,9 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
             const weapons = item.proficiencies?.filter((p: any) => !['Light Armor', 'Medium Armor', 'Heavy Armor', 'Shields'].includes(p.name)).map((p: any) => p.name) || [];
             setWeaponProfs(weapons);
         } else if (activeTab === 'subclass') {
-            setParentClass(item.class?.index || item.class_index || 'fighter');
+            setParentClass(item.class?.index || item.class_index || parentClassOptions[0]?.index || '');
+            setSubclassLevel(item.subclass_level ?? 3);
+            setSubclassLabel(item.subclass_label || 'Subclass');
             let rawFeatures: any[] = [];
             if (Array.isArray(item.feature_details)) {
                 rawFeatures = item.feature_details;
@@ -1195,12 +1220,28 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
             }
         }
 
+        const advancedKeys = ['resources', 'choices', 'spell_list', 'ui', 'options', 'rules'];
+        const advanced = Object.fromEntries(
+            advancedKeys
+                .filter(key => item[key] !== undefined)
+                .map(key => [key, item[key]])
+        );
+        setAdvancedJson(Object.keys(advanced).length > 0 ? JSON.stringify(advanced, null, 2) : '');
         setShowForm(true);
     };
 
     const handleDelete = async (id: string) => {
         setLoading(true);
         try {
+            let advancedData: any = {};
+            if (advancedJson.trim()) {
+                try {
+                    advancedData = JSON.parse(advancedJson);
+                } catch (jsonError) {
+                    alert('Advanced content data is not valid JSON. Nothing was saved.');
+                    return;
+                }
+            }
             const tableMap = { 
                 race: 'custom_races', 
                 class: 'custom_classes', 
@@ -1226,6 +1267,15 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
         e.preventDefault();
         setLoading(true);
         try {
+            let advancedData: any = {};
+            if (advancedJson.trim()) {
+                try {
+                    advancedData = JSON.parse(advancedJson);
+                } catch (jsonError) {
+                    alert('Advanced content data is not valid JSON. Nothing was saved.');
+                    return;
+                }
+            }
             const tableMap = { 
                 race: 'custom_races', 
                 class: 'custom_classes', 
@@ -1241,7 +1291,8 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                 name, 
                 index: name.toLowerCase().replace(/\s+/g, '-'), 
                 desc: [description],
-                is_public: isSharedGlobally
+                is_public: isSharedGlobally,
+                is_homebrew: editingIsHomebrew
             };
             
             if (activeTab === 'race') {
@@ -1263,7 +1314,10 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                 payload = { 
                     ...payload, hit_die: hitDie, saving_throws: saves.map(s => ({ index: s, name: s.toUpperCase() })),
                     proficiency_choices: [], proficiencies: profs, level_table,
-                    spellcasting: casterType !== 'none' ? { spellcasting_ability: { index: casterAbility, name: casterAbility.toUpperCase() } } : undefined,
+                    caster: casterType === 'none' ? { type: 'none' } : { type: casterType, ability: casterAbility },
+                    subclass_level: subclassLevel,
+                    subclass_label: subclassLabel,
+                    spellcasting: casterType !== 'none' ? { spellcasting_ability: { index: casterAbility, name: casterAbility.toUpperCase() }, progression: casterType } : undefined,
                     feature_details: levelFeatures.map(f => ({ index: f.name.toLowerCase().replace(/\s+/g, '-'), name: f.name, level: f.level, desc: [f.desc], effects: f.effects }))
                 };
             } else if (activeTab === 'subclass') {
@@ -1271,6 +1325,8 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     ...payload, 
                     class: { index: parentClass, name: parentClass.charAt(0).toUpperCase() + parentClass.slice(1) },
                     class_index: parentClass,
+                    subclass_level: subclassLevel,
+                    subclass_label: subclassLabel,
                     feature_details: levelFeatures.map(f => ({ index: f.name.toLowerCase().replace(/\s+/g, '-'), name: f.name, level: f.level, desc: [f.desc], effects: f.effects }))
                 };
             } else if (activeTab === 'background') {
@@ -1343,6 +1399,14 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                 };
             }
 
+            payload = { ...payload, ...advancedData };
+            if (activeTab === 'class' || activeTab === 'subclass') {
+                payload.resources = contentResources;
+                payload.choices = contentChoices;
+            } else if (activeTab === 'race' || activeTab === 'background' || activeTab === 'feat') {
+                payload.choices = contentChoices;
+            }
+
             if (editingId) {
                 payload.id = editingId;
             }
@@ -1360,8 +1424,8 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     };
 
     return (
-        <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4 backdrop-blur-md">
-            <div ref={modalRef} className="bg-[#1b1c20] border border-gray-800 rounded-xl w-full max-w-6xl shadow-2xl flex flex-col h-90dvh">
+        <div className="fixed inset-0 bg-black/85 z-[200] flex items-center justify-center p-4">
+            <div ref={modalRef} className="bg-[#15161a] border border-gray-800 rounded-xl w-full max-w-6xl shadow-2xl flex flex-col h-[90dvh] max-h-[90dvh] overflow-hidden isolate">
                 
                 {/* Forge Header */}
                 <div className="p-4 sm:p-6 border-b border-gray-800 bg-[#121316] rounded-t-xl shrink-0 flex justify-between items-center gap-4">
@@ -1399,7 +1463,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                         <div className="p-4 border-b border-gray-800 flex justify-between items-center">
                             <h3 className="text-[10px] font-black uppercase text-gray-500 tracking-widest">The Archives</h3>
                             <div className="flex gap-2">
-                                <button onClick={() => setShowForm(true)} className="text-[10px] text-dnd-gold hover:underline font-bold uppercase">+ Forge New</button>
+                                <button onClick={() => { resetForm(); setShowForm(true); }} className="text-[10px] text-dnd-gold hover:underline font-bold uppercase">+ Forge New</button>
                             </div>
                         </div>
                         {/* Search and Filter */}
@@ -1527,7 +1591,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     </div>
 
                     {/* Main Content Area */}
-                    <div className="flex-grow overflow-y-auto custom-scrollbar bg-[#1b1c20] relative">
+                    <div className="flex-grow overflow-y-auto custom-scrollbar bg-[#15161a] relative overscroll-contain">
                         {!showForm ? (
                             <div className="h-full flex flex-col items-center justify-center text-center p-10 max-w-lg mx-auto">
                                 <div className="w-24 h-24 bg-dnd-gold/5 border border-dnd-gold/20 rounded-full flex items-center justify-center text-5xl mb-8 opacity-20 shadow-[0_0_50px_rgba(201,173,106,0.1)]">📜</div>
@@ -1732,13 +1796,13 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                             <div className="space-y-4">
                                                 <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block">Available for Classes</label>
                                                 <div className="flex flex-wrap gap-2">
-                                                    {['Bard', 'Cleric', 'Druid', 'Paladin', 'Ranger', 'Sorcerer', 'Warlock', 'Wizard', 'Artificer'].map(cls => (
+                                                    {parentClassOptions.map((cls: any) => (
                                                         <button 
-                                                            key={cls} type="button"
-                                                            onClick={() => setSpellClasses(prev => prev.includes(cls) ? prev.filter(x => x !== cls) : [...prev, cls])}
-                                                            className={`px-3 py-1.5 rounded border text-[10px] font-bold transition-all ${spellClasses.includes(cls) ? 'bg-blue-600 text-white border-blue-600' : 'bg-black/20 text-gray-500 border-gray-700 hover:border-gray-500'}`}
+                                                            key={cls.index} type="button"
+                                                            onClick={() => setSpellClasses(prev => prev.includes(cls.name) ? prev.filter(x => x !== cls.name) : [...prev, cls.name])}
+                                                            className={`px-3 py-1.5 rounded border text-[10px] font-bold transition-all ${spellClasses.includes(cls.name) ? 'bg-blue-600 text-white border-blue-600' : 'bg-black/20 text-gray-500 border-gray-700 hover:border-gray-500'}`}
                                                         >
-                                                            {cls}
+                                                            {cls.name}
                                                         </button>
                                                     ))}
                                                 </div>
@@ -2089,6 +2153,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                         <option value="half">Half Caster (Paladin/Ranger)</option>
                                                         <option value="third">Third Caster (EK/AT)</option>
                                                         <option value="pact">Pact Magic (Warlock)</option>
+                                                        <option value="custom">Custom Progression</option>
                                                     </select>
                                                 </div>
                                                 {casterType !== 'none' && (
@@ -2099,6 +2164,17 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                         </select>
                                                     </div>
                                                 )}
+                                            </div>
+                                        </section>
+
+                                        <section className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-black/20 border border-gray-800 p-6 rounded-2xl">
+                                            <div>
+                                                <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Subclass Level</label>
+                                                <input type="number" min="1" max="20" value={subclassLevel} onChange={e => setSubclassLevel(parseInt(e.target.value) || 3)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-white font-bold" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Subclass Label</label>
+                                                <input type="text" value={subclassLabel} onChange={e => setSubclassLabel(e.target.value)} placeholder="e.g. Divine Domain" className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-white" />
                                             </div>
                                         </section>
 
@@ -2133,20 +2209,21 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                             <div>
                                                 <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Parent Class</label>
                                                 <select value={parentClass} onChange={e => setParentClass(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-3 text-white font-bold text-xs uppercase">
-                                                    <option value="barbarian">Barbarian</option>
-                                                    <option value="bard">Bard</option>
-                                                    <option value="cleric">Cleric</option>
-                                                    <option value="druid">Druid</option>
-                                                    <option value="fighter">Fighter</option>
-                                                    <option value="monk">Monk</option>
-                                                    <option value="paladin">Paladin</option>
-                                                    <option value="ranger">Ranger</option>
-                                                    <option value="rogue">Rogue</option>
-                                                    <option value="sorcerer">Sorcerer</option>
-                                                    <option value="warlock">Warlock</option>
-                                                    <option value="wizard">Wizard</option>
-                                                    <option value="artificer">Artificer</option>
+                                                    {parentClassOptions.map((option: any) => (
+                                                        <option key={option.index} value={option.index}>{option.name}</option>
+                                                    ))}
                                                 </select>
+                                            </div>
+                                        </section>
+
+                                        <section className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-black/20 border border-gray-800 p-6 rounded-2xl">
+                                            <div>
+                                                <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Subclass Level</label>
+                                                <input type="number" min="1" max="20" value={subclassLevel} onChange={e => setSubclassLevel(parseInt(e.target.value) || 3)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-white font-bold" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Subclass Label</label>
+                                                <input type="text" value={subclassLabel} onChange={e => setSubclassLabel(e.target.value)} placeholder="e.g. Divine Domain" className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-white" />
                                             </div>
                                         </section>
 
@@ -2225,7 +2302,44 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                     </div>
                                 )}
 
-                                <div className="sticky bottom-0 pt-6 pb-4 bg-[#1b1c20] z-10">
+                                {(activeTab === 'class' || activeTab === 'subclass') && (
+                                    <ContentMechanicsEditor
+                                        resources={contentResources}
+                                        choices={contentChoices}
+                                        onResourcesChange={setContentResources}
+                                        onChoicesChange={setContentChoices}
+                                    />
+                                )}
+
+                                {(activeTab === 'race' || activeTab === 'background' || activeTab === 'feat') && (
+                                    <ContentMechanicsEditor
+                                        resources={[]}
+                                        choices={contentChoices}
+                                        onResourcesChange={() => {}}
+                                        onChoicesChange={setContentChoices}
+                                        showResources={false}
+                                    />
+                                )}
+
+                                {['class', 'subclass', 'race', 'background', 'feat'].includes(activeTab) && (
+                                    <details className="bg-black/20 border border-gray-800 rounded-2xl p-6">
+                                        <summary className="cursor-pointer text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] select-none">
+                                            Developer options (JSON) — optional
+                                        </summary>
+                                        <p className="text-[10px] text-gray-600 mt-3">
+                                            Only for advanced fields such as spell_list, options, or rules. Most creators should leave this closed.
+                                        </p>
+                                        <textarea
+                                            value={advancedJson}
+                                            onChange={e => setAdvancedJson(e.target.value)}
+                                            spellCheck={false}
+                                            className="w-full h-64 mt-3 bg-[#0b0c0e] border border-gray-700 rounded-xl p-4 text-xs text-gray-300 font-mono outline-none focus:border-dnd-gold"
+                                            placeholder={'{\n  "spell_list": [],\n  "rules": []\n}'}
+                                        />
+                                    </details>
+                                )}
+
+                                <div className="sticky bottom-0 pt-6 pb-4 bg-[#15161a] border-t border-gray-800 z-10">
                                     <div className="flex gap-4 justify-center items-center">
                                         <button type="button" onClick={resetForm} className="px-6 py-2 text-gray-500 hover:text-white uppercase font-black text-[9px] tracking-widest transition-colors">Discard Draft</button>
                                         <button type="submit" disabled={loading || !name} className="px-10 py-3 bg-dnd-gold text-black rounded-lg font-black uppercase text-[10px] tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-50">

@@ -1,0 +1,80 @@
+export const PICK_A_CARD_TABLE = [
+    { roll: 1, name: "The Fool", desc: "You lose your next bonus action.", duration: "Instantaneous" },
+    { roll: 2, name: "The Magician", desc: "You gain a +2 bonus to spell attack rolls and your spell save DC increases by 1 for 1 minute.", duration: "1 minute" },
+    { roll: 3, name: "The High Priestess", desc: "You can cast one 1st-level spell from any spell list without expending a spell slot.", duration: "Instantaneous" },
+    { roll: 4, name: "The Empress", desc: "You gain temporary hit points equal to twice your Card Master level.", duration: "Instantaneous" },
+    { roll: 5, name: "The Emperor", desc: "You gain a +2 bonus to AC for 1 minute.", duration: "1 minute" },
+    { roll: 6, name: "The Hierophant", desc: "You can cast the Bless spell once without expending a spell slot.", duration: "Instantaneous" },
+    { roll: 7, name: "The Lovers", desc: "You can cast the Charm Person spell once without expending a spell slot.", duration: "Instantaneous" },
+    { roll: 8, name: "The Chariot", desc: "Your movement speed increases by 10 feet for 1 minute.", duration: "1 minute" },
+    { roll: 9, name: "Strength", desc: "You have advantage on Strength checks and saving throws for 1 minute.", duration: "1 minute" },
+    { roll: 10, name: "The Hermit", desc: "You can cast the Invisibility spell once without expending a spell slot.", duration: "Instantaneous" },
+    { roll: 11, name: "Wheel of Fortune", desc: "For 1 minute, whenever you or a creature you can see within 60 feet makes an attack roll, an ability check, or a saving throw, you can use your reaction to roll a d20 and choose which of the d20s is used.", duration: "1 minute" },
+    { roll: 12, name: "Justice", desc: "For 1 minute, you can cast Zone of Truth at will. Additionally, any creature that deals damage to you takes 2d10 radiant damage. You have advantage on Insight checks.", duration: "1 minute" },
+    { roll: 13, name: "The Hanged Man", desc: "You gain resistance to all damage for 1 minute. While this is active, you can use your reaction to halve the damage another creature within 30 feet takes.", duration: "1 minute" },
+    { roll: 14, name: "Death", desc: "Your attacks deal an additional 4d10 necrotic damage for 1 minute. If a creature is reduced to 0 hit points by this damage, you regain 2d10 hit points.", duration: "1 minute" },
+    { roll: 15, name: "Temperance", desc: "For 1 minute, you regain 2d10 hit points at the start of each of your turns. You can also cast Lesser Restoration as a bonus action without expending a spell slot.", duration: "1 minute" },
+    { roll: 16, name: "The Devil", desc: "For 1 minute, you can cast Hex at 3rd level without expending a spell slot. While a creature is hexed by you, it has disadvantage on all saving throws and you have advantage on attacks against it.", duration: "1 minute" },
+    { roll: 17, name: "The Tower", desc: "A bolt of divine energy strikes. Each creature of your choice within 30 feet must make a Dexterity saving throw or take 8d10 lightning damage and be stunned until the end of your next turn. On a success, they take half damage and aren't stunned.", duration: "Instantaneous" },
+    { roll: 18, name: "The Star", desc: "For 1 minute, you and all allies within 30 feet have advantage on all saving throws and gain 10 temporary hit points at the start of each of their turns.", duration: "1 minute" },
+    { roll: 19, name: "The Moon", desc: "For 1 minute, you can cast Mirror Image at will. You gain truesight out to 60 feet and can see through magical darkness.", duration: "1 minute" },
+    { roll: 20, name: "The Sun", desc: "You regain hit points equal to 8d10 + your Charisma modifier. For 1 minute, you emit bright light in a 60-foot radius. Enemies in the light have disadvantage on all rolls, and you and your allies deal an extra 1d10 radiant damage on all attacks.", duration: "1 minute" },
+    { roll: 21, name: "The World", desc: "For 1 minute, you can take an additional action on each of your turns. Additionally, the damage of your Fool Spell is doubled, and you gain double stacks when sacrificing cards.", duration: "1 minute" }
+];
+
+
+export const METAMAGIC_OPTIONS = [
+    { name: 'Careful Spell', desc: 'When you cast a spell that forces other creatures to make a saving throw, you can protect some of those creatures from the spell’s full force. To do so, you spend 1 Sorcery Point and choose a number of those creatures up to your Charisma modifier (minimum of one creature). A chosen creature automatically succeeds on its saving throw against the spell, and it takes no damage if it would normally take half damage on a successful save.' },
+    { name: 'Distant Spell', desc: 'When you cast a spell that has a range of at least 5 feet, you can spend 1 Sorcery Point to double the range of the spell. When you cast a spell that has a range of Touch, you can spend 1 Sorcery Point to make the range of the spell 30 feet.' },
+    { name: 'Empowered Spell', desc: 'When you roll damage for a spell, you can spend 1 Sorcery Point to reroll a number of the damage dice up to your Charisma modifier (minimum of one). You must use the new rolls. You can use Empowered Spell even if you have already used a different Metamagic option during the casting of the spell.' },
+    { name: 'Extended Spell', desc: 'When you cast a spell that has a duration of 1 minute or longer, you can spend 1 Sorcery Point to double its duration, to a maximum duration of 24 hours.' },
+    { name: 'Heightened Spell', desc: 'When you cast a spell that forces a creature to make a saving throw to resist its effects, you can spend 2 Sorcery Points to give one target of the spell disadvantage on its first saving throw made against the spell.' },
+    { name: 'Quickened Spell', desc: 'When you cast a spell that has a casting time of 1 action, you can spend 2 Sorcery Points to change the casting time to 1 bonus action for this casting.' },
+    { name: 'Seeking Spell', desc: 'If you make an attack roll for a spell and miss, you can spend 2 Sorcery Points to reroll the d20, and you must use the new roll.' },
+    { name: 'Subtle Spell', desc: 'When you cast a spell, you can spend 1 Sorcery Point to cast it without any somatic or verbal components.' },
+    { name: 'Transmuted Spell', desc: 'When you cast a spell that deals a type of damage from the following list, you can spend 1 Sorcery Point to change that damage type to one of the other listed types: acid, cold, fire, lightning, poison, thunder.' },
+    { name: 'Twinned Spell', desc: 'When you cast a spell, such as Charm Person or Hold Person, that can be upcast to target an additional creature, you can spend 1 Sorcery Point to target an additional creature now. The spell must be at its base level.' }
+];
+
+
+export const ARROWSMITH_ARROWS = [
+    { name: 'Silent', level: 1, desc: "Hidden hits don't reveal position. Crits on surprised.", notes: ['Crit Surprised'] },
+    { name: 'Forceful', level: 1, desc: 'On hit, STR Save DC {dc} or pushed 20ft.', saveType: 'STR' },
+    { name: 'Fire', level: 1, desc: 'Extra 1d10 fire. Ignites for 1d6/turn (DC 10 Dex).', dmgPlus: '+1d10', type: 'Fire' },
+    { name: 'Shattering', level: 2, desc: '10ft cone behind target. DEX Save {dc} half.', saveType: 'DEX' },
+    { name: 'Smokescreen', level: 2, desc: 'Creates 20ft fog sphere centered on hit. 1 min.', type: 'Other' },
+    { name: 'Light', level: 3, desc: 'Bonus action attack. Ignore reload.', type: 'Piercing', notes: ['Bonus Action', 'Ignore Reload'] },
+    { name: 'Sniper', level: 3, desc: 'Double normal and long range for this shot.', rangeLabel: 'Double Range' },
+    { name: 'Piercing', level: 4, desc: 'Pierce 20ft line. Ignore resistance.', notes: ['Ignore Resist'] },
+    { name: 'Blinding', level: 4, desc: 'Explodes after 10-30ft. CON Save {dc} or Blinded.', saveType: 'CON' },
+    { name: 'Explosive', level: 5, desc: '5d6 Force AoE (Dex Save {dc} half).', dmg: '5d6', addBaseDamage: true, type: 'Force', saveType: 'DEX' },
+    { name: 'Knockdown', level: 5, desc: 'On hit, STR Save {dc} or knocked prone.', saveType: 'STR' },
+    { name: 'Elemental', spec: 'magic-as', desc: '+2d6 Cold/Fire/Lit/Necro/Rad.', dmgPlus: '+2d6', level: 5 },
+    { name: 'Spectral', spec: 'magic-as', desc: 'Traverses matter. Ignore all cover.', notes: ['Ignore Cover'], level: 6 },
+    { name: 'Cursed', spec: 'magic-as', desc: '+1d8 Necrotic. No healing for target.', dmgPlus: '+1d8', type: 'Necrotic', level: 7 },
+    { name: 'Seeking', spec: 'magic-as', desc: 'Auto-hit any opponent you see.', autoHit: true, notes: ['Auto-Hit'], level: 8 },
+    { name: 'Shifter', spec: 'magic-as', desc: 'Teleport to arrow location (Max 50ft).', level: 9 },
+    { name: 'Intoxicating', spec: 'toxins-as', desc: 'Disadv on attacks until end of next turn.', notes: ['Debuff'], level: 5 },
+    { name: 'Paralytic', spec: 'toxins-as', desc: 'CON Save DC {dc} or Paralyzed.', saveType: 'CON', level: 6 },
+    { name: 'Toxic Cloud', spec: 'toxins-as', desc: '15ft cloud. CON Save or 1d10 Poison + Stunned.', saveType: 'CON', level: 7 },
+    { name: 'Furious', spec: 'toxins-as', desc: 'WIS Save DC {dc} or attack closest.', saveType: 'WIS', level: 8 },
+    { name: 'Sleeping', spec: 'toxins-as', desc: '1d6s vs HP. Success = Sleep.', level: 9 },
+    { name: 'Healing', spec: 'support-as', desc: 'Heals target for half damage rolled.', calc: 'halfBow', type: 'Healing', level: 5 },
+    { name: 'Vigorous', spec: 'support-as', desc: 'Grant Int+Prof Temp HP and +2 AC.', type: 'Buff', level: 6 },
+    { name: 'Anti-Healing', spec: 'support-as', desc: 'Target cannot regain health for 1 min.', level: 7 },
+    { name: 'Adrenaline', spec: 'support-as', desc: '+15ft move and Adv on attacks/saves.', type: 'Buff', level: 8 },
+    { name: 'Affection', spec: 'support-as', desc: 'WIS Save DC {dc} or Charmed.', saveType: 'WIS', level: 9 },
+];
+
+export const WARLOCK_INVOCATIONS = [
+    { name: 'Agonizing Blast', desc: 'Add your Charisma modifier to Eldritch Blast damage.', effects: [{ type: 'attack_rider', name: 'Agonizing Blast', condition: 'spell:eldritch blast', description: 'Add your Charisma modifier to the damage Eldritch Blast deals on a hit.' }, { type: 'spell_damage_bonus', name: 'Agonizing Blast', ability: 'cha', spell: 'Eldritch Blast' }] },
+    { name: 'Armor of Shadows', desc: 'Cast Mage Armor on yourself at will.', effects: [{ type: 'set', stat: 'ac', target: 'ac', value: 13, condition: 'no_armor' }] },
+    { name: 'Devil\'s Sight', desc: 'See normally in darkness, both magical and nonmagical, to 120 feet.', effects: [{ type: 'set', target: 'darkvision', value: 120 }] },
+    { name: 'Eldritch Mind', desc: 'Advantage on Constitution saving throws to maintain concentration.', effects: [{ type: 'advantage', target: 'saves', filter: 'Concentration' }] },
+    { name: 'Eldritch Spear', desc: 'Eldritch Blast range becomes 300 feet.' },
+    { name: 'Fiendish Vigor', desc: 'Cast False Life on yourself at will.', effects: [{ type: 'feature', name: 'Fiendish Vigor', description: 'Cast False Life on yourself at will as a 1st-level spell.' }] },
+    { name: 'Mask of Many Faces', desc: 'Cast Disguise Self at will.', effects: [{ type: 'spell_access', spell: 'Disguise Self', cast_free: true }] },
+    { name: 'Misty Visions', desc: 'Cast Silent Image at will.', effects: [{ type: 'spell_access', spell: 'Silent Image', cast_free: true }] },
+    { name: 'Repelling Blast', desc: 'Push a creature 10 feet when Eldritch Blast hits.', effects: [{ type: 'attack_rider', name: 'Repelling Blast', condition: 'spell:eldritch blast', description: 'When you hit a creature with Eldritch Blast, you can push it up to 10 feet away from you.' }] },
+    { name: 'Thirsting Blade', desc: 'Attack twice with your pact weapon when you take the Attack action.', effects: [{ type: 'extra_attack', mode: 'set', value: 2, name: 'Thirsting Blade' }] },
+];

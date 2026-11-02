@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { Campaign, CampaignPartyInventory, CampaignRoll } from '../types';
+import { mergeContentData } from './contentMerge';
 
 const SUPABASE_URL = 'https://pducitlqzhcjjeqthkof.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBkdWNpdGxxemhjamplcXRoa29mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxNjQ5MjksImV4cCI6MjA4NTc0MDkyOX0.akpxEEytntkNy8rDjfp4FDOLuQW2LjdYqED1F-Z811g';
@@ -12,7 +13,7 @@ export const loginUser = async (username: string) => {
         .select('*')
         .eq('username', username)
         .maybeSingle();
-    
+
     if (error) {
         throw new Error(error.message || "Failed to login");
     }
@@ -21,7 +22,7 @@ export const loginUser = async (username: string) => {
 
 export const saveCharacterToDb = async (character: any, userId: string) => {
     if (!userId) throw new Error("User ID required");
-    
+
     // Safely unwrap nested .data objects if character was passed wrapped in a DB record
     let flatChar = character;
     if (flatChar.data && typeof flatChar.data === 'object' && !Array.isArray(flatChar.data)) {
@@ -32,10 +33,10 @@ export const saveCharacterToDb = async (character: any, userId: string) => {
         }
         flatChar = { ...current, id: flatChar.id || current.id, user_id: flatChar.user_id || current.user_id, name: flatChar.name || current.name };
     }
-    
+
     const { id, user_id, created_at, updated_at, isShared, ...charData } = flatChar;
     const charName = flatChar.name || charData.name || 'Unnamed Hero';
-    
+
     if (!id) {
         const { data, error } = await supabase
             .from('characters')
@@ -58,7 +59,7 @@ export const saveCharacterToDb = async (character: any, userId: string) => {
 
 export const loadCharacters = async (userId: string) => {
     if (!userId) return [];
-    
+
     // Fetch owned
     const { data: owned, error: ownedError } = await supabase
         .from('characters')
@@ -83,9 +84,9 @@ export const loadCharacters = async (userId: string) => {
             shared = sharedChars.map(c => ({ ...c, isShared: true }));
         }
     }
-    
+
     const all = [...owned, ...shared].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
-    
+
     // Repair any characters that suffered from nested .data corruption
     return all.map(c => {
         let charData = c.data || {};
@@ -151,10 +152,7 @@ export const deleteCharacter = async (id: string) => {
 const homebrewCache: Record<string, { data: any[], timestamp: number }> = {};
 const CACHE_DURATION = 30000; // 30 seconds
 
-const CORE_INDICES = new Set([
-    'barbarian', 'bard', 'cleric', 'druid', 'fighter', 'monk', 'paladin', 'ranger', 'rogue', 'sorcerer', 'warlock', 'wizard', 'artificer',
-    'dwarf', 'elf', 'halfling', 'human', 'dragonborn', 'gnome', 'half-elf', 'half-orc', 'tiefling'
-]);
+
 
 const getLocalHomebrew = (table: string): any[] => {
     try {
@@ -188,13 +186,45 @@ const setLocalHomebrew = (table: string, items: any[]) => {
     }
 };
 
+const contentQualityScore = (table: string, item: any): number => {
+    let score = 0;
+    if (item?.source && String(item.source).toLowerCase() !== 'homebrew') score += 100;
+    if (item?.is_homebrew === false || item?.homebrew === false) score += 10;
+    switch (table) {
+        case 'custom_classes':
+            score += (item?.proficiency_choices?.length || 0) * 20;
+            score += (item?.level_table || []).some((row: any) => row?.class_specific) ? 60 : 0;
+            score += (item?.feature_details?.length || 0);
+            score += item?.options ? Object.keys(item.options).length * 5 : 0;
+            break;
+        case 'custom_subclasses':
+            score += (item?.feature_details?.length || 0) * 10;
+            score += item?.options ? Object.keys(item.options).length * 5 : 0;
+            break;
+        case 'custom_races':
+            score += (item?.subraces_details?.length || 0) * 10;
+            score += (item?.traits?.length || 0);
+            score += (item?.choices?.length || 0);
+            break;
+        case 'custom_backgrounds':
+            score += (item?.proficiency_choices?.length || 0) * 10;
+            score += (item?.choices?.length || 0) * 5;
+            score += item?.languages ? 5 : 0;
+            break;
+        case 'custom_feats':
+            score += (item?.effects?.length || 0) * 10;
+            break;
+    }
+    return score;
+};
+
 export const loadHomebrew = async (
     table: 'custom_races' | 'custom_classes' | 'custom_subclasses' | 'custom_backgrounds' | 'custom_spells' | 'custom_equipment' | 'custom_beasts' | 'custom_familiars' | 'custom_feats',
     userId?: string
 ) => {
     const cacheKey = `${table}_${userId || 'public'}`;
     const now = Date.now();
-    
+
     if (homebrewCache[cacheKey] && (now - homebrewCache[cacheKey].timestamp < CACHE_DURATION)) {
         return homebrewCache[cacheKey].data;
     }
@@ -204,7 +234,7 @@ export const loadHomebrew = async (
 
     try {
         let query = supabase.from(table).select('*');
-        
+
         const isValidUUID = (uuid: any) => {
             if (typeof uuid !== 'string') return false;
             return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
@@ -220,16 +250,15 @@ export const loadHomebrew = async (
         if (!error && data) {
             remoteItems = data.map((item: any) => {
                 const itemIndex = (item.data?.index || item.index || (item.name ? item.name.toLowerCase().replace(/\s+/g, '-') : '')).toLowerCase();
-                const isCore = CORE_INDICES.has(itemIndex);
-                const isHB = item.is_homebrew ?? item.data?.is_homebrew ?? item.homebrew ?? (!isCore);
-                return { 
-                    ...(item.data || {}), 
-                    id: item.id, 
+                const isHB = item.is_homebrew ?? item.data?.is_homebrew ?? item.homebrew ?? true;
+                return {
+                    ...(item.data || {}),
+                    id: item.id,
                     index: itemIndex || item.data?.index,
-                    user_id: item.user_id, 
-                    is_public: item.is_public, 
+                    user_id: item.user_id,
+                    is_public: item.is_public,
                     is_homebrew: isHB,
-                    isCustom: true 
+                    isCustom: true
                 };
             });
         }
@@ -249,24 +278,25 @@ export const loadHomebrew = async (
 
     remoteItems.forEach(item => {
         const key = getItemKey(item);
-        if (key) {
-            const isCore = CORE_INDICES.has(key);
+        if (!key) return;
+        const existing = itemMap.get(key);
+        if (!existing || contentQualityScore(table, item) >= contentQualityScore(table, existing)) {
             itemMap.set(key, {
                 ...item,
-                is_homebrew: item.is_homebrew ?? (!isCore)
+                is_homebrew: item.is_homebrew ?? item.homebrew ?? true
             });
         }
     });
 
     localItems.forEach(item => {
         const key = getItemKey(item);
-        if (key) {
-            const isCore = CORE_INDICES.has(key);
-            const existing = itemMap.get(key);
+        if (!key) return;
+        const existing = itemMap.get(key);
+        if (!existing || contentQualityScore(table, item) >= contentQualityScore(table, existing)) {
             itemMap.set(key, {
                 ...existing,
                 ...item,
-                is_homebrew: item.is_homebrew ?? (!isCore)
+                is_homebrew: item.is_homebrew ?? existing?.is_homebrew ?? true
             });
         }
     });
@@ -276,9 +306,16 @@ export const loadHomebrew = async (
     return results;
 };
 
+class ContentSaveError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'ContentSaveError';
+    }
+}
+
 export const saveHomebrew = async (
-    table: 'custom_races' | 'custom_classes' | 'custom_subclasses' | 'custom_backgrounds' | 'custom_spells' | 'custom_equipment' | 'custom_beasts' | 'custom_familiars' | 'custom_feats', 
-    userId?: string, 
+    table: 'custom_races' | 'custom_classes' | 'custom_subclasses' | 'custom_backgrounds' | 'custom_spells' | 'custom_equipment' | 'custom_beasts' | 'custom_familiars' | 'custom_feats',
+    userId?: string,
     payload: any = {},
     isPublic: boolean = false,
     id?: string
@@ -290,14 +327,54 @@ export const saveHomebrew = async (
 
     const validUserId = (userId && isValidUUID(userId)) ? userId : null;
     const itemIndex = (payload.index || (payload.name ? payload.name.toLowerCase().replace(/\s+/g, '-') : '')).toLowerCase();
-    const isCore = CORE_INDICES.has(itemIndex);
-    const isHB = payload.is_homebrew !== undefined ? payload.is_homebrew : (!isCore);
+    const finalId = id || payload.id || `hb-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
 
-    const finalId = id || payload.id || (isCore ? itemIndex : `hb-${Date.now()}-${Math.random().toString(36).substring(2,7)}`);
-    
+    // Load the current remote row first. This serves two purposes:
+    //   1. we can merge instead of replacing the document;
+    //   2. we can refuse to turn a blocked update into a duplicate insert.
+    let existingRow: any = null;
+    const lookupId = id && isValidUUID(id)
+        ? id
+        : (payload.id && isValidUUID(payload.id) ? payload.id : undefined);
+    if (lookupId) {
+        const { data, error } = await supabase
+            .from(table)
+            .select('id, name, user_id, data, homebrew')
+            .eq('id', lookupId)
+            .maybeSingle();
+        if (error) {
+            console.warn(`Could not read ${table}/${lookupId} before save:`, error.message);
+        }
+        if (data) existingRow = data;
+    }
+
+    if (existingRow && existingRow.user_id && existingRow.user_id !== validUserId) {
+        throw new ContentSaveError('This content belongs to another user. Duplicate it instead of editing the shared record.');
+    }
+
+    const localItems = getLocalHomebrew(table);
+    const existingLocalIndex = localItems.findIndex((i: any) =>
+        (i.id && String(i.id) === String(finalId)) ||
+        (i.index && itemIndex && String(i.index).toLowerCase() === itemIndex) ||
+        (i.name && payload.name && String(i.name).toLowerCase() === String(payload.name).toLowerCase())
+    );
+    const existingLocal = existingLocalIndex >= 0 ? localItems[existingLocalIndex] : null;
+    const existingData = existingRow?.data || existingLocal?.data || existingLocal || {};
+    const isHB = payload.is_homebrew !== undefined
+        ? payload.is_homebrew
+        : existingRow?.homebrew !== undefined
+            ? existingRow.homebrew
+            : existingLocal?.is_homebrew !== undefined
+                ? existingLocal.is_homebrew
+                : true;
+
+    // Merge the partial Forge payload over the existing document. Fields the
+    // form does not know about are preserved.
+    const mergedData = mergeContentData(table, existingData, payload);
+
     const fullItem = {
-        ...payload,
-        index: itemIndex || payload.index,
+        ...mergedData,
+        index: itemIndex || mergedData.index,
         id: finalId,
         user_id: validUserId,
         is_public: isPublic,
@@ -305,68 +382,61 @@ export const saveHomebrew = async (
         isCustom: true
     };
 
-    // 1. Save locally immediately
-    const localItems = getLocalHomebrew(table);
-    const existingIndex = localItems.findIndex((i: any) => 
-        (i.id && String(i.id) === String(finalId)) ||
-        (i.index && itemIndex && String(i.index).toLowerCase() === itemIndex) ||
-        (i.name && payload.name && String(i.name).toLowerCase() === String(payload.name).toLowerCase())
-    );
-
-    if (existingIndex >= 0) {
-        localItems[existingIndex] = { ...localItems[existingIndex], ...fullItem };
-    } else {
-        localItems.unshift(fullItem);
-    }
-    setLocalHomebrew(table, localItems);
+    const persistLocal = (item: any) => {
+        const items = getLocalHomebrew(table);
+        const idx = items.findIndex((i: any) =>
+            (i.id && String(i.id) === String(item.id)) ||
+            (i.index && item.index && String(i.index).toLowerCase() === String(item.index).toLowerCase()) ||
+            (i.name && item.name && String(i.name).toLowerCase() === String(item.name).toLowerCase())
+        );
+        if (idx >= 0) items[idx] = item;
+        else items.unshift(item);
+        setLocalHomebrew(table, items);
+    };
 
     // Invalidate cache
     Object.keys(homebrewCache).forEach(k => {
         if (k.startsWith(table)) delete homebrewCache[k];
     });
 
-    // 2. Sync to Supabase
+    // Sync to Supabase.
     try {
-        let existingRow: any = null;
-        if (id && isValidUUID(id)) {
-            const { data } = await supabase.from(table).select('id, user_id').eq('id', id).maybeSingle();
-            if (data) existingRow = data;
-        } else if (payload.name) {
-            const { data } = await supabase.from(table).select('id, user_id').ilike('name', payload.name).maybeSingle();
-            if (data) existingRow = data;
-        }
-
-        if (existingRow && (!existingRow.user_id || existingRow.user_id === validUserId)) {
+        if (existingRow) {
             const { data, error } = await supabase
                 .from(table)
-                .update({ 
-                    name: payload.name || 'Unnamed', 
+                .update({
+                    name: payload.name || existingRow.name || 'Unnamed',
                     data: fullItem,
                     is_public: isPublic
                 })
                 .eq('id', existingRow.id)
-                .select()
+                .select('id, data')
                 .maybeSingle();
-                
-            if (!error && data) {
-                const saved = {
-                    ...(data.data || fullItem),
-                    id: data.id || existingRow.id,
-                    user_id: data.user_id || validUserId,
-                    is_public: data.is_public ?? isPublic,
-                    is_homebrew: isHB,
-                    isCustom: true
-                };
-                const idx = localItems.findIndex((i: any) => String(i.id) === String(saved.id) || (i.index && itemIndex && String(i.index).toLowerCase() === itemIndex));
-                if (idx >= 0) localItems[idx] = saved;
-                setLocalHomebrew(table, localItems);
-                return saved;
+
+            if (error) throw new ContentSaveError(error.message || 'Failed to update content');
+            if (!data) {
+                throw new ContentSaveError('The content update was blocked (0 rows returned). The record was not changed.');
             }
+
+            const saved = {
+                ...(data.data || fullItem),
+                id: data.id || existingRow.id,
+                user_id: existingRow.user_id || validUserId,
+                is_public: isPublic,
+                is_homebrew: isHB,
+                isCustom: true
+            };
+            persistLocal(saved);
+            return saved;
         }
 
-        // Insert new row
+        // Insert new row. Do not look up an existing row by name here: that
+        // path is what turned updates into duplicate inserts.
+        // New local-only content is kept if the remote insert fails/offline.
+        persistLocal(fullItem);
+
         const insertData: any = {
-            name: payload.name || 'Unnamed', 
+            name: payload.name || 'Unnamed',
             data: fullItem,
             is_public: isPublic
         };
@@ -375,25 +445,27 @@ export const saveHomebrew = async (
         const { data, error } = await supabase
             .from(table)
             .insert([insertData])
-            .select()
+            .select('id, data')
             .maybeSingle();
-            
-        if (!error && data) {
-            const saved = {
-                ...(data.data || fullItem),
-                id: data.id,
-                user_id: data.user_id,
-                is_public: data.is_public ?? isPublic,
-                is_homebrew: isHB,
-                isCustom: true
-            };
-            const idx = localItems.findIndex((i: any) => String(i.id) === String(finalId) || (i.index && itemIndex && String(i.index).toLowerCase() === itemIndex));
-            if (idx >= 0) localItems[idx] = saved;
-            else localItems.unshift(saved);
-            setLocalHomebrew(table, localItems);
-            return saved;
+
+        if (error) throw new ContentSaveError(error.message || 'Failed to insert content');
+        if (!data) {
+            throw new ContentSaveError('The content insert was blocked (0 rows returned). The record was not created.');
         }
+
+        const insertedRow: any = data;
+        const saved = {
+            ...(insertedRow.data || fullItem),
+            id: insertedRow.id,
+            user_id: insertedRow.user_id || validUserId,
+            is_public: insertedRow.is_public ?? isPublic,
+            is_homebrew: isHB,
+            isCustom: true
+        };
+        persistLocal(saved);
+        return saved;
     } catch (error: any) {
+        if (error?.name === 'ContentSaveError') throw error;
         console.warn(`Supabase save error for ${table} (retained in localStorage):`, error?.message || error);
     }
 
@@ -488,7 +560,7 @@ export const createCampaign = async (name: string, description: string = '', use
 
     if (error) {
         console.warn("First campaign creation attempt failed, retrying with fallback payloads:", error.message);
-        
+
         // Try with user_id
         const payload2: any = { name, description, code, characters: [] };
         if (validUserId) payload2.user_id = validUserId;

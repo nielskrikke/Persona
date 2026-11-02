@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { WIDGET_LABELS, ALL_WIDGETS, WIDGET_METADATA } from '../../../data/constants';
 import { CharacterState } from '@/types';
+import { hasUiWidget } from '@/utils/rules';
 
 const WidgetCard = ({ id, onRemove }: { id: string, onRemove?: () => void }) => {
     const meta = WIDGET_METADATA[id] || { icon: '?', desc: 'Widget', color: 'text-gray-400' };
@@ -45,7 +46,7 @@ const LayoutManagerModal = ({
     const dragItem = useRef<{col: string, idx: number} | null>(null);
 
     // Filter Widgets based on class/level requirements
-    const isArtillerist = character.classes.some(c => c.definition.index === 'artificer' && c.subclass?.index === 'artillerist' && c.level >= 3);
+    const isArtillerist = hasUiWidget(character, 'eldritchCannon');
     const visibleWidgets = ALL_WIDGETS.filter(id => {
         if (id === 'eldritchCannon' && !isArtillerist) return false;
         return true;

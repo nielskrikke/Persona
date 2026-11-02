@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { CharacterState, EldritchCannonDetail } from '@/types';
+import { getClassWithUiWidget } from '../../../utils/rules';
 
 interface EldritchCannonModalProps {
     isOpen: boolean;
@@ -36,7 +37,7 @@ const EldritchCannonModal: React.FC<EldritchCannonModalProps> = ({ isOpen, onClo
 
     if (!isOpen) return null;
 
-    const artificer = character.classes.find(c => c.definition.index === 'artificer');
+    const artificer = getClassWithUiWidget(character, 'eldritchCannon');
     const artificerLevel = artificer?.level || 1;
     const maxHp = artificerLevel * 5;
     const freebieAvailable = !character.eldritchCannonFreebieUsed;

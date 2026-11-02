@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { CharacterState, SteelDefenderDetail } from '@/types';
+import { getClassWithUiWidget } from '../../../utils/rules';
 
 interface SteelDefenderModalProps {
     isOpen: boolean;
@@ -12,7 +13,7 @@ interface SteelDefenderModalProps {
 const SteelDefenderModal: React.FC<SteelDefenderModalProps> = ({ isOpen, onClose, character, onSummon }) => {
     if (!isOpen) return null;
 
-    const artificer = character.classes.find(c => c.definition.index === 'artificer');
+    const artificer = getClassWithUiWidget(character, 'steelDefender');
     const artificerLevel = artificer?.level || 1;
     const maxHp = 2 + calculateModifier(character.abilities.int) + (artificerLevel * 5);
 

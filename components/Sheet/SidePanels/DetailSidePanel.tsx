@@ -3,7 +3,7 @@ import { Sparkles, ArrowRightLeft, PackageCheck } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import SidePanelLayout from '../Shared/SidePanelLayout';
 import { SpellDetail, InventoryItem, APIReference, RuleEntry, CharacterState, FeatureEffect } from '../../../types';
-import { isSpell } from '../../../utils/rules';
+import { isSpell, getCasterProfileFor } from '../../../utils/rules';
 import { fetchEquipmentDetail, fetchFeatureDetail, fetchTraitDetail } from '../../../data/index';
 import { MASTERY_DESCRIPTIONS, WIDGET_BG } from '../../../data/constants';
 
@@ -705,24 +705,26 @@ const DetailSidePanel = ({
                             {/* Special Properties Toggles */}
                             {isItemLike(fullDetail) && 'quantity' in fullDetail && character && (
                                 (() => {
-                                    const classes = character.classes.map(c => c.definition.index);
-                                    const subclasses = character.classes.map(c => c.subclass?.index).filter(Boolean);
-                                    
-                                    const isMonk = classes.includes('monk');
-                                    const isWarlock = classes.includes('warlock');
-                                    const isArtificer = classes.includes('artificer');
-                                    const isDruid = classes.includes('druid');
-                                    const isSpellcaster = classes.some(c => ['bard', 'cleric', 'druid', 'paladin', 'ranger', 'sorcerer', 'warlock', 'wizard', 'artificer'].includes(c));
-                                    
+                                    const profiles = character.classes.map(c => getCasterProfileFor(c));
+                                    const subclassFeatures = character.classes.flatMap(c => (c.subclass as any)?.feature_details || []);
+                                    const isMonk = character.classes.some(c => ((c.definition as any).level_table || []).some((row: any) => row?.class_specific?.martial_arts));
+                                    const isWarlock = profiles.some(p => p?.type === 'pact');
+                                    const isArtificer = profiles.some(p => p?.type === 'artificer');
+                                    const isDruid = character.classes.some(c => ((c.definition as any).resources || []).some((r: any) => r.key === 'wild-shape'));
+                                    const isSpellcaster = profiles.some(p => p && p.type !== 'none');
+                                    const isKensei = subclassFeatures.some((feature: any) => /kensei/i.test(feature.name || ''));
+                                    const isHexblade = subclassFeatures.some((feature: any) => /hexblade/i.test(feature.name || ''));
+                                    const isBattleReady = subclassFeatures.some((feature: any) => feature.name === 'Battle Ready');
+
                                     const availableFlags = [
                                         { id: 'isMonkWeapon', label: 'Monk Weapon', visible: isMonk },
-                                        { id: 'isKenseiWeapon', label: 'Kensei Weapon', visible: isMonk && subclasses.includes('kensei') },
+                                        { id: 'isKenseiWeapon', label: 'Kensei Weapon', visible: isMonk && isKensei },
                                         { id: 'isPactWeapon', label: 'Pact Weapon', visible: isWarlock },
-                                        { id: 'isHexWeapon', label: 'Hex Weapon', visible: isWarlock && subclasses.includes('hexblade') },
+                                        { id: 'isHexWeapon', label: 'Hex Weapon', visible: isWarlock && isHexblade },
                                         { id: 'isSpellFocus', label: 'Spell Focus', visible: isSpellcaster },
                                         { id: 'isInfusion', label: 'Artificer Infusion', visible: isArtificer },
-                                        { id: 'isShillelagh', label: 'Shillelagh', visible: isDruid || classes.includes('cleric') },
-                                        { id: 'isBattleReady', label: 'Battle Ready', visible: isArtificer && subclasses.includes('battle-smith') },
+                                        { id: 'isShillelagh', label: 'Shillelagh', visible: isSpellcaster },
+                                        { id: 'isBattleReady', label: 'Battle Ready', visible: isArtificer && isBattleReady },
                                     ].filter(f => f.visible);
 
                                     if (availableFlags.length === 0) return null;

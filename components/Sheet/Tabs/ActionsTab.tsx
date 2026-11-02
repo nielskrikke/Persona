@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CharacterState, SpellDetail, CreatureDetail } from '../../../types';
 import { STANDARD_ACTIONS, WIDGET_BG, MASTERY_DESCRIPTIONS } from '../../../data/constants';
-import { formatModifier, getSpellDamageString } from '../../../utils/rules';
+import { formatModifier, getSpellDamageString, hasUiWidget } from '../../../utils/rules';
 
 interface ActionsTabProps {
     character: CharacterState;
@@ -41,7 +41,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
 }) => {
     const [actionFilter, setActionFilter] = useState('ALL');
 
-    const isCardMaster = character.classes.some(c => c.definition.index === 'card-master');
+    const isCardMaster = hasUiWidget(character, 'activeCards');
 
     const allAttacks = getAttacks();
     

@@ -1,4 +1,3 @@
-import { calculateModifier, calculateProficiency } from '@/utils/rules';
 import { RuleEntry } from '@/types';
 
 export const WIDGET_LABELS: Record<string, string> = {
@@ -88,71 +87,6 @@ export const ARTISAN_TOOLS = [
     "Woodcarver's tools"
 ];
 
-export const CLASS_FEATURES: Record<string, {name: string, formula: (level: number, stats: any) => number, reset: 'short' | 'long'}> = {
-    'Bard': { name: 'Bardic Inspiration', reset: 'long', formula: (l, s) => Math.max(1, calculateModifier(s.cha)) },
-    'Barbarian': { name: 'Rages', reset: 'long', formula: (l) => l < 3 ? 2 : l < 6 ? 3 : l < 12 ? 4 : l < 17 ? 5 : 6 },
-    'Fighter': { name: 'Second Wind', reset: 'short', formula: (l) => l < 4 ? 2 : l < 10 ? 3 : 4 },
-    'Fighter-SD': { name: 'Superiority Dice', reset: 'short', formula: (l) => l < 3 ? 0 : l < 7 ? 4 : l < 15 ? 5 : 6 },
-    'Druid': { name: 'Wild Shape', reset: 'short', formula: (l) => l < 6 ? 2 : l < 17 ? 3 : 4 },
-    'Monk': { name: 'Focus Points', reset: 'short', formula: (l) => l < 2 ? 0 : l },
-    'Paladin': { name: 'Lay on Hands', reset: 'long', formula: (l) => l * 5 },
-    'Sorcerer': { name: 'Sorcery Points', reset: 'long', formula: (l) => l < 2 ? 0 : l },
-    'Cleric': { name: 'Channel Divinity', reset: 'short', formula: (l) => l < 2 ? 0 : l < 6 ? 2 : l < 18 ? 3 : 4 },
-    'Paladin-CD': { name: 'Channel Divinity', reset: 'short', formula: (l) => l < 3 ? 0 : l < 11 ? 2 : 3 },
-    'Ranger': { name: 'Favored Enemy', reset: 'long', formula: (l) => l < 5 ? 2 : l < 9 ? 3 : l < 13 ? 4 : l < 17 ? 5 : 6 },
-    'Rogue': { name: 'Stroke of Luck', reset: 'short', formula: (l) => l < 20 ? 0 : 1 },
-    'Gunslinger': { name: 'Grit', reset: 'short', formula: (l, s) => Math.max(1, calculateModifier(s.wis)) },
-    'Commander': { name: 'Influence', reset: 'long', formula: (l) => 2 },
-    'Card Master': { name: 'Choice Points', reset: 'long', formula: (l, s) => {
-        // Based on the level_table in classes.ts
-        const pointsMap: Record<number, number> = {
-            1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10,
-            11: 10, 12: 11, 13: 12, 14: 13, 15: 13, 16: 14, 17: 14, 18: 15, 19: 15, 20: 16
-        };
-        return pointsMap[l] || l;
-    }},
-    'Arrowsmith': { name: 'Arrow Crafting', reset: 'short', formula: (l) => {
-        // Correct progression for Crafting Capacity (column "Custom Arrows")
-        const craftMap: Record<number, number> = {
-            1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 9, 9: 10, 10: 10,
-            11: 11, 12: 11, 13: 12, 14: 12, 15: 13, 16: 13, 17: 14, 18: 14, 19: 15, 20: 15
-        };
-        return craftMap[l] || 0;
-    }},
-    'Fighter-AS': { name: 'Action Surge', reset: 'short', formula: (l) => l < 17 ? 1 : 2 },
-    'Artificer-EC': { name: 'Eldritch Cannon', reset: 'long', formula: (l) => 1 },
-    'Artificer-FG': { name: 'Flash of Genius', reset: 'long', formula: (l, s) => Math.max(1, calculateModifier(s.int)) },
-    'Fighter-Indomitable': { name: 'Indomitable', reset: 'long', formula: (l) => l < 9 ? 0 : l < 13 ? 1 : l < 17 ? 2 : 3 },
-    'Monk-UM': { name: 'Uncanny Metabolism', reset: 'long', formula: (l) => l < 2 ? 0 : 1 },
-    'Ranger-Tireless': { name: 'Tireless', reset: 'long', formula: (l, s) => l < 10 ? 0 : calculateProficiency(l) },
-    'Ranger-NV': { name: 'Nature\'s Veil', reset: 'long', formula: (l) => l < 14 ? 0 : calculateProficiency(l) },
-    'Sorcerer-IS': { name: 'Innate Sorcery', reset: 'long', formula: (l) => 2 },
-};
-
-export const PICK_A_CARD_TABLE = [
-    { roll: 1, name: "The Fool", desc: "You lose your next bonus action.", duration: "Instantaneous" },
-    { roll: 2, name: "The Magician", desc: "You gain a +2 bonus to spell attack rolls and your spell save DC increases by 1 for 1 minute.", duration: "1 minute" },
-    { roll: 3, name: "The High Priestess", desc: "You can cast one 1st-level spell from any spell list without expending a spell slot.", duration: "Instantaneous" },
-    { roll: 4, name: "The Empress", desc: "You gain temporary hit points equal to twice your Card Master level.", duration: "Instantaneous" },
-    { roll: 5, name: "The Emperor", desc: "You gain a +2 bonus to AC for 1 minute.", duration: "1 minute" },
-    { roll: 6, name: "The Hierophant", desc: "You can cast the Bless spell once without expending a spell slot.", duration: "Instantaneous" },
-    { roll: 7, name: "The Lovers", desc: "You can cast the Charm Person spell once without expending a spell slot.", duration: "Instantaneous" },
-    { roll: 8, name: "The Chariot", desc: "Your movement speed increases by 10 feet for 1 minute.", duration: "1 minute" },
-    { roll: 9, name: "Strength", desc: "You have advantage on Strength checks and saving throws for 1 minute.", duration: "1 minute" },
-    { roll: 10, name: "The Hermit", desc: "You can cast the Invisibility spell once without expending a spell slot.", duration: "Instantaneous" },
-    { roll: 11, name: "Wheel of Fortune", desc: "For 1 minute, whenever you or a creature you can see within 60 feet makes an attack roll, an ability check, or a saving throw, you can use your reaction to roll a d20 and choose which of the d20s is used.", duration: "1 minute" },
-    { roll: 12, name: "Justice", desc: "For 1 minute, you can cast Zone of Truth at will. Additionally, any creature that deals damage to you takes 2d10 radiant damage. You have advantage on Insight checks.", duration: "1 minute" },
-    { roll: 13, name: "The Hanged Man", desc: "You gain resistance to all damage for 1 minute. While this is active, you can use your reaction to halve the damage another creature within 30 feet takes.", duration: "1 minute" },
-    { roll: 14, name: "Death", desc: "Your attacks deal an additional 4d10 necrotic damage for 1 minute. If a creature is reduced to 0 hit points by this damage, you regain 2d10 hit points.", duration: "1 minute" },
-    { roll: 15, name: "Temperance", desc: "For 1 minute, you regain 2d10 hit points at the start of each of your turns. You can also cast Lesser Restoration as a bonus action without expending a spell slot.", duration: "1 minute" },
-    { roll: 16, name: "The Devil", desc: "For 1 minute, you can cast Hex at 3rd level without expending a spell slot. While a creature is hexed by you, it has disadvantage on all saving throws and you have advantage on attacks against it.", duration: "1 minute" },
-    { roll: 17, name: "The Tower", desc: "A bolt of divine energy strikes. Each creature of your choice within 30 feet must make a Dexterity saving throw or take 8d10 lightning damage and be stunned until the end of your next turn. On a success, they take half damage and aren't stunned.", duration: "Instantaneous" },
-    { roll: 18, name: "The Star", desc: "For 1 minute, you and all allies within 30 feet have advantage on all saving throws and gain 10 temporary hit points at the start of each of their turns.", duration: "1 minute" },
-    { roll: 19, name: "The Moon", desc: "For 1 minute, you can cast Mirror Image at will. You gain truesight out to 60 feet and can see through magical darkness.", duration: "1 minute" },
-    { roll: 20, name: "The Sun", desc: "You regain hit points equal to 8d10 + your Charisma modifier. For 1 minute, you emit bright light in a 60-foot radius. Enemies in the light have disadvantage on all rolls, and you and your allies deal an extra 1d10 radiant damage on all attacks.", duration: "1 minute" },
-    { roll: 21, name: "The World", desc: "For 1 minute, you can take an additional action on each of your turns. Additionally, the damage of your Fool Spell is doubled, and you gain double stacks when sacrificing cards.", duration: "1 minute" }
-];
-
 export const STANDARD_ACTIONS = [
     { name: 'Attack', desc: 'Perform one attack with a weapon or unarmed strike. If you have the Extra Attack feature, you can attack more than once.' },
     { name: 'Dash', desc: 'Gain extra movement equal to your speed for the current turn.' },
@@ -182,19 +116,6 @@ export const MASTERY_DESCRIPTIONS: Record<string, string> = {
     'Topple': 'If you hit a creature with this weapon, you can force the creature to make a Constitution saving throw (DC 8 plus the ability modifier used to make the attack roll and your Proficiency Bonus). On a failed save, the creature has the Prone condition.',
     'Vex': 'If you hit a creature with this weapon and deal damage to the creature, you have Advantage on your next attack roll against that creature before the end of your next turn.'
 };
-
-export const METAMAGIC_OPTIONS = [
-    { name: 'Careful Spell', desc: 'When you cast a spell that forces other creatures to make a saving throw, you can protect some of those creatures from the spell’s full force. To do so, you spend 1 Sorcery Point and choose a number of those creatures up to your Charisma modifier (minimum of one creature). A chosen creature automatically succeeds on its saving throw against the spell, and it takes no damage if it would normally take half damage on a successful save.' },
-    { name: 'Distant Spell', desc: 'When you cast a spell that has a range of at least 5 feet, you can spend 1 Sorcery Point to double the range of the spell. When you cast a spell that has a range of Touch, you can spend 1 Sorcery Point to make the range of the spell 30 feet.' },
-    { name: 'Empowered Spell', desc: 'When you roll damage for a spell, you can spend 1 Sorcery Point to reroll a number of the damage dice up to your Charisma modifier (minimum of one). You must use the new rolls. You can use Empowered Spell even if you have already used a different Metamagic option during the casting of the spell.' },
-    { name: 'Extended Spell', desc: 'When you cast a spell that has a duration of 1 minute or longer, you can spend 1 Sorcery Point to double its duration, to a maximum duration of 24 hours.' },
-    { name: 'Heightened Spell', desc: 'When you cast a spell that forces a creature to make a saving throw to resist its effects, you can spend 2 Sorcery Points to give one target of the spell disadvantage on its first saving throw made against the spell.' },
-    { name: 'Quickened Spell', desc: 'When you cast a spell that has a casting time of 1 action, you can spend 2 Sorcery Points to change the casting time to 1 bonus action for this casting.' },
-    { name: 'Seeking Spell', desc: 'If you make an attack roll for a spell and miss, you can spend 2 Sorcery Points to reroll the d20, and you must use the new roll.' },
-    { name: 'Subtle Spell', desc: 'When you cast a spell, you can spend 1 Sorcery Point to cast it without any somatic or verbal components.' },
-    { name: 'Transmuted Spell', desc: 'When you cast a spell that deals a type of damage from the following list, you can spend 1 Sorcery Point to change that damage type to one of the other listed types: acid, cold, fire, lightning, poison, thunder.' },
-    { name: 'Twinned Spell', desc: 'When you cast a spell, such as Charm Person or Hold Person, that can be upcast to target an additional creature, you can spend 1 Sorcery Point to target an additional creature now. The spell must be at its base level.' }
-];
 
 export const STATIC_RULES: RuleEntry[] = [
     { name: 'Attack', category: 'Action', desc: 'Make a melee or ranged attack. See your equipment for details.' },

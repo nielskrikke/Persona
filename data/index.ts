@@ -1,6 +1,6 @@
-import { ExtendedFeatDetail } from '../types';
+import { CharacterState, ExtendedFeatDetail } from '../types';
 import { ALL_ITEMS, getItem } from './items/index';
-import { getLocalSpells } from './spells/index';
+import { getLocalSpells, getSpellClassTags } from './spells/index';
 import { BARD_SPELLS } from './spells/bard';
 import { CLERIC_SPELLS } from './spells/cleric';
 import { DRUID_SPELLS } from './spells/druid';
@@ -244,7 +244,15 @@ export const fetchBackgroundDetail = async (index: string, userId?: string): Pro
 
 export const fetchSpellsByClass = async (classIndex: string, userId?: string): Promise<SpellDetail[]> => {
     const custom = await loadHomebrew('custom_spells', userId).catch(() => []);
-    const local = getLocalSpells(classIndex);
+    let spellListTags: string[] = [classIndex];
+    try {
+        const detail = await fetchClassDetail(classIndex, userId);
+        const declared = (detail as any)?.spell_list;
+        if (Array.isArray(declared) && declared.length > 0) spellListTags = declared;
+    } catch (e) {}
+    const local = Array.from(new Map(
+        spellListTags.flatMap(tag => getLocalSpells(tag)).map(spell => [spell.index, spell])
+    ).values());
     const customMap = new Map(custom.map((s: any) => [(s.index || s.name || '').toLowerCase(), s]));
     const mergedLocal = local.map(s => {
         const key = s.index.toLowerCase();
@@ -255,10 +263,22 @@ export const fetchSpellsByClass = async (classIndex: string, userId?: string): P
         }
         return s;
     });
-    const customSpells = Array.from(customMap.values()).map((s: any) => ({
-        ...s,
-        name: s.is_homebrew === false ? s.name : (s.name.endsWith('(HB)') ? s.name : `${s.name} (HB)`)
-    }));
+    const normalizedClassIndex = String(classIndex || '').toLowerCase();
+    const customSpells = Array.from(customMap.values())
+        .filter((s: any) => {
+            const spellClasses = Array.isArray(s.classes) ? s.classes : [];
+            // Legacy/custom spells with no class list are universal. Spells with
+            // a class list are filtered by the content data.
+            if (spellClasses.length === 0) return true;
+            return spellClasses.some((entry: any) => {
+                const index = String(entry?.index || entry?.name || entry || '').toLowerCase();
+                return index === normalizedClassIndex;
+            });
+        })
+        .map((s: any) => ({
+            ...s,
+            name: s.is_homebrew === false ? s.name : (s.name.endsWith('(HB)') ? s.name : `${s.name} (HB)`)
+        }));
     return [...mergedLocal, ...customSpells];
 };
 
@@ -269,8 +289,12 @@ export const fetchSpellsByClassAndLevel = async (classIndex: string, level: numb
 
 export const fetchAllSpells = async (userId?: string): Promise<SpellDetail[]> => {
     const custom = await loadHomebrew('custom_spells', userId).catch(() => []);
-    const classes = ['bard', 'cleric', 'druid', 'paladin', 'ranger', 'sorcerer', 'warlock', 'wizard', 'artificer'];
-    const allLocal = classes.flatMap(c => getLocalSpells(c));
+    const classRows = await loadHomebrew('custom_classes', userId).catch(() => []);
+    const tags = new Set<string>(getSpellClassTags());
+    classRows.forEach((row: any) => {
+        (row.spell_list || []).forEach((tag: string) => tags.add(tag));
+    });
+    const allLocal = Array.from(tags).flatMap(c => getLocalSpells(c));
     
     const customMap = new Map(custom.map((s: any) => [(s.index || s.name || '').toLowerCase(), s]));
     const spellMap = new Map<string, SpellDetail>();
@@ -527,6 +551,55 @@ export const fetchSubclassLevels = async (subclassIndex: string, userId?: string
         });
     });
     return Array.from(levelMap.values());
+};
+
+/**
+ * Refresh a character's stored class/subclass definitions from the content
+ * library. Characters created before the content migration keep a snapshot of
+ * the old class document; hydrating on load makes them use the current rules.
+ */
+export const hydrateCharacterClasses = async (character: CharacterState): Promise<CharacterState> => {
+    if (!character) return character;
+    const classes = character.classes?.length
+        ? await Promise.all(character.classes.map(async characterClass => {
+            const definition = await fetchClassDetail(characterClass.definition.index, character.user_id)
+                || characterClass.definition;
+            let subclass = characterClass.subclass;
+            if (characterClass.subclass?.index) {
+                subclass = await fetchSubclassDetail(characterClass.subclass.index, character.user_id)
+                    || characterClass.subclass;
+            }
+            return { ...characterClass, definition, subclass };
+        }))
+        : character.classes;
+
+    // Backgrounds are stored as a name on the character; rehydrate their
+    // feature effects from the content library so migrated background effects
+    // apply to existing characters too.
+    let classFeatures = character.classFeatures || [];
+    if (character.background) {
+        const background = await fetchBackgroundDetail(character.background, character.user_id);
+        if (background?.feature) {
+            const effects = [...((background as any).effects || []), ...(background.feature.effects || [])];
+            const index = background.feature.name.toLowerCase().replace(/\s+/g, '-');
+            const existing = classFeatures.find(feature => feature.source === 'Background' || feature.index === index);
+            if (existing) {
+                classFeatures = classFeatures.map(feature => feature === existing ? { ...feature, effects } : feature);
+            } else {
+                classFeatures = [...classFeatures, {
+                    index,
+                    name: background.feature.name,
+                    level: 1,
+                    source: 'Background',
+                    desc: background.feature.desc,
+                    effects,
+                    url: '',
+                } as any];
+            }
+        }
+    }
+
+    return { ...character, classes, classFeatures };
 };
 
 export const fetchCreatures = async (userId?: string): Promise<any[]> => {

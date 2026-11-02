@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { CharacterState, LevelChoice, AbilityScores, ABILITY_NAMES, ABILITY_LABELS, AbilityName, SpellDetail, FeatDetail, SubclassDetail } from '../../../types';
 import { AlertTriangle, CheckCircle2, ChevronRight, RotateCcw, Sparkles, Info } from 'lucide-react';
-import { calculateModifier, SKILL_LIST, inferOptionEffects } from '../../../utils/rules';
-import { STANDARD_LANGUAGES, METAMAGIC_OPTIONS, ARTISAN_TOOLS } from '../../../data/constants';
+import { calculateModifier, SKILL_LIST } from '../../../utils/rules';
+import { STANDARD_LANGUAGES, ARTISAN_TOOLS } from '../../../data/constants';
 import { fetchFeatsList, fetchAllSpells, fetchSubclasses, fetchSubclassDetail, fetchSubclassLevels, fetchClassLevels } from '../../../data/index';
 
 interface ChoicesTabProps {
@@ -28,6 +28,8 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
         load();
     }, []);
 
+    const metamagicOptions = React.useMemo(() => character.classes.flatMap(c => (c.definition as any).options?.metamagic || []), [character.classes]);
+
     const pendingChoices = (character.choices || []).filter(c => c.value === null || c.value === undefined || (Array.isArray(c.value) && c.value.length === 0));
     const completedChoices = (character.choices || []).filter(c => !pendingChoices.includes(c)).sort((a, b) => b.level - a.level);
 
@@ -46,13 +48,13 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
             });
             if (found) {
                 if (typeof found === 'string') {
-                    return { name: found, desc: '', effects: inferOptionEffects(found) };
+                    return { name: found, desc: '', effects: [] };
                 }
-                const optEffects = (found.effects && found.effects.length > 0) ? found.effects : inferOptionEffects(found.name || found.index || '', found.desc);
+                const optEffects = found.effects || [];
                 return { ...found, effects: optEffects };
             }
             const valStr = typeof val === 'string' ? val : (val?.name || val?.index || '');
-            return { name: valStr, desc: '', effects: inferOptionEffects(valStr) };
+            return { name: valStr, desc: '', effects: [] };
         }).filter(o => o && o.name);
 
         matchingOptions.forEach(selectedOption => {
@@ -460,6 +462,7 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
                                 allFeats={allFeats}
                                 allSpells={allSpells}
                                 character={character}
+                                metamagicOptions={metamagicOptions}
                             />
                         ))}
                     </div>
@@ -508,9 +511,10 @@ interface ChoiceCardProps {
     allFeats: FeatDetail[];
     allSpells: SpellDetail[];
     character: CharacterState;
+    metamagicOptions: any[];
 }
 
-const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onMakeChoice, allFeats, allSpells, character }) => {
+const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onMakeChoice, allFeats, allSpells, character, metamagicOptions }) => {
     const [selection, setSelection] = useState<any>(() => {
         if (choice.revertData?.isMetamagicMatrix) {
             return choice.revertData.isProgression ? [] : {};
@@ -742,7 +746,7 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onMakeChoice, allFeats,
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">{isProgression ? `Select ${count} Options:` : 'New Option:'}</label>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                                    {METAMAGIC_OPTIONS.map((opt) => {
+                                    {metamagicOptions.map((opt: any) => {
                                         const isAlreadyKnown = currentMetamagics.includes(opt.name);
                                         const isSelected = isProgression 
                                             ? (Array.isArray(selection) && selection.includes(opt.name))

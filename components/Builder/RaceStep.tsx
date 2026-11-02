@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 /* Import AbilityName type from types */
 import { APIReference, RaceDetail, SubraceDetail, SpellDetail, AbilityName, ABILITY_NAMES, ABILITY_LABELS } from '../../types';
-import { fetchRaces, fetchRaceDetail, fetchSubraces, fetchSubraceDetail, getLocalSpells } from '../../data/index';
+import { fetchRaces, fetchRaceDetail, fetchSubraces, fetchSubraceDetail, fetchSpellsByClass } from '../../data/index';
 import { SKILL_LIST } from '../../utils/rules';
 import { SIMPLE_WEAPONS, MARTIAL_WEAPONS, TOOLS, SKILLS, LANGUAGES, getProficiencyType, getAllowedSwaps } from '../../data/origin_customization';
 
@@ -25,12 +25,7 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
   const [loadingSubraces, setLoadingSubraces] = useState(false);
 
   // Extra Options State
-  const [ancestry, setAncestry] = useState('');
-  const [highElfCantrip, setHighElfCantrip] = useState<SpellDetail | null>(null);
-  const [halfElfSkills, setHalfElfSkills] = useState<string[]>([]);
-  const [halfElfAsi, setHalfElfAsi] = useState<string[]>([]);
-  const [chosenLanguages, setChosenLanguages] = useState<string[]>([]);
-  const [traitSelections, setTraitSelections] = useState<Record<string, any>>({});
+  const [raceChoiceSelections, setRaceChoiceSelections] = useState<Record<string, string[]>>({});
   const [validationError, setValidationError] = useState<string | null>(null);
   
   // Customize Your Origin State
@@ -40,31 +35,35 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
   const [customProficiencies, setCustomProficiencies] = useState<Record<string, string>>({});
   const [proficiencySwaps, setProficiencySwaps] = useState<{original: string, replacement: string}[]>([]);
   
-  // Data for options
-  const [wizardCantrips, setWizardCantrips] = useState<SpellDetail[]>([]);
+  // Data for spell choices
+  const [spellChoiceOptions, setSpellChoiceOptions] = useState<Record<string, SpellDetail[]>>({});
 
   useEffect(() => {
     const load = async () => {
       const results = await fetchRaces(userId);
       setRaces(results);
       setLoading(false);
-      
-      const spells = getLocalSpells('wizard', 0);
-      setWizardCantrips(spells);
     };
     load();
   }, [userId]);
+
+  useEffect(() => {
+      const tags = new Set<string>();
+      [...((previewRace as any)?.choices || []), ...((selectedSubrace as any)?.choices || [])]
+          .forEach((choice: any) => {
+              if (choice.kind === 'spell' && choice.sourceClass) tags.add(choice.sourceClass);
+          });
+      tags.forEach(async tag => {
+          const spells = await fetchSpellsByClass(tag);
+          setSpellChoiceOptions(prev => prev[tag] ? prev : { ...prev, [tag]: spells });
+      });
+  }, [previewRace, selectedSubrace]);
 
   const handlePreview = async (index: string) => {
     setPreviewRace(null);
     setSelectedSubrace(null);
     setSubraces([]);
-    setAncestry('');
-    setHighElfCantrip(null);
-    setHalfElfSkills([]);
-    setHalfElfAsi([]);
-    setChosenLanguages([]);
-    setTraitSelections({});
+    setRaceChoiceSelections({});
     setIsCustomizingOrigin(false);
     setCustomAsi({});
     setCustomLanguages([]);
@@ -86,360 +85,151 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
   const handleSubraceSelect = async (index: string) => {
       const detail = await fetchSubraceDetail(index, userId);
       setSelectedSubrace(detail);
-      setHighElfCantrip(null);
       setValidationError(null);
   };
 
-  const toggleHalfElfSkill = (skill: string) => {
-      setValidationError(null);
-      if (halfElfSkills.includes(skill)) {
-          setHalfElfSkills(prev => prev.filter(s => s !== skill));
-      } else {
-          if (halfElfSkills.length < 2) {
-              setHalfElfSkills(prev => [...prev, skill]);
-          }
+  const getRaceChoices = (): any[] => {
+      const choices = [
+          ...((previewRace as any)?.choices || []),
+          ...((selectedSubrace as any)?.choices || []),
+      ];
+      if ((previewRace as any)?.language_options > 0 && !choices.some((choice: any) => choice.kind === 'language')) {
+          choices.push({
+              id: `${previewRace.index}-extra-languages`,
+              kind: 'language',
+              count: (previewRace as any).language_options,
+              source: 'race',
+              options: LANGUAGE_LIST,
+          });
       }
+      return choices;
   };
 
-  const toggleHalfElfAsi = (stat: string) => {
-      setValidationError(null);
-      if (halfElfAsi.includes(stat)) {
-          setHalfElfAsi(prev => prev.filter(s => s !== stat));
-      } else {
-          if (halfElfAsi.length < 2) {
-              setHalfElfAsi(prev => [...prev, stat]);
-          }
-      }
+  const getChoiceOptions = (choice: any): any[] => {
+      if (Array.isArray(choice.options) && choice.options.length > 0) return choice.options;
+      if (choice.kind === 'spell' && choice.sourceClass) return spellChoiceOptions[choice.sourceClass] || [];
+      if (choice.kind === 'skill') return SKILL_LIST.map(skill => skill.name);
+      if (choice.kind === 'tool') return TOOLS;
+      if (choice.kind === 'language') return LANGUAGE_LIST;
+      return [];
   };
 
-  const toggleLanguage = (lang: string, max: number) => {
+  const toggleRaceChoice = (choice: any, optionName: string) => {
       setValidationError(null);
-      if (chosenLanguages.includes(lang)) {
-          setChosenLanguages(prev => prev.filter(l => l !== lang));
-      } else {
-          if (chosenLanguages.length < max) {
-              setChosenLanguages(prev => [...prev, lang]);
-          }
-      }
+      const count = Number(choice.count || 1);
+      setRaceChoiceSelections(prev => {
+          const current = prev[choice.id] || [];
+          if (current.includes(optionName)) return { ...prev, [choice.id]: current.filter(item => item !== optionName) };
+          if (current.length < count) return { ...prev, [choice.id]: [...current, optionName] };
+          return prev;
+      });
   };
 
   const handleConfirm = () => {
-    if (previewRace) {
-        const langOptions = previewRace.language_options || 0;
-        
-        // Validation for Custom Origin
-        if (isCustomizingOrigin) {
-            const baseBonuses = [...(previewRace.ability_bonuses || []), ...(selectedSubrace?.ability_bonuses || [])].map(b => b.bonus);
-            if (previewRace.index === 'half-elf') baseBonuses.push(1, 1); // Half-elf gets +2 CHA and two +1s
-            
-            const customBonuses = Object.values(customAsi).filter(b => b > 0);
-            
-            const sortedBase = [...baseBonuses].sort((a, b) => b - a);
-            const sortedCustom = [...customBonuses].sort((a, b) => b - a);
-            
-            if (JSON.stringify(sortedBase) !== JSON.stringify(sortedCustom)) {
-                setValidationError(`Please distribute your Ability Score points correctly: ${sortedBase.map(b => `+${b}`).join(', ')}.`);
-                return;
-            }
+    if (!previewRace) return;
 
-            const baseLanguagesCount = (previewRace.languages?.length || 0) + (selectedSubrace?.languages?.length || 0) + langOptions;
-            if (customLanguages.length !== baseLanguagesCount) {
-                setValidationError(`Please select exactly ${baseLanguagesCount} languages.`);
-                return;
-            }
+    const raceChoices = getRaceChoices();
 
-            // Proficiency swaps are optional but must be valid if selected
-        }
-
-        if (subraces.length > 0 && !selectedSubrace) {
-            setValidationError("Please select a subrace.");
+    // Validation for Custom Origin
+    if (isCustomizingOrigin) {
+        const baseBonuses = [...(previewRace.ability_bonuses || []), ...(selectedSubrace?.ability_bonuses || [])].map(b => b.bonus);
+        const customBonuses = Object.values(customAsi).filter(b => b > 0);
+        const sortedBase = [...baseBonuses].sort((a, b) => b - a);
+        const sortedCustom = [...customBonuses].sort((a, b) => b - a);
+        if (JSON.stringify(sortedBase) !== JSON.stringify(sortedCustom)) {
+            setValidationError(`Please distribute your Ability Score points correctly: ${sortedBase.map(b => `+${b}`).join(', ')}.`);
             return;
         }
-        if (previewRace.index === 'dragonborn' && !ancestry) {
-            setValidationError("Please select a Draconic Ancestry.");
+        const languageChoiceCount = getRaceChoices().filter((choice: any) => choice.kind === 'language').reduce((sum: number, choice: any) => sum + Number(choice.count || 1), 0);
+        const baseLanguagesCount = (previewRace.languages?.length || 0) + (selectedSubrace?.languages?.length || 0) + languageChoiceCount;
+        if (customLanguages.length !== baseLanguagesCount) {
+            setValidationError(`Please select exactly ${baseLanguagesCount} languages.`);
             return;
         }
-        if (previewRace.index === 'half-elf') {
-            if (halfElfSkills.length !== 2) {
-                setValidationError("Please select exactly 2 skills.");
-                return;
-            }
-            if (halfElfAsi.length !== 2) {
-                setValidationError("Please select 2 additional Ability Scores to increase.");
-                return;
-            }
-        }
-        if (selectedSubrace?.index === 'high-elf' && !highElfCantrip) {
-            setValidationError("Please select a Wizard cantrip.");
-            return;
-        }
-        if (langOptions > 0 && chosenLanguages.length !== langOptions) {
-            setValidationError(`Please select ${langOptions} additional language(s).`);
-            return;
-        }
+    }
 
-        // Additional Trait Validations
-        if (previewRace.index === 'kenku' && (!traitSelections['kenku-training'] || traitSelections['kenku-training'].length !== 2)) {
-            setValidationError("Please select 2 skills for Kenku Training.");
+    if (subraces.length > 0 && !selectedSubrace) {
+        setValidationError("Please select a subrace.");
+        return;
+    }
+
+    for (const choice of raceChoices) {
+        const selected = raceChoiceSelections[choice.id] || [];
+        if (selected.length !== Number(choice.count || 1)) {
+            const label = choice.kind === 'ancestry' ? 'ancestry' : choice.kind;
+            setValidationError(`Please choose ${choice.count || 1} ${label} option(s).`);
             return;
         }
-        if (previewRace.index === 'changeling' && (!traitSelections['changeling-instincts'] || traitSelections['changeling-instincts'].length !== 2)) {
-            setValidationError("Please select 2 skills for Changeling Instincts.");
-            return;
-        }
-        if (previewRace.index === 'lizardfolk' && (!traitSelections['hunter-lore'] || traitSelections['hunter-lore'].length !== 2)) {
-            // Note: Hunter's Lore might not be in data, but if it was, we'd validate it here.
-            // Actually, let's check if it's in the data first.
-        }
-        if (previewRace.index === 'warforged') {
-            if (!traitSelections['specialized-design-skill']) {
-                setValidationError("Please select a skill for Specialized Design.");
-                return;
-            }
-            if (!traitSelections['specialized-design-tool']) {
-                setValidationError("Please select a tool for Specialized Design.");
-                return;
-            }
-        }
-        if (previewRace.index === 'centaur' && !traitSelections['survivor']) {
-            setValidationError("Please select a skill for Survivor.");
-            return;
-        }
-        if (previewRace.index === 'minotaur' && !traitSelections['imposing-presence']) {
-            setValidationError("Please select a skill for Imposing Presence.");
-            return;
-        }
-        if (previewRace.index === 'leonin' && !traitSelections['hunter-instincts']) {
-            setValidationError("Please select a skill for Hunter Instincts.");
-            return;
-        }
-        if (selectedSubrace?.index === 'githyanki') {
-            if (!traitSelections['decadent-mastery-skill-tool']) {
-                setValidationError("Please select a skill or tool for Decadent Mastery.");
-                return;
-            }
-            if (!traitSelections['decadent-mastery-language']) {
-                setValidationError("Please select a language for Decadent Mastery.");
-                return;
-            }
-        }
+    }
 
-        setValidationError(null);
-        
-        const choices: any[] = [];
-        const extraData: any = { ...traitSelections };
+    const extraData: any = {};
+    const skills = new Set<string>();
+    const tools = new Set<string>();
+    const languages = new Set<string>();
+    const features: any[] = [];
+    const abilityBonuses: any[] = [];
+    const levelChoices: any[] = [];
 
-        if (isCustomizingOrigin) {
-            extraData.isCustomOrigin = true;
-            extraData.customAsi = customAsi;
-            extraData.customLanguages = customLanguages;
-            extraData.customProficiencies = customProficiencies;
-            extraData.proficiencySwaps = proficiencySwaps;
+    if (isCustomizingOrigin) {
+        extraData.isCustomOrigin = true;
+        extraData.customAsi = customAsi;
+        extraData.customLanguages = customLanguages;
+        extraData.customProficiencies = customProficiencies;
+        extraData.proficiencySwaps = proficiencySwaps;
+    }
 
-            choices.push({
-                id: 'race-custom-origin-asi',
-                level: 1,
-                source: 'Custom Origin',
-                type: 'asi',
-                label: 'Custom Ability Score Increases',
-                value: customAsi
-            });
+    raceChoices.forEach(choice => {
+        const selected = raceChoiceSelections[choice.id] || [];
+        const options = getChoiceOptions(choice);
+        selected.forEach(name => {
+            const option = options.find((item: any) => (typeof item === 'string' ? item : item.name) === name);
+            const label = typeof option === 'string' ? option : (option?.name || name);
+            const category = typeof option === 'object' && option?.category ? option.category : choice.kind;
 
-            choices.push({
-                id: 'race-custom-origin-languages',
-                level: 1,
-                source: 'Custom Origin',
-                type: 'language',
-                label: 'Custom Languages',
-                value: customLanguages
-            });
-
-            if (proficiencySwaps.length > 0) {
-                choices.push({
-                    id: 'race-custom-origin-proficiencies',
+            if (category === 'skill' || choice.kind === 'skill') skills.add(label);
+            else if (category === 'tool' || choice.kind === 'tool') tools.add(label);
+            else if (category === 'language' || choice.kind === 'language') languages.add(label);
+            else if (choice.kind === 'ability') {
+                abilityBonuses.push({
+                    ability_score: { index: name, name: name.toUpperCase(), url: '' },
+                    bonus: Number(choice.amount || 1),
+                });
+            } else if (choice.kind === 'spell' && option && typeof option === 'object') {
+                extraData.cantrip = { ...option, sourceClassIndex: 'racial', isPrepared: true };
+            } else if (option && typeof option === 'object' && Array.isArray(option.effects) && option.effects.length > 0) {
+                features.push({
+                    index: `race-${choice.id}-${label}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+                    name: label,
                     level: 1,
-                    source: 'Custom Origin',
-                    type: 'proficiency',
-                    label: 'Custom Proficiencies',
-                    value: proficiencySwaps
+                    source: selectedSubrace?.name || previewRace.name,
+                    desc: option.desc ? [].concat(option.desc) : [choice.label || choice.id],
+                    effects: option.effects,
+                    url: '',
                 });
             }
-        }
-        
-        if (ancestry) {
-            extraData.ancestry = ancestry;
-            choices.push({
-                id: `race-ancestry-${previewRace.index}`,
-                level: 1,
-                source: previewRace.name,
-                type: 'ancestry',
-                label: 'Draconic Ancestry',
-                value: ancestry,
-                options: ['Black', 'Blue', 'Brass', 'Bronze', 'Copper', 'Gold', 'Green', 'Red', 'Silver', 'White']
-            });
-        }
-        
-        if (halfElfSkills.length > 0) {
-            extraData.skills = halfElfSkills;
-            choices.push({
-                id: 'race-half-elf-skills',
-                level: 1,
-                source: 'Half-Elf',
-                type: 'skill',
-                label: 'Skill Versatility',
-                value: halfElfSkills,
-                options: SKILL_LIST.map(s => s.name),
-                count: 2
-            });
-        }
-        
-        if (halfElfAsi.length > 0) {
-            extraData.halfElfAsi = halfElfAsi;
-            choices.push({
-                id: 'race-half-elf-asi',
-                level: 1,
-                source: 'Half-Elf',
-                type: 'asi',
-                label: 'Ability Score Increase',
-                value: halfElfAsi,
-                options: ABILITY_NAMES.filter(a => a !== 'cha'),
-                count: 2
-            });
-        }
-        
-        if (highElfCantrip) {
-            extraData.cantrip = highElfCantrip;
-            choices.push({
-                id: 'race-high-elf-cantrip',
-                level: 1,
-                source: 'High Elf',
-                type: 'spell',
-                label: 'High Elf Cantrip',
-                value: highElfCantrip.name,
-                options: wizardCantrips.map(s => s.name)
-            });
-        }
-        
-        if (chosenLanguages.length > 0) {
-            extraData.languages = chosenLanguages;
-            choices.push({
-                id: `race-languages-${previewRace.index}`,
-                level: 1,
-                source: previewRace.name,
-                type: 'language',
-                label: 'Extra Languages',
-                value: chosenLanguages,
-                options: LANGUAGE_LIST,
-                count: previewRace.language_options
-            });
-        }
+        });
 
-        // Trait Selections to Choices
-        if (traitSelections['kenku-training']) {
-            choices.push({
-                id: 'race-kenku-training',
-                level: 1,
-                source: 'Kenku',
-                type: 'skill',
-                label: 'Kenku Training',
-                value: traitSelections['kenku-training'],
-                options: ["Acrobatics", "Deception", "Stealth", "Sleight of Hand"],
-                count: 2
-            });
-        }
-        if (traitSelections['changeling-instincts']) {
-            choices.push({
-                id: 'race-changeling-instincts',
-                level: 1,
-                source: 'Changeling',
-                type: 'skill',
-                label: 'Changeling Instincts',
-                value: traitSelections['changeling-instincts'],
-                options: ["Deception", "Insight", "Intimidation", "Persuasion"],
-                count: 2
-            });
-        }
-        if (traitSelections['specialized-design-skill']) {
-            choices.push({
-                id: 'race-warforged-skill',
-                level: 1,
-                source: 'Warforged',
-                type: 'skill',
-                label: 'Specialized Design: Skill',
-                value: traitSelections['specialized-design-skill'],
-                options: SKILL_LIST.map(s => s.name)
-            });
-        }
-        if (traitSelections['specialized-design-tool']) {
-            choices.push({
-                id: 'race-warforged-tool',
-                level: 1,
-                source: 'Warforged',
-                type: 'tool',
-                label: 'Specialized Design: Tool',
-                value: traitSelections['specialized-design-tool'],
-                options: ["Alchemist's Supplies", "Brewer's Supplies", "Calligrapher's Supplies", "Carpenter's Tools", "Cartographer's Tools", "Cobbler's Tools", "Cook's Utensils", "Glassblower's Tools", "Jeweler's Tools", "Leatherworker's Tools", "Mason's Tools", "Painter's Supplies", "Potter's Tools", "Smith's Tools", "Tinker's Tools", "Weaver's Tools", "Woodcarver's Tools", "Disguise Kit", "Forgery Kit", "Herbalism Kit", "Navigator's Tools", "Poisoner's Kit", "Thieves' Tools"]
-            });
-        }
-        if (traitSelections['survivor']) {
-            choices.push({
-                id: 'race-centaur-survivor',
-                level: 1,
-                source: 'Centaur',
-                type: 'skill',
-                label: 'Survivor',
-                value: traitSelections['survivor'],
-                options: ["Animal Handling", "Medicine", "Nature", "Survival"]
-            });
-        }
-        if (traitSelections['imposing-presence']) {
-            choices.push({
-                id: 'race-minotaur-presence',
-                level: 1,
-                source: 'Minotaur',
-                type: 'skill',
-                label: 'Imposing Presence',
-                value: traitSelections['imposing-presence'],
-                options: ["Intimidation", "Persuasion"]
-            });
-        }
-        if (traitSelections['hunter-instincts']) {
-            choices.push({
-                id: 'race-leonin-instincts',
-                level: 1,
-                source: 'Leonin',
-                type: 'skill',
-                label: 'Hunter Instincts',
-                value: traitSelections['hunter-instincts'],
-                options: ["Athletics", "Intimidation", "Perception", "Survival"]
-            });
-        }
-        if (traitSelections['decadent-mastery-skill-tool']) {
-            choices.push({
-                id: 'race-githyanki-mastery-skill-tool',
-                level: 1,
-                source: 'Githyanki',
-                type: 'skill', // or tool, but we'll use skill for simplicity in overview for now
-                label: 'Decadent Mastery: Skill/Tool',
-                value: traitSelections['decadent-mastery-skill-tool'],
-                options: [...SKILL_LIST.map(s => s.name), "Alchemist's Supplies", "Brewer's Supplies", "Calligrapher's Supplies", "Carpenter's Tools", "Cartographer's Tools", "Cobbler's Tools", "Cook's Utensils", "Glassblower's Tools", "Jeweler's Tools", "Leatherworker's Tools", "Mason's Tools", "Painter's Supplies", "Potter's Tools", "Smith's Tools", "Tinker's Tools", "Weaver's Tools", "Woodcarver's Tools", "Disguise Kit", "Forgery Kit", "Herbalism Kit", "Navigator's Tools", "Poisoner's Kit", "Thieves' Tools"]
-            });
-        }
-        if (traitSelections['decadent-mastery-language']) {
-            choices.push({
-                id: 'race-githyanki-mastery-language',
-                level: 1,
-                source: 'Githyanki',
-                type: 'language',
-                label: 'Decadent Mastery: Language',
-                value: traitSelections['decadent-mastery-language'],
-                options: LANGUAGE_LIST
-            });
-        }
+        levelChoices.push({
+            id: `race-${choice.id}`,
+            level: 1,
+            source: selectedSubrace?.name || previewRace.name,
+            type: choice.kind === 'ability' ? 'asi' : choice.kind === 'spell' ? 'spell' : choice.kind === 'language' ? 'language' : 'other',
+            label: choice.label || choice.kind,
+            value: selected,
+            options,
+            count: choice.count || 1,
+            revertData: { abilityBonuses },
+        });
+    });
 
-        extraData.choices = choices;
-        onSelect(previewRace, selectedSubrace, extraData);
-    }
+    if (skills.size > 0) extraData.skills = Array.from(skills);
+    if (tools.size > 0) extraData.tools = Array.from(tools);
+    if (languages.size > 0) extraData.languages = Array.from(languages);
+    if (features.length > 0) extraData.features = features;
+    if (abilityBonuses.length > 0) extraData.abilityBonuses = abilityBonuses;
+    extraData.choices = levelChoices;
+
+    onSelect(previewRace, selectedSubrace, extraData);
   };
 
   if (loading) return <div className="text-dnd-gold animate-pulse text-center mt-20 font-serif italic text-xl">Summoning lineages from the archives...</div>;
@@ -493,16 +283,24 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
                                             baseAsi[b.ability_score.index] = (baseAsi[b.ability_score.index] || 0) + b.bonus;
                                         });
                                     }
-                                    if (previewRace.index === 'half-elf') {
-                                        baseAsi['cha'] = 2;
-                                        halfElfAsi.forEach(stat => {
-                                            baseAsi[stat] = (baseAsi[stat] || 0) + 1;
-                                        });
-                                    }
+                                    // Include generic ability/language choices from the
+                                    // content data instead of race-name special cases.
+                                    getRaceChoices().forEach((choice: any) => {
+                                        const selected = raceChoiceSelections[choice.id] || [];
+                                        if (choice.kind === 'ability') {
+                                            selected.forEach(stat => {
+                                                baseAsi[stat] = (baseAsi[stat] || 0) + Number(choice.amount || 1);
+                                            });
+                                        }
+                                    });
                                     setCustomAsi(baseAsi);
-                                    
-                                    const baseLangs = [...(previewRace.languages || []), ...(selectedSubrace?.languages || [])].map((l: any) => typeof l === 'string' ? l : l.name);
-                                    setCustomLanguages([...baseLangs, ...chosenLanguages]);
+
+                                    const baseLangs = [...(previewRace.languages || []), ...(selectedSubrace?.languages || [])]
+                                        .map((l: any) => typeof l === 'string' ? l : l.name);
+                                    const chosenLangChoices = getRaceChoices()
+                                        .filter((choice: any) => choice.kind === 'language')
+                                        .flatMap((choice: any) => raceChoiceSelections[choice.id] || []);
+                                    setCustomLanguages([...baseLangs, ...chosenLangChoices]);
                                 }
                             }}
                             className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border ${isCustomizingOrigin ? 'bg-dnd-gold border-dnd-gold text-black' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'}`}
@@ -539,7 +337,9 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
                                     <div className="flex gap-2">
                                         {(() => {
                                             const baseBonuses = [...(previewRace.ability_bonuses || []), ...(selectedSubrace?.ability_bonuses || [])].map(b => b.bonus);
-                                            if (previewRace.index === 'half-elf') baseBonuses.push(1, 1); // Half-elf gets +2 CHA and two +1s
+                                            getRaceChoices().filter((choice: any) => choice.kind === 'ability').forEach((choice: any) => {
+                                                (raceChoiceSelections[choice.id] || []).forEach(() => baseBonuses.push(Number(choice.amount || 1)));
+                                            });
                                             return baseBonuses.sort((a, b) => b - a).map((b, i) => (
                                                 <div key={i} className="bg-dnd-gold/20 border border-dnd-gold/50 px-3 py-1 rounded text-dnd-gold font-black text-xs">+{b}</div>
                                             ));
@@ -582,7 +382,7 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
                                                 type="checkbox" 
                                                 checked={customLanguages.includes(lang)}
                                                 onChange={() => {
-                                                    const max = (previewRace.languages?.length || 0) + (selectedSubrace?.languages?.length || 0) + (previewRace.language_options || 0);
+                                                    const max = (previewRace.languages?.length || 0) + (selectedSubrace?.languages?.length || 0) + getRaceChoices().filter((choice: any) => choice.kind === 'language').reduce((sum: number, choice: any) => sum + Number(choice.count || 1), 0);
                                                     if (customLanguages.includes(lang)) {
                                                         setCustomLanguages(prev => prev.filter(l => l !== lang));
                                                     } else if (customLanguages.length < max) {
@@ -596,7 +396,7 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
                                     ))}
                                 </div>
                                 <p className="text-[10px] text-gray-500 mt-4 uppercase font-bold">
-                                    Selected: {customLanguages.length} / {(previewRace.languages?.length || 0) + (selectedSubrace?.languages?.length || 0) + (previewRace.language_options || 0)}
+                                    Selected: {customLanguages.length} / {(previewRace.languages?.length || 0) + (selectedSubrace?.languages?.length || 0) + getRaceChoices().filter((choice: any) => choice.kind === 'language').reduce((sum: number, choice: any) => sum + Number(choice.count || 1), 0)}
                                 </p>
                             </section>
 
@@ -676,11 +476,6 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
                         {ABILITY_LABELS[b.ability_score.index as AbilityName] || b.ability_score.name}: <span className="text-green-400">+{b.bonus}</span>
                       </div>
                     ))}
-                    {previewRace.index === 'half-elf' && (
-                       <div className="bg-blue-900/10 border border-blue-900/50 px-4 py-2 rounded-lg text-sm font-bold text-blue-300">
-                         +1 to two other ability scores
-                       </div>
-                    )}
                   </div>
                 </section>
 
@@ -729,273 +524,42 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
                     </section>
                 )}
 
-                {/* SPECIAL CHOICES */}
-                {previewRace.index === 'dragonborn' && (
-                    <section className="bg-red-900/10 border border-red-900/30 p-6 rounded-xl animate-in zoom-in-95">
-                        <h4 className="text-xs font-black text-red-500 uppercase tracking-[0.2em] mb-4">Select Draconic Ancestry</h4>
-                        <select 
-                          value={ancestry} 
-                          onChange={(e) => setAncestry(e.target.value)}
-                          className="w-full bg-[#0b0c0e] border border-gray-700 rounded-lg p-4 text-white focus:border-dnd-gold outline-none font-bold"
-                        >
-                            <option value="">Choose an element...</option>
-                            {['Black (Acid - Line)', 'Blue (Lightning - Line)', 'Brass (Fire - Line)', 'Bronze (Lightning - Line)', 'Copper (Acid - Line)', 'Gold (Fire - Cone)', 'Green (Poison - Cone)', 'Red (Fire - Cone)', 'Silver (Cold - Cone)', 'White (Cold - Cone)'].map(o => (
-                              <option key={o} value={o.split(' ')[0]}>{o}</option>
-                            ))}
-                        </select>
-                    </section>
-                )}
-
-                {selectedSubrace?.index === 'high-elf' && (
-                    <section className="bg-blue-900/10 border border-blue-900/30 p-6 rounded-xl">
-                        <h4 className="text-xs font-black text-blue-400 uppercase tracking-[0.2em] mb-4">High Elf Cantrip</h4>
-                        <select 
-                          onChange={(e) => setHighElfCantrip(wizardCantrips.find(s => s.index === e.target.value) || null)}
-                          className="w-full bg-[#0b0c0e] border border-gray-700 rounded-lg p-4 text-white focus:border-dnd-gold outline-none"
-                        >
-                            <option value="">Select a Wizard cantrip...</option>
-                            {wizardCantrips.map(s => <option key={s.index} value={s.index}>{s.name}</option>)}
-                        </select>
-                    </section>
-                )}
-
-                {/* Kenku Training */}
-                {previewRace?.index === 'kenku' && (
-                    <section className="bg-gray-900/20 border border-gray-700/30 p-6 rounded-xl">
-                        <h4 className="text-xs font-black text-dnd-gold uppercase tracking-[0.2em] mb-4">Kenku Training</h4>
-                        <p className="text-[10px] text-gray-500 mb-4 uppercase font-bold">Select 2 skills from the list below.</p>
-                        <div className="grid grid-cols-2 gap-2">
-                            {["Acrobatics", "Deception", "Stealth", "Sleight of Hand"].map(skill => (
-                                <button
-                                    key={skill}
-                                    onClick={() => {
-                                        const current = traitSelections['kenku-training'] || [];
-                                        if (current.includes(skill)) {
-                                            setTraitSelections(prev => ({ ...prev, 'kenku-training': current.filter((s: string) => s !== skill) }));
-                                        } else if (current.length < 2) {
-                                            setTraitSelections(prev => ({ ...prev, 'kenku-training': [...current, skill] }));
-                                        }
-                                    }}
-                                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all border ${
-                                        (traitSelections['kenku-training'] || []).includes(skill)
-                                        ? 'bg-dnd-gold text-black border-dnd-gold'
-                                        : 'bg-gray-800 text-gray-400 border-gray-700 hover:border-dnd-gold/50'
-                                    }`}
-                                >
-                                    {skill}
-                                </button>
-                            ))}
-                        </div>
-                    </section>
-                )}
-
-                {/* Changeling Instincts */}
-                {previewRace?.index === 'changeling' && (
-                    <section className="bg-gray-900/20 border border-gray-700/30 p-6 rounded-xl">
-                        <h4 className="text-xs font-black text-dnd-gold uppercase tracking-[0.2em] mb-4">Changeling Instincts</h4>
-                        <p className="text-[10px] text-gray-500 mb-4 uppercase font-bold">Select 2 skills from the list below.</p>
-                        <div className="grid grid-cols-2 gap-2">
-                            {["Deception", "Insight", "Intimidation", "Persuasion"].map(skill => (
-                                <button
-                                    key={skill}
-                                    onClick={() => {
-                                        const current = traitSelections['changeling-instincts'] || [];
-                                        if (current.includes(skill)) {
-                                            setTraitSelections(prev => ({ ...prev, 'changeling-instincts': current.filter((s: string) => s !== skill) }));
-                                        } else if (current.length < 2) {
-                                            setTraitSelections(prev => ({ ...prev, 'changeling-instincts': [...current, skill] }));
-                                        }
-                                    }}
-                                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all border ${
-                                        (traitSelections['changeling-instincts'] || []).includes(skill)
-                                        ? 'bg-dnd-gold text-black border-dnd-gold'
-                                        : 'bg-gray-800 text-gray-400 border-gray-700 hover:border-dnd-gold/50'
-                                    }`}
-                                >
-                                    {skill}
-                                </button>
-                            ))}
-                        </div>
-                    </section>
-                )}
-
-                {/* Warforged Specialized Design */}
-                {previewRace?.index === 'warforged' && (
-                    <section className="bg-gray-900/20 border border-gray-700/30 p-6 rounded-xl space-y-4">
-                        <h4 className="text-xs font-black text-dnd-gold uppercase tracking-[0.2em] mb-4">Specialized Design</h4>
-                        <div>
-                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">Skill Proficiency</label>
-                            <select 
-                                value={traitSelections['specialized-design-skill'] || ''}
-                                onChange={(e) => setTraitSelections(prev => ({ ...prev, 'specialized-design-skill': e.target.value }))}
-                                className="w-full bg-[#0b0c0e] border border-gray-700 rounded-lg p-3 text-sm text-white focus:border-dnd-gold outline-none"
-                            >
-                                <option value="">Select a Skill...</option>
-                                {SKILL_LIST.map(skill => <option key={skill.name} value={skill.name}>{skill.name}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">Tool Proficiency</label>
-                            <select 
-                                value={traitSelections['specialized-design-tool'] || ''}
-                                onChange={(e) => setTraitSelections(prev => ({ ...prev, 'specialized-design-tool': e.target.value }))}
-                                className="w-full bg-[#0b0c0e] border border-gray-700 rounded-lg p-3 text-sm text-white focus:border-dnd-gold outline-none"
-                            >
-                                <option value="">Select a Tool...</option>
-                                {["Alchemist's Supplies", "Brewer's Supplies", "Calligrapher's Supplies", "Carpenter's Tools", "Cartographer's Tools", "Cobbler's Tools", "Cook's Utensils", "Glassblower's Tools", "Jeweler's Tools", "Leatherworker's Tools", "Mason's Tools", "Painter's Supplies", "Potter's Tools", "Smith's Tools", "Tinker's Tools", "Weaver's Tools", "Woodcarver's Tools", "Disguise Kit", "Forgery Kit", "Herbalism Kit", "Navigator's Tools", "Poisoner's Kit", "Thieves' Tools"].map(tool => (
-                                    <option key={tool} value={tool}>{tool}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </section>
-                )}
-
-                {/* Centaur Survivor */}
-                {previewRace?.index === 'centaur' && (
-                    <section className="bg-gray-900/20 border border-gray-700/30 p-6 rounded-xl">
-                        <h4 className="text-xs font-black text-dnd-gold uppercase tracking-[0.2em] mb-4">Survivor</h4>
-                        <select 
-                            value={traitSelections['survivor'] || ''}
-                            onChange={(e) => setTraitSelections(prev => ({ ...prev, 'survivor': e.target.value }))}
-                            className="w-full bg-[#0b0c0e] border border-gray-700 rounded-lg p-3 text-sm text-white focus:border-dnd-gold outline-none"
-                        >
-                            <option value="">Select a Skill...</option>
-                            {["Animal Handling", "Medicine", "Nature", "Survival"].map(skill => <option key={skill} value={skill}>{skill}</option>)}
-                        </select>
-                    </section>
-                )}
-
-                {/* Minotaur Imposing Presence */}
-                {previewRace?.index === 'minotaur' && (
-                    <section className="bg-gray-900/20 border border-gray-700/30 p-6 rounded-xl">
-                        <h4 className="text-xs font-black text-dnd-gold uppercase tracking-[0.2em] mb-4">Imposing Presence</h4>
-                        <select 
-                            value={traitSelections['imposing-presence'] || ''}
-                            onChange={(e) => setTraitSelections(prev => ({ ...prev, 'imposing-presence': e.target.value }))}
-                            className="w-full bg-[#0b0c0e] border border-gray-700 rounded-lg p-3 text-sm text-white focus:border-dnd-gold outline-none"
-                        >
-                            <option value="">Select a Skill...</option>
-                            {["Intimidation", "Persuasion"].map(skill => <option key={skill} value={skill}>{skill}</option>)}
-                        </select>
-                    </section>
-                )}
-
-                {/* Leonin Hunter Instincts */}
-                {previewRace?.index === 'leonin' && (
-                    <section className="bg-gray-900/20 border border-gray-700/30 p-6 rounded-xl">
-                        <h4 className="text-xs font-black text-dnd-gold uppercase tracking-[0.2em] mb-4">Hunter Instincts</h4>
-                        <select 
-                            value={traitSelections['hunter-instincts'] || ''}
-                            onChange={(e) => setTraitSelections(prev => ({ ...prev, 'hunter-instincts': e.target.value }))}
-                            className="w-full bg-[#0b0c0e] border border-gray-700 rounded-lg p-3 text-sm text-white focus:border-dnd-gold outline-none"
-                        >
-                            <option value="">Select a Skill...</option>
-                            {["Athletics", "Intimidation", "Perception", "Survival"].map(skill => <option key={skill} value={skill}>{skill}</option>)}
-                        </select>
-                    </section>
-                )}
-
-                {/* Githyanki Decadent Mastery */}
-                {selectedSubrace?.index === 'githyanki' && (
-                    <section className="bg-gray-900/20 border border-gray-700/30 p-6 rounded-xl space-y-4">
-                        <h4 className="text-xs font-black text-dnd-gold uppercase tracking-[0.2em] mb-4">Decadent Mastery</h4>
-                        <div>
-                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">Skill or Tool Proficiency</label>
-                            <select 
-                                value={traitSelections['decadent-mastery-skill-tool'] || ''}
-                                onChange={(e) => setTraitSelections(prev => ({ ...prev, 'decadent-mastery-skill-tool': e.target.value }))}
-                                className="w-full bg-[#0b0c0e] border border-gray-700 rounded-lg p-3 text-sm text-white focus:border-dnd-gold outline-none"
-                            >
-                                <option value="">Select a Skill or Tool...</option>
-                                <optgroup label="Skills">
-                                    {SKILL_LIST.map(skill => <option key={skill.name} value={skill.name}>{skill.name}</option>)}
-                                </optgroup>
-                                <optgroup label="Tools">
-                                    {["Alchemist's Supplies", "Brewer's Supplies", "Calligrapher's Supplies", "Carpenter's Tools", "Cartographer's Tools", "Cobbler's Tools", "Cook's Utensils", "Glassblower's Tools", "Jeweler's Tools", "Leatherworker's Tools", "Mason's Tools", "Painter's Supplies", "Potter's Tools", "Smith's Tools", "Tinker's Tools", "Weaver's Tools", "Woodcarver's Tools", "Disguise Kit", "Forgery Kit", "Herbalism Kit", "Navigator's Tools", "Poisoner's Kit", "Thieves' Tools"].map(tool => (
-                                        <option key={tool} value={tool}>{tool}</option>
-                                    ))}
-                                </optgroup>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">Language</label>
-                            <select 
-                                value={traitSelections['decadent-mastery-language'] || ''}
-                                onChange={(e) => setTraitSelections(prev => ({ ...prev, 'decadent-mastery-language': e.target.value }))}
-                                className="w-full bg-[#0b0c0e] border border-gray-700 rounded-lg p-3 text-sm text-white focus:border-dnd-gold outline-none"
-                            >
-                                <option value="">Select a Language...</option>
-                                {LANGUAGE_LIST.map(lang => <option key={lang} value={lang}>{lang}</option>)}
-                            </select>
-                        </div>
-                    </section>
-                )}
-
-                {previewRace.index === 'half-elf' && (
-                    <div className="space-y-8">
-                        <section>
-                            <h4 className="text-xs font-black text-gray-500 uppercase tracking-[0.2em] mb-4 border-b border-gray-800 pb-2">Ability Score Increase</h4>
-                            <p className="text-[10px] text-gray-500 mb-4 uppercase font-bold">Charisma +2 (Fixed). Choose two more stats +1.</p>
-                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                                {ABILITY_NAMES.filter(a => a !== 'cha').map(stat => (
-                                    <label key={stat} className={`flex flex-col items-center justify-center p-4 rounded-xl border cursor-pointer transition-all ${halfElfAsi.includes(stat) ? 'bg-dnd-gold border-dnd-gold text-black shadow-lg scale-105' : 'bg-gray-800/40 border-gray-700 text-gray-500 hover:border-gray-500'}`}>
-                                        <input 
-                                            type="checkbox" 
-                                            className="hidden"
-                                            checked={halfElfAsi.includes(stat)}
-                                            onChange={() => toggleHalfElfAsi(stat)}
-                                            disabled={!halfElfAsi.includes(stat) && halfElfAsi.length >= 2}
-                                        />
-                                        <span className="font-black uppercase text-[10px] tracking-widest">{stat}</span>
-                                        <span className="text-xl font-black mt-1">+1</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </section>
-
-                        <section>
-                            <h4 className="text-xs font-black text-gray-500 uppercase tracking-[0.2em] mb-4 border-b border-gray-800 pb-2">Skill Versatility</h4>
-                            <p className="text-[10px] text-gray-500 mb-4 uppercase font-bold">Choose 2 skills for proficiency.</p>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                {SKILL_LIST.map(skill => (
-                                    <label key={skill.name} className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer border transition-colors ${halfElfSkills.includes(skill.name) ? 'bg-dnd-gold/10 border-dnd-gold text-dnd-gold' : 'bg-black/20 border-transparent hover:bg-gray-800'}`}>
-                                        <input 
-                                          type="checkbox" 
-                                          checked={halfElfSkills.includes(skill.name)} 
-                                          onChange={() => toggleHalfElfSkill(skill.name)}
-                                          disabled={!halfElfSkills.includes(skill.name) && halfElfSkills.length >= 2}
-                                          className="accent-dnd-gold"
-                                        />
-                                        <span className="text-xs font-bold">{skill.name}</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </section>
-                    </div>
-                )}
-
-                {previewRace.language_options > 0 && (
-                    <section className="bg-black/20 p-5 rounded-xl border border-gray-800">
-                        <h4 className="text-[10px] font-black text-dnd-gold uppercase tracking-widest mb-3">
-                            Choose {previewRace.language_options} Language(s):
-                            <span className={`ml-2 ${chosenLanguages.length === previewRace.language_options ? 'text-green-500' : 'text-dnd-red'}`}>
-                                {chosenLanguages.length} / {previewRace.language_options}
-                            </span>
-                        </h4>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            {LANGUAGE_LIST.map(lang => (
-                                <label key={lang} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer border transition-all ${chosenLanguages.includes(lang) ? 'bg-dnd-gold/10 border-dnd-gold text-dnd-gold' : 'bg-black/40 border-transparent hover:bg-gray-800 text-gray-500'}`}>
-                                    <input 
-                                        type="checkbox" 
-                                        checked={chosenLanguages.includes(lang)}
-                                        onChange={() => toggleLanguage(lang, previewRace.language_options)}
-                                        disabled={!chosenLanguages.includes(lang) && chosenLanguages.length >= previewRace.language_options}
-                                        className="accent-dnd-gold"
-                                    />
-                                    <span className="text-[10px] font-bold uppercase">{lang}</span>
-                                </label>
-                            ))}
-                        </div>
+                {getRaceChoices().length > 0 && (
+                    <section className="bg-black/20 border border-gray-800 p-6 rounded-xl space-y-5">
+                        <h4 className="text-xs font-black text-dnd-gold uppercase tracking-[0.2em] border-b border-gray-800 pb-2">Origin Choices</h4>
+                        {getRaceChoices().map((choice: any) => {
+                            const options = getChoiceOptions(choice);
+                            const selected = raceChoiceSelections[choice.id] || [];
+                            return (
+                                <div key={choice.id} className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                            {choice.label || choice.kind}
+                                        </label>
+                                        <span className={`text-[10px] font-bold ${selected.length === Number(choice.count || 1) ? 'text-green-500' : 'text-dnd-red'}`}>
+                                            {selected.length} / {choice.count || 1}
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {options.map((option: any, index: number) => {
+                                            const name = typeof option === 'string' ? option : option.name;
+                                            const display = choice.kind === 'ability' ? String(name).toUpperCase() : name;
+                                            const isSelected = selected.includes(name);
+                                            return (
+                                                <button
+                                                    key={`${name}-${index}`}
+                                                    type="button"
+                                                    onClick={() => toggleRaceChoice(choice, name)}
+                                                    className={`px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wide transition-all ${isSelected ? 'bg-dnd-gold text-black border-dnd-gold' : 'bg-gray-800/50 text-gray-400 border-gray-700 hover:border-gray-500'}`}
+                                                >
+                                                    {display}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </section>
                 )}
               </div>

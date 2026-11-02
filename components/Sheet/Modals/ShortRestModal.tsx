@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
 import { CharacterState, RollResult } from '@/types';
-import { calculateModifier, formatModifier } from '@/utils/rules';
-import { CLASS_FEATURES } from '../../../data/constants';
+import { calculateModifier, formatModifier, getEffectiveAbilities } from '@/utils/rules';
+import { getCasterProfileFor } from '../../../utils/rules';
 import { rollDice } from '../../../utils/dice';
 
 const ShortRestModal = ({ 
@@ -23,7 +23,7 @@ const ShortRestModal = ({
     if (!isOpen) return null;
 
     // Group available hit dice
-    const conMod = calculateModifier(character.abilities.con);
+    const conMod = calculateModifier(getEffectiveAbilities(character).con);
     const dieGroups: Record<string, { max: number, spent: number }> = {};
     character.classes.forEach(c => {
         const size = String(c.definition.hit_die);
@@ -62,17 +62,23 @@ const ShortRestModal = ({
     const handleFinish = () => {
         const newFeatures = {...character.featureUsage};
         Object.keys(newFeatures).forEach(key => {
-            const featureDef = Object.values(CLASS_FEATURES).find(f => f.name === key);
-            const resetRule = (newFeatures[key] as any).reset || featureDef?.reset || 'long';
+            const resetRule = (newFeatures[key] as any).reset || 'long';
             if (resetRule === 'short') {
                 newFeatures[key].current = newFeatures[key].max;
             }
         });
 
-        // Warlock Pact Magic slots also reset on short rest
+        // Pact Magic slots reset on a short rest. The current slot model merges
+        // pact slots with other slots, so only reset them when every caster in
+        // the character is a pact caster; otherwise leave them alone rather
+        // than giving a multiclass wizard all of its slots back.
         const newSlots = {...character.spellSlots};
-        const hasWarlock = character.classes.some(c => c.definition.name.toLowerCase() === 'warlock');
-        if (hasWarlock) {
+        const casterProfiles = character.classes
+            .map(c => getCasterProfileFor(c))
+            .filter((profile): profile is NonNullable<typeof profile> => !!profile && profile.type !== 'none');
+        const hasPact = casterProfiles.some(profile => profile.type === 'pact');
+        const hasNonPactCaster = casterProfiles.some(profile => profile.type !== 'pact');
+        if (hasPact && !hasNonPactCaster) {
             Object.keys(newSlots).forEach(lvl => {
                 const l = parseInt(lvl);
                 newSlots[l].current = newSlots[l].max;

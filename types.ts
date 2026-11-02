@@ -30,6 +30,51 @@ export interface APIReference {
     is_homebrew?: boolean;
 }
 
+export type CasterType = 'full' | 'half' | 'third' | 'pact' | 'artificer' | 'custom' | 'none';
+
+export interface CasterProfile {
+    type: CasterType;
+    ability?: AbilityName;
+    rounding?: 'up' | 'down';
+    note?: string;
+}
+
+export interface ResourceDefinition {
+    key: string;
+    name: string;
+    level?: number;
+    reset: 'short' | 'long';
+    max: {
+        type: 'fixed' | 'level' | 'ability' | 'proficiency' | 'table' | 'formula';
+        value?: number;
+        ability?: AbilityName;
+        min?: number;
+        multiplier?: number;
+        values?: number[];
+        expression?: string;
+    };
+    source?: string;
+}
+
+export interface ContentChoice {
+    id: string;
+    kind: 'skill' | 'tool' | 'language' | 'ability' | 'ancestry' | 'feature' | 'spell' | 'subclass' | 'proficiency';
+    count: number;
+    level?: number;
+    amount?: number;
+    source?: string;
+    sourceClass?: string;
+    options?: any[];
+    effects?: FeatureEffect[];
+    linked_save_proficiency?: boolean;
+}
+
+export interface ContentUiHook {
+    widgets?: string[];
+    companion?: { kind: string; name?: string; options?: any };
+    extraActions?: string[];
+}
+
 export interface ClassFeature {
     index: string;
     name: string;
@@ -83,9 +128,11 @@ export interface RaceDetail extends APIReference {
     starting_proficiencies?: APIReference[];
     languages: APIReference[];
     language_desc: string;
-    traits: (APIReference & { desc?: string[] })[];
+    traits: (APIReference & { desc?: string[]; effects?: FeatureEffect[]; modifiers?: FeatureEffect[] })[];
     subraces_details?: SubraceDetail[];
     url?: string;
+    source?: string;
+    choices?: ContentChoice[];
 }
 
 export interface ExtendedRaceDetail extends RaceDetail {
@@ -101,8 +148,10 @@ export interface SubraceDetail extends APIReference {
     }[];
     starting_proficiencies: APIReference[];
     languages: APIReference[];
-    traits: (APIReference & { desc?: string[] })[];
+    traits: (APIReference & { desc?: string[]; effects?: FeatureEffect[]; modifiers?: FeatureEffect[] })[];
     desc?: string[];
+    source?: string;
+    choices?: ContentChoice[];
 }
 
 export interface ExtendedSubraceDetail extends SubraceDetail {
@@ -135,19 +184,39 @@ export interface ClassDetail extends APIReference {
     feature_details?: any[];
     level_table?: any[];
     subclasses?: APIReference[];
+    caster?: CasterProfile;
+    subclass_level?: number;
+    subclass_label?: string;
+    resources?: ResourceDefinition[];
+    choices?: ContentChoice[];
+    spell_list?: string[];
+    ui?: ContentUiHook;
+    options?: any;
+    rules?: RuleEntry[];
+    source?: string;
 }
 
 export interface SubclassDetail extends APIReference {
     class: APIReference;
+    class_index?: string;
     subclass_flavor?: string;
     desc: string[];
     feature_details?: any[];
+    caster?: CasterProfile;
+    subclass_level?: number;
+    subclass_label?: string;
+    resources?: ResourceDefinition[];
+    choices?: ContentChoice[];
+    spell_list?: string[];
+    ui?: ContentUiHook;
+    source?: string;
 }
 
 export interface BackgroundDetail extends APIReference {
     feature: {
         name: string;
         desc: string[];
+        effects?: FeatureEffect[];
     };
     skill_proficiencies: string[];
     tool_proficiencies?: string[];
@@ -165,6 +234,8 @@ export interface BackgroundDetail extends APIReference {
     languages?: number | string[];
     proficiency_choices?: any[];
     source?: string;
+    effects?: FeatureEffect[];
+    choices?: ContentChoice[];
 }
 
 export interface BaseEquipment extends APIReference {
@@ -452,10 +523,14 @@ export interface CharacterState {
 }
 
 export interface FeatureEffect {
-    type: 'bonus' | 'set' | 'resistance' | 'immunity' | 'expertise_choice' | 'proficiency_choice' | 'feature_choice' | 'asi' | 'asi_choice' | 'stat_bonus' | 'stat_bonus_attribute' | 'proficiency' | 'advantage' | 'spell_access' | 'feature' | 'bonus_action' | 'action' | 'reaction' | 'class_choice';
+    type: 'bonus' | 'set' | 'resistance' | 'immunity' | 'expertise_choice' | 'proficiency_choice' | 'feature_choice' | 'asi' | 'asi_choice' | 'stat_bonus' | 'stat_bonus_attribute' | 'proficiency' | 'advantage' | 'spell_access' | 'feature' | 'bonus_action' | 'action' | 'reaction' | 'class_choice' | 'extra_attack' | 'additional_attack' | 'unarmed_strike' | 'natural_weapon' | 'attack_rider' | 'half_proficiency' | 'smite' | 'speed_bonus' | 'resource' | 'spell_damage_bonus';
     target?: string;
     attribute?: 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha';
-    value?: string | number;
+    value?: any;
+    mode?: 'bonus' | 'set' | 'override';
+    conditions?: string[];
+    scaling?: any;
+    description?: string;
     options?: any[];
     category?: string;
     name?: string;
@@ -470,7 +545,6 @@ export interface FeatureEffect {
     school?: string;
     linked_save_proficiency?: boolean;
     cast_free?: boolean;
-    description?: string;
     key?: string;
     stat?: string;
     spell?: string;
@@ -523,6 +597,7 @@ export interface ExtendedFeatDetail extends APIReference {
     prerequisite?: string;
     prerequisites?: string[];
     effects?: FeatureEffect[];
+    choices?: ContentChoice[];
 }
 
 export type FeatDetail = ExtendedFeatDetail;

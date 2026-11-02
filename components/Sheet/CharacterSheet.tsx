@@ -2,10 +2,10 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import Markdown from 'react-markdown';
 import { Sparkles, Plus, X, Maximize, Search, Info, Heart, Skull, AlertOctagon } from 'lucide-react';
 import { CharacterState, ABILITY_NAMES, ABILITY_LABELS, RollResult, AbilityName, SpellDetail, InventoryItem, Currency, RuleEntry, CreatureDetail, EldritchCannonDetail, SteelDefenderDetail, EquipmentDetail, ItemModifier, DiceCustomizationOptions } from '../../types';
-import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount } from '../../utils/rules';
+import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount, getSpellAbilityForClass, getResourceDefinitions, mergeSpellSlotCurrents, hasUiWidget, getClassWithUiWidget } from '../../utils/rules';
 import { rollDice } from '../../utils/dice';
 import CreatureManagerModal from './Modals/CreatureManagerModal';
-import { WIDGET_LABELS, DEFAULT_LAYOUT, STANDARD_CONDITIONS, CLASS_FEATURES, STANDARD_ACTIONS, STATIC_RULES, WIDGET_BG, PICK_A_CARD_TABLE } from '../../data/constants';
+import { WIDGET_LABELS, DEFAULT_LAYOUT, STANDARD_CONDITIONS, STANDARD_ACTIONS, STATIC_RULES, WIDGET_BG } from '../../data/constants';
 import { Library, fetchEquipment, fetchEquipmentDetail } from '../../data/index';
 import DiceRoller3D, { DiceBoxRollRequest } from './Shared/DiceRoller3D';
 import { DiceBoxGroupResult } from '@3d-dice/dice-box';
@@ -131,31 +131,15 @@ const combineDamageParts = (baseDmg: string, extraFlat: number, extraDice: strin
 
 const getCharacterSpecificRules = (character: CharacterState): RuleEntry[] => {
     const rules: RuleEntry[] = [];
-    const classes = character.classes.map(c => c.definition.name.toLowerCase());
-    
-    const rogue = character.classes.find(c => c.definition.index === 'rogue');
-    let sneakDice = '1d6';
-    if (rogue) {
-        const fullRogueDetail = Library.getClass('rogue');
-        const levelData = fullRogueDetail?.level_table.find((l: any) => l.level === rogue.level);
-        if (levelData && levelData.class_specific?.sneak_attack) {
-            sneakDice = levelData.class_specific.sneak_attack;
-        }
-    }
-
-    if (classes.includes('rogue')) {
-        rules.push({ name: 'Sneak Attack', category: 'Custom', desc: `Once per turn, deal extra ${sneakDice} damage to one creature you hit with advantage, or if an ally is within 5ft of it.` });
-        rules.push({ name: 'Cunning Action', category: 'Custom', desc: 'Bonus Action: Dash, Disengage, or Hide.' });
-    }
-    if (classes.includes('barbarian')) {
-        rules.push({ name: 'Rage', category: 'Custom', desc: 'Bonus Action. Adv on Str checks/saves. Bonus melee dmg. Resistance to B/P/S damage.' });
-        rules.push({ name: 'Unarmored Defense (Barb)', category: 'Custom', desc: 'AC = 10 + Dex + Con while not wearing armor.' });
-    }
-    if (classes.includes('arrowsmith')) {
-        rules.push({ name: 'Into The Frey', category: 'Custom', desc: 'If within 15ft of 2+ enemies, AC increases by +2, and +1 for every additional 2 enemies.' });
-        rules.push({ name: 'Rolling Reload', category: 'Custom', desc: 'When reloading, you can move 5ft without provoking OAs.' });
-    }
-    
+    character.classes.forEach(characterClass => {
+        (characterClass.definition as any).rules?.forEach((rule: any) => {
+            rules.push({
+                name: rule.name,
+                category: rule.category || 'Custom',
+                desc: Array.isArray(rule.desc) ? rule.desc.join(' ') : (rule.desc || ''),
+            });
+        });
+    });
     return rules;
 };
 
@@ -265,57 +249,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         }
         const slots = getSpellSlots(initialCharacter.classes);
         const initialFeatures: any = {};
-        initialCharacter.classes.forEach(c => {
-            const feat = CLASS_FEATURES[c.definition.name];
-            if(feat) {
-                const max = feat.formula(c.level, initialCharacter.abilities);
-                initialFeatures[feat.name] = { max, current: max, reset: feat.reset };
-            }
-            if (c.definition.name === 'Paladin' && c.level >= 3) {
-                const cdFeat = CLASS_FEATURES['Paladin-CD'];
-                const cdMax = cdFeat.formula(c.level, initialCharacter.abilities);
-                initialFeatures[cdFeat.name] = { max: cdMax, current: cdMax, reset: cdFeat.reset };
-            }
-            if (c.definition.name === 'Fighter' && c.level >= 2) {
-                const asFeat = CLASS_FEATURES['Fighter-AS'];
-                const asMax = asFeat.formula(c.level, initialCharacter.abilities);
-                initialFeatures[asFeat.name] = { max: asMax, current: asMax, reset: asFeat.reset };
-            }
-            if (c.definition.name === 'Fighter' && c.level >= 9) {
-                const indFeat = CLASS_FEATURES['Fighter-Indomitable'];
-                const indMax = indFeat.formula(c.level, initialCharacter.abilities);
-                initialFeatures[indFeat.name] = { max: indMax, current: indMax, reset: indFeat.reset };
-            }
-            if (c.definition.name === 'Monk' && c.level >= 2) {
-                const umFeat = CLASS_FEATURES['Monk-UM'];
-                const umMax = umFeat.formula(c.level, initialCharacter.abilities);
-                initialFeatures[umFeat.name] = { max: umMax, current: umMax, reset: umFeat.reset };
-            }
-            if (c.definition.name === 'Ranger' && c.level >= 10) {
-                const tFeat = CLASS_FEATURES['Ranger-Tireless'];
-                const tMax = tFeat.formula(c.level, initialCharacter.abilities);
-                initialFeatures[tFeat.name] = { max: tMax, current: tMax, reset: tFeat.reset };
-            }
-            if (c.definition.name === 'Ranger' && c.level >= 14) {
-                const nvFeat = CLASS_FEATURES['Ranger-NV'];
-                const nvMax = nvFeat.formula(c.level, initialCharacter.abilities);
-                initialFeatures[nvFeat.name] = { max: nvMax, current: nvMax, reset: nvFeat.reset };
-            }
-            if (c.definition.name === 'Sorcerer' && c.level >= 1) {
-                const isFeat = CLASS_FEATURES['Sorcerer-IS'];
-                const isMax = isFeat.formula(c.level, initialCharacter.abilities);
-                initialFeatures[isFeat.name] = { max: isMax, current: isMax, reset: isFeat.reset };
-            }
-            if (c.definition.name === 'Artificer' && c.level >= 3 && c.subclass?.index === 'artillerist') {
-                const ecFeat = CLASS_FEATURES['Artificer-EC'];
-                const ecMax = ecFeat.formula(c.level, initialCharacter.abilities);
-                initialFeatures[ecFeat.name] = { max: ecMax, current: ecMax, reset: ecFeat.reset };
-            }
-            if (c.definition.name === 'Artificer' && c.level >= 7) {
-                const fgFeat = CLASS_FEATURES['Artificer-FG'];
-                const fgMax = fgFeat.formula(c.level, initialCharacter.abilities);
-                initialFeatures[fgFeat.name] = { max: fgMax, current: fgMax, reset: fgFeat.reset };
-            }
+        getResourceDefinitions(initialCharacter).forEach(resource => {
+            initialFeatures[resource.name] = { max: resource.max, current: resource.max, reset: resource.reset };
         });
         const inventory = initialCharacter.inventory && initialCharacter.inventory.length > 0 ? initialCharacter.inventory : initialCharacter.equipment.map((item, i) => ({ id: `init-${i}`, name: item, quantity: 1, weight: 5, equipped: true, attuned: false }));
         return {
@@ -466,7 +401,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     });
     
     useEffect(() => {
-        if (character.classes.some(c => c.definition.index === 'card-master')) {
+        if (hasUiWidget(character, 'activeCards')) {
             setLayout(prev => {
                 const hasLeft = prev.left.includes('activeCards');
                 const hasRight = prev.right.includes('activeCards');
@@ -584,60 +519,29 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         loadEquipment();
     }, [currentUser?.id]);
 
-    // Sync featureUsage with CLASS_FEATURES to ensure new resources are tracked
+    // Sync featureUsage with the class/subclass resources from the content library
     useEffect(() => {
         if (!character) return;
         
         let hasChanges = false;
         const newUsage = { ...character.featureUsage };
         
-        character.classes.forEach(c => {
-            const feat = CLASS_FEATURES[c.definition.name];
-            if (feat) {
-                const max = feat.formula(c.level, character.abilities);
-                if (!newUsage[feat.name] || newUsage[feat.name].max !== max) {
-                    newUsage[feat.name] = {
-                        max,
-                        current: newUsage[feat.name] ? Math.min(newUsage[feat.name].current, max) : max,
-                        reset: feat.reset
-                    };
-                    hasChanges = true;
-                }
+        getResourceDefinitions(character).forEach(resource => {
+            const existing = newUsage[resource.name];
+            if (!existing || existing.max !== resource.max) {
+                newUsage[resource.name] = {
+                    max: resource.max,
+                    current: existing ? Math.min(existing.current, resource.max) : resource.max,
+                    reset: resource.reset
+                };
+                hasChanges = true;
             }
-            
-            // Special cases for subclasses or level-specific features
-            const specialFeats = [];
-            if (c.definition.name === 'Paladin' && c.level >= 3) specialFeats.push('Paladin-CD');
-            if (c.definition.name === 'Fighter' && c.level >= 2) specialFeats.push('Fighter-AS');
-            if (c.definition.name === 'Fighter' && c.level >= 3 && c.subclass?.index === 'battle-master') specialFeats.push('Fighter-SD');
-            if (c.definition.name === 'Fighter' && c.level >= 9) specialFeats.push('Fighter-Indomitable');
-            if (c.definition.name === 'Monk' && c.level >= 2) specialFeats.push('Monk-UM');
-            if (c.definition.name === 'Ranger' && c.level >= 10) specialFeats.push('Ranger-Tireless');
-            if (c.definition.name === 'Ranger' && c.level >= 14) specialFeats.push('Ranger-NV');
-            if (c.definition.name === 'Sorcerer' && c.level >= 1) specialFeats.push('Sorcerer-IS');
-            if (c.definition.name === 'Artificer' && c.level >= 3 && c.subclass?.index === 'artillerist') specialFeats.push('Artificer-EC');
-            if (c.definition.name === 'Artificer' && c.level >= 7) specialFeats.push('Artificer-FG');
-
-            specialFeats.forEach(key => {
-                const sFeat = CLASS_FEATURES[key];
-                if (sFeat) {
-                    const max = sFeat.formula(c.level, character.abilities);
-                    if (!newUsage[sFeat.name] || newUsage[sFeat.name].max !== max) {
-                        newUsage[sFeat.name] = {
-                            max,
-                            current: newUsage[sFeat.name] ? Math.min(newUsage[sFeat.name].current, max) : max,
-                            reset: sFeat.reset
-                        };
-                        hasChanges = true;
-                    }
-                }
-            });
         });
         
         if (hasChanges) {
             setCharacter(prev => ({ ...prev, featureUsage: newUsage }));
         }
-    }, [character?.classes, character?.abilities]);
+    }, [character?.classes, character?.abilities, character?.level]);
 
     const prof = calculateProficiency(character.level);
     
@@ -693,14 +597,6 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 if (trait.modifiers) trait.modifiers.forEach((m: any) => mods.push(m));
                 processEffects(trait.effects);
             });
-        }
-
-        // 1b. Background Features / Effects
-        if (character.background) {
-            const bg = character.background as any;
-            if (bg.modifiers) bg.modifiers.forEach((m: any) => mods.push(m));
-            processEffects(bg.effects);
-            if (bg.feature) processEffects(bg.feature.effects);
         }
 
         // 2. Subracial Traits
@@ -777,14 +673,14 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
     const hasPendingSpells = useMemo(() => {
         return character.classes.some(cls => {
-            const knownCount = getSpellsKnownCount(cls, character.abilities, character.classFeatures);
+            const knownCount = getSpellsKnownCount(cls, effectiveAbilities, character.classFeatures);
             const currentCantrips = character.spells.filter(s => s.level === 0 && s.sourceClassIndex === cls.definition.index).length;
             const currentSpells = character.spells.filter(s => s.level > 0 && s.sourceClassIndex === cls.definition.index).length;
             
             return (knownCount.cantrips > 0 && currentCantrips < knownCount.cantrips) || 
                    (knownCount.spells > 0 && currentSpells < knownCount.spells);
         });
-    }, [character.classes, character.spells, character.abilities]);
+    }, [character.classes, character.spells, effectiveAbilities]);
 
     useEffect(() => {
         if (selectedDetail && 'id' in selectedDetail) {
@@ -799,7 +695,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         return effectiveAbilities[stat];
     };
 
-    const spellAbilityRef = character.classes[0]?.definition.spellcasting?.spellcasting_ability.index as AbilityName | undefined;
+    const primaryCaster = character.classes.find(c => !!getSpellAbilityForClass(c)) || character.classes[0];
+    const spellAbilityRef = getSpellAbilityForClass(primaryCaster);
     const spellMod = spellAbilityRef ? calculateModifier(getStat(spellAbilityRef)) : 0;
     
     let extraSpellAttack = 0;
@@ -855,6 +752,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         const hasRangedWeapon = equippedWeapons.some((i: any) => i.weapon_category?.toLowerCase().includes('ranged') || (i.range && i.range !== 'Melee'));
         const hasVersatileWeapon = equippedWeapons.some((i: any) => i.properties?.some((p: any) => (typeof p === 'string' ? p : p.name) === 'Versatile') || i.versatileDamage);
         const hasFinesseWeapon = equippedWeapons.some((i: any) => i.properties?.some((p: any) => (typeof p === 'string' ? p : p.name) === 'Finesse'));
+        // Common data conditions used by Unarmored Defense / Unarmored
+        // Movement / Roving / Fast Movement.
+        if (ruleCond.includes('no_armor') && hasArmorEquipped) return false;
+        if (ruleCond.includes('no_shield') && hasShieldEquipped) return false;
+        if ((ruleCond.includes('not_heavy_armor') || ruleCond.includes('no_heavy_armor')) && heavyArmorEquipped) return false;
+
         const isDualWielding = equippedWeapons.length >= 2;
         const isUnarmed = itemContext ? !!itemContext.isUnarmed : (equippedWeapons.length === 0);
 
@@ -898,6 +801,26 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         return true;
     };
 
+    const resolveEffectValue = (m: any): number => {
+        const raw = m?.value ?? m?.amount;
+        if (typeof raw === 'number') return raw;
+        if (typeof raw === 'string') {
+            const numeric = Number(raw);
+            return Number.isFinite(numeric) ? numeric : 0;
+        }
+        if (raw && typeof raw === 'object') {
+            if (raw.type === 'table' && Array.isArray(raw.values)) {
+                return Number(raw.values[character.level - 1] || 0);
+            }
+            if (raw.type === 'level') return character.level * Number(raw.multiplier || 1);
+            if (raw.type === 'ability') {
+                return Math.max(Number(raw.min ?? 1), calculateModifier(getStat(raw.ability)));
+            }
+            if (raw.type === 'proficiency') return prof;
+        }
+        return 0;
+    };
+
     const calculateAC = () => {
         const armor = character.inventory.find(i => i.equipped && i.armor_class && !i.name.toLowerCase().includes('shield'));
         const shield = character.inventory.find(i => i.equipped && i.armor_class && i.name.toLowerCase().includes('shield'));
@@ -928,27 +851,18 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 dexBonus = 0;
             }
         } else {
-             // Unarmored Defense
-             const isBarb = character.classes.some(c => c.definition.index === 'barbarian');
-             const isMonk = character.classes.some(c => c.definition.index === 'monk');
-             
-             // Check for stat_bonus_attribute (e.g., Unarmored Defense)
-             let attrBonus = 0;
+             // Unarmored Defense comes from data effects (stat_bonus_attribute).
+             let attrBonus: number | null = null;
              activeModifiers.forEach(m => {
                  if (m.type === 'stat_bonus_attribute' && (m.stat === 'ac' || m.target === 'ac') && m.attribute) {
                      if (checkModifierRule(m)) {
-                         attrBonus = Math.max(attrBonus, calculateModifier(getStat(m.attribute)));
+                         const candidate = calculateModifier(getStat(m.attribute));
+                         if (attrBonus === null || candidate > attrBonus) attrBonus = candidate;
                      }
                  }
              });
 
-             if (attrBonus > 0) {
-                 baseAC += attrBonus;
-             } else if (isBarb) {
-                 baseAC += conMod;
-             } else if (isMonk) {
-                 baseAC += wisMod;
-             }
+             if (attrBonus !== null) baseAC += attrBonus;
         }
 
         let total = baseAC + dexBonus;
@@ -961,7 +875,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         activeModifiers.forEach(m => {
             if ((m.type === 'bonus' || m.type === 'stat_bonus') && (m.target === 'ac' || m.stat === 'ac')) {
                 if (checkModifierRule(m)) {
-                    total += Number(m.value || 0);
+                    total += resolveEffectValue(m);
                 }
             }
         });
@@ -972,15 +886,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const getGlobalSaveBonus = () => {
         let bonus = 0;
         activeModifiers.forEach(m => {
-            if (m.type === 'bonus' && m.target === 'saves') {
-                bonus += Number(m.value);
+            if ((m.type === 'bonus' || m.type === 'stat_bonus') && m.target === 'saves') {
+                bonus += resolveEffectValue(m);
             }
         });
-
-        // Paladin Aura of Protection
-        const paladin = character.classes.find(c => c.definition.name === 'Paladin');
-        if (paladin && paladin.level >= 6) bonus += Math.max(1, calculateModifier(getStat('cha')));
-        
         return bonus;
     };
 
@@ -1025,31 +934,23 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             }
         } else {
              if (setAC === -1) breakdown.push({ label: 'Base Unarmored', value: 10 });
-             
-             // Unarmored Defense
-             const isBarb = character.classes.some(c => c.definition.index === 'barbarian');
-             const isMonk = character.classes.some(c => c.definition.index === 'monk');
-             
-             let attrBonus = 0;
+
+             let attrBonus: number | null = null;
              let attrSource = '';
              activeModifiers.forEach(m => {
-                 if (m.type === 'stat_bonus_attribute' && m.stat === 'ac' && m.attribute) {
+                 if (m.type === 'stat_bonus_attribute' && (m.stat === 'ac' || m.target === 'ac') && m.attribute) {
                      const val = calculateModifier(getStat(m.attribute));
-                     if (val > attrBonus) {
+                     if (attrBonus === null || val > attrBonus) {
                          attrBonus = val;
                          attrSource = `Unarmored Defense (${m.attribute.toUpperCase()})`;
                      }
                  }
              });
 
-             if (attrBonus > 0) {
+             if (attrBonus !== null) {
                  breakdown.push({ label: attrSource, value: attrBonus });
-             } else if (isBarb) {
-                 breakdown.push({ label: 'Unarmored Defense (Con)', value: conMod });
-             } else if (isMonk) {
-                 breakdown.push({ label: 'Unarmored Defense (Wis)', value: wisMod });
              }
-             
+
              if (setAC === -1) breakdown.push({ label: 'Dexterity', value: dexMod });
         }
 
@@ -1061,7 +962,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         activeModifiers.forEach(m => {
             if ((m.type === 'bonus' || m.type === 'stat_bonus') && (m.target === 'ac' || m.stat === 'ac')) {
                 if (checkModifierRule(m)) {
-                    breakdown.push({ label: m.name || m.source?.name || 'AC Bonus', value: Number(m.value || 0) });
+                    breakdown.push({ label: m.name || m.source?.name || 'AC Bonus', value: resolveEffectValue(m) });
                 }
             }
         });
@@ -1070,35 +971,14 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     };
 
     const calculateSpeed = () => {
-        let baseSpeed = character.race?.speed || 30;
-        
-        const monk = character.classes.find(c => c.definition.index === 'monk');
-        const ranger = character.classes.find(c => c.definition.index === 'ranger');
+        let total = character.race?.speed || 30;
 
-        if (monk && monk.level >= 2) {
-            const hasArmor = character.inventory.some(i => i.equipped && i.armor_class && !i.name.toLowerCase().includes('shield'));
-            const hasShield = character.inventory.some(i => i.equipped && i.armor_class && i.name.toLowerCase().includes('shield'));
-            if (!hasArmor && !hasShield) {
-                if (monk.level >= 18) baseSpeed += 30;
-                else if (monk.level >= 14) baseSpeed += 25;
-                else if (monk.level >= 10) baseSpeed += 20;
-                else if (monk.level >= 6) baseSpeed += 15;
-                else baseSpeed += 10;
-            }
-        }
-
-        if (ranger && ranger.level >= 6) {
-            const hasHeavy = character.inventory.some(i => i.equipped && i.armor_class && i.name.toLowerCase().includes('plate'));
-            if (!hasHeavy) baseSpeed += 10;
-        }
-
-        let total = baseSpeed;
         activeModifiers.forEach(m => {
             const stat = (m.stat || m.target || '').toLowerCase();
             if (stat === 'speed' || stat === 'walk_speed' || stat === 'walking_speed') {
                 if (checkModifierRule(m)) {
-                    if (m.type === 'bonus' || m.type === 'stat_bonus') total += Number(m.value || 0);
-                    else if (m.type === 'set') total = Math.max(total, Number(m.value || 0));
+                    if (m.type === 'bonus' || m.type === 'stat_bonus') total += resolveEffectValue(m);
+                    else if (m.type === 'set') total = Math.max(total, resolveEffectValue(m));
                 }
             }
         });
@@ -1108,40 +988,15 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
     const getSpeedBreakdown = () => {
         const breakdown: { label: string, value: any }[] = [];
-        let baseSpeed = character.race?.speed || 30;
+        const baseSpeed = character.race?.speed || 30;
         breakdown.push({ label: 'Base Race Speed', value: baseSpeed });
 
-        // Monk Unarmored Movement
-        const monk = character.classes.find(c => c.definition.index === 'monk');
-        if (monk && monk.level >= 2) {
-            const hasArmor = character.inventory.some(i => i.equipped && i.armor_class && !i.name.toLowerCase().includes('shield'));
-            const hasShield = character.inventory.some(i => i.equipped && i.armor_class && i.name.toLowerCase().includes('shield'));
-            if (!hasArmor && !hasShield) {
-                let bonus = 10;
-                if (monk.level >= 18) bonus = 30;
-                else if (monk.level >= 14) bonus = 25;
-                else if (monk.level >= 10) bonus = 20;
-                else if (monk.level >= 6) bonus = 15;
-                breakdown.push({ label: 'Unarmored Movement (Monk)', value: `+${bonus}` });
-            }
-        }
-
-        // Ranger Roving
-        const ranger = character.classes.find(c => c.definition.index === 'ranger');
-        if (ranger && ranger.level >= 6) {
-            const hasHeavy = character.inventory.some(i => i.equipped && i.armor_class && i.name.toLowerCase().includes('plate'));
-            if (!hasHeavy) {
-                breakdown.push({ label: 'Roving (Ranger)', value: '+10' });
-            }
-        }
-
-        // Item/Trait Bonuses
         activeModifiers.forEach(m => {
             const stat = (m.stat || m.target || '').toLowerCase();
             if (stat === 'speed' || stat === 'walk_speed' || stat === 'walking_speed') {
                 if (checkModifierRule(m)) {
-                    if (m.type === 'bonus' || m.type === 'stat_bonus') breakdown.push({ label: m.name || m.source?.name || 'Bonus', value: formatModifier(Number(m.value || 0)) });
-                    if (m.type === 'set') breakdown.push({ label: m.name || m.source?.name || 'Set', value: m.value });
+                    if (m.type === 'bonus' || m.type === 'stat_bonus') breakdown.push({ label: m.name || m.source?.name || 'Bonus', value: formatModifier(resolveEffectValue(m)) });
+                    if (m.type === 'set') breakdown.push({ label: m.name || m.source?.name || 'Set', value: resolveEffectValue(m) });
                 }
             }
         });
@@ -1405,12 +1260,15 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         let rollVal;
         let rollResult;
 
-        const cmClass = character.classes.find(c => c.definition.index === 'card-master');
+        const cardTable = character.classes
+            .map(c => (c.definition as any).options?.pickACardTable)
+            .find((table: any) => Array.isArray(table) && table.length > 0) || [];
+        const cmClass = character.classes.find(c => (c.definition as any).options?.pickACardTable);
         const lvl = cmClass ? cmClass.level : 1;
         const dieSize = lvl >= 10 ? 21 : 20;
 
         if (specificCardName) {
-            card = PICK_A_CARD_TABLE.find(c => c.name === specificCardName);
+            card = cardTable.find((c: any) => c.name === specificCardName);
             rollVal = card?.roll || 21;
             // Create a fake roll result for the specific card so dice match
             rollResult = {
@@ -1423,7 +1281,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         } else {
             rollResult = rollDice(`1d${dieSize}`, 'Pick a Card');
             rollVal = rollResult.total;
-            card = PICK_A_CARD_TABLE.find(c => c.roll === rollVal);
+            card = cardTable.find((c: any) => c.roll === rollVal);
         }
 
         if (card) {
@@ -1583,8 +1441,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             Object.keys(newSlots).forEach(lvl => { newSlots[parseInt(lvl)].current = newSlots[parseInt(lvl)].max; });
             const newFeatures = {...prev.featureUsage};
             Object.keys(newFeatures).forEach(key => {
-                const featureDef = Object.values(CLASS_FEATURES).find(f => f.name === key);
-                const resetRule = (newFeatures[key] as any).reset || featureDef?.reset || 'long';
+                const resetRule = (newFeatures[key] as any).reset || 'long';
                 if (type === 'long' || resetRule === 'short') newFeatures[key].current = newFeatures[key].max;
             });
             const newHitDiceUsage = { ...prev.hitDiceUsage };
@@ -1612,21 +1469,20 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     
     const performLevelUp = async (classIndex: string, updates: Partial<CharacterState>) => {
         const newClasses = updates.classes || character.classes;
-        const newSlots = getSpellSlots(newClasses);
+        const newSlots = mergeSpellSlotCurrents(getSpellSlots(newClasses), character.spellSlots);
+        const projected: CharacterState = { ...character, ...updates, classes: newClasses };
         const newFeatures = { ...character.featureUsage };
-        newClasses.forEach(c => {
-             const feat = CLASS_FEATURES[c.definition.name];
-             if (feat) {
-                 const max = feat.formula(c.level, updates.abilities || character.abilities);
-                 const current = (newFeatures[feat.name]?.current || 0) + (max - (newFeatures[feat.name]?.max || 0));
-                 newFeatures[feat.name] = { max, current, reset: feat.reset };
-             }
-             if (c.definition.name === 'Paladin' && c.level >= 3) {
-                const cdFeat = CLASS_FEATURES['Paladin-CD'];
-                const cdMax = cdFeat.formula(c.level, initialCharacter.abilities);
-                newFeatures[cdFeat.name] = { max: cdMax, current: cdMax, reset: cdFeat.reset };
-             }
+
+        getResourceDefinitions(projected).forEach(resource => {
+            const existing = newFeatures[resource.name];
+            const spent = existing ? Math.max(0, existing.max - existing.current) : 0;
+            newFeatures[resource.name] = {
+                max: resource.max,
+                current: Math.max(0, resource.max - spent),
+                reset: resource.reset
+            };
         });
+
         setCharacter(prev => ({ ...prev, ...updates, spellSlots: newSlots, featureUsage: newFeatures }));
     };
     
@@ -1691,7 +1547,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         const widgetKey = key || type;
         switch (type) {
             case 'steelDefender':
-                const isBattleSmith = character.classes.some(c => c.definition.index === 'artificer' && c.subclass?.index === 'battle-smith' && c.level >= 3);
+                const isBattleSmith = hasUiWidget(character, 'steelDefender');
                 if (!isBattleSmith) return null;
                 const defender = character.activeSteelDefender;
                 return (
@@ -1760,7 +1616,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     </div>
                 );
             case 'eldritchCannon':
-                const isArtillerist = character.classes.some(c => c.definition.index === 'artificer' && c.subclass?.index === 'artillerist' && c.level >= 3);
+                const isArtillerist = hasUiWidget(character, 'eldritchCannon');
                 if (!isArtillerist) return null;
                 const cannon = character.activeEldritchCannon;
                 return (
@@ -2034,7 +1890,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     </div>
                 );
             case 'features':
-                const isDruid = character.classes.some(c => c.definition.index === 'druid');
+                const isDruid = !!character.featureUsage['Wild Shape'];
                 return (
                     <div key={widgetKey} className="space-y-4">
                         {isDruid && !character.featureUsage['Wild Shape']?.hidden && (
@@ -2052,7 +1908,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             const usedCount = usage.max - usage.current;
                             return (
                             <div key={name} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
-                                <div className="flex justify-between items-center mb-2"><h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">{name}</h3><span className="text-[10px] text-gray-500">Reset: {usage.reset || CLASS_FEATURES[character.classes.find(c => CLASS_FEATURES[c.definition.name]?.name === name)?.definition.name || '']?.reset || 'Long'}</span></div>
+                                <div className="flex justify-between items-center mb-2"><h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">{name}</h3><span className="text-[10px] text-gray-500">Reset: {usage.reset || 'Long'}</span></div>
                                 <div className="flex gap-1.5 justify-start">{Array.from({length: usage.max}).map((_, i) => { const isUsed = i < usedCount; return (<div key={i} className={`w-4 h-4 cursor-pointer transition-colors border rounded-full ${isUsed ? 'bg-dnd-red border-dnd-red' : 'bg-transparent border-gray-600 hover:border-gray-300'}`} onClick={() => { let used = i + 1; if (usedCount === used) used = i; setCharacter(prev => ({...prev, featureUsage: {...prev.featureUsage, [name]: {...usage, current: usage.max - used}}})); }}></div>); })}</div>
                                 {name === 'Arrow Crafting' && (
                                     <button 
@@ -2068,7 +1924,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     </div>
                 );
             case 'activeCards': {
-                const cmClass = character.classes.find(c => c.definition.index === 'card-master');
+                const cmClass = getClassWithUiWidget(character, 'activeCards');
                 if (!cmClass) return null;
                 const cmLevel = cmClass.level;
                 const foolStacks = character.foolStacks || 0;
@@ -2246,7 +2102,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 const hasFeatureExpertise = activeModifiers.some(m => m.type === 'expertise' && m.target === skill.name);
                                 
                                 // Special logic for "Trust the Destiny"
-                                const isCardMaster2 = character.classes.some(c => c.definition.index === 'card-master' && c.level >= 2);
+                                const isCardMaster2 = !!getClassWithUiWidget(character, 'activeCards') && (getClassWithUiWidget(character, 'activeCards')?.level || 0) >= 2;
                                 const isTrustSkill = isCardMaster2 && (skill.name === 'Arcana' || skill.name === 'Religion');
                                 
                                 const isProf = character.skills.includes(skill.name) || hasFeatureProf || isTrustSkill; 
@@ -2433,22 +2289,26 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const imm = activeModifiers.filter(m => m.type === 'immunity').map(m => String(m.value));
                 const advDef = activeModifiers.filter(m => m.type === 'advantage' && (m.target === 'saves' || m.target === 'skills') && m.filter).map(m => String(m.filter));
                 
+                const defensiveFeatureNames = new Set([
+                    'Evasion', 'Uncanny Dodge', 'Aura of Protection', 'Danger Sense', 'Deflect Energy',
+                ]);
+                const defensiveFeatureSources = [
+                    ...character.classes.flatMap(c => ((c.definition as any).feature_details || [])
+                        .filter((feature: any) => (feature.level || 0) <= c.level)
+                        .map((feature: any) => ({ ...feature, source: c.definition.name }))),
+                    ...character.classes.flatMap(c => ((c.subclass as any)?.feature_details || [])
+                        .filter((feature: any) => (feature.level || 0) <= c.level)
+                        .map((feature: any) => ({ ...feature, source: c.subclass?.name }))),
+                ];
                 const defensiveFeatures: { name: string, desc: string }[] = [];
-                if (character.classes.some(c => (c.definition.index === 'rogue' || c.definition.index === 'monk') && c.level >= 7)) {
-                    defensiveFeatures.push({ name: 'Evasion', desc: 'When you are subjected to an effect that allows you to make a Dexterity saving throw to take only half damage, you instead take no damage if you succeed on the saving throw, and only half damage if you fail.' });
-                }
-                if (character.classes.some(c => c.definition.index === 'rogue' && c.level >= 5)) {
-                    defensiveFeatures.push({ name: 'Uncanny Dodge', desc: 'When an attacker that you can see hits you with an attack, you can use your reaction to halve the attack\'s damage against you.' });
-                }
-                if (character.classes.some(c => c.definition.index === 'paladin' && c.level >= 6)) {
-                    defensiveFeatures.push({ name: 'Aura of Protection', desc: `You and friendly creatures within 10 feet of you gain a bonus to all saving throws equal to your Charisma modifier (${formatModifier(chaMod)}).` });
-                }
-                if (character.classes.some(c => c.definition.index === 'barbarian' && c.level >= 2)) {
-                    defensiveFeatures.push({ name: 'Danger Sense', desc: 'You have advantage on Dexterity saving throws against effects that you can see, such as traps and spells.' });
-                }
-                if (character.classes.some(c => c.definition.index === 'monk' && c.level >= 13)) {
-                    defensiveFeatures.push({ name: 'Deflect Energy', desc: 'You can use your reaction to deflect or redirect energy from a ranged attack.' });
-                }
+                defensiveFeatureSources.forEach((feature: any) => {
+                    if (!defensiveFeatureNames.has(feature.name)) return;
+                    if (defensiveFeatures.some(item => item.name === feature.name)) return;
+                    defensiveFeatures.push({
+                        name: feature.name,
+                        desc: Array.isArray(feature.desc) ? feature.desc.join(' ') : (feature.desc || ''),
+                    });
+                });
 
                 return (
                     <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
@@ -2552,7 +2412,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             return { hit: finalHit, damage: finalDamage };
         };
 
-        const monk = character.classes.find(c => c.definition.index === 'monk');
+        const monk = character.classes.find(c => ((c.definition as any).level_table || []).some((row: any) => row?.class_specific?.martial_arts));
         let unarmedDie = '1';
         let unarmedDieVal = 1;
         let unarmedDmgType = 'Bludgeoning';
@@ -2564,12 +2424,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         let customUnarmedName = 'Unarmed Strike';
 
         if (monk) {
-            const ml = monk.level;
-            if (ml >= 17) { unarmedDie = '1d12'; unarmedDieVal = 12; }
-            else if (ml >= 11) { unarmedDie = '1d10'; unarmedDieVal = 10; }
-            else if (ml >= 5) { unarmedDie = '1d8'; unarmedDieVal = 8; }
-            else { unarmedDie = '1d6'; unarmedDieVal = 6; }
-            
+            const monkRow = (monk.definition as any).level_table?.find((row: any) => row.level === monk.level);
+            const martialDie = monkRow?.class_specific?.martial_arts;
+            if (martialDie) {
+                unarmedDie = String(martialDie);
+                unarmedDieVal = parseInt(String(martialDie).replace(/^1?d/, ''), 10) || 1;
+            }
+
             if (dexMod > strMod) {
                 unarmedHitMod = dexMod;
                 unarmedDmgMod = dexMod;
@@ -2683,54 +2544,48 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
             const source = attack.source;
             const isMonkWeapon = attack.notes?.includes('Monk Weapon') || attack.notes?.includes('Kensei Weapon');
-            const isMagic = source?.requires_attunement || (source?.modifiers && source.modifiers.length > 0) || source?.isInfusion || source?.isPactWeapon || (isMonkWeapon && character.classes.some(c => c.definition.index === 'monk' && c.level >= 6));
+            const isMagic = source?.requires_attunement || (source?.modifiers && source.modifiers.length > 0) || source?.isInfusion || source?.isPactWeapon || (isMonkWeapon && activeModifiers.some((m: any) => m.type === 'attack_rider' && m.name === 'Empowered Strikes'));
             if (isMagic && isWeapon && !isSpell) {
                 modifiers.push({ name: 'Magical Attack', desc: 'This attack counts as magical for the purpose of overcoming resistance and immunity to nonmagical attacks and damage.' });
             }
 
-            // Monk: Empowered Strikes
-            if (isUnarmed && character.classes.some(c => c.definition.index === 'monk' && c.level >= 6)) {
-                modifiers.push({ name: 'Empowered Strikes', desc: 'Whenever you deal damage with your Unarmed Strike, it can deal Force damage or its normal damage type.' });
-            }
+            // Attack riders come from feature data (Sneak Attack, Divine Smite,
+            // Radiant Strikes, Brutal Strike, Foe Slayer, Empowered Strikes, ...).
+            const riderMatches = (condition: string) => {
+                const value = String(condition || '').toLowerCase();
+                if (!value) return true;
+                if (value.startsWith('spell:')) {
+                    return !!isSpell && spellName.toLowerCase() === value.slice('spell:'.length).trim();
+                }
+                if (value === 'finesse_or_ranged_weapon') return !!isWeapon && (!!isFinesse || !!isRanged);
+                if (value.includes('melee') && !isMelee) return false;
+                if (value.includes('weapon') && !isWeapon) return false;
+                if (value.includes('unarmed') && !isUnarmed) return false;
+                if (value.includes('ranged') && !isRanged) return false;
+                if (value.includes('finesse') && !isFinesse) return false;
+                return true;
+            };
 
-            // Paladin: Radiant Strikes
-            if (isMelee && isWeapon && character.classes.some(c => c.definition.index === 'paladin' && c.level >= 11)) {
-                modifiers.push({ name: 'Radiant Strikes', desc: 'Whenever you hit a creature with a melee weapon, the creature takes an extra 1d8 radiant damage.' });
-            }
+            const classTableValue = (key: string): string | number | undefined => {
+                for (const characterClass of character.classes) {
+                    const row = (characterClass.definition as any).level_table?.find((item: any) => item.level === characterClass.level);
+                    const value = row?.class_specific?.[key];
+                    if (value !== undefined && value !== null) return value;
+                }
+                return undefined;
+            };
 
-            // Paladin: Divine Smite
-            if (isMelee && isWeapon && character.classes.some(c => c.definition.index === 'paladin' && c.level >= 2)) {
-                modifiers.push({ name: 'Divine Smite', desc: 'When you hit a creature with a melee weapon attack, you can expend one spell slot to deal extra radiant damage.' });
-            }
-
-            // Rogue: Sneak Attack
-            const rogue = character.classes.find(c => c.definition.index === 'rogue');
-            if ((isFinesse || isRanged) && isWeapon && rogue) {
-                const fullRogueDetail = Library.getClass('rogue');
-                const levelData = fullRogueDetail?.level_table.find((l: any) => l.level === rogue.level);
-                const sDice = levelData?.class_specific?.sneak_attack || '1d6';
-                modifiers.push({ name: 'Sneak Attack', desc: `Once per turn, you can deal an extra ${sDice} damage to one creature you hit with an attack if you have advantage on the attack roll.` });
-            }
-
-            // Rogue: Cunning Strike
-            if (character.classes.some(c => c.definition.index === 'rogue' && c.level >= 5) && modifiers.some(m => m.name === 'Sneak Attack')) {
-                modifiers.push({ name: 'Cunning Strike', desc: 'You can trade Sneak Attack damage for additional effects like Poison, Trip, or Withdraw.' });
-            }
-
-            // Barbarian: Reckless Attack
-            if (isMelee && character.classes.some(c => c.definition.index === 'barbarian' && c.level >= 2)) {
-                modifiers.push({ name: 'Reckless Attack', desc: 'You can have advantage on melee weapon attack rolls using Strength during this turn, but attack rolls against you have advantage until your next turn.' });
-            }
-
-            // Barbarian: Brutal Strike
-            if (isMelee && character.classes.some(c => c.definition.index === 'barbarian' && c.level >= 9)) {
-                modifiers.push({ name: 'Brutal Strike', desc: 'If you use Reckless Attack, you can trade advantage for +1d10 damage and a special effect (Forceful Blow or Hamstring Blow).' });
-            }
-
-            // Ranger: Foe Slayer
-            if (character.classes.some(c => c.definition.index === 'ranger' && c.level >= 20)) {
-                modifiers.push({ name: 'Foe Slayer', desc: 'You can add your Wisdom modifier to the attack roll or the damage roll of an attack you make against one of your favored enemies.' });
-            }
+            activeModifiers.filter((m: any) => m.type === 'attack_rider').forEach((m: any) => {
+                if (!riderMatches(m.condition)) return;
+                let damage = m.damage;
+                if (m.scaling?.type === 'class_table' && m.scaling.key) {
+                    damage = classTableValue(m.scaling.key) || damage;
+                }
+                const description = m.description || m.desc
+                    || (damage ? `${m.name || 'Attack Rider'} adds ${damage} extra damage.` : '');
+                if (modifiers.some((modifier: any) => modifier.name === (m.name || 'Attack Rider'))) return;
+                modifiers.push({ name: m.name || 'Attack Rider', desc: description });
+            });
 
             // Special Weapon Modifiers
             if (attack.notes?.includes('Shillelagh')) {
@@ -2746,41 +2601,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 modifiers.push({ name: 'Hex Warrior', desc: 'You can use your Charisma modifier instead of Strength or Dexterity for attack and damage rolls with this weapon.' });
             }
 
-            // Warlock: Agonizing Blast
-            if (spellName === 'Eldritch Blast' && character.classFeatures.some(f => f.name === 'Agonizing Blast')) {
-                modifiers.push({ name: 'Agonizing Blast', desc: 'Add your Charisma modifier to the damage it deals on a hit.' });
-            }
-
-            // Cleric: Potent Cantrip
-            if (isSpell && attack.source?.level === 0 && character.classFeatures.some(f => f.name === 'Potent Cantrip')) {
-                modifiers.push({ name: 'Potent Cantrip', desc: 'If you deal damage with a cantrip, you can add your Wisdom modifier to the damage.' });
-            }
-
             return modifiers;
         };
 
-        // Calculate Attack Count (Extra / Additional Attacks)
+        // Calculate Attack Count (Extra / Additional Attacks). The data-driven
+        // extra_attack effects on class/subclass features set the base.
         let attackCount = 1;
-        const fighter = character.classes.find(c => c.definition.index === 'fighter');
-        const paladin = character.classes.find(c => c.definition.index === 'paladin');
-        const ranger = character.classes.find(c => c.definition.index === 'ranger');
-        const monkClass = character.classes.find(c => c.definition.index === 'monk');
-        const barbarian = character.classes.find(c => c.definition.index === 'barbarian');
-
-        if (fighter) {
-            if (fighter.level >= 20) attackCount = 4;
-            else if (fighter.level >= 11) attackCount = 3;
-            else if (fighter.level >= 5) attackCount = 2;
-        } else {
-            const hasExtraAttack = character.classes.some(c => 
-                (['barbarian', 'monk', 'paladin', 'ranger'].includes(c.definition.index) && c.level >= 5) ||
-                (c.definition.index === 'bard' && c.subclass?.index === 'college-of-valour' && c.level >= 6) ||
-                (c.definition.index === 'bard' && c.subclass?.index === 'college-of-swords' && c.level >= 6) ||
-                (c.definition.index === 'wizard' && c.subclass?.index === 'bladesinging' && c.level >= 6) ||
-                (c.definition.index === 'warlock' && character.classFeatures.some(f => f.index === 'thirsting-blade'))
-            );
-            if (hasExtraAttack) attackCount = 2;
-        }
 
         let additionalAttackBonus = 0;
         let maxSetAttacks = attackCount;
@@ -2827,7 +2653,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         attacks.push(unarmedAttack);
         
         // --- Card Master: The Fool Spell ---
-        const cmClass = character.classes.find(c => c.definition.index === 'card-master');
+        const cmClass = getClassWithUiWidget(character, 'activeCards');
         if (cmClass && cmClass.level >= 4 && (character.foolStacks || 0) > 0) {
             const foolStacks = character.foolStacks || 0;
             const isWorldActive = character.activeCards?.some(c => c.name === 'The World');
@@ -2867,7 +2693,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         // Removed manual block to handle in spell loop below
         
         // --- Arrowsmith Specific Arrows ---
-        const arrowsmithCls = character.classes.find(c => c.definition.index === 'arrowsmith');
+        const arrowsmithCls = character.classes.find(c => (c.definition as any).options?.arrowCrafting);
         if (arrowsmithCls) {
             const lvl = arrowsmithCls.level;
             const asDC = 8 + prof + intMod;
@@ -2884,38 +2710,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const baseDmgBonus = dexMod + mtkBonus + taBonus;
             const finalBowDmg = `${bowDmg}${formatModifier(baseDmgBonus)}`;
 
-            // Arrowsmith Master Reference
-            const allArrowDefinitions = [
-                { name: 'Silent', desc: 'Hidden hits don\'t reveal position. Crits on surprised.', extraNotes: ['Crit Surprised'], level: 1 },
-                { name: 'Forceful', desc: 'On hit, STR Save DC ' + asDC + ' or pushed 20ft.', save: { type: 'STR', dc: asDC }, level: 1 },
-                { name: 'Fire', desc: 'Extra 1d10 fire. Ignites for 1d6/turn (DC 10 Dex).', dmgPlus: '+1d10', type: 'Fire', level: 1 },
-                { name: 'Shattering', desc: '10ft cone behind target. DEX Save ' + asDC + ' half.', save: { type: 'DEX', dc: asDC }, level: 2 },
-                { name: 'Smokescreen', desc: 'Creates 20ft fog sphere centered on hit. 1 min.', type: 'Other', level: 2 },
-                { name: 'Light', desc: 'Bonus action attack. Ignore reload.', type: 'Piercing', notes: ['Bonus Action', 'Ignore Reload'], level: 3 },
-                { name: 'Sniper', desc: 'Double normal and long range for this shot.', rangeLabel: 'Double Range', level: 3 },
-                { name: 'Piercing', desc: 'Pierce 20ft line. Ignore resistance.', notes: ['Ignore Resist'], level: 4 },
-                { name: 'Blinding', desc: 'Explodes after 10-30ft. CON Save ' + asDC + ' or Blinded.', save: { type: 'CON', dc: asDC }, level: 4 },
-                { name: 'Explosive', desc: '5d6 Force AoE (Dex Save ' + asDC + ' half).', dmg: '5d6' + formatModifier(baseDmgBonus), type: 'Force', save: { type: 'DEX', dc: asDC }, level: 5 },
-                { name: 'Knockdown', desc: 'On hit, STR Save ' + asDC + ' or knocked prone.', save: { type: 'STR', dc: asDC }, level: 5 },
-                // Specialization: Magic
-                { name: 'Elemental', spec: 'magic-as', desc: '+2d6 Cold/Fire/Lit/Necro/Rad.', dmgPlus: '+2d6', level: 5 },
-                { name: 'Spectral', spec: 'magic-as', desc: 'Traverses matter. Ignore all cover.', notes: ['Ignore Cover'], level: 6 },
-                { name: 'Cursed', spec: 'magic-as', desc: '+1d8 Necrotic. No healing for target.', dmgPlus: '+1d8', type: 'Necrotic', level: 7 },
-                { name: 'Seeking', spec: 'magic-as', desc: 'Auto-hit any opponent you see.', hit: null, notes: ['Auto-Hit'], level: 8 },
-                { name: 'Shifter', spec: 'magic-as', desc: 'Teleport to arrow location (Max 50ft).', level: 9 },
-                // Specialization: Toxins
-                { name: 'Intoxicating', spec: 'toxins-as', desc: 'Disadv on attacks until end of next turn.', notes: ['Debuff'], level: 5 },
-                { name: 'Paralytic', spec: 'toxins-as', desc: 'Con Save DC ' + asDC + ' or Paralyzed.', save: { type: 'CON', dc: asDC }, level: 6 },
-                { name: 'Toxic Cloud', spec: 'toxins-as', desc: '15ft cloud. Con Save or 1d10 Poison + Stunned.', save: { type: 'CON', dc: asDC }, level: 7 },
-                { name: 'Furious', spec: 'toxins-as', desc: 'Wis Save DC ' + asDC + ' or attack closest.', save: { type: 'WIS', dc: asDC }, level: 8 },
-                { name: 'Sleeping', spec: 'toxins-as', desc: '1d6s vs HP. Success = Sleep.', level: 9 },
-                // Specialization: Support
-                { name: 'Healing', spec: 'support-as', desc: 'Heals target for half damage rolled.', dmg: `(${bowDmg}/2)${formatModifier(Math.floor(baseDmgBonus/2))}`, type: 'Healing', level: 5 },
-                { name: 'Vigorous', spec: 'support-as', desc: 'Grant Int+Prof Temp HP and +2 AC.', type: 'Buff', level: 6 },
-                { name: 'Anti-Healing', spec: 'support-as', desc: 'Target cannot regain health for 1 min.', level: 7 },
-                { name: 'Adrenaline', spec: 'support-as', desc: '+15ft move and Adv on attacks/saves.', type: 'Buff', level: 8 },
-                { name: 'Affection', spec: 'support-as', desc: 'Wis Save DC ' + asDC + ' or Charmed.', save: { type: 'WIS', dc: asDC }, level: 9 }
-            ];
+            // Arrowsmith definitions come from the class document.
+            const allArrowDefinitions = (arrowsmithCls.definition as any).options?.arrows || [];
 
             // Only show arrows that are actually in the inventory (quantity > 0)
             const arrowInventory = character.inventory.filter(i => i.id.startsWith('as-arrow-') && i.quantity > 0);
@@ -2926,7 +2722,15 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const def = allArrowDefinitions.find(d => d.name.toLowerCase() === arrowBaseName);
                 
                 if (def && def.level <= lvl) {
-                    const { hit: arrowHit, damage: arrowDmg } = applyOverrides(def.hit === null ? null : bowHit, def.dmg || (def.dmgPlus ? `${bowDmg}${def.dmgPlus}${formatModifier(baseDmgBonus)}` : finalBowDmg));
+                    const desc = String(def.desc || '').replace(/\{dc\}/g, String(asDC));
+                    const damageFormula = def.calc === 'halfBow'
+                        ? `(${bowDmg}/2)${formatModifier(Math.floor(baseDmgBonus / 2))}`
+                        : def.dmg
+                            ? `${def.dmg}${def.addBaseDamage ? formatModifier(baseDmgBonus) : ''}`
+                            : def.dmgPlus
+                                ? `${bowDmg}${def.dmgPlus}${formatModifier(baseDmgBonus)}`
+                                : finalBowDmg;
+                    const { hit: arrowHit, damage: arrowDmg } = applyOverrides(def.autoHit ? null : bowHit, damageFormula);
                     const arrowAttack = { 
                         id: invItem.id, 
                         name: `${def.name} Arrow`, 
@@ -2934,9 +2738,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         hit: arrowHit, 
                         damage: arrowDmg, 
                         type: def.type || 'Piercing', 
-                        save: def.save || null,
+                        save: def.saveType ? { type: def.saveType, dc: asDC } : null,
                         notes: ['Arrowsmith', `Qty: ${invItem.quantity}`, ...(def.notes || [])], 
-                        source: { name: `${def.name} Arrow`, desc: def.desc } 
+                        source: { name: `${def.name} Arrow`, desc }
                     };
                     (arrowAttack as any).modifiers = getAttackModifiers(arrowAttack);
                     attacks.push(arrowAttack);
@@ -3189,10 +2993,15 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     }
                 });
 
-                // Agonizing Blast damage bonus
-                if (spell.name === 'Eldritch Blast' && character.classFeatures.some(f => f.name === 'Agonizing Blast')) {
-                    spellFlatBonus += chaMod;
-                }
+                // Data-declared spell damage bonuses (e.g. Agonizing Blast).
+                const spellDamageBonuses = character.classFeatures
+                    .flatMap(feature => feature.effects || [])
+                    .filter((effect: any) => effect.type === 'spell_damage_bonus'
+                        && (!effect.spell || String(effect.spell).toLowerCase() === spell.name.toLowerCase()));
+                spellDamageBonuses.forEach((effect: any) => {
+                    if (effect.ability) spellFlatBonus += calculateModifier(getStat(effect.ability));
+                    else spellFlatBonus += Number(effect.value || 0);
+                });
 
                 const combinedSpellDmg = combineDamageParts(dmgStr || '', spellFlatBonus, spellExtraDice);
                 const dc = (spell as any).dc?.dc_type?.name?.substring(0, 3).toUpperCase();
@@ -3275,7 +3084,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
     const enrichFeature = (f_item: any) => {
         if (f_item.index === 'the-fool') {
-            const cmClass = character.classes.find(c => c.definition.index === 'card-master');
+            const cmClass = getClassWithUiWidget(character, 'activeCards');
             const foolStacks = character.foolStacks || 0;
             const isWorldActive = character.activeCards?.some(c => c.name === 'The World');
             const isLevel20 = (cmClass?.level || 0) >= 20;
@@ -3372,111 +3181,44 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
              }
          });
 
-         // 2. Hardcoded common bonus actions (for features that might not have explicit "bonus action" text or need specific handling)
-         const classes = character.classes.map(c => c.definition.name.toLowerCase());
-         if (classes.includes('bard')) list.push(enrichFeature({ id: 'feature-bardic-inspiration', index: 'bardic-inspiration', name: 'Bardic Inspiration', category: 'Action' }));
-         if (classes.includes('barbarian')) list.push(enrichFeature({ id: 'feature-rage', index: 'rage', name: 'Rage', category: 'Action' }));
-         if (classes.includes('fighter')) list.push(enrichFeature({ id: 'feature-second-wind', index: 'second-wind', name: 'Second Wind', category: 'Action' }));
-         if (classes.includes('rogue') && character.level >= 2) list.push(enrichFeature({ id: 'feature-cunning-action', index: 'cunning-action', name: 'Cunning Action', category: 'Action' }));
-         
-         const monk = character.classes.find(c => c.definition.index === 'monk');
-         if (monk) {
-            if (monk.level >= 1) list.push(enrichFeature({ id: 'feature-martial-arts-strike', index: 'martial-arts-2024', name: 'Martial Arts Strike', category: 'Action' }));
-            if (monk.level >= 2) {
-                list.push(enrichFeature({ id: 'feature-flurry-of-blows', index: 'monks-focus', name: 'Flurry of Blows', category: 'Action' }));
-                list.push(enrichFeature({ id: 'feature-patient-defense', index: 'monks-focus', name: 'Patient Defense', category: 'Action' }));
-                list.push(enrichFeature({ id: 'feature-step-of-the-wind', index: 'monks-focus', name: 'Step of the Wind', category: 'Action' }));
-                list.push(enrichFeature({ id: 'feature-uncanny-metabolism', index: 'uncanny-metabolism', name: 'Uncanny Metabolism', category: 'Action' }));
-            }
-            if (monk.level >= 18) list.push(enrichFeature({ id: 'feature-superior-defense', index: 'superior-defense', name: 'Superior Defense', category: 'Action' }));
-         }
+         // 2. Class/subclass features from the content documents. No class-name
+         // checks: any feature with a bonus_action/action effect, or descriptive
+         // text saying "bonus action", is included.
+         const featureSources = [
+             ...(character.classFeatures || []),
+             ...character.classes.flatMap(c => ((c.definition as any).feature_details || [])
+                 .filter((feature: any) => (feature.level || 0) <= c.level)
+                 .map((feature: any) => ({ ...feature, source: c.definition.name }))),
+             ...character.classes.flatMap(c => ((c.subclass as any)?.feature_details || [])
+                 .filter((feature: any) => (feature.level || 0) <= c.level)
+                 .map((feature: any) => ({ ...feature, source: c.subclass?.name }))),
+         ];
 
-         const paladin = character.classes.find(c => c.definition.index === 'paladin');
-         if (paladin) {
-             if (paladin.level >= 1) list.push(enrichFeature({ id: 'feature-lay-on-hands', index: 'lay-on-hands-2024', name: 'Lay on Hands', category: 'Action' }));
-             if (paladin.level >= 2) list.push(enrichFeature({ id: 'feature-paladins-smite', index: 'paladins-smite', name: "Paladin's Smite", category: 'Action' }));
-         }
-
-         const ranger = character.classes.find(c => c.definition.index === 'ranger');
-         if (ranger && ranger.level >= 14) {
-             list.push(enrichFeature({ id: 'feature-natures-veil', index: 'natures-veil', name: "Nature's Veil", category: 'Action' }));
-         }
-         
-         const rogue = character.classes.find(c => c.definition.index === 'rogue');
-         if (rogue && rogue.level >= 3) {
-             list.push(enrichFeature({ id: 'feature-steady-aim', index: 'steady-aim', name: "Steady Aim", category: 'Action' }));
-         }
-
-         const sorcerer = character.classes.find(c => c.definition.index === 'sorcerer');
-         if (sorcerer && sorcerer.level >= 1) {
-             list.push(enrichFeature({ id: 'feature-innate-sorcery', index: 'innate-sorcery', name: "Innate Sorcery", category: 'Action' }));
-         }
-
-         const bloodHunter = character.classes.find(c => c.definition.index === 'blood-hunter');
-         if (bloodHunter && bloodHunter.level >= 2) {
-             list.push(enrichFeature({ id: 'feature-crimson-rite', index: 'crimson-rite', name: "Crimson Rite", category: 'Action' }));
-         }
-
-         const pugilist = character.classes.find(c => c.definition.index === 'pugilist');
-         if (pugilist) {
-             if (pugilist.level >= 1) list.push(enrichFeature({ id: 'feature-fisticuffs', index: 'fisticuffs', name: "Fisticuffs", category: 'Action' }));
-             if (pugilist.level >= 4) list.push(enrichFeature({ id: 'feature-dig-deep', index: 'dig-deep', name: "Dig Deep", category: 'Action' }));
-             if (pugilist.level >= 7) list.push(enrichFeature({ id: 'feature-shake-it-off', index: 'shake-it-off', name: "Shake It Off", category: 'Action' }));
-         }
-
-         const druid = character.classes.find(c => c.definition.index === 'druid');
-         if (druid && druid.subclass?.index === 'circle-of-the-moon') {
-             list.push(enrichFeature({ id: 'feature-combat-wild-shape', index: 'combat-wild-shape', name: "Combat Wild Shape", category: 'Action' }));
-         }
-
-         const cardMaster = character.classes.find(c => c.definition.index === 'card-master');
-         if (cardMaster) {
-             const lvl = cardMaster.level;
-             list.push(enrichFeature({ id: 'feature-pick-a-card', index: 'pick-a-card', name: 'Pick a Card', category: 'Action' }));
-             if (lvl >= 2) list.push(enrichFeature({ id: 'feature-trust-destiny', index: 'trust-the-destiny', name: 'Trust the Destiny', category: 'Action' }));
-             if (lvl >= 2) list.push(enrichFeature({ id: 'feature-chiromancy', index: 'chiromancy', name: 'Chiromancy', category: 'Action' }));
-             if (lvl >= 7) list.push(enrichFeature({ id: 'feature-mystic-shuffle', index: 'mystic-shuffle', name: 'Mystic Shuffle', category: 'Action' }));
-             if (lvl >= 8) list.push(enrichFeature({ id: 'feature-foresight-touch', index: 'chiromancy-lines-of-fate', name: 'Foresight Touch', category: 'Action' }));
-             if (lvl >= 10) list.push(enrichFeature({ id: 'feature-the-world', index: 'the-world', name: 'The World', category: 'Action' }));
-         }
-
-         // 3. Dynamic scanning of all class features for "bonus action" keywords or effects
-         const EXCLUDED_INDICES = ['monks-focus', 'cunning-action', 'martial-arts-2024', 'superior-defense', 'uncanny-metabolism'];
-         character.classFeatures.forEach(feat => {
-             if (EXCLUDED_INDICES.includes(feat.index)) return;
+         featureSources.forEach(feat => {
              const enriched = enrichFeature(feat);
-             
-             // Check top-level description
-             const descStr = Array.isArray(enriched.desc) 
-                ? enriched.desc.join(' ').toLowerCase() 
-                : (enriched.desc || '').toLowerCase();
-             
-             if (descStr.includes('bonus action')) {
-                 if (!list.some(item => item.name === enriched.name)) {
-                     list.push({ 
-                         ...enriched, 
-                         id: enriched.id || `feature-${enriched.index || enriched.name.toLowerCase().replace(/\s+/g, '-')}`,
-                         category: 'Action' 
-                     });
-                 }
-             }
+             const descStr = Array.isArray(enriched.desc)
+                 ? enriched.desc.join(' ').toLowerCase()
+                 : (enriched.desc || '').toLowerCase();
 
-             // Check effects for bonus_action, action, or extra_attack types
-             if (enriched.effects) {
-                 enriched.effects.forEach((eff: any) => {
-                     if (eff.type === 'bonus_action' || eff.type === 'action' || eff.type === 'extra_attack' || eff.type === 'additional_attack') {
-                         if (eff.name && !list.some(item => item.name === eff.name)) {
-                             list.push({
-                                 id: `effect-${eff.name.toLowerCase().replace(/\s+/g, '-')}`,
-                                 name: eff.name,
-                                 category: 'Action',
-                                 desc: [eff.description || eff.desc || (Array.isArray(enriched.desc) ? enriched.desc[0] : enriched.desc) || ''],
-                                 source: { ...enriched, name: eff.name, desc: [eff.description || eff.desc || (Array.isArray(enriched.desc) ? enriched.desc[0] : enriched.desc) || ''] }
-                             });
-                         }
-                     }
+             if (descStr.includes('bonus action') && !list.some(item => item.name === enriched.name)) {
+                 list.push({
+                     ...enriched,
+                     id: enriched.id || `feature-${enriched.index || enriched.name.toLowerCase().replace(/\s+/g, '-')}`,
+                     category: 'Action'
                  });
              }
+
+             (enriched.effects || []).forEach((eff: any) => {
+                 if (eff.type !== 'bonus_action' && eff.type !== 'action') return;
+                 if (!eff.name || list.some(item => item.name === eff.name)) return;
+                 list.push({
+                     id: `effect-${eff.name.toLowerCase().replace(/\s+/g, '-')}`,
+                     name: eff.name,
+                     category: 'Action',
+                     desc: [eff.description || eff.desc || (Array.isArray(enriched.desc) ? enriched.desc[0] : enriched.desc) || ''],
+                     source: { ...enriched, name: eff.name, desc: [eff.description || eff.desc || (Array.isArray(enriched.desc) ? enriched.desc[0] : enriched.desc) || ''] }
+                 });
+             });
          });
 
          // 4. Feats scanning
@@ -3562,23 +3304,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
             // 3. Add virtual feature for subclasses
             if (cls.subclass) {
-                let categoryName = `${cls.definition.name} Subclass`;
-                if (cls.definition.index === 'cleric') categoryName = "Divine Domain";
-                else if (cls.definition.index === 'paladin') categoryName = "Sacred Oath";
-                else if (cls.definition.index === 'druid') categoryName = "Druid Circle";
-                else if (cls.definition.index === 'fighter') categoryName = "Martial Archetype";
-                else if (cls.definition.index === 'ranger') categoryName = "Ranger Archetype";
-                else if (cls.definition.index === 'rogue') categoryName = "Roguish Archetype";
-                else if (cls.definition.index === 'warlock') categoryName = "Otherworldly Patron";
-                else if (cls.definition.index === 'sorcerer') categoryName = "Sorcerous Origin";
-                else if (cls.definition.index === 'wizard') categoryName = "Arcane Tradition";
-                else if (cls.definition.index === 'monk') categoryName = "Way of the";
-                else if (cls.definition.index === 'barbarian') categoryName = "Primal Path";
-                else if (cls.definition.index === 'bard') categoryName = "Bard College";
-                
+                const categoryName = (cls.definition as any).subclass_label || 'Subclass';
+
                 list.push({
                     name: `${categoryName}: ${cls.subclass.name}`,
-                    level: cls.definition.index === 'cleric' ? 3 : 3, // PHB 2024 standardized most to 3
+                    level: (cls.definition as any).subclass_level || 3,
                     source: cls.definition.name,
                     desc: cls.subclass.desc,
                     type: 'Class',
@@ -3616,7 +3346,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         });
     };
 
-    const cmClass = character.classes.find(c => c.definition.index === 'card-master');
+    const cmClass = getClassWithUiWidget(character, 'activeCards');
     const cmLevel = cmClass ? cmClass.level : 0;
 
     return (
@@ -3720,7 +3450,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             <CompanionStatBlockModal companion={viewingCompanion} onClose={() => setViewingCompanion(null)} />
             <EldritchCannonModal isOpen={showEldritchCannonModal} onClose={() => setShowEldritchCannonModal(false)} character={character} onSummon={handleSummonCannon} />
             <SteelDefenderModal isOpen={showSteelDefenderModal} onClose={() => setShowSteelDefenderModal(false)} character={character} onSummon={handleSummonDefender} />
-            <CardOptionsModal isOpen={showCardOptionsModal} onClose={() => setShowCardOptionsModal(false)} isWorldUnlocked={cmLevel >= 10} />
+            <CardOptionsModal isOpen={showCardOptionsModal} onClose={() => setShowCardOptionsModal(false)} isWorldUnlocked={cmLevel >= 10} cards={character.classes.map(c => (c.definition as any).options?.pickACardTable).find((table: any) => Array.isArray(table) && table.length > 0) || []} />
             
             <HomebrewManagerModal 
                 isOpen={showHomebrewModal}

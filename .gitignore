@@ -3,3 +3,7 @@ dist/
 .env.local
 .builder/
 .DS_Store
+
+# content migration artifacts (may contain user content)
+scripts/content-migration/backups/
+scripts/content-migration/reports/

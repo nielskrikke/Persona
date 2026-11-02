@@ -3,15 +3,9 @@ import Markdown from 'react-markdown';
 import { X, User, GraduationCap, Activity, Shield, Settings, Plus, Trash2, Save, Languages, Palette, Type, Dice5, Eye, EyeOff, Info, Sparkles, AlertTriangle, RotateCcw, AlertCircle } from 'lucide-react';
 import { CharacterState, APIReference, RaceDetail, SubraceDetail, BackgroundDetail, FeatDetail, ABILITY_NAMES, ABILITY_LABELS, AbilityScores, SpellDetail, LevelChoice, AbilityName } from '@/types';
 import { fetchClasses, fetchRaces, fetchSubraces, fetchBackgrounds, fetchFeatsList, fetchRaceDetail, fetchSubraceDetail, fetchBackgroundDetail, fetchSubclasses, fetchSubclassDetail, fetchSubclassLevels, fetchClassLevels, getLocalSpells, fetchLevelFeatures, fetchClassDetail, fetchAllSpells, RACES, SUBCLASSES } from '@/data/index';
-import { getSpellSlots, calculateModifier, SKILL_LIST, inferOptionEffects } from '@/utils/rules';
-import { CLASS_FEATURES, STANDARD_LANGUAGES, ARTISAN_TOOLS } from '../../../data/constants';
+import { getSpellSlots, calculateModifier, SKILL_LIST, getSubclassLevel, getResourceDefinitions, calculateMaxHp, mergeSpellSlotCurrents } from '@/utils/rules';
+import { STANDARD_LANGUAGES, ARTISAN_TOOLS } from '../../../data/constants';
 import DiceRoller3D from '../Shared/DiceRoller3D';
-
-const SUBCLASS_LEVELS: Record<string, number> = {
-    'Cleric': 1, 'Warlock': 1, 'Sorcerer': 1,
-    'Druid': 2, 'Wizard': 2,
-    'Bard': 3, 'Barbarian': 3, 'Fighter': 3, 'Monk': 3, 'Paladin': 3, 'Ranger': 3, 'Rogue': 3, 'Artificer': 3
-};
 
 const ManageCharacterModal = ({ 
     character, 
@@ -55,7 +49,7 @@ const ManageCharacterModal = ({
     const [allBackgrounds, setAllBackgrounds] = useState<APIReference[]>([]);
     const [allClasses, setAllClasses] = useState<APIReference[]>([]);
     const [allFeats, setAllFeats] = useState<FeatDetail[]>([]);
-    const [wizardCantrips, setWizardCantrips] = useState<SpellDetail[]>([]);
+    const [racialSpellOptions, setRacialSpellOptions] = useState<SpellDetail[]>([]);
     const [loadingSubraces, setLoadingSubraces] = useState(false);
 
     // Selections
@@ -113,14 +107,21 @@ const ManageCharacterModal = ({
                 setAllFeats(f);
                 setAllClasses(c);
 
+                const subclassEntries = await Promise.all(character.classes.map(async (cls) => {
+                    const subs = await fetchSubclasses(cls.definition.index);
+                    return [cls.definition.index, subs] as const;
+                }));
+                setClassSubclassOptions(Object.fromEntries(subclassEntries));
+
                 if (character.race) {
                     const subs = await fetchSubraces(character.race.index);
                     setAllSubraces(subs);
                 }
 
-                // Load wizard cantrips for racial spell swapping
-                const spells = getLocalSpells('wizard', 0);
-                setWizardCantrips(spells);
+                // Load cantrips for racial spell swapping from the content
+                // library rather than a hardcoded class spell list.
+                const spells = await fetchAllSpells();
+                setRacialSpellOptions(spells.filter(spell => spell.level === 0));
             };
             loadData();
 
@@ -248,7 +249,7 @@ const ManageCharacterModal = ({
                         });
 
                         // Subclass
-                        const subLvl = SUBCLASS_LEVELS[sourceName] || 3;
+                        const subLvl = getSubclassLevel(cls.definition);
                         if (i === subLvl) {
                             const subclasses = await fetchSubclasses(classIndex);
                             backfilled.push({
@@ -320,8 +321,14 @@ const ManageCharacterModal = ({
         const nextLevel = existingClass ? existingClass.level + 1 : 1;
         const sourceName = classDetail.name;
 
-        // 1. Add Level Choice
-        const hpIncrease = Math.floor(classDetail.hit_die / 2) + 1 + calculateModifier(abilities.con);
+        // 1. Add Level Choice. Compute HP from the actual class hit dice,
+        // effective Constitution, and hp_per_level effects.
+        const nextClasses: any[] = isInitiation
+            ? [...localClasses, { level: 1, definition: classDetail, subclass: null }]
+            : localClasses.map(c => c.definition.index === classIndex ? { ...c, level: c.level + 1 } : c);
+        const oldMaxHp = calculateMaxHp({ ...character, abilities, classes: localClasses });
+        const newMaxHp = calculateMaxHp({ ...character, abilities, classes: nextClasses, level: nextClasses.reduce((sum, c) => sum + c.level, 0) });
+        const hpIncrease = Math.max(0, newMaxHp - oldMaxHp);
         const levelChoice: LevelChoice = {
             id: `level-${nextLevel}-${classIndex}`,
             level: nextLevel,
@@ -338,12 +345,9 @@ const ManageCharacterModal = ({
         const levelFeatures = await fetchLevelFeatures(classIndex, nextLevel);
         
         // 3. Check for Subclass
-        const requiredSubclassLevel = SUBCLASS_LEVELS[sourceName] || 3;
-        const needsSubclass = levelFeatures.some((f: any) => 
-            /subclass|archetype|domain|origin|college|circle|oath|tradition|patron|specialist|club|path/i.test(f.name)
-        ) || (isInitiation && ['cleric', 'warlock', 'sorcerer'].includes(classIndex));
+        const requiredSubclassLevel = getSubclassLevel(classDetail);
 
-        if (needsSubclass && (!existingClass || !existingClass.subclass)) {
+        if (nextLevel === requiredSubclassLevel && (!existingClass || !existingClass.subclass)) {
             const subs = await fetchSubclasses(classIndex);
             newChoices.push({
                 id: `subclass-${classIndex}-${nextLevel}`,
@@ -394,21 +398,32 @@ const ManageCharacterModal = ({
             }
         });
 
+        // 5b. Data-declared invocation-style choices.
+        const invocationOptions = (classDetail as any).options?.invocations;
+        if (Array.isArray(invocationOptions) && invocationOptions.length > 0) {
+            const rows = (classDetail as any).level_table || [];
+            const current = Number(rows[nextLevel - 1]?.class_specific?.invocations || 0);
+            const previous = Number(rows[nextLevel - 2]?.class_specific?.invocations || 0);
+            const delta = current - previous;
+            if (delta > 0) {
+                newChoices.push({
+                    id: `invocations-${classIndex}-${nextLevel}`,
+                    level: nextLevel,
+                    source: sourceName,
+                    type: 'feature_choice',
+                    label: 'Eldritch Invocations',
+                    value: null,
+                    options: invocationOptions,
+                    count: delta,
+                    revertData: { classIndex }
+                });
+            }
+        }
+
         // 6. Update state
         setLocalChoices(newChoices);
-        setLocalMaxHp(prev => prev + hpIncrease);
-        
-        if (isInitiation) {
-            setLocalClasses(prev => [...prev, {
-                level: 1,
-                definition: classDetail,
-                subclass: null
-            }]);
-        } else {
-            setLocalClasses(prev => prev.map(c => 
-                c.definition.index === classIndex ? { ...c, level: c.level + 1 } : c
-            ));
-        }
+        setLocalMaxHp(newMaxHp);
+        setLocalClasses(nextClasses);
 
         // Add new features to local features
         setLocalClassFeatures(prev => [...prev, ...levelFeatures.map((f: any) => ({
@@ -429,24 +444,8 @@ const ManageCharacterModal = ({
         const remainingClasses = character.classes.filter(c => c.definition.index !== classIndex);
         const newLevel = remainingClasses.reduce((acc, c) => acc + c.level, 0);
 
-        // HP Calculation
-        const hitDie = cls.definition.hit_die;
-        const conMod = calculateModifier(character.abilities.con);
-        const isPrimary = character.classes[0].definition.index === classIndex;
-        let hpToRemove = 0;
-        
-        if (isPrimary) {
-            hpToRemove += hitDie + conMod; // Lvl 1
-            if (cls.level > 1) {
-                const avg = Math.floor(hitDie / 2) + 1;
-                hpToRemove += (cls.level - 1) * (avg + conMod);
-            }
-        } else {
-            const avg = Math.floor(hitDie / 2) + 1;
-            hpToRemove += cls.level * (avg + conMod);
-        }
-
-        const newMaxHp = Math.max(0, character.maxHp - hpToRemove);
+        // HP Calculation from the remaining classes, effective Con, and effects.
+        const newMaxHp = calculateMaxHp({ ...character, classes: remainingClasses, level: newLevel });
         const newCurrentHp = Math.min(character.currentHp, newMaxHp);
 
         // Features
@@ -457,14 +456,15 @@ const ManageCharacterModal = ({
         );
 
         // Spell Slots
-        const newSpellSlots = getSpellSlots(remainingClasses);
+        const newSpellSlots = mergeSpellSlotCurrents(getSpellSlots(remainingClasses), character.spellSlots);
 
         // Feature Usage Cleanup
         const newFeatureUsage = { ...character.featureUsage };
-        const classFeatureDef = CLASS_FEATURES[className];
-        if (classFeatureDef && newFeatureUsage[classFeatureDef.name]) {
-            delete newFeatureUsage[classFeatureDef.name];
-        }
+        const resourceNames = [
+            ...((cls.definition as any).resources || []),
+            ...((cls.subclass as any)?.resources || []),
+        ].map((resource: any) => resource.name);
+        resourceNames.forEach((name: string) => { delete newFeatureUsage[name]; });
 
         onUpdate({
             classes: remainingClasses,
@@ -514,23 +514,17 @@ const ManageCharacterModal = ({
 
         setLocalClassFeatures(updatedFeatures);
 
-        // Auto-inject layout if Artificer companions are unlocked
-        if (classIndex === 'artificer' && clsDef.level >= 3) {
+        // Auto-inject layout from subclass-declared UI widgets.
+        const companionWidget = ((newSubclass as any)?.ui?.widgets || []).find((widget: string) =>
+            widget === 'eldritchCannon' || widget === 'steelDefender'
+        );
+        if (companionWidget && clsDef.level >= 3) {
             const currentLayout = character.layout || { left: [], right: [], mobile: [] };
-            if (subclassIndex === 'artillerist') {
-                if (!currentLayout.right.includes('eldritchCannon') && !currentLayout.left.includes('eldritchCannon')) {
-                    setCombatOverrides(prev => ({
-                        ...prev,
-                        layout: { ...currentLayout, right: [...currentLayout.right, 'eldritchCannon'] }
-                    }));
-                }
-            } else if (subclassIndex === 'battle-smith') {
-                if (!currentLayout.right.includes('steelDefender') && !currentLayout.left.includes('steelDefender')) {
-                    setCombatOverrides(prev => ({
-                        ...prev,
-                        layout: { ...currentLayout, right: [...currentLayout.right, 'steelDefender'] }
-                    }));
-                }
+            if (!currentLayout.right.includes(companionWidget) && !currentLayout.left.includes(companionWidget)) {
+                setCombatOverrides(prev => ({
+                    ...prev,
+                    layout: { ...currentLayout, right: [...currentLayout.right, companionWidget] }
+                }));
             }
         }
     };
@@ -570,7 +564,7 @@ const ManageCharacterModal = ({
         classFeatures: overrides.classFeatures || localClassFeatures,
         maxHp: overrides.maxHp || localMaxHp,
         level: (overrides.classes || localClasses).reduce((sum: number, c: any) => sum + c.level, 0),
-        spellSlots: getSpellSlots(overrides.classes || localClasses)
+        spellSlots: mergeSpellSlotCurrents(getSpellSlots(overrides.classes || localClasses), character.spellSlots)
     });
 
     const handleSave = (shouldClose: boolean = true, overrides: any = {}) => {
@@ -812,39 +806,21 @@ const ManageCharacterModal = ({
         });
         setLocalClassFeatures(finalClassFeatures);
 
-        // Sync featureUsage (trackers) with new levels
+        // Sync featureUsage (trackers) with new levels using the content data.
         const updatedFeatures = { ...localFeatures };
+        const projected = { ...character, ...temp, classes: temp.classes } as any;
+        const allowedResources = new Map(getResourceDefinitions(projected).map(resource => [resource.name, resource]));
         Object.keys(updatedFeatures).forEach(featName => {
-            // Find the class that provides this feature
-            const sourceClass = temp.classes.find(c => {
-                const def = CLASS_FEATURES[c.definition.name];
-                if (def && def.name === featName) return true;
-                const subDef = c.subclass ? CLASS_FEATURES[c.subclass.name] : null;
-                if (subDef && subDef.name === featName) return true;
-                
-                // Special case for Paladin Channel Divinity
-                if (featName === 'Channel Divinity' && c.definition.name === 'Paladin') return true;
-                
-                return false;
-            });
-            
-            if (!sourceClass) {
+            const resource = allowedResources.get(featName);
+            if (!resource) {
                 delete updatedFeatures[featName];
             } else {
-                // Find the definition again to get the formula
-                const classFeatureDef = Object.values(CLASS_FEATURES).find(f => f.name === featName);
-                if (classFeatureDef) {
-                    const max = classFeatureDef.formula(sourceClass.level, temp.abilities);
-                    if (max <= 0) {
-                        delete updatedFeatures[featName];
-                    } else {
-                        updatedFeatures[featName] = {
-                            ...updatedFeatures[featName],
-                            max: max,
-                            current: Math.min(updatedFeatures[featName].current, max)
-                        };
-                    }
-                }
+                updatedFeatures[featName] = {
+                    ...updatedFeatures[featName],
+                    max: resource.max,
+                    current: Math.min(updatedFeatures[featName].current, resource.max),
+                    reset: resource.reset,
+                };
             }
         });
         setLocalFeatures(updatedFeatures);
@@ -941,7 +917,7 @@ const ManageCharacterModal = ({
     };
 
     const replaceRacialSpell = (oldSpellIndex: string, newSpellIndex: string) => {
-        const newSpell = wizardCantrips.find(s => s.index === newSpellIndex);
+        const newSpell = racialSpellOptions.find(s => s.index === newSpellIndex);
         if (!newSpell) return;
 
         setLocalSpells(prev => prev.map(s => {
@@ -1132,13 +1108,13 @@ const ManageCharacterModal = ({
             });
             if (found) {
                 if (typeof found === 'string') {
-                    return { name: found, desc: '', effects: inferOptionEffects(found) };
+                    return { name: found, desc: '', effects: [] };
                 }
-                const optEffects = (found.effects && found.effects.length > 0) ? found.effects : inferOptionEffects(found.name || found.index || '', found.desc);
+                const optEffects = found.effects || [];
                 return { ...found, effects: optEffects };
             }
             const valStr = typeof val === 'string' ? val : (val?.name || val?.index || '');
-            return { name: valStr, desc: '', effects: inferOptionEffects(valStr) };
+            return { name: valStr, desc: '', effects: [] };
         }).filter(o => o && o.name);
 
         if (matchingOptions.length > 0) {
@@ -1461,10 +1437,25 @@ const ManageCharacterModal = ({
                     return Array.from(new Set([...filtered, ...newProfs]));
                 });
 
-                // 2. Languages
-                // Backgrounds often give a number of languages to choose, 
+                // 2. Background feature/effects
+                const bgEffects = [...((newBgDetail as any).effects || []), ...(newBgDetail.feature?.effects || [])];
+                setLocalClassFeatures(prev => [
+                    ...prev.filter(feature => feature.source !== 'Background'),
+                    {
+                        index: newBgDetail.feature.name.toLowerCase().replace(/\s+/g, '-'),
+                        name: newBgDetail.feature.name,
+                        level: 1,
+                        source: 'Background',
+                        desc: newBgDetail.feature.desc,
+                        effects: bgEffects,
+                        url: '',
+                    } as any,
+                ]);
+
+                // 3. Languages
+                // Backgrounds often give a number of languages to choose,
                 // but some give specific ones. For now we'll just handle specific ones if they exist.
-                
+
                 setSelectedBackgroundIndex(newValue);
             }
         } else if (choiceId.startsWith('subclass-')) {
@@ -1772,7 +1763,7 @@ const ManageCharacterModal = ({
                         <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300 p-4 sm:p-0">
                             <div className="space-y-4">
                                 {character.classes.map((cls) => {
-                                    const requiredLevel = SUBCLASS_LEVELS[cls.definition.name] || 3;
+                                    const requiredLevel = getSubclassLevel(cls.definition);
                                     const canPickSubclass = cls.level >= requiredLevel;
 
                                     return (
@@ -1786,6 +1777,18 @@ const ManageCharacterModal = ({
                                                     <div className="text-xs text-dnd-gold font-bold uppercase tracking-widest">
                                                         {cls.subclass.name}
                                                     </div>
+                                                )}
+                                                {!cls.subclass && canPickSubclass && (
+                                                    <select
+                                                        value=""
+                                                        onChange={(e) => { if (e.target.value) handleSubclassChange(cls.definition.index, e.target.value); }}
+                                                        className="bg-black/40 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-dnd-gold/50"
+                                                    >
+                                                        <option value="">Choose {cls.definition.subclass_label || 'Subclass'}...</option>
+                                                        {(classSubclassOptions[cls.definition.index] || []).map((sub: any) => (
+                                                            <option key={sub.index} value={sub.index}>{sub.name}</option>
+                                                        ))}
+                                                    </select>
                                                 )}
                                             </div>
                                              <div className="flex flex-wrap gap-2 shrink-0">
@@ -2345,7 +2348,7 @@ const ManageCharacterModal = ({
                                                         value=""
                                                     >
                                                         <option value="">Select...</option>
-                                                        {wizardCantrips.map(s => (
+                                                        {racialSpellOptions.map(s => (
                                                             <option key={s.index} value={s.index}>{s.name}</option>
                                                         ))}
                                                     </select>

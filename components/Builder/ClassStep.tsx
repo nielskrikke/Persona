@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { APIReference, ClassDetail, SubclassDetail, CharacterClass } from '../../types';
 import { fetchClasses, fetchClassDetail, fetchSubclasses, fetchSubclassDetail } from '../../data/index';
+import { SKILL_LIST } from '../../utils/rules';
 
 interface ClassStepProps {
   onSelect: (classes: CharacterClass[], skills: string[], tools: string[], choices: any[]) => void;
@@ -32,8 +33,9 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
   const [classDetails, setClassDetails] = useState<Record<string, ClassDetail>>({});
   const [subclassOptions, setSubclassOptions] = useState<Record<string, APIReference[]>>({});
   
-  // Proficiency Choices State (Indexed by choice index)
+  // Proficiency Choices State
   const [chosenProficiencies, setChosenProficiencies] = useState<Record<number, string[]>>({});
+  const [classChoices, setClassChoices] = useState<Record<string, string[]>>({});
   
   // Feature Choices State: { classIndex: { featureIndex: [selectedOptions] } }
   const [featureChoices, setFeatureChoices] = useState<Record<string, Record<string, string[]>>>({});
@@ -146,6 +148,17 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
       });
   };
 
+  const toggleClassChoice = (classIndex: string, choiceId: string, option: string, count: number) => {
+      setValidationError(null);
+      const key = `${classIndex}:${choiceId}`;
+      setClassChoices(prev => {
+          const current = prev[key] || [];
+          if (current.includes(option)) return { ...prev, [key]: current.filter(item => item !== option) };
+          if (current.length < count) return { ...prev, [key]: [...current, option] };
+          return prev;
+      });
+  };
+
   const handleFeatureChoice = (classIndex: string, featureIndex: string, option: string, count: number) => {
       setFeatureChoices(prev => {
           const classChoices = prev[classIndex] || {};
@@ -210,10 +223,36 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
       }
       
       setValidationError(null);
-      
+
       const levelChoices: any[] = [];
-      
-      onSelect(finalClasses, [], [], levelChoices);
+      const selectedSkills = new Set<string>();
+      const selectedTools = new Set<string>();
+
+      Object.entries(classChoices).forEach(([key, selected]) => {
+          const [classIndex, choiceId] = key.split(':');
+          if (!draftClasses.some(draft => draft.index === classIndex)) return;
+          const cls = classDetails[classIndex];
+          const choice = cls?.choices?.find((item: any) => item.id === choiceId);
+          if (!cls || !choice) return;
+          selected.forEach(name => {
+              const option = (choice.options || []).find((item: any) => (typeof item === 'string' ? item : item.name) === name);
+              const category = typeof option === 'object' ? option.category : 'skill';
+              if (category === 'skill' || SKILL_LIST.some(skill => skill.name === name)) selectedSkills.add(name);
+              else selectedTools.add(name);
+          });
+          levelChoices.push({
+              id: `class-${classIndex}-${choiceId}`,
+              level: 1,
+              source: cls.name,
+              type: 'other',
+              label: `${cls.name}: ${choice.kind}`,
+              value: selected,
+              options: choice.options,
+              count: choice.count,
+          });
+      });
+
+      onSelect(finalClasses, Array.from(selectedSkills), Array.from(selectedTools), levelChoices);
   };
 
   const currentAssigned = draftClasses.reduce((acc, c) => acc + c.level, 0);
@@ -321,7 +360,40 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
                                           <p className="text-[10px] text-gray-500 mt-2 italic">Skill and tool proficiencies will be selected in the Level Advancement steps.</p>
                                        </div>
                                    </section>
-                               )}
+                                )}
+
+                                {detail?.choices?.filter((choice: any) => ['proficiency', 'skill', 'tool'].includes(choice.kind)).map((choice: any) => {
+                                    const key = `${draft.index}:${choice.id}`;
+                                    const selected = classChoices[key] || [];
+                                    return (
+                                        <section key={choice.id} className="mt-6 pt-6 border-t border-gray-800 space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                                                    Choose {choice.count} {choice.kind === 'proficiency' ? 'proficiency' : choice.kind}
+                                                </h4>
+                                                <span className={`text-[10px] font-bold ${selected.length === choice.count ? 'text-green-500' : 'text-dnd-red'}`}>
+                                                    {selected.length} / {choice.count}
+                                                </span>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                {(choice.options || []).map((option: any, optionIndex: number) => {
+                                                    const name = typeof option === 'string' ? option : option.name;
+                                                    const isSelected = selected.includes(name);
+                                                    return (
+                                                        <button
+                                                            key={`${name}-${optionIndex}`}
+                                                            type="button"
+                                                            onClick={() => toggleClassChoice(draft.index, choice.id, name, choice.count)}
+                                                            className={`px-3 py-1.5 rounded border text-[10px] font-bold uppercase tracking-wide transition-all ${isSelected ? 'bg-dnd-gold text-black border-dnd-gold' : 'bg-black/20 text-gray-400 border-gray-700 hover:border-gray-500'}`}
+                                                        >
+                                                            {name}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </section>
+                                    );
+                                })}
                            </div>
                        );
                    })

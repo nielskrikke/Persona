@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { CharacterState, FeatureEffect, FeatDetail, ABILITY_NAMES, ABILITY_LABELS, APIReference, SubclassDetail, AbilityScores, SkillDefinition, AbilityName, LevelChoice } from '../../types';
 import { fetchLevelFeatures, fetchFeatsList, fetchSubclasses, fetchSubclassDetail, fetchSubclassLevels, fetchAllSpells, fetchClassLevels } from '../../data/index';
-import { calculateModifier, SKILL_LIST, getSpellSlots } from '../../utils/rules';
+import { calculateModifier, SKILL_LIST, getSpellSlots, getSubclassLevel, getSubclassLabel, getResourceDefinitions } from '../../utils/rules';
 import { TOOLS } from '../../data/items/tools';
-import { STANDARD_LANGUAGES, CLASS_FEATURES } from '../../data/constants';
+import { STANDARD_LANGUAGES } from '../../data/constants';
 
 interface LevelingStepProps {
     character: CharacterState;
@@ -14,6 +14,7 @@ interface LevelingStepProps {
 interface LevelStepItem {
     classIndex: string;
     className: string;
+    subclassLabel: string;
     level: number;
     isSubclassLevel: boolean;
 }
@@ -52,37 +53,63 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
         const init = async () => {
             const q: LevelStepItem[] = [];
             character.classes.forEach(cls => {
+                const subclassLevel = getSubclassLevel(cls.definition);
+                const subclassLabel = getSubclassLabel(cls.definition);
                 for (let i = 1; i <= cls.level; i++) {
-                    const isSub = (
-                        (['cleric', 'warlock', 'sorcerer', 'druid', 'wizard'].includes(cls.definition.index) && i === 3) ||
-                        (['bard', 'barbarian', 'fighter', 'monk', 'paladin', 'ranger', 'rogue', 'artificer', 'pugilist', 'arrowsmith'].includes(cls.definition.index) && i === 3) ||
-                        (['arrowsmith'].includes(cls.definition.index) && i === 5)
-                    );
                     q.push({
                         classIndex: cls.definition.index,
                         className: cls.definition.name,
+                        subclassLabel,
                         level: i,
-                        isSubclassLevel: isSub
+                        isSubclassLevel: i === subclassLevel
                     });
 
-                    // Add Metamagic Matrix choice for Sorcerer (2024 rules)
-                    if (cls.definition.index === 'sorcerer') {
-                        const isProgression = [2, 10, 17].includes(i);
-                        const isCalibration = !isProgression && i > 2;
-
-                        if (isProgression || isCalibration) {
-                            const choiceId = `metamagic-matrix-${i}`;
+                    // Data-declared invocation-style choices. The class table's
+                    // class_specific.invocations tells us how many are known at
+                    // each level; the delta is the number chosen at this level.
+                    const invocationOptions = (cls.definition as any).options?.invocations;
+                    if (Array.isArray(invocationOptions) && invocationOptions.length > 0) {
+                        const rows = (cls.definition as any).level_table || [];
+                        const current = Number(rows[i - 1]?.class_specific?.invocations || 0);
+                        const previous = Number(rows[i - 2]?.class_specific?.invocations || 0);
+                        const delta = current - previous;
+                        if (delta > 0) {
+                            const choiceId = `invocations-${cls.definition.index}-${i}`;
                             if (!accumulator.current.choices.some(c => c.id === choiceId)) {
                                 accumulator.current.choices.push({
                                     id: choiceId,
                                     level: i,
-                                    source: 'Sorcerer',
+                                    source: cls.definition.name,
+                                    type: 'feature_choice',
+                                    label: 'Eldritch Invocations',
+                                    value: null,
+                                    options: invocationOptions,
+                                    count: delta,
+                                    revertData: { classIndex: cls.definition.index }
+                                });
+                            }
+                        }
+                    }
+
+                    // Class-declared option progression (e.g. Sorcerer Metamagic).
+                    const optionProgression = (cls.definition as any).options?.metamagicProgression;
+                    if (optionProgression) {
+                        const isProgression = (optionProgression.progressionLevels || []).includes(i);
+                        const isCalibration = !isProgression && i > Number(optionProgression.calibrationFrom ?? 2);
+
+                        if (isProgression || isCalibration) {
+                            const choiceId = `metamagic-matrix-${cls.definition.index}-${i}`;
+                            if (!accumulator.current.choices.some(c => c.id === choiceId)) {
+                                accumulator.current.choices.push({
+                                    id: choiceId,
+                                    level: i,
+                                    source: cls.definition.name,
                                     type: 'other',
                                     label: isProgression ? 'Metamagic Options' : 'Metamagic Calibration',
                                     value: null,
-                                    options: [], // Options will be handled by custom UI
+                                    options: [],
                                     count: isProgression ? 2 : 1,
-                                    revertData: { classIndex: 'sorcerer', isMetamagicMatrix: true, isProgression }
+                                    revertData: { classIndex: cls.definition.index, isMetamagicMatrix: true, isProgression }
                                 });
                             }
                         }
@@ -180,7 +207,7 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
                         level: item.level,
                         source: item.className,
                         type: 'subclass',
-                        label: getSubclassTerminology(item.classIndex),
+                        label: item.subclassLabel,
                         value: null,
                         options: subs,
                         revertData: { classIndex: item.classIndex }
@@ -211,30 +238,13 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
             featureUsage: {} // Will be recalculated by CharacterSheet or we can do it here
         };
 
-        // Recalculate feature usage
-        character.classes.forEach(c => {
-            const feat = CLASS_FEATURES[c.definition.name];
-            if (feat) {
-                const max = feat.formula(c.level, accumulator.current.abilities);
-                updates.featureUsage![feat.name] = { max, current: max, reset: feat.reset };
-            }
+        // Recalculate feature usage from the class/subclass resources.
+        const projected = { ...character, ...updates, classes: character.classes, abilities: accumulator.current.abilities } as any;
+        getResourceDefinitions(projected).forEach(resource => {
+            updates.featureUsage![resource.name] = { max: resource.max, current: resource.max, reset: resource.reset };
         });
 
         onComplete(updates);
-    };
-
-    const getSubclassTerminology = (classIndex: string) => {
-        if (classIndex === 'artificer') return 'Artificer Specialist';
-        if (classIndex === 'pugilist') return 'Fight Club';
-        if (classIndex === 'cleric') return 'Divine Domain';
-        if (classIndex === 'druid') return 'Druidic Circle';
-        if (classIndex === 'bard') return 'Bard College';
-        if (classIndex === 'paladin') return 'Sacred Oath';
-        if (classIndex === 'warlock') return 'Otherworldly Patron';
-        if (classIndex === 'sorcerer') return 'Sorcerous Origin';
-        if (classIndex === 'wizard') return 'Arcane Tradition';
-        if (classIndex === 'arrowsmith') return 'Arrowsmith Specialization';
-        return 'Specialization';
     };
 
     return (

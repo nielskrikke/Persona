@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { SpellDetail, CharacterState, CharacterClass } from '../../types';
 import { fetchSpellsByClass } from '../../data/index';
-import { getSpellsKnownCount } from '../../utils/rules';
+import { getSpellsKnownCount, getMaxSpellLevelForClass, getCasterProfileFor, getEffectiveAbilities } from '../../utils/rules';
 
 interface SpellSelectionStepProps {
     character: CharacterState;
@@ -12,18 +12,16 @@ interface SpellSelectionStepProps {
 
 const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onComplete, onBack }) => {
     const casterClasses = character.classes.filter(c => {
-        const index = c.definition.index;
-        if (['bard', 'cleric', 'druid', 'sorcerer', 'warlock', 'wizard', 'artificer'].includes(index)) return true;
-        if (['paladin', 'ranger'].includes(index) && c.level >= 2) return true;
-        if (c.subclass && ['arcane-trickster', 'eldritch-knight'].includes(c.subclass.index) && c.level >= 3) return true;
-        return false;
+        const profile = getCasterProfileFor(c);
+        return !!profile && profile.type !== 'none';
     });
+    const effectiveAbilities = React.useMemo(() => getEffectiveAbilities(character), [character]);
 
     const [activeClassIndex, setActiveClassIndex] = useState(casterClasses[0]?.definition.index || '');
     const [classSpells, setClassSpells] = useState<Record<string, SpellDetail[]>>(() => {
         const initial: Record<string, SpellDetail[]> = {};
         const validIndices = new Set(casterClasses.map(c => c.definition.index));
-        
+
         if (character.spells) {
             character.spells.forEach(s => {
                 if (s.sourceClassIndex && s.sourceClassIndex !== 'racial' && validIndices.has(s.sourceClassIndex)) {
@@ -47,8 +45,8 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
     const [validationError, setValidationError] = useState<string | null>(null);
 
     const activeClass = casterClasses.find(c => c.definition.index === activeClassIndex);
-    const limits = activeClass 
-        ? getSpellsKnownCount(activeClass, character.abilities, character.classFeatures) 
+    const limits = activeClass
+        ? getSpellsKnownCount(activeClass, effectiveAbilities, character.classFeatures)
         : { cantrips: 0, spells: 0 };
 
     const currentSelected = classSpells[activeClassIndex] || [];
@@ -57,7 +55,7 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
 
     useEffect(() => {
         if (!activeClassIndex) return;
-        
+
         const load = async () => {
             if (!availableSpellsCache[activeClassIndex]) {
                 setLoading(true);
@@ -74,7 +72,7 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
             }
         };
         load();
-    }, [activeClassIndex, casterClasses, character.user_id]); 
+    }, [activeClassIndex, casterClasses, character.user_id]);
 
     const handleMouseMove = (e: React.MouseEvent) => {
         setCursorPos({ x: e.clientX, y: e.clientY });
@@ -84,7 +82,7 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
         setValidationError(null);
         const list = classSpells[activeClassIndex] || [];
         const isSelected = list.some(s => s.index === spell.index);
-        
+
         if (isSelected) {
             const newList = list.filter(s => s.index !== spell.index);
             setClassSpells({ ...classSpells, [activeClassIndex]: newList });
@@ -103,11 +101,11 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
         for (const cls of casterClasses) {
             const clsIndex = cls.definition.index;
             const selected = classSpells[clsIndex] || [];
-            const clsLimits = getSpellsKnownCount(cls, character.abilities, character.classFeatures);
-            
+            const clsLimits = getSpellsKnownCount(cls, effectiveAbilities, character.classFeatures);
+
             const cantrips = selected.filter(s => s.level === 0).length;
             const leveled = selected.filter(s => s.level > 0).length;
-            
+
             if (cantrips < clsLimits.cantrips) {
                 setValidationError(`You can select ${clsLimits.cantrips - cantrips} more cantrips for ${cls.definition.name}.`);
                 return;
@@ -119,7 +117,7 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
         }
 
         setValidationError(null);
-        const allSelected = Object.entries(classSpells).flatMap(([cIndex, spells]) => 
+        const allSelected = Object.entries(classSpells).flatMap(([cIndex, spells]) =>
             (spells as SpellDetail[]).map(s => ({
                 ...s,
                 sourceClassIndex: cIndex,
@@ -132,30 +130,7 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
     const displayedSpells = (availableSpellsCache[activeClassIndex] || []).filter(s => {
         if (!activeClass) return false;
         if (s.level === 0) return true;
-        const clsName = activeClass.definition.index;
-        const level = activeClass.level;
-        let maxSlotLevel = 0;
-        if (['wizard', 'sorcerer', 'bard', 'cleric', 'druid'].includes(clsName)) {
-            maxSlotLevel = Math.ceil(level / 2);
-        } else if (['paladin', 'ranger'].includes(clsName)) {
-            if (level < 2) return false;
-            if (level >= 17) maxSlotLevel = 5;
-            else if (level >= 13) maxSlotLevel = 4;
-            else if (level >= 9) maxSlotLevel = 3;
-            else if (level >= 5) maxSlotLevel = 2;
-            else maxSlotLevel = 1;
-        } else if (clsName === 'warlock') {
-             maxSlotLevel = Math.ceil(level / 2);
-             if (maxSlotLevel > 5) maxSlotLevel = 5; 
-        } else if (clsName === 'artificer') {
-            maxSlotLevel = Math.ceil(level / 2);
-        } else if (['arcane-trickster', 'eldritch-knight'].includes(activeClass.subclass?.index || '')) {
-             if (level >= 19) maxSlotLevel = 4;
-             else if (level >= 13) maxSlotLevel = 3;
-             else if (level >= 7) maxSlotLevel = 2;
-             else maxSlotLevel = 1;
-        }
-        return s.level <= maxSlotLevel;
+        return s.level <= getMaxSpellLevelForClass(activeClass);
     }).sort((a,b) => a.level - b.level || a.name.localeCompare(b.name));
 
     if (casterClasses.length === 0) {
@@ -172,15 +147,15 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
              {(hoveredSpell || pinnedSpell) && (
                 <>
                 {pinnedSpell && (
-                    <div 
+                    <div
                         className="fixed inset-0 z-[300] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
                         onClick={() => setPinnedSpell(null)}
                     >
-                        <div 
+                        <div
                             className="bg-[#121316] border-2 border-dnd-gold rounded-xl p-5 shadow-[0_10px_30px_rgba(0,0,0,0.9)] w-full max-w-md max-h-[80vh] overflow-y-auto relative animate-in zoom-in-95 duration-200"
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <button 
+                            <button
                                 onClick={() => setPinnedSpell(null)}
                                 className="absolute top-3 right-3 text-gray-500 hover:text-white text-2xl leading-none"
                                 aria-label="Close spell details"
@@ -204,10 +179,10 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
                     </div>
                 )}
                 {hoveredSpell && !pinnedSpell && (
-                    <div 
+                    <div
                         className="fixed w-80 bg-[#121316] border-2 border-dnd-gold rounded-xl p-5 shadow-[0_10px_30px_rgba(0,0,0,0.9)] z-[200] text-sm pointer-events-none"
-                        style={{ 
-                            top: cursorPos.y + 15, 
+                        style={{
+                            top: cursorPos.y + 15,
                             left: cursorPos.x + 15,
                             transform: cursorPos.x > window.innerWidth - 350 ? 'translateX(-100%)' : 'none'
                         }}
@@ -239,8 +214,8 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
                                 key={c.definition.index}
                                 onClick={() => setActiveClassIndex(c.definition.index)}
                                 className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
-                                    activeClassIndex === c.definition.index 
-                                    ? 'bg-dnd-gold text-black shadow-lg' 
+                                    activeClassIndex === c.definition.index
+                                    ? 'bg-dnd-gold text-black shadow-lg'
                                     : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800'
                                 }`}
                             >
@@ -250,15 +225,15 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
                     </div>
 
                     <div className="p-5 border-b border-gray-800 bg-black/20">
-                         <input 
-                            type="text" 
-                            placeholder="Search available spells..." 
-                            value={search} 
-                            onChange={(e) => setSearch(e.target.value)} 
-                            className="w-full bg-[#0b0c0e] border border-gray-700 rounded-lg p-3 text-white focus:border-dnd-gold outline-none text-sm placeholder:text-gray-700" 
+                         <input
+                            type="text"
+                            placeholder="Search available spells..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full bg-[#0b0c0e] border border-gray-700 rounded-lg p-3 text-white focus:border-dnd-gold outline-none text-sm placeholder:text-gray-700"
                         />
                     </div>
-                    
+
                     <div className="flex-grow overflow-y-auto custom-scrollbar p-5 space-y-6">
                         {loading ? <div className="text-dnd-gold animate-pulse text-center p-10 font-serif">Consulting grimoires...</div> : (
                             <>
@@ -268,8 +243,8 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
                                     <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-3">Cantrips</h4>
                                     <div className="space-y-1">
                                         {displayedSpells.filter(s => s.level === 0 && s.name.toLowerCase().includes(search.toLowerCase())).map(s => (
-                                            <div 
-                                                key={s.index} 
+                                            <div
+                                                key={s.index}
                                                 onClick={() => toggleSpell(s)}
                                                 onMouseEnter={() => setHoveredSpell(s)}
                                                 onMouseLeave={() => setHoveredSpell(null)}
@@ -277,7 +252,7 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
                                             >
                                                 <span className="font-bold text-sm text-gray-200">{s.name}</span>
                                                 <div className="flex items-center gap-1.5 shrink-0">
-                                                    <button 
+                                                    <button
                                                         onClick={(e) => { e.stopPropagation(); setPinnedSpell(prev => prev?.index === s.index ? null : s); }}
                                                         className="text-gray-600 hover:text-dnd-gold p-1 rounded transition-colors"
                                                         aria-label={`View details for ${s.name}`}
@@ -305,8 +280,8 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
                                         <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-3">Level {lvl}</h4>
                                         <div className="space-y-1">
                                             {spellsAtLvl.map(s => (
-                                                <div 
-                                                    key={s.index} 
+                                                <div
+                                                    key={s.index}
                                                     onClick={() => toggleSpell(s)}
                                                     onMouseEnter={() => setHoveredSpell(s)}
                                                     onMouseLeave={() => setHoveredSpell(null)}
@@ -314,7 +289,7 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
                                                 >
                                                     <span className="font-bold text-sm text-gray-200">{s.name}</span>
                                                     <div className="flex items-center gap-1.5 shrink-0">
-                                                        <button 
+                                                        <button
                                                             onClick={(e) => { e.stopPropagation(); setPinnedSpell(prev => prev?.index === s.index ? null : s); }}
                                                             className="text-gray-600 hover:text-dnd-gold p-1 rounded transition-colors"
                                                             aria-label={`View details for ${s.name}`}
@@ -346,7 +321,7 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
                              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-dnd-gold">Preparation & Known Incantations</p>
                         </div>
                     </div>
-                    
+
                     <div className="p-6 grid grid-cols-2 gap-4 shrink-0 bg-black/10 border-b border-gray-800">
                         <div className="bg-gray-800/40 p-4 rounded-xl border border-gray-700 text-center">
                             <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Cantrips</div>
@@ -375,7 +350,7 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
                                         <div className="font-black text-sm text-white">{s.name}</div>
                                         <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">{s.level === 0 ? 'Cantrip' : `Level ${s.level}`}</div>
                                     </div>
-                                    <button 
+                                    <button
                                         onClick={() => toggleSpell(s)}
                                         className="text-gray-700 hover:text-red-500 text-2xl font-light px-2"
                                     >
@@ -398,13 +373,13 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
                         </div>
                     )}
                     <div className="flex gap-4">
-                        <button 
+                        <button
                             onClick={onBack}
                             className="px-10 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white font-black uppercase text-xs tracking-widest rounded-xl transition-all shadow-xl"
                         >
                             &larr; Back
                         </button>
-                        <button 
+                        <button
                             onClick={handleConfirm}
                             className="flex-grow py-4 font-black uppercase text-xs tracking-[0.2em] rounded-xl shadow-2xl transition-all transform active:scale-95 bg-dnd-gold hover:bg-yellow-600 text-black"
                         >

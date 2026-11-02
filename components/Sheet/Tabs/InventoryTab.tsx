@@ -3,6 +3,7 @@ import { Plus, Users, ArrowRightLeft, PackageCheck, PackagePlus, Shield } from '
 import { CharacterState, InventoryItem, Currency } from '../../../types';
 import { WIDGET_BG } from '../../../data/constants';
 import { loadPartyInventory, savePartyInventory } from '../../../services/supabase';
+import { calculateModifier, calculateProficiency, getEffectiveAbilities } from '../../../utils/rules';
 
 interface InventoryTabProps {
     character: CharacterState;
@@ -135,9 +136,13 @@ const InventoryTab: React.FC<InventoryTabProps> = ({
         });
     };
 
-    const arrowsmithCls = character.classes.find(c => c.definition.index === 'arrowsmith');
+    const arrowsmithCls = character.classes.find(c => (c.definition as any).options?.arrowCrafting);
     const isArrowsmith = !!arrowsmithCls;
     const arrowsmithLvl = arrowsmithCls?.level || 0;
+    const arrowDC = 8 + calculateProficiency(character.level) + calculateModifier(getEffectiveAbilities(character).int);
+    const arrowDefinitions = (((arrowsmithCls?.definition as any)?.options?.arrows) || [])
+        .filter((arrow: any) => arrow.level <= arrowsmithLvl && (!arrow.spec || arrow.spec === arrowsmithCls?.subclass?.index))
+        .sort((a: any, b: any) => a.name.localeCompare(b.name));
 
     const getArrowsmithMax = (l: number) => {
         if (l <= 0) return 0;
@@ -295,19 +300,7 @@ const InventoryTab: React.FC<InventoryTabProps> = ({
                     </div>
 
                     <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {[
-                            { name: 'Silent', level: 1, desc: 'Hidden misses don\'t reveal. Crit vs surprised.' },
-                            { name: 'Forceful', level: 1, desc: 'Str save or pushed 20ft.' },
-                            { name: 'Fire', level: 1, desc: '+1d10 Fire. Ignite 1d6/turn (DC 10 Dex).' },
-                            { name: 'Shattering', level: 2, desc: '10ft cone behind target (Dex save half).' },
-                            { name: 'Smokescreen', level: 2, desc: '20ft radius fog (1 min).' },
-                            { name: 'Light', level: 3, desc: 'Bonus Action attack. Ignore reload.' },
-                            { name: 'Sniper', level: 3, desc: 'Double weapon range.' },
-                            { name: 'Piercing', level: 4, desc: '20ft line. Ignore resistance.' },
-                            { name: 'Blinding', level: 4, desc: '30ft burst (Con save or blinded).' },
-                            { name: 'Explosive', level: 5, desc: '5d6 Force damage (10ft AoE).' },
-                            { name: 'Knockdown', level: 5, desc: 'Str save or knocked prone.' },
-                        ].filter(a => a.level <= arrowsmithLvl).sort((a, b) => a.name.localeCompare(b.name)).map(arrow => {
+                        {arrowDefinitions.map((arrow: any) => {
                             const arrowId = `as-arrow-${arrow.name.toLowerCase().replace(/\s+/g, '-')}`;
                             const count = character.inventory.find(i => i.id === arrowId)?.quantity || 0;
                             return (
@@ -315,7 +308,7 @@ const InventoryTab: React.FC<InventoryTabProps> = ({
                                     <div className="flex justify-between items-start mb-2">
                                         <div>
                                             <div className="font-bold text-gray-200 text-xs group-hover:text-dnd-gold transition-colors">{arrow.name} Arrow</div>
-                                            <div className="text-[9px] text-gray-500 leading-tight pr-2">{arrow.desc}</div>
+                                            <div className="text-[9px] text-gray-500 leading-tight pr-2">{String(arrow.desc || '').replace(/\{dc\}/g, String(arrowDC))}</div>
                                         </div>
                                         <div className={`px-2 py-0.5 rounded text-[10px] font-black min-w-[30px] text-center ${count > 0 ? 'bg-dnd-gold text-black' : 'bg-gray-800 text-gray-500'}`}>
                                             x{count}
@@ -323,7 +316,7 @@ const InventoryTab: React.FC<InventoryTabProps> = ({
                                     </div>
                                     <div className="flex gap-2 mt-2">
                                         <button 
-                                            onClick={() => craftArrow(arrow.name, arrow.desc)}
+                                            onClick={() => craftArrow(arrow.name, String(arrow.desc || '').replace(/\{dc\}/g, String(arrowDC)))}
                                             className="flex-1 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 text-[10px] font-bold uppercase rounded transition-colors"
                                         >
                                             Craft

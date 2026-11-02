@@ -1,14 +1,14 @@
 
 import React from 'react';
-import { PICK_A_CARD_TABLE } from '../../../data/constants';
 
 interface CardOptionsModalProps {
     isOpen: boolean;
     onClose: () => void;
     isWorldUnlocked?: boolean;
+    cards?: any[];
 }
 
-const CardOptionsModal: React.FC<CardOptionsModalProps> = ({ isOpen, onClose, isWorldUnlocked = false }) => {
+const CardOptionsModal: React.FC<CardOptionsModalProps> = ({ isOpen, onClose, isWorldUnlocked = false, cards = [] }) => {
     if (!isOpen) return null;
 
     return (
@@ -29,7 +29,7 @@ const CardOptionsModal: React.FC<CardOptionsModalProps> = ({ isOpen, onClose, is
 
                 <div className="flex-grow overflow-y-auto custom-scrollbar p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {PICK_A_CARD_TABLE.filter(card => card.name !== 'The World' || isWorldUnlocked).map((card) => (
+                        {cards.filter((card: any) => card.name !== 'The World' || isWorldUnlocked).map((card: any) => (
                             <div key={card.roll} className="bg-black/40 border border-gray-800 rounded-xl p-4 hover:border-dnd-gold transition-colors group">
                                 <div className="flex items-start gap-4">
                                     <div className="w-12 h-16 bg-gray-900 border border-gray-700 rounded-md flex flex-col items-center justify-center shrink-0 group-hover:border-dnd-gold transition-colors">

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { CharacterState, ABILITY_NAMES, ABILITY_LABELS } from '../../../types';
-import { formatModifier, calculateModifier } from '../../../utils/rules';
+import { formatModifier, calculateModifier, hasUiWidget } from '../../../utils/rules';
 
 interface StatsTabProps {
     character: CharacterState;
@@ -14,7 +14,7 @@ interface StatsTabProps {
 
 const StatsTab: React.FC<StatsTabProps> = ({ character, roll, triggerRollMenu, layout, renderWidget, setShowLayoutManager }) => {
     // Filter mobile layout widgets to only those that meet requirements
-    const isArtillerist = character.classes.some(c => c.definition.index === 'artificer' && c.subclass?.index === 'artillerist' && c.level >= 3);
+    const isArtillerist = hasUiWidget(character, 'eldritchCannon');
     
     const activeWidgets = (layout.mobile && layout.mobile.length > 0 
         ? layout.mobile 

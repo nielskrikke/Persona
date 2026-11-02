@@ -28,9 +28,9 @@ const CreatureManagerModal: React.FC<CreatureManagerModalProps> = ({
     const [showCustomModal, setShowCustomModal] = useState(false);
 
     // Calculate Constraints
-    const druidClass = character.classes.find(c => c.definition.index === 'druid');
+    const druidClass = character.classes.find(c => ((c.definition as any).resources || []).some((resource: any) => resource.key === 'wild-shape'));
     const druidLevel = druidClass?.level || 0;
-    const isMoonDruid = druidClass?.subclass?.index === 'moon';
+    const isMoonDruid = !!druidClass?.subclass?.feature_details?.some((feature: any) => feature.name === 'Combat Wild Shape');
 
     const canSwim = mode === 'wildshape' ? druidLevel >= 4 : true;
     const canFly = mode === 'wildshape' ? druidLevel >= 8 : true;

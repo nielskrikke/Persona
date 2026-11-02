@@ -1,57 +1,44 @@
 
-import { CharacterClass, AbilityScores, AbilityName, SpellDetail, CharacterState, FeatureEffect } from '@/types';
+import { CharacterClass, AbilityScores, AbilityName, SpellDetail, CharacterState, FeatureEffect, CasterProfile, ResourceDefinition } from '@/types';
 
 export const calculateModifier = (score: number): number => {
     return Math.floor((score - 10) / 2);
 };
 
-export const inferOptionEffects = (optionName: string, optionDesc?: string): FeatureEffect[] => {
-    if (!optionName) return [];
-    const nameLower = optionName.toLowerCase();
-    const descLower = (optionDesc || '').toLowerCase();
-    const effects: FeatureEffect[] = [];
+export const formatModifier = (mod: number): string => {
+    return mod >= 0 ? `+${mod}` : `${mod}`;
+};
 
-    // Fighting Styles & Features
-    if (nameLower.includes('archery')) {
-        effects.push({ type: 'stat_bonus', stat: 'ranged_attack', value: 2 });
-    } else if (nameLower.includes('defense') || descLower.includes('+1 bonus to ac')) {
-        effects.push({ type: 'stat_bonus', stat: 'ac', value: 1 });
-    } else if (nameLower.includes('dueling')) {
-        effects.push({ type: 'stat_bonus', stat: 'weapon_damage', value: 2 });
-    } else if (nameLower.includes('mariner')) {
-        effects.push({ type: 'stat_bonus', stat: 'ac', value: 1 });
-        effects.push({ type: 'stat_bonus', stat: 'speed', value: 5 });
-    } else if (nameLower.includes('thrown weapon')) {
-        effects.push({ type: 'stat_bonus', stat: 'weapon_damage', value: 2 });
-    } else if (nameLower.includes('close quarters shooter')) {
-        effects.push({ type: 'stat_bonus', stat: 'ranged_attack', value: 1 });
-    } else if (nameLower.includes('fleet of foot') || (nameLower.includes('mobile') && !nameLower.includes('armor'))) {
-        effects.push({ type: 'stat_bonus', stat: 'speed', value: nameLower.includes('mobile') ? 10 : 5 });
-    } else if (nameLower.includes('fast movement') || nameLower.includes('unarmored movement')) {
-        effects.push({ type: 'stat_bonus', stat: 'speed', value: 10 });
-    } else if (nameLower.includes('tough')) {
-        effects.push({ type: 'stat_bonus', stat: 'hp_per_level', value: 2 });
-    } else if (nameLower.includes('alert')) {
-        effects.push({ type: 'stat_bonus', stat: 'initiative', value: 5 });
-        effects.push({ type: 'advantage', stat: 'initiative', target: 'initiative' });
-    } else if (nameLower.includes('red') || nameLower.includes('gold') || nameLower.includes('brass') || nameLower.includes('fire resistance') || descLower.includes('fire resistance')) {
-        effects.push({ type: 'resistance', value: 'Fire', damage_type: 'Fire' });
-    } else if (nameLower.includes('white') || nameLower.includes('silver') || nameLower.includes('cold resistance') || descLower.includes('cold resistance')) {
-        effects.push({ type: 'resistance', value: 'Cold', damage_type: 'Cold' });
-    } else if (nameLower.includes('blue') || nameLower.includes('bronze') || nameLower.includes('lightning resistance') || descLower.includes('lightning resistance')) {
-        effects.push({ type: 'resistance', value: 'Lightning', damage_type: 'Lightning' });
-    } else if (nameLower.includes('black') || nameLower.includes('copper') || nameLower.includes('acid resistance') || descLower.includes('acid resistance')) {
-        effects.push({ type: 'resistance', value: 'Acid', damage_type: 'Acid' });
-    } else if (nameLower.includes('green') || nameLower.includes('poison resistance') || descLower.includes('poison resistance')) {
-        effects.push({ type: 'resistance', value: 'Poison', damage_type: 'Poison' });
-    } else if (nameLower.includes('armor of shadows')) {
-        effects.push({ type: 'set', stat: 'ac', value: 13, target: 'ac' });
-    } else if (nameLower.includes('draconic resilience') || nameLower.includes('natural armor')) {
-        effects.push({ type: 'set', stat: 'ac', value: 13, target: 'ac' });
-        effects.push({ type: 'stat_bonus', stat: 'hp_per_level', value: 1 });
-    }
+export const calculateProficiency = (level: number): number => {
+    return Math.floor((level - 1) / 4) + 2;
+};
 
-    return effects;
+export const SKILL_LIST = [
+    { name: 'Acrobatics', ability: 'dex' as const },
+    { name: 'Animal Handling', ability: 'wis' as const },
+    { name: 'Arcana', ability: 'int' as const },
+    { name: 'Athletics', ability: 'str' as const },
+    { name: 'Deception', ability: 'cha' as const },
+    { name: 'History', ability: 'int' as const },
+    { name: 'Insight', ability: 'wis' as const },
+    { name: 'Intimidation', ability: 'cha' as const },
+    { name: 'Investigation', ability: 'int' as const },
+    { name: 'Medicine', ability: 'wis' as const },
+    { name: 'Nature', ability: 'int' as const },
+    { name: 'Perception', ability: 'wis' as const },
+    { name: 'Performance', ability: 'cha' as const },
+    { name: 'Persuasion', ability: 'cha' as const },
+    { name: 'Religion', ability: 'int' as const },
+    { name: 'Sleight of Hand', ability: 'dex' as const },
+    { name: 'Stealth', ability: 'dex' as const },
+    { name: 'Survival', ability: 'wis' as const },
+];
+
+export const getPointBuyCost = (score: number): number => {
+    const costs: Record<number, number> = {
+        8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9
+    };
+    return costs[score] || 0;
 };
 
 export const getEffectiveAbilities = (character: CharacterState): AbilityScores => {
@@ -175,7 +162,23 @@ export const getEffectiveAbilities = (character: CharacterState): AbilityScores 
     // Apply bonuses
     mods.forEach(m => {
         const targetStat = (m.target || m.stat || m.attribute || '').toLowerCase();
-        if ((m.type === 'bonus' || m.type === 'stat_bonus' || m.type === 'asi' || m.type === 'stat_bonus_attribute') && targetStat in abilities) {
+        const appliesToAbility =
+            m.type === 'bonus' || m.type === 'stat_bonus' || m.type === 'asi' || m.type === 'stat_bonus_attribute';
+
+        if (!appliesToAbility) return;
+
+        // Some feats store ability increases as `attributes: ['con']` + amount
+        // (Durable, Actor) rather than target/stat.
+        if (Array.isArray(m.attributes) && m.attributes.length > 0) {
+            const amount = Number(m.value ?? m.amount ?? 0);
+            m.attributes.forEach((stat: string) => {
+                const key = String(stat).toLowerCase();
+                if (key in abilities) abilities[key as AbilityName] += amount;
+            });
+            return;
+        }
+
+        if (targetStat in abilities) {
             abilities[targetStat as AbilityName] += Number(m.value || m.amount || 0);
         }
     });
@@ -191,176 +194,396 @@ export const getEffectiveAbilities = (character: CharacterState): AbilityScores 
     return abilities;
 };
 
-export const isPreparedCaster = (classIndex: string): boolean => {
-    return ['cleric', 'druid', 'paladin', 'artificer', 'wizard', 'card-master'].includes(classIndex);
+/* ------------------------------------------------------------------------- */
+/* Caster progression (data-driven)                                          */
+/* ------------------------------------------------------------------------- */
+
+const FULL_CASTER_SLOTS: Record<number, number[]> = {
+    1: [2], 2: [3], 3: [4, 2], 4: [4, 3], 5: [4, 3, 2], 6: [4, 3, 3], 7: [4, 3, 3, 1], 8: [4, 3, 3, 2], 9: [4, 3, 3, 3, 1], 10: [4, 3, 3, 3, 2],
+    11: [4, 3, 3, 3, 2, 1], 12: [4, 3, 3, 3, 2, 1], 13: [4, 3, 3, 3, 2, 1, 1], 14: [4, 3, 3, 3, 2, 1, 1], 15: [4, 3, 3, 3, 2, 1, 1, 1],
+    16: [4, 3, 3, 3, 2, 1, 1, 1], 17: [4, 3, 3, 3, 2, 1, 1, 1, 1], 18: [4, 3, 3, 3, 3, 1, 1, 1, 1], 19: [4, 3, 3, 3, 3, 2, 1, 1, 1], 20: [4, 3, 3, 3, 3, 2, 2, 1, 1],
 };
 
-export const formatModifier = (mod: number): string => {
-    return mod >= 0 ? `+${mod}` : `${mod}`;
+const HALF_CASTER_SLOTS: Record<number, number[]> = {
+    1: [2], 2: [2], 3: [3], 4: [3], 5: [4, 2], 6: [4, 2], 7: [4, 3], 8: [4, 3], 9: [4, 3, 2], 10: [4, 3, 2],
+    11: [4, 3, 3], 12: [4, 3, 3], 13: [4, 3, 3, 1], 14: [4, 3, 3, 1], 15: [4, 3, 3, 2], 16: [4, 3, 3, 2],
+    17: [4, 3, 3, 3, 1], 18: [4, 3, 3, 3, 1], 19: [4, 3, 3, 3, 2], 20: [4, 3, 3, 3, 2],
 };
 
-export const calculateProficiency = (level: number): number => {
-    return Math.floor((level - 1) / 4) + 2;
+const THIRD_CASTER_SLOTS: Record<number, number[]> = {
+    3: [2], 4: [2], 5: [2], 6: [2], 7: [4, 2], 8: [4, 2], 9: [4, 2], 10: [4, 3], 11: [4, 3], 12: [4, 3],
+    13: [4, 3, 2], 14: [4, 3, 2], 15: [4, 3, 2], 16: [4, 3, 3], 17: [4, 3, 3], 18: [4, 3, 3], 19: [4, 3, 3, 1], 20: [4, 3, 3, 1],
 };
 
-export const SKILL_LIST = [
-    { name: 'Acrobatics', ability: 'dex' as const },
-    { name: 'Animal Handling', ability: 'wis' as const },
-    { name: 'Arcana', ability: 'int' as const },
-    { name: 'Athletics', ability: 'str' as const },
-    { name: 'Deception', ability: 'cha' as const },
-    { name: 'History', ability: 'int' as const },
-    { name: 'Insight', ability: 'wis' as const },
-    { name: 'Intimidation', ability: 'cha' as const },
-    { name: 'Investigation', ability: 'int' as const },
-    { name: 'Medicine', ability: 'wis' as const },
-    { name: 'Nature', ability: 'int' as const },
-    { name: 'Perception', ability: 'wis' as const },
-    { name: 'Performance', ability: 'cha' as const },
-    { name: 'Persuasion', ability: 'cha' as const },
-    { name: 'Religion', ability: 'int' as const },
-    { name: 'Sleight of Hand', ability: 'dex' as const },
-    { name: 'Stealth', ability: 'dex' as const },
-    { name: 'Survival', ability: 'wis' as const },
-];
+const THIRD_CASTER_KNOWN: Record<number, { cantrips: number; spells: number }> = {
+    3: { cantrips: 2, spells: 3 }, 4: { cantrips: 2, spells: 4 }, 5: { cantrips: 2, spells: 4 }, 6: { cantrips: 2, spells: 4 },
+    7: { cantrips: 2, spells: 5 }, 8: { cantrips: 2, spells: 6 }, 9: { cantrips: 2, spells: 6 }, 10: { cantrips: 3, spells: 7 },
+    11: { cantrips: 3, spells: 8 }, 12: { cantrips: 3, spells: 8 }, 13: { cantrips: 3, spells: 9 }, 14: { cantrips: 3, spells: 10 },
+    15: { cantrips: 3, spells: 10 }, 16: { cantrips: 3, spells: 11 }, 17: { cantrips: 3, spells: 11 }, 18: { cantrips: 3, spells: 11 },
+    19: { cantrips: 3, spells: 12 }, 20: { cantrips: 3, spells: 13 },
+};
 
-export const getSpellSlots = (classes: CharacterClass[]): Record<number, { max: number, current: number }> => {
-    let casterLevel = 0;
-    classes.forEach(c => {
-        const index = c.definition.index;
-        if (['bard', 'cleric', 'druid', 'sorcerer', 'wizard', 'card-master'].includes(index)) {
-            casterLevel += c.level;
-        } else if (['paladin', 'ranger'].includes(index)) {
-            casterLevel += Math.floor(c.level / 2);
-        } else if (index === 'artificer') {
-            casterLevel += Math.ceil(c.level / 2);
-        } else if (c.subclass && ['arcane-trickster', 'eldritch-knight'].includes(c.subclass.index)) {
-            casterLevel += Math.floor(c.level / 3);
-        }
+const PACT_SLOTS: Record<number, { level: number; count: number }> = {
+    1: { level: 1, count: 1 }, 2: { level: 1, count: 2 }, 3: { level: 2, count: 2 }, 4: { level: 2, count: 2 },
+    5: { level: 3, count: 2 }, 6: { level: 3, count: 2 }, 7: { level: 4, count: 2 }, 8: { level: 4, count: 2 },
+    9: { level: 5, count: 2 }, 10: { level: 5, count: 2 }, 11: { level: 5, count: 3 }, 12: { level: 5, count: 3 },
+    13: { level: 5, count: 3 }, 14: { level: 5, count: 3 }, 15: { level: 5, count: 3 }, 16: { level: 5, count: 3 },
+    17: { level: 5, count: 4 }, 18: { level: 5, count: 4 }, 19: { level: 5, count: 4 }, 20: { level: 5, count: 4 },
+};
+
+/**
+ * Returns the caster profile for a class/subclass combination.
+ * Class caster wins; a subclass caster is used for EK/AT-style subclasses.
+ * There are no class-name checks here.
+ */
+export const getCasterProfileFor = (characterClass: CharacterClass): CasterProfile | undefined => {
+    const definition: any = characterClass.definition;
+    const classCaster: CasterProfile | undefined = definition?.caster;
+    if (classCaster && classCaster.type && classCaster.type !== 'none') return classCaster;
+
+    const subclassCaster: CasterProfile | undefined = characterClass.subclass?.caster;
+    if (subclassCaster && subclassCaster.type && subclassCaster.type !== 'none') return subclassCaster;
+
+    // Legacy fallback for records that have not been migrated yet.
+    const legacyAbility = definition?.spellcasting?.spellcasting_ability?.index;
+    if (legacyAbility) return { type: 'full', ability: legacyAbility };
+    return undefined;
+};
+
+const getCasterContribution = (profile: CasterProfile | undefined, level: number): number => {
+    if (!profile) return 0;
+    switch (profile.type) {
+        case 'full':
+        case 'custom':
+            return level;
+        case 'half':
+            return Math.floor(level / 2);
+        case 'third':
+            return Math.floor(level / 3);
+        case 'artificer':
+            return Math.ceil(level / 2);
+        case 'pact':
+        case 'none':
+        default:
+            return 0;
+    }
+};
+
+const getClassSlotTable = (characterClass: CharacterClass): number[] => {
+    const definition: any = characterClass.definition;
+    const level = characterClass.level;
+    const row = definition?.level_table?.find((item: any) => item.level === level);
+    const customSlots = row?.class_specific?.spell_slots;
+    if (Array.isArray(customSlots)) return customSlots;
+
+    const profile = getCasterProfileFor(characterClass);
+    if (!profile) return [];
+    switch (profile.type) {
+        case 'full':
+        case 'custom':
+            return FULL_CASTER_SLOTS[level] || [];
+        case 'half':
+        case 'artificer':
+            return HALF_CASTER_SLOTS[level] || [];
+        case 'third':
+            return THIRD_CASTER_SLOTS[level] || [];
+        case 'pact':
+        case 'none':
+        default:
+            return [];
+    }
+};
+
+const tableToSlots = (table: number[]): Record<number, { max: number; current: number }> => {
+    const slots: Record<number, { max: number; current: number }> = {};
+    table.forEach((max, index) => {
+        if (max > 0) slots[index + 1] = { max, current: max };
     });
+    return slots;
+};
 
-    const slots: Record<number, { max: number, current: number }> = {};
-    const slotTable: Record<number, number[]> = {
-        1: [2], 2: [3], 3: [4, 2], 4: [4, 3], 5: [4, 3, 2], 6: [4, 3, 3], 7: [4, 3, 3, 1], 8: [4, 3, 3, 2], 9: [4, 3, 3, 3, 1], 10: [4, 3, 3, 3, 2],
-        11: [4, 3, 3, 3, 2, 1], 12: [4, 3, 3, 3, 2, 1], 13: [4, 3, 3, 3, 2, 1, 1], 14: [4, 3, 3, 3, 2, 1, 1], 15: [4, 3, 3, 3, 2, 1, 1, 1],
-        16: [4, 3, 3, 3, 2, 1, 1, 1], 17: [4, 3, 3, 3, 2, 1, 1, 1, 1], 18: [4, 3, 3, 3, 3, 1, 1, 1, 1], 19: [4, 3, 3, 3, 3, 2, 1, 1, 1], 20: [4, 3, 3, 3, 3, 2, 2, 1, 1],
+export const getHpPerLevelBonus = (character: CharacterState): number => {
+    let bonus = 0;
+    const collect = (effects: any[]) => {
+        (effects || []).forEach(effect => {
+            if (!effect) return;
+            const target = String(effect.target || effect.stat || '').toLowerCase();
+            if ((effect.type === 'stat_bonus' || effect.type === 'bonus') && target === 'hp_per_level') {
+                bonus += Number(effect.value || 0);
+            }
+        });
     };
 
-    if (casterLevel > 0) {
-        const levelSlots = slotTable[Math.min(casterLevel, 20)] || [];
-        levelSlots.forEach((max, i) => {
-            slots[i + 1] = { max, current: max };
+    character.race?.traits?.forEach((trait: any) => {
+        collect(trait.effects || []);
+        collect(trait.modifiers || []);
+    });
+    character.subrace?.traits?.forEach((trait: any) => {
+        collect(trait.effects || []);
+        collect(trait.modifiers || []);
+    });
+    character.classes?.forEach(characterClass => {
+        (characterClass.definition as any)?.feature_details?.forEach((feature: any) => {
+            if ((feature.level || 0) <= characterClass.level) collect(feature.effects || []);
         });
+        (characterClass.subclass as any)?.feature_details?.forEach((feature: any) => {
+            if ((feature.level || 0) <= characterClass.level) collect(feature.effects || []);
+        });
+    });
+    character.classFeatures?.forEach(feature => collect(feature.effects || []));
+    character.feats?.forEach(feature => collect(feature.effects || []));
+    character.inventory?.forEach(item => {
+        if (item.equipped && (!item.requires_attunement || item.attuned)) {
+            collect((item as any).effects || []);
+            collect(item.modifiers || []);
+        }
+    });
+    return bonus;
+};
+
+/**
+ * Computes max HP from the class hit dice, effective Constitution, and
+ * hp_per_level effects. Use this when creating a character or changing
+ * abilities/classes; do not silently overwrite imported max HP on load.
+ */
+export const calculateMaxHp = (character: CharacterState): number => {
+    const conModifier = calculateModifier(getEffectiveAbilities(character).con);
+    let hp = 0;
+    let levelTotal = 0;
+
+    (character.classes || []).forEach((characterClass, index) => {
+        const level = Number(characterClass.level || 0);
+        if (level <= 0) return;
+        levelTotal += level;
+        const hitDie = Number((characterClass.definition as any)?.hit_die || 8);
+        const average = Math.floor(hitDie / 2) + 1;
+        if (index === 0) {
+            hp += hitDie + Math.max(0, level - 1) * average;
+        } else {
+            hp += level * average;
+        }
+        hp += level * conModifier;
+    });
+
+    const totalLevel = levelTotal || character.level || 1;
+    hp += getHpPerLevelBonus(character) * totalLevel;
+    return Math.max(1, hp);
+};
+
+export const isPreparedCaster = (definitionOrIndex: any): boolean => {
+    if (!definitionOrIndex) return false;
+    if (typeof definitionOrIndex === 'string') return false;
+    return !!definitionOrIndex.caster && definitionOrIndex.caster.type !== 'none';
+};
+
+export const getSubclassLevel = (definition: any): number => {
+    if (definition && typeof definition.subclass_level === 'number') return definition.subclass_level;
+    return 3;
+};
+
+export const getSubclassLabel = (definition: any): string => {
+    if (definition && definition.subclass_label) return definition.subclass_label;
+    return 'Subclass';
+};
+
+export const getSpellSlots = (classes: CharacterClass[]): Record<number, { max: number; current: number }> => {
+    const slots: Record<number, { max: number; current: number }> = {};
+
+    if (classes.length === 1) {
+        const characterClass = classes[0];
+        const profile = getCasterProfileFor(characterClass);
+        if (!profile || profile.type === 'none') return slots;
+
+        if (profile.type === 'pact') {
+            const pact = PACT_SLOTS[characterClass.level];
+            if (pact) slots[pact.level] = { max: pact.count, current: pact.count };
+            return slots;
+        }
+
+        return tableToSlots(getClassSlotTable(characterClass));
     }
 
-    const warlock = classes.find(c => c.definition.index === 'warlock');
-    if (warlock) {
-        const pactSlots: Record<number, number> = { 1: 1, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2, 7: 2, 8: 2, 9: 2, 10: 2, 11: 3, 12: 3, 13: 3, 14: 3, 15: 3, 16: 3, 17: 4, 18: 4, 19: 4, 20: 4 };
-        const pactLevel: Record<number, number> = { 1: 1, 2: 1, 3: 2, 4: 2, 5: 3, 6: 3, 7: 4, 8: 4, 9: 5, 10: 5, 11: 5, 12: 5, 13: 5, 14: 5, 15: 5, 16: 5, 17: 5, 18: 5, 19: 5, 20: 5 };
-        const level = pactLevel[warlock.level];
-        const count = pactSlots[warlock.level];
-        slots[level] = { 
-            max: (slots[level]?.max || 0) + count, 
-            current: (slots[level]?.current || 0) + count 
+    let casterLevel = 0;
+    let pactLevel = 0;
+    let pactCount = 0;
+
+    classes.forEach(characterClass => {
+        const profile = getCasterProfileFor(characterClass);
+        if (!profile || profile.type === 'none') return;
+        if (profile.type === 'pact') {
+            const pact = PACT_SLOTS[characterClass.level];
+            if (pact) { pactLevel = Math.max(pactLevel, pact.level); pactCount = Math.max(pactCount, pact.count); }
+            return;
+        }
+        casterLevel += getCasterContribution(profile, characterClass.level);
+    });
+
+    if (casterLevel > 0) {
+        Object.assign(slots, tableToSlots(FULL_CASTER_SLOTS[Math.min(casterLevel, 20)] || []));
+    }
+    if (pactLevel > 0) {
+        slots[pactLevel] = {
+            max: (slots[pactLevel]?.max || 0) + pactCount,
+            current: (slots[pactLevel]?.current || 0) + pactCount,
         };
     }
     return slots;
 };
 
-export const getPointBuyCost = (score: number): number => {
-    const costs: Record<number, number> = {
-        8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9
-    };
-    return costs[score] || 0;
+export const mergeSpellSlotCurrents = (
+    next: Record<number, { max: number; current: number }>,
+    previous?: Record<number, { max: number; current: number }>
+): Record<number, { max: number; current: number }> => {
+    const merged: Record<number, { max: number; current: number }> = {};
+    Object.entries(next).forEach(([levelKey, slot]) => {
+        const level = Number(levelKey);
+        const old = previous?.[level];
+        merged[level] = {
+            max: slot.max,
+            current: old ? Math.min(old.current, slot.max) : slot.max,
+        };
+    });
+    return merged;
+};
+
+export const hasUiWidget = (character: CharacterState, widget: string): boolean =>
+    (character.classes || []).some(characterClass => {
+        const classWidgets = (characterClass.definition as any)?.ui?.widgets || [];
+        const subclassWidgets = (characterClass.subclass as any)?.ui?.widgets || [];
+        return classWidgets.includes(widget) || subclassWidgets.includes(widget);
+    });
+
+export const getClassWithUiWidget = (character: CharacterState, widget: string): CharacterClass | undefined =>
+    (character.classes || []).find(characterClass => {
+        const classWidgets = (characterClass.definition as any)?.ui?.widgets || [];
+        const subclassWidgets = (characterClass.subclass as any)?.ui?.widgets || [];
+        return classWidgets.includes(widget) || subclassWidgets.includes(widget);
+    });
+
+export const getMaxSpellLevelForClass = (characterClass: CharacterClass): number => {
+    const slots = getSpellSlots([characterClass]);
+    const levels = Object.keys(slots).map(Number).filter(level => (slots[level]?.max || 0) > 0);
+    return levels.length > 0 ? Math.max(...levels) : 0;
+};
+
+export const getSpellAbilityForClass = (characterClass: CharacterClass | undefined): AbilityName | undefined => {
+    if (!characterClass) return undefined;
+    const profile = getCasterProfileFor(characterClass);
+    if (profile?.ability) return profile.ability;
+    const legacy = (characterClass.definition as any)?.spellcasting?.spellcasting_ability?.index;
+    return legacy as AbilityName | undefined;
 };
 
 export const getSpellsKnownCount = (characterClass: CharacterClass, abilities: AbilityScores, classFeatures: any[] = []): { cantrips: number; spells: number } => {
-    const { definition, level } = characterClass;
-    
-    // Robust ability detection
-    let abilityScore: AbilityName = 'int';
-    if (definition.spellcasting?.spellcasting_ability.index) {
-        abilityScore = definition.spellcasting.spellcasting_ability.index as AbilityName;
-    } else {
-        const index = definition.index;
-        if (['sorcerer', 'bard', 'warlock', 'paladin', 'card-master'].includes(index)) abilityScore = 'cha';
-        else if (['cleric', 'druid', 'ranger'].includes(index)) abilityScore = 'wis';
-        else if (['wizard', 'artificer'].includes(index)) abilityScore = 'int';
-    }
+    const definition: any = characterClass.definition;
+    const level = characterClass.level;
+    const row = definition?.level_table?.find((item: any) => item.level === level);
+    const classSpecific = row?.class_specific || {};
+    const profile = getCasterProfileFor(characterClass);
 
-    const mod = calculateModifier(abilities[abilityScore] || 10);
+    let cantrips = typeof classSpecific.cantrips === 'number' ? classSpecific.cantrips : 0;
+    let spells = typeof classSpecific.prepared === 'number' ? classSpecific.prepared : 0;
 
-    let cantrips = 0;
-    let spells = 0;
-
-    switch (definition.index) {
-        case 'bard':
-            const bardCantrips = [2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4];
-            const bardSpells = [4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 15, 16, 18, 19, 19, 20, 22, 22, 22];
-            cantrips = bardCantrips[level - 1] || 0;
-            spells = bardSpells[level - 1] || 0;
-            break;
-        case 'sorcerer':
-            const sorcCantrips = [4, 4, 4, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6];
-            const sorcSpells = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15, 15, 15];
-            cantrips = sorcCantrips[level - 1] || 0;
-            spells = sorcSpells[level - 1] || 0;
-            break;
-        case 'card-master':
-            const cmCantrips = [4, 4, 4, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6];
-            cantrips = cmCantrips[level - 1] || 0;
-            spells = Math.max(1, mod + level);
-            break;
-        case 'ranger':
-            const rangerSpells = [0, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11];
-            cantrips = 0;
-            spells = rangerSpells[level - 1] || 0;
-            break;
-        case 'warlock':
-            const warlockCantrips = [2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4];
-            const warlockSpells = [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15];
-            cantrips = warlockCantrips[level - 1] || 0;
-            spells = warlockSpells[level - 1] || 0;
-            break;
-        case 'wizard':
-            const wizardCantrips = [3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5];
-            cantrips = wizardCantrips[level - 1] || 0;
-            spells = Math.max(1, mod + level); // This is actually "prepared" for wizard
-            break;
-        case 'cleric':
-        case 'druid':
-            const clericCantrips = [3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5];
-            cantrips = clericCantrips[level - 1] || 0;
-            spells = Math.max(1, mod + level);
-            break;
-        case 'paladin':
-            cantrips = 0;
-            spells = Math.max(1, mod + Math.floor(level / 2));
-            break;
-        case 'artificer':
-            const artificerCantrips = [2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3];
-            cantrips = artificerCantrips[level - 1] || 0;
-            spells = Math.max(1, mod + Math.floor(level / 2));
-            break;
-        default:
-            cantrips = 0;
-            spells = 0;
-    }
-
-    // Apply bonuses from features (e.g. Thaumaturge)
-    classFeatures.forEach(f => {
-        f.effects?.forEach((e: any) => {
-            if (e.type === 'spell_access') {
-                // If it matches the class and level, add to count
-                if ((!e.filter_class || e.filter_class.toLowerCase() === definition.index.toLowerCase()) && e.level !== undefined) {
-                    if (e.level === 0) cantrips += (e.count || 1);
-                    else spells += (e.count || 1);
-                }
+    if (typeof classSpecific.prepared !== 'number' && profile && profile.type !== 'none') {
+        if (profile.type === 'third') {
+            const known = THIRD_CASTER_KNOWN[level] || { cantrips: 0, spells: 0 };
+            if (typeof classSpecific.cantrips !== 'number') cantrips = known.cantrips;
+            spells = known.spells;
+        } else {
+            const abilityName = profile.ability
+                || definition?.spellcasting?.spellcasting_ability?.index
+                || 'int';
+            const modifier = calculateModifier(abilities[abilityName as AbilityName] || 10);
+            if (profile.type === 'half' || profile.type === 'artificer') {
+                spells = Math.max(1, modifier + Math.floor(level / 2));
+            } else {
+                spells = Math.max(1, modifier + level);
             }
+        }
+    }
+
+    // Only explicit "choose N spells" features add to the limit. Fixed-granted
+    // spells (domain spells, patron spells, a specific spell_access) are always
+    // prepared and must not inflate the prepared count.
+    const allowedSources = new Set([definition?.name, characterClass.subclass?.name].filter(Boolean));
+    classFeatures.forEach(feature => {
+        if (feature?.source && !allowedSources.has(feature.source)) return;
+        feature?.effects?.forEach((effect: any) => {
+            if (effect.type !== 'spell_access') return;
+            if (effect.spell) return;
+            if (typeof effect.level !== 'number') return;
+            if (effect.filter_class && String(effect.filter_class).toLowerCase() !== String(definition?.index).toLowerCase()) return;
+            if (effect.level === 0) cantrips += (effect.count || 1);
+            else spells += (effect.count || 1);
         });
     });
 
     return { cantrips, spells };
+};
+
+export const getResourceMax = (
+    resource: ResourceDefinition,
+    classLevel: number,
+    abilities: AbilityScores,
+    totalLevel: number
+): number => {
+    const descriptor: any = resource.max || {};
+    switch (descriptor.type) {
+        case 'fixed':
+            return Number(descriptor.value || 0);
+        case 'level':
+            return classLevel * Number(descriptor.multiplier || 1);
+        case 'ability': {
+            const ability = descriptor.ability || 'int';
+            return Math.max(Number(descriptor.min ?? 1), calculateModifier(abilities[ability as AbilityName] || 10));
+        }
+        case 'proficiency':
+            return calculateProficiency(totalLevel);
+        case 'table':
+            return Number(descriptor.values?.[classLevel - 1] || 0);
+        case 'formula':
+        default:
+            return 0;
+    }
+};
+
+export interface CharacterResource {
+    key: string;
+    name: string;
+    reset: 'short' | 'long';
+    max: number;
+    source?: string;
+}
+
+/**
+ * Resources declared on the class/subclass documents. No CLASS_FEATURES lookup
+ * and no class-name checks. A resource with max 0 at the current level is not
+ * included (e.g. Wild Shape before level 2, Stroke of Luck before 20).
+ */
+export const getResourceDefinitions = (character: CharacterState): CharacterResource[] => {
+    const abilities = getEffectiveAbilities(character);
+    const resources = new Map<string, CharacterResource>();
+
+    character.classes?.forEach(characterClass => {
+        const definitions: ResourceDefinition[] = [
+            ...((characterClass.definition as any)?.resources || []),
+            ...((characterClass.subclass as any)?.resources || []),
+        ];
+        definitions.forEach(resource => {
+            if (resource.level && characterClass.level < resource.level) return;
+            const max = getResourceMax(resource, characterClass.level, abilities, character.level);
+            if (max <= 0) return;
+            resources.set(resource.name, {
+                key: resource.key,
+                name: resource.name,
+                reset: resource.reset,
+                max,
+                source: resource.source,
+            });
+        });
+    });
+
+    return Array.from(resources.values());
 };
 
 export const getSpellDamageString = (spell: SpellDetail, characterLevel: number = 1, slotLevel: number = 1): string => {
