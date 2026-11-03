@@ -346,6 +346,39 @@ export const getHpPerLevelBonus = (character: CharacterState): number => {
  * hp_per_level effects. Use this when creating a character or changing
  * abilities/classes; do not silently overwrite imported max HP on load.
  */
+export const getFlatMaxHpBonus = (character: CharacterState): number => {
+    let bonus = 0;
+    const collect = (effects: any[]) => {
+        (effects || []).forEach(effect => {
+            if (!effect) return;
+            const target = String(effect.target || effect.stat || '').toLowerCase();
+            if ((effect.type === 'stat_bonus' || effect.type === 'bonus') && (target === 'max_hp' || target === 'hp')) {
+                bonus += Number(effect.value || 0);
+            }
+        });
+    };
+
+    character.race?.traits?.forEach((trait: any) => { collect(trait.effects || []); collect(trait.modifiers || []); });
+    character.subrace?.traits?.forEach((trait: any) => { collect(trait.effects || []); collect(trait.modifiers || []); });
+    character.classes?.forEach(characterClass => {
+        (characterClass.definition as any)?.feature_details?.forEach((feature: any) => {
+            if ((feature.level || 0) <= characterClass.level) collect(feature.effects || []);
+        });
+        (characterClass.subclass as any)?.feature_details?.forEach((feature: any) => {
+            if ((feature.level || 0) <= characterClass.level) collect(feature.effects || []);
+        });
+    });
+    character.classFeatures?.forEach(feature => collect(feature.effects || []));
+    character.feats?.forEach(feature => collect(feature.effects || []));
+    character.inventory?.forEach(item => {
+        if (item.equipped && (!item.requires_attunement || item.attuned)) {
+            collect((item as any).effects || []);
+            collect(item.modifiers || []);
+        }
+    });
+    return bonus;
+};
+
 export const calculateMaxHp = (character: CharacterState): number => {
     const conModifier = calculateModifier(getEffectiveAbilities(character).con);
     let hp = 0;
@@ -367,6 +400,7 @@ export const calculateMaxHp = (character: CharacterState): number => {
 
     const totalLevel = levelTotal || character.level || 1;
     hp += getHpPerLevelBonus(character) * totalLevel;
+    hp += getFlatMaxHpBonus(character);
     return Math.max(1, hp);
 };
 

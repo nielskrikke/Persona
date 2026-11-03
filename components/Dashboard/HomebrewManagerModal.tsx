@@ -861,13 +861,25 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
 
                         {/* Proficiency Choice */}
                         {eff.type === 'proficiency_choice' && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                <input type="number" min="1" placeholder="Choice Count (e.g. 2)" value={eff.count || 1} onChange={e => updateEffect(i, { count: parseInt(e.target.value) || 1 })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" />
-                                <select value={eff.category || 'skill'} onChange={e => updateEffect(i, { category: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white">
-                                    <option value="skill">Skill Choice</option>
-                                    <option value="tool">Tool Choice</option>
-                                    <option value="language">Language Choice</option>
-                                </select>
+                            <div className="space-y-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <input type="number" min="1" placeholder="Choice Count (e.g. 2)" value={eff.count || 1} onChange={e => updateEffect(i, { count: parseInt(e.target.value) || 1 })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" />
+                                    <select value={eff.category || 'skill'} onChange={e => updateEffect(i, { category: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white">
+                                        <option value="skill">Skill Choice</option>
+                                        <option value="tool">Tool Choice</option>
+                                        <option value="language">Language Choice</option>
+                                    </select>
+                                </div>
+                                {(eff.category || 'skill') === 'skill' && (
+                                    <label className="flex items-center gap-2 text-[10px] text-gray-300">
+                                        <input
+                                            type="checkbox"
+                                            checked={!!eff.expertise_if_proficient}
+                                            onChange={e => updateEffect(i, { expertise_if_proficient: e.target.checked })}
+                                        />
+                                        Give Expertise if the character is already proficient
+                                    </label>
+                                )}
                             </div>
                         )}
 

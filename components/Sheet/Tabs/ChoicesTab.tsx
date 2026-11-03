@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CharacterState, LevelChoice, AbilityScores, ABILITY_NAMES, ABILITY_LABELS, AbilityName, SpellDetail, FeatDetail, SubclassDetail } from '../../../types';
 import { AlertTriangle, CheckCircle2, ChevronRight, RotateCcw, Sparkles, Info } from 'lucide-react';
-import { calculateModifier, SKILL_LIST } from '../../../utils/rules';
+import { calculateModifier, SKILL_LIST, calculateMaxHp } from '../../../utils/rules';
 import { STANDARD_LANGUAGES, ARTISAN_TOOLS } from '../../../data/constants';
 import { fetchFeatsList, fetchAllSpells, fetchSubclasses, fetchSubclassDetail, fetchSubclassLevels, fetchClassLevels } from '../../../data/index';
 
@@ -92,7 +92,7 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
                         value: null,
                         options: opts,
                         count: e.count || 1,
-                        revertData: { parentChoiceId: choiceId, isSubChoice: true }
+                        revertData: { parentChoiceId: choiceId, isSubChoice: true, expertiseIfProficient: !!e.expertise_if_proficient }
                     };
                 });
                 additionalUpdates.choices = [...(additionalUpdates.choices || character.choices), ...newSubChoices];
@@ -182,7 +182,7 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
                                         value: null,
                                         options: opts,
                                         count: e.count || 1,
-                                        revertData: { parentChoiceId: choiceId, isSubChoice: true }
+                                        revertData: { parentChoiceId: choiceId, isSubChoice: true, expertiseIfProficient: !!e.expertise_if_proficient }
                                     });
                                 } else if (e.type === 'spell_access' && e.spell) {
                                     // Automatic spells (Domain Spells)
@@ -280,7 +280,7 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
                         value: null,
                         options: e.options || (e.category === 'language' ? STANDARD_LANGUAGES : (e.type === 'proficiency_choice' && e.category === 'skill' ? SKILL_LIST.map(s => s.name) : [])),
                         count: e.count || 1,
-                        revertData: { parentChoiceId: choiceId, featIndex: featDetail.index }
+                        revertData: { parentChoiceId: choiceId, featIndex: featDetail.index, expertiseIfProficient: !!e.expertise_if_proficient }
                     }));
                 if (newSubChoices.length > 0) {
                     additionalUpdates.choices = [...(additionalUpdates.choices || character.choices), ...newSubChoices];
@@ -327,7 +327,13 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
                 }
             }
 
-            return { ...prev, ...updates };
+            const nextCharacter = { ...prev, ...updates };
+            if (updates.feats || updates.classFeatures || updates.abilities || updates.classes) {
+                const newMaxHp = calculateMaxHp(nextCharacter);
+                updates.maxHp = newMaxHp;
+                updates.currentHp = Math.min(nextCharacter.currentHp ?? prev.currentHp, newMaxHp);
+            }
+            return nextCharacter;
         });
     };
 
@@ -425,7 +431,13 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
                 updates.classFeatures = (prev.classFeatures || []).filter(f => !featureIndices.includes(f.index));
             }
 
-            return { ...prev, ...updates };
+            const nextCharacter = { ...prev, ...updates };
+            if (updates.feats || updates.classFeatures || updates.abilities || updates.classes) {
+                const newMaxHp = calculateMaxHp(nextCharacter);
+                updates.maxHp = newMaxHp;
+                updates.currentHp = Math.min(nextCharacter.currentHp ?? prev.currentHp, newMaxHp);
+            }
+            return nextCharacter;
         });
     };
 
@@ -575,7 +587,17 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onMakeChoice, allFeats,
             }
         } else {
             const revertData: any = {};
-            if (choice.type === 'skill') revertData.skills = Array.isArray(selection) ? selection : [selection];
+            if (choice.type === 'skill') {
+                const selectedSkills = Array.isArray(selection) ? selection : [selection];
+                const alreadyProficient = selectedSkills.filter(skill => character.skills.includes(skill));
+                if (choice.revertData?.expertiseIfProficient && alreadyProficient.length > 0) {
+                    revertData.expertise = alreadyProficient;
+                    const newSkills = selectedSkills.filter(skill => !alreadyProficient.includes(skill));
+                    if (newSkills.length > 0) revertData.skills = newSkills;
+                } else {
+                    revertData.skills = selectedSkills;
+                }
+            }
             if (choice.type === 'expertise') revertData.expertise = Array.isArray(selection) ? selection : [selection];
             if (choice.type === 'language') revertData.languages = Array.isArray(selection) ? selection : [selection];
             if (choice.type === 'spell') revertData.spells = Array.isArray(selection) ? selection : [selection];

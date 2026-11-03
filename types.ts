@@ -68,6 +68,7 @@ export interface ContentChoice {
     options?: any[];
     effects?: FeatureEffect[];
     linked_save_proficiency?: boolean;
+    expertise_if_proficient?: boolean;
 }
 
 export interface ContentUiHook {
@@ -546,6 +547,7 @@ export interface FeatureEffect {
     level?: number;
     school?: string;
     linked_save_proficiency?: boolean;
+    expertise_if_proficient?: boolean;
     cast_free?: boolean;
     key?: string;
     stat?: string;

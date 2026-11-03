@@ -1102,6 +1102,8 @@ The earlier anon-key apply attempt was a no-op: PostgREST returned HTTP 200 with
 - Darkvision now displays the range from its `set` effect (60/120/etc.), Harengon's initiative bonus scales with Proficiency Bonus, and flat `set` AC (Tortle 17) no longer adds Dexterity.
 - Background creation now honors generic ability/skill/tool/language/feat choices, applies fixed tool proficiencies, stores chosen ability bonuses/feats, and supports editable currency. The Forge loads the background feature description into Lore.
 - Background and race ability choices now offer the standard +2/+1 or the +1/+1/+1 alternative when the content has a +2 and +1 choice pair.
+- Flat `max_hp` bonuses are now included in max-HP calculation (Boon of Fortitude), and selecting a feat/feature that changes HP recalculates the sheet total.
+- `proficiency_choice` effects can mark `expertise_if_proficient`; Observant and Keen Mind use it, and the Forge exposes the toggle.
 - Developer JSON can now intentionally override `level_table[].class_specific`; omitted values still preserve the existing data.
 - Legacy `proficiency_choices` was removed from class documents (18 rows); the builder uses `choices`. Backgrounds still use their `proficiency_choices` because its builder reads them.
 - The Forge choice editor now supports feat and spellcasting-ability choices, and ancestry options expose the same per-option effect editor used by Feature Choice options.

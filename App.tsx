@@ -475,6 +475,7 @@ const App: React.FC = () => {
         });
     }
 
+    const nextMaxHp = calculateMaxHp({ ...character, abilities: newAbilities, feats: newFeats });
     updateCharacter({
         name,
         background: background.name,
@@ -485,6 +486,8 @@ const App: React.FC = () => {
         feats: newFeats,
         ...(extraData.spellcastingAbility ? { spellcastingAbility: extraData.spellcastingAbility } : {}),
         currency: newCurrency,
+        maxHp: nextMaxHp,
+        currentHp: Math.min(character.currentHp, nextMaxHp),
         classFeatures: [...character.classFeatures, bgFeature],
         inventory: newInventory,
         choices: newChoices
