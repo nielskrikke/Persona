@@ -111,7 +111,7 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
       if (Array.isArray(choice.options) && choice.options.length > 0) return choice.options;
       if (choice.kind === 'spell' && choice.sourceClass) return spellChoiceOptions[choice.sourceClass] || [];
       if (choice.kind === 'feat') return (choice.options && choice.options.length > 0) ? choice.options : allFeats;
-      if (choice.kind === 'spellcasting_ability') return ABILITY_NAMES;
+      if (choice.kind === 'spellcasting_ability') return (choice.options && choice.options.length > 0) ? choice.options : ['int', 'wis', 'cha'];
       if (choice.kind === 'skill') return SKILL_LIST.map(skill => skill.name);
       if (choice.kind === 'tool') return TOOLS;
       if (choice.kind === 'language') return LANGUAGE_LIST;

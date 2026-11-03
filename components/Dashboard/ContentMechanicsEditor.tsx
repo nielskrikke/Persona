@@ -192,9 +192,11 @@ const ChoiceRow = ({ choice, onChange, onRemove, renderEffects }: { choice: Cont
                         value={choice.kind}
                         onChange={e => {
                             const kind = e.target.value as ContentChoice['kind'];
-                            const options = (kind === 'spellcasting_ability' || kind === 'ability') && (!choice.options || choice.options.length === 0)
-                                ? ['str', 'dex', 'con', 'int', 'wis', 'cha']
-                                : choice.options;
+                            const options = kind === 'spellcasting_ability'
+                                ? (choice.options && choice.options.length > 0 ? choice.options : ['int', 'wis', 'cha'])
+                                : kind === 'ability' && (!choice.options || choice.options.length === 0)
+                                    ? ['str', 'dex', 'con', 'int', 'wis', 'cha']
+                                    : choice.options;
                             onChange({ ...choice, kind, options });
                         }}
                     >

@@ -101,7 +101,7 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
         if (choice.kind === 'feat') {
             return Array.isArray(choice.options) && choice.options.length > 0 ? choice.options : allFeats;
         }
-        if (choice.kind === 'spellcasting_ability') return ABILITY_NAMES;
+        if (choice.kind === 'spellcasting_ability') return Array.isArray(choice.options) && choice.options.length > 0 ? choice.options : ['int', 'wis', 'cha'];
         return Array.isArray(choice.options) ? choice.options : [];
     };
 
