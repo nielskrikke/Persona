@@ -3067,6 +3067,31 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 attacks.push(spellAttackObj);
             }
         });
+        // Feature-declared actions with damage (e.g. Dragonborn Breath Weapon).
+        character.classFeatures?.forEach(feature => {
+            (feature.effects || []).forEach((effect: any, idx: number) => {
+                if (effect.type !== 'action' && effect.type !== 'bonus_action') return;
+                if (!effect.damage) return;
+                const scaling = effect.scaling?.values || effect.scaling;
+                const scaled = scaling && !Array.isArray(scaling)
+                    ? Object.keys(scaling).map(Number).filter(level => level <= character.level).sort((a, b) => a - b).map(level => scaling[level]).pop()
+                    : effect.damage;
+                const saveAbility = String(effect.save_ability || 'con').toLowerCase() as AbilityName;
+                const saveDC = 8 + prof + calculateModifier(getStat(saveAbility));
+                attacks.push({
+                    id: `feature-action-${feature.index}-${idx}`,
+                    name: effect.name || feature.name,
+                    range: effect.range || '15 ft.',
+                    hit: null,
+                    save: effect.save_ability ? { dc: saveDC, type: String(effect.save_ability).toUpperCase() } : null,
+                    damage: scaled || effect.damage,
+                    type: effect.damage_type || 'Damage',
+                    notes: ['Feature Action', ...(effect.description ? [effect.description] : [])],
+                    source: { ...feature, name: effect.name || feature.name, desc: [effect.description || ''] },
+                });
+            });
+        });
+
         character.customActions?.forEach(action => {
             let hit: number | null = null;
             let save: { type: string, dc: number } | null = null;
@@ -3294,7 +3319,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         });
 
          // 5. Custom Actions
-         character.customActions?.forEach(action => {
+        character.customActions?.forEach(action => {
             if (action.activationType === 'bonus') {
                 list.push({
                     id: action.id,

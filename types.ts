@@ -245,6 +245,11 @@ export interface BackgroundDetail extends APIReference {
         pp?: number;
     };
     equipment: string[];
+    equipment_options?: {
+        label: string;
+        equipment: string[];
+        currency?: { gp: number; sp: number; cp: number };
+    }[];
     languages?: number | string[];
     proficiency_choices?: any[];
     source?: string;
@@ -573,6 +578,8 @@ export interface FeatureEffect {
     label?: string;
     condition?: string;
     damage_type?: string;
+    damage?: any;
+    save_ability?: string;
     ritual?: boolean;
 }
 

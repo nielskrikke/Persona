@@ -491,7 +491,7 @@ const App: React.FC = () => {
       setPhase('background');
   };
 
-  const handleBackgroundComplete = async (name: string, background: BackgroundDetail, extraData: { languages: string[], tools: string[], skills: string[], choices?: any[], abilities?: Record<string, number>, feats?: any[], spellcastingAbility?: any }) => {
+  const handleBackgroundComplete = async (name: string, background: BackgroundDetail, extraData: { languages: string[], tools: string[], skills: string[], choices?: any[], equipment?: string[], currency?: { gp: number; sp: number; cp: number }, abilities?: Record<string, number>, feats?: any[], spellcastingAbility?: any }) => {
     const newSkills = Array.from(new Set([...character.skills, ...background.skill_proficiencies, ...extraData.skills]));
     const newLanguages = Array.from(new Set([...character.languages, ...extraData.languages]));
     const newTools = Array.from(new Set([...character.toolProficiencies, ...(background.tool_proficiencies || []), ...extraData.tools]));
@@ -506,10 +506,11 @@ const App: React.FC = () => {
         if (!newFeats.some(existing => (existing.index || existing.name) === (feat.index || feat.name))) newFeats.push(feat);
     });
 
+    const selectedCurrency = extraData.currency || background.currency;
     const newCurrency = { ...character.currency };
-    newCurrency.gp += background.currency.gp;
-    newCurrency.sp += background.currency.sp;
-    newCurrency.cp += background.currency.cp;
+    newCurrency.gp += selectedCurrency.gp;
+    newCurrency.sp += selectedCurrency.sp;
+    newCurrency.cp += selectedCurrency.cp;
 
     const bgFeature: ClassFeature = {
         index: background.feature.name.toLowerCase().replace(/\s+/g, '-'),
@@ -522,7 +523,7 @@ const App: React.FC = () => {
     };
 
     const newInventory = [...character.inventory];
-    for (const itemStr of background.equipment) {
+    for (const itemStr of (extraData.equipment || background.equipment)) {
         newInventory.push({
             id: `bg-${itemStr}-${Date.now()}`,
             name: itemStr,

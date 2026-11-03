@@ -1109,6 +1109,7 @@ The earlier anon-key apply attempt was a no-op: PostgREST returned HTTP 200 with
 - The spell Forge preserves the full stored record on edit (classes chips, area/source/DC, damage tables) and refreshes existing character spell snapshots by index. Granted spells are locked in the Spell Manager.
 - Free-cast badges now decrement when used and reset on short/long rests. Secondary spell damage is stored/edited and rolled separately; parenthetical damage text is split from the primary roll. Skill-advantage targets are matched case-insensitively. Ability-based resources support a flat bonus (Arena Royale persona points).
 - Narrative conditions are exposed as per-character Active Stances toggles in Features; unknown conditions are off until enabled, while armor/shield/weapon conditions remain automatic.
+- Background equipment now supports structured A/B options in the data, Forge, and builder. Dragonborn breath weapons now have damage/save/scaling data and appear as feature actions on the sheet.
 - Race/class feature effects are deduplicated when both `effects` and legacy `modifiers` exist; the race Forge now writes only `effects`.
 - Manage → Choices now attaches the chosen subclass correctly. Background/race feats get sub-choices, and feat pickers filter Origin/General/Epic Boon prerequisites. Race/subrace descriptions come from the content library, and feat actions use their effect names.
 - Developer JSON can now intentionally override `level_table[].class_specific`; omitted values still preserve the existing data.

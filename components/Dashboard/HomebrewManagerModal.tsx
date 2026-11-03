@@ -1037,6 +1037,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     const [bgTools, setBgTools] = useState<string[]>([]);
     const [bgFeatureName, setBgFeatureName] = useState('');
     const [bgEquipment, setBgEquipment] = useState('');
+    const [bgEquipmentOptions, setBgEquipmentOptions] = useState<{ label: string, equipment: string, gp: number }[]>([]);
     const [bgCurrency, setBgCurrency] = useState({ gp: 0, sp: 0, cp: 0 });
     const [bgEffects, setBgEffects] = useState<any[]>([]);
 
@@ -1167,7 +1168,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
         setAbilityBonuses([]); setTraits([]); setSize('Medium');
         setSaves([]); setLevelFeatures([]); setHitDie(8);
         setCasterType('none'); setCasterAbility('int'); setSubclassLevel(3); setSubclassLabel('Subclass'); setAdvancedJson(''); setEditingIsHomebrew(true); setContentResources([]); setContentChoices([]);
-        setBgSkills([]); setBgFeatureName(''); setBgTools([]); setBgEquipment(''); setBgCurrency({ gp: 0, sp: 0, cp: 0 }); setBgEffects([]);
+        setBgSkills([]); setBgFeatureName(''); setBgTools([]); setBgEquipment(''); setBgEquipmentOptions([]); setBgCurrency({ gp: 0, sp: 0, cp: 0 }); setBgEffects([]);
         setArmorProfs([]); setWeaponProfs([]);
         setSpellLevel(0); setSpellSchool('Evocation'); setSpellCastTime('1 Action'); setSpellRange('60 feet'); setSpellDuration('Instantaneous'); setSpellRitual(false); setSpellConcentration(false);
         setSpellComponents(['V', 'S']); setSpellMaterial(''); setSpellHigherLevel(''); setSpellHasAttack(false); setSpellHasSave(false); setSpellDmgFormula(''); setSpellSecondaryDamage('');
@@ -1310,6 +1311,11 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
             setBgTools(item.tool_proficiencies || []);
             setBgFeatureName(item.feature?.name || '');
             setBgEquipment(Array.isArray(item.equipment) ? item.equipment.join(', ') : (item.equipment || ''));
+            setBgEquipmentOptions((item.equipment_options || []).map((option: any) => ({
+                label: option.label || 'Option',
+                equipment: Array.isArray(option.equipment) ? option.equipment.join(', ') : (option.equipment || ''),
+                gp: Number(option.currency?.gp || 0),
+            })));
             setBgCurrency({
                 gp: Number(item.currency?.gp || 0),
                 sp: Number(item.currency?.sp || 0),
@@ -1464,6 +1470,11 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     skill_proficiencies: bgSkills,
                     tool_proficiencies: bgTools,
                     equipment: bgEquipment.split(',').filter(Boolean).map(s => s.trim()),
+                    ...(bgEquipmentOptions.length > 0 ? { equipment_options: bgEquipmentOptions.map(option => ({
+                        label: option.label,
+                        equipment: option.equipment.split(',').filter(Boolean).map(item => item.trim()),
+                        currency: { gp: option.gp, sp: 0, cp: 0 },
+                    })) } : {}),
                     currency: { ...bgCurrency, ep: 0, pp: 0 },
                     effects: bgEffects,
                     feature: { name: bgFeatureName || 'Custom Feature', desc: [description], effects: bgEffects }
@@ -2436,6 +2447,29 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                         </label>
                                                     ))}
                                                 </div>
+                                            </div>
+                                            <div className="space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block">Starting Equipment Options (A/B)</label>
+                                                    <button type="button" onClick={() => setBgEquipmentOptions(prev => [...prev, { label: 'Option', equipment: '', gp: 0 }])} className="text-[10px] text-dnd-gold font-bold uppercase">+ Add Option</button>
+                                                </div>
+                                                {bgEquipmentOptions.map((option, index) => (
+                                                    <div key={index} className="grid grid-cols-1 sm:grid-cols-[1fr_2fr_80px_30px] gap-2 items-end bg-black/20 border border-gray-800 rounded-xl p-3">
+                                                        <label className="block">
+                                                            <span className="text-[9px] text-gray-500 uppercase font-black">Label</span>
+                                                            <input value={option.label} onChange={e => setBgEquipmentOptions(prev => prev.map((item, i) => i === index ? { ...item, label: e.target.value } : item))} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-white mt-1" />
+                                                        </label>
+                                                        <label className="block">
+                                                            <span className="text-[9px] text-gray-500 uppercase font-black">Equipment (comma separated)</span>
+                                                            <input value={option.equipment} onChange={e => setBgEquipmentOptions(prev => prev.map((item, i) => i === index ? { ...item, equipment: e.target.value } : item))} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-white mt-1" />
+                                                        </label>
+                                                        <label className="block">
+                                                            <span className="text-[9px] text-gray-500 uppercase font-black">GP</span>
+                                                            <input type="number" min={0} value={option.gp} onChange={e => setBgEquipmentOptions(prev => prev.map((item, i) => i === index ? { ...item, gp: Number(e.target.value) || 0 } : item))} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-white mt-1" />
+                                                        </label>
+                                                        <button type="button" onClick={() => setBgEquipmentOptions(prev => prev.filter((_, i) => i !== index))} className="text-red-400 pb-2 text-xs font-black">×</button>
+                                                    </div>
+                                                ))}
                                             </div>
                                             <div>
                                                 <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Special Feature Name</label>

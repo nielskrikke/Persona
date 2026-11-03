@@ -12,6 +12,8 @@ interface BackgroundStepProps {
         tools: string[];
         skills: string[];
         choices?: any[];
+        equipment?: string[];
+        currency?: { gp: number; sp: number; cp: number };
         abilities?: Record<string, number>;
         feats?: FeatDetail[];
         spellcastingAbility?: AbilityName;
@@ -37,6 +39,7 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
     const [allFeats, setAllFeats] = useState<FeatDetail[]>([]);
     const [genericSelections, setGenericSelections] = useState<Record<string, string[]>>({});
     const [asiMode, setAsiMode] = useState<'2/1' | '1/1/1'>('2/1');
+    const [equipmentOptionIndex, setEquipmentOptionIndex] = useState(0);
 
     useEffect(() => {
         const load = async () => {
@@ -62,6 +65,7 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
         setChoiceSelections({});
         setGenericSelections({});
         setAsiMode('2/1');
+        setEquipmentOptionIndex(0);
         setValidationError(null);
     };
 
@@ -304,6 +308,8 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
             tools: extraTools,
             skills: extraSkills,
             choices: levelChoices,
+            equipment: selectedBackground.equipment_options?.[equipmentOptionIndex]?.equipment || selectedBackground.equipment,
+            currency: selectedBackground.equipment_options?.[equipmentOptionIndex]?.currency || selectedBackground.currency,
             abilities: abilityBonuses,
             feats: selectedFeats,
             spellcastingAbility,
@@ -543,6 +549,26 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
                                             </div>
                                         </section>
                                     </div>
+
+                                    {selectedBackground.equipment_options && selectedBackground.equipment_options.length > 0 && (
+                                        <section className="bg-black/20 p-5 rounded-xl border border-gray-800 space-y-3">
+                                            <span className="text-[10px] font-black text-dnd-gold uppercase tracking-[0.2em] block">Starting Equipment Choice</span>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                {selectedBackground.equipment_options.map((option, index) => (
+                                                    <button
+                                                        type="button"
+                                                        key={`${option.label}-${index}`}
+                                                        onClick={() => setEquipmentOptionIndex(index)}
+                                                        className={`text-left p-3 rounded-xl border transition-all ${equipmentOptionIndex === index ? 'bg-dnd-gold/10 border-dnd-gold text-white' : 'bg-black/30 border-gray-700 text-gray-400 hover:border-gray-500'}`}
+                                                    >
+                                                        <div className="text-[10px] font-black uppercase tracking-widest text-dnd-gold">{option.label}</div>
+                                                        <div className="text-xs mt-1">{option.equipment.join(', ') || 'No equipment'}</div>
+                                                        {option.currency && <div className="text-[10px] text-gray-500 mt-1">{option.currency.gp} gp</div>}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </section>
+                                    )}
 
                                     <section className="bg-black/20 p-5 rounded-xl border border-gray-800">
                                         <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] block mb-3">Inherited Belongings</span>
