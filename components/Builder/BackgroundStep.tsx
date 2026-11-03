@@ -36,6 +36,7 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
     const [choiceSelections, setChoiceSelections] = useState<Record<number, string[]>>({});
     const [allFeats, setAllFeats] = useState<FeatDetail[]>([]);
     const [genericSelections, setGenericSelections] = useState<Record<string, string[]>>({});
+    const [asiMode, setAsiMode] = useState<'2/1' | '1/1/1'>('2/1');
 
     useEffect(() => {
         const load = async () => {
@@ -60,6 +61,7 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
         setChosenLanguages([]);
         setChoiceSelections({});
         setGenericSelections({});
+        setAsiMode('2/1');
         setValidationError(null);
     };
 
@@ -131,6 +133,10 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
     const isAbilitySelectedElsewhere = (choiceId: string, value: string) => {
         const ability = normalizeAbility(value);
         if (!ability) return false;
+        if (asiMode === '1/1/1') {
+            if (choiceId === '__asi_111__') return false;
+            return (genericSelections['__asi_111__'] || []).some(selected => normalizeAbility(selected) === ability);
+        }
         return (selectedBackground?.choices || []).some(choice => {
             if (choice.id === choiceId || choice.kind !== 'ability') return false;
             return (genericSelections[choice.id] || []).some(selected => normalizeAbility(selected) === ability);
@@ -175,7 +181,23 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
         }
 
         const genericChoices = selectedBackground.choices || [];
-        for (const choice of genericChoices) {
+        const abilityChoices = genericChoices.filter(choice => choice.kind === 'ability');
+        const hasAsiAlternative = abilityChoices.some(choice => Number(choice.amount) === 2)
+            && abilityChoices.some(choice => Number(choice.amount) === 1);
+        const syntheticAsi: ContentChoice | null = hasAsiAlternative && asiMode === '1/1/1'
+            ? {
+                id: '__asi_111__',
+                kind: 'ability',
+                count: 3,
+                amount: 1,
+                options: Array.from(new Set(abilityChoices.flatMap(choice => choiceOptions(choice)))),
+                label: '+1, +1, +1',
+            }
+            : null;
+        const activeChoices = asiMode === '1/1/1'
+            ? genericChoices.filter(choice => choice.kind !== 'ability').concat(syntheticAsi ? [syntheticAsi] : [])
+            : genericChoices;
+        for (const choice of activeChoices) {
             const selected = genericSelections[choice.id] || [];
             if (selected.length !== (choice.count || 1)) {
                 setValidationError(`Please choose ${choice.count || 1} option(s) for ${(choice as any).label || choice.kind}.`);
@@ -239,7 +261,7 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
             .replace(/^Gaming Set:\s*/i, '')
             .trim();
 
-        genericChoices.forEach(choice => {
+        activeChoices.forEach(choice => {
             const selected = genericSelections[choice.id] || [];
             selected.forEach(value => {
                 if (choice.kind === 'ability') {
@@ -287,6 +309,22 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
             spellcastingAbility,
         } as any);
     };
+
+    const allGenericChoices = selectedBackground?.choices || [];
+    const allAbilityChoices = allGenericChoices.filter(choice => choice.kind === 'ability');
+    const hasAsiAlternative = allAbilityChoices.some(choice => Number(choice.amount) === 2)
+        && allAbilityChoices.some(choice => Number(choice.amount) === 1);
+    const syntheticAsiChoice: ContentChoice = {
+        id: '__asi_111__',
+        kind: 'ability',
+        count: 3,
+        amount: 1,
+        options: Array.from(new Set(allAbilityChoices.flatMap(choice => choiceOptions(choice)))),
+        label: '+1, +1, +1',
+    };
+    const renderedGenericChoices = asiMode === '1/1/1'
+        ? allGenericChoices.filter(choice => choice.kind !== 'ability').concat(syntheticAsiChoice)
+        : allGenericChoices;
 
     if (loading) return <div className="text-dnd-gold animate-pulse text-center mt-20 font-serif italic text-xl">Writing your history...</div>;
 
@@ -388,7 +426,22 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
                                             </section>
                                         ))}
 
-                                        {(selectedBackground.choices || []).map(choice => {
+                                        {hasAsiAlternative && (
+                                            <section className="bg-black/20 p-5 rounded-xl border border-gray-800">
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <div>
+                                                        <h4 className="text-[10px] font-black text-dnd-gold uppercase tracking-widest">Ability Score Increase Style</h4>
+                                                        <p className="text-[10px] text-gray-500 mt-1">Choose the standard +2/+1, or spread the increase as +1/+1/+1.</p>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <button type="button" onClick={() => { setAsiMode('2/1'); setGenericSelections(prev => ({ ...prev, __asi_111__: [] })); }} className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase border ${asiMode === '2/1' ? 'bg-dnd-gold text-black border-dnd-gold' : 'bg-black/30 text-gray-400 border-gray-700'}`}>+2 / +1</button>
+                                                        <button type="button" onClick={() => { setAsiMode('1/1/1'); setGenericSelections(prev => { const next = { ...prev }; allAbilityChoices.forEach(choice => { delete next[choice.id]; }); return next; }); }} className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase border ${asiMode === '1/1/1' ? 'bg-dnd-gold text-black border-dnd-gold' : 'bg-black/30 text-gray-400 border-gray-700'}`}>+1 / +1 / +1</button>
+                                                    </div>
+                                                </div>
+                                            </section>
+                                        )}
+
+                                        {renderedGenericChoices.map(choice => {
                                             const options = choiceOptions(choice);
                                             const selected = genericSelections[choice.id] || [];
                                             const max = choice.count || 1;

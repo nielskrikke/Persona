@@ -26,6 +26,7 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
 
   // Extra Options State
   const [raceChoiceSelections, setRaceChoiceSelections] = useState<Record<string, string[]>>({});
+  const [asiMode, setAsiMode] = useState<'2/1' | '1/1/1'>('2/1');
   const [validationError, setValidationError] = useState<string | null>(null);
   
   // Customize Your Origin State
@@ -48,6 +49,10 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
     };
     load();
   }, [userId]);
+
+  useEffect(() => {
+      setAsiMode('2/1');
+  }, [previewRace, selectedSubrace]);
 
   useEffect(() => {
       const tags = new Set<string>();
@@ -157,7 +162,24 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
         return;
     }
 
-    for (const choice of raceChoices) {
+    const abilityChoices = raceChoices.filter((choice: any) => choice.kind === 'ability');
+    const hasAsiAlternative = abilityChoices.some((choice: any) => Number(choice.amount) === 2)
+        && abilityChoices.some((choice: any) => Number(choice.amount) === 1);
+    const syntheticAsi: any = hasAsiAlternative && asiMode === '1/1/1'
+        ? {
+            id: '__asi_111__',
+            kind: 'ability',
+            count: 3,
+            amount: 1,
+            options: Array.from(new Set(abilityChoices.flatMap((choice: any) => getChoiceOptions(choice)))),
+            label: '+1, +1, +1',
+        }
+        : null;
+    const activeRaceChoices = asiMode === '1/1/1'
+        ? raceChoices.filter((choice: any) => choice.kind !== 'ability').concat(syntheticAsi ? [syntheticAsi] : [])
+        : raceChoices;
+
+    for (const choice of activeRaceChoices) {
         const selected = raceChoiceSelections[choice.id] || [];
         if (selected.length !== Number(choice.count || 1)) {
             const label = choice.kind === 'ancestry' ? 'ancestry' : choice.kind;
@@ -182,7 +204,7 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
         extraData.proficiencySwaps = proficiencySwaps;
     }
 
-    raceChoices.forEach(choice => {
+    activeRaceChoices.forEach(choice => {
         const selected = raceChoiceSelections[choice.id] || [];
         const options = getChoiceOptions(choice);
         selected.forEach(name => {
@@ -244,6 +266,22 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
 
     onSelect(previewRace, selectedSubrace, extraData);
   };
+
+  const allRaceChoices = getRaceChoices();
+  const allAbilityChoiceOptions = allRaceChoices.filter((choice: any) => choice.kind === 'ability');
+  const hasAsiAlternative = allAbilityChoiceOptions.some((choice: any) => Number(choice.amount) === 2)
+      && allAbilityChoiceOptions.some((choice: any) => Number(choice.amount) === 1);
+  const syntheticAsiChoice: any = {
+      id: '__asi_111__',
+      kind: 'ability',
+      count: 3,
+      amount: 1,
+      options: Array.from(new Set(allAbilityChoiceOptions.flatMap((choice: any) => getChoiceOptions(choice)))),
+      label: '+1, +1, +1',
+  };
+  const renderedRaceChoices = asiMode === '1/1/1'
+      ? allRaceChoices.filter((choice: any) => choice.kind !== 'ability').concat(syntheticAsiChoice)
+      : allRaceChoices;
 
   if (loading) return <div className="text-dnd-gold animate-pulse text-center mt-20 font-serif italic text-xl">Summoning lineages from the archives...</div>;
 
@@ -537,10 +575,22 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
                     </section>
                 )}
 
-                {getRaceChoices().length > 0 && (
+                {renderedRaceChoices.length > 0 && (
                     <section className="bg-black/20 border border-gray-800 p-6 rounded-xl space-y-5">
                         <h4 className="text-xs font-black text-dnd-gold uppercase tracking-[0.2em] border-b border-gray-800 pb-2">Origin Choices</h4>
-                        {getRaceChoices().map((choice: any) => {
+                        {hasAsiAlternative && (
+                            <div className="flex items-center justify-between gap-3 bg-black/20 border border-gray-800 rounded-xl p-3">
+                                <div>
+                                    <p className="text-[10px] font-black text-dnd-gold uppercase tracking-widest">Ability Score Increase Style</p>
+                                    <p className="text-[10px] text-gray-500 mt-1">Use the standard +2/+1, or spread it as +1/+1/+1.</p>
+                                </div>
+                                <div className="flex gap-2 shrink-0">
+                                    <button type="button" onClick={() => { setAsiMode('2/1'); setRaceChoiceSelections(prev => ({ ...prev, __asi_111__: [] })); }} className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase border ${asiMode === '2/1' ? 'bg-dnd-gold text-black border-dnd-gold' : 'bg-black/30 text-gray-400 border-gray-700'}`}>+2 / +1</button>
+                                    <button type="button" onClick={() => { setAsiMode('1/1/1'); setRaceChoiceSelections(prev => { const next = { ...prev }; allRaceChoices.filter((choice: any) => choice.kind === 'ability').forEach((choice: any) => { delete next[choice.id]; }); return next; }); }} className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase border ${asiMode === '1/1/1' ? 'bg-dnd-gold text-black border-dnd-gold' : 'bg-black/30 text-gray-400 border-gray-700'}`}>+1 / +1 / +1</button>
+                                </div>
+                            </div>
+                        )}
+                        {renderedRaceChoices.map((choice: any) => {
                             const options = getChoiceOptions(choice);
                             const selected = raceChoiceSelections[choice.id] || [];
                             return (

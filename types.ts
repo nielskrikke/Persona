@@ -60,6 +60,7 @@ export interface ContentChoice {
     id: string;
     kind: 'skill' | 'tool' | 'language' | 'ability' | 'ancestry' | 'feature' | 'spell' | 'subclass' | 'proficiency' | 'feat' | 'spellcasting_ability';
     count: number;
+    label?: string;
     level?: number;
     amount?: number;
     source?: string;
