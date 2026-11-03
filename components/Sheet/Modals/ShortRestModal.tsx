@@ -85,7 +85,17 @@ const ShortRestModal = ({
             });
         }
 
-        onUpdate({ featureUsage: newFeatures, spellSlots: newSlots });
+        const shortRestSpells = new Set(
+            character.spells
+                .filter(spell => spell.freeCasts && (spell.freeCastReset || 'long') === 'short')
+                .map(spell => spell.index)
+        );
+        const newFreeCastUsage = { ...(character.freeCastUsage || {}) };
+        Object.keys(newFreeCastUsage).forEach(index => {
+            if (shortRestSpells.has(index)) delete newFreeCastUsage[index];
+        });
+
+        onUpdate({ featureUsage: newFeatures, spellSlots: newSlots, freeCastUsage: newFreeCastUsage });
         onClose();
     };
 

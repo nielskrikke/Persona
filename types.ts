@@ -49,6 +49,7 @@ export interface ResourceDefinition {
         value?: number;
         ability?: AbilityName;
         min?: number;
+        bonus?: number;
         multiplier?: number;
         values?: number[];
         expression?: string;
@@ -123,6 +124,7 @@ export interface SpellDetail extends APIReference {
     grantedBy?: string;
     freeCasts?: number;
     freeCastReset?: 'short' | 'long';
+    secondary_damage?: string;
     minLevel?: number;
     spellcastingAbility?: AbilityName;
 }
@@ -471,6 +473,7 @@ export interface CharacterState {
     abilities: AbilityScores;
     background: string;
     spellcastingAbility?: AbilityName;
+    freeCastUsage?: Record<string, number>;
     alignment: string;
     skills: string[];
     expertise: string[];

@@ -1015,6 +1015,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     const [spellHasSave, setSpellHasSave] = useState(false);
     const [spellSaveType, setSpellSaveType] = useState('DEX');
     const [spellDmgFormula, setSpellDmgFormula] = useState('');
+    const [spellSecondaryDamage, setSpellSecondaryDamage] = useState('');
     const [spellDmgType, setSpellDmgType] = useState('Force');
     const [spellClasses, setSpellClasses] = useState<string[]>([]);
     const [spellOriginal, setSpellOriginal] = useState<any>(null);
@@ -1169,7 +1170,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
         setBgSkills([]); setBgFeatureName(''); setBgTools([]); setBgEquipment(''); setBgCurrency({ gp: 0, sp: 0, cp: 0 }); setBgEffects([]);
         setArmorProfs([]); setWeaponProfs([]);
         setSpellLevel(0); setSpellSchool('Evocation'); setSpellCastTime('1 Action'); setSpellRange('60 feet'); setSpellDuration('Instantaneous'); setSpellRitual(false); setSpellConcentration(false);
-        setSpellComponents(['V', 'S']); setSpellMaterial(''); setSpellHigherLevel(''); setSpellHasAttack(false); setSpellHasSave(false); setSpellDmgFormula('');
+        setSpellComponents(['V', 'S']); setSpellMaterial(''); setSpellHigherLevel(''); setSpellHasAttack(false); setSpellHasSave(false); setSpellDmgFormula(''); setSpellSecondaryDamage('');
         setSpellDmgType('Force'); setSpellClasses([]); setSpellOriginal(null);
         setItemCategory('Other'); setItemSubtype(''); setItemIsWondrous(false); setItemRarity('Common'); setItemWeight(0); setItemCost('0 gp'); setItemAttunement(false);
         setItemDmgDice(''); setItemDmgType('Piercing'); setItemWeaponType('Simple'); setItemArmorType('Light'); setItemAcBase(0); setItemAcDexBonus(false); setItemAcMaxBonus(null);
@@ -1275,6 +1276,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
             setSpellAttackType(item.attack_type ? item.attack_type.charAt(0).toUpperCase() + item.attack_type.slice(1) : 'Ranged');
             setSpellHasSave(!!item.dc);
             setSpellSaveType(item.dc?.dc_type?.name?.toUpperCase() || 'DEX');
+            setSpellSecondaryDamage(item.secondary_damage || item.damage?.secondary_damage || '');
             if (item.damage) {
                 const dmgAtLevel = item.damage.damage_at_slot_level || item.damage.damage_at_character_level;
                 if (dmgAtLevel) {
@@ -1490,6 +1492,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     }),
                     attack_type: spellHasAttack ? spellAttackType.toLowerCase() : undefined,
                     damage: nextDamage,
+                    secondary_damage: spellSecondaryDamage || undefined,
                     dc: spellHasSave ? { ...(previous.dc || {}), dc_type: { name: spellSaveType, index: spellSaveType.toLowerCase() }, dc_success: previous.dc?.dc_success || 'half' } : previous.dc
                 };
             } else if (activeTab === 'item') {
@@ -2016,6 +2019,10 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                     <div>
                                                         <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Base Damage / Healing Formula</label>
                                                         <input type="text" value={spellDmgFormula} onChange={e => setSpellDmgFormula(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-sm text-white font-mono" placeholder="e.g. 3d8" />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Secondary Damage (optional)</label>
+                                                        <input type="text" value={spellSecondaryDamage} onChange={e => setSpellSecondaryDamage(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-sm text-white font-mono" placeholder="e.g. 2d8 nearby" />
                                                     </div>
                                                     <div>
                                                         <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Damage Type</label>

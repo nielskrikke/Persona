@@ -1474,6 +1474,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 currentHp: prev.maxHp,
                 spellSlots: newSlots,
                 featureUsage: newFeatures,
+                freeCastUsage: {},
                 hitDiceUsage: newHitDiceUsage,
                 eldritchCannonFreebieUsed: false
             };
@@ -2136,7 +2137,16 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     }, 0);
 
                                 const mod = calculateModifier(getStat(skill.ability)) + (isProf ? prof : 0) + (isExpertise ? prof : 0) + skillBonus;
-                                const hasFullAdv = activeModifiers.some(m => m.type === 'advantage' && (m.target === skill.name.toLowerCase().replace(/\s+/g, '_') || (m.target === 'skills' && (!m.filter || m.filter.toLowerCase() === skill.name.toLowerCase())))) || isTrustSkill;
+                                const skillKey = skill.name.toLowerCase();
+                                const skillSnake = skillKey.replace(/\s+/g, '_');
+                                const hasFullAdv = activeModifiers.some(m => {
+                                    const target = String(m.target || '').toLowerCase();
+                                    return m.type === 'advantage' && (
+                                        target === skillKey
+                                        || target === skillSnake
+                                        || (target === 'skills' && (!m.filter || String(m.filter).toLowerCase() === skillKey))
+                                    );
+                                }) || isTrustSkill;
 
                                 return <SkillRow key={skill.name} skill={skill.name} stat={skill.ability} isProf={isProf} isExpertise={isExpertise} mod={mod} advantage={hasFullAdv} onRoll={roll} onContextMenu={triggerRollMenu} />;
                             })}

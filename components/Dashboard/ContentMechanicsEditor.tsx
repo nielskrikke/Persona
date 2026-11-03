@@ -81,12 +81,19 @@ const ResourceRow = ({ resource, onChange, onRemove }: { resource: ResourceDefin
                     </div>
                 )}
                 {resource.max.type === 'ability' && (
-                    <div>
-                        <label className={labelClass}>Ability</label>
-                        <select className={inputClass} value={resource.max.ability || 'cha'} onChange={e => updateMax({ ability: e.target.value as AbilityName })}>
-                            {ABILITY_NAMES.map(ability => <option key={ability} value={ability}>{ABILITY_LABELS[ability]}</option>)}
-                        </select>
-                    </div>
+                    <>
+                        <div>
+                            <label className={labelClass}>Ability</label>
+                            <select className={inputClass} value={resource.max.ability || 'cha'} onChange={e => updateMax({ ability: e.target.value as AbilityName })}>
+                                {ABILITY_NAMES.map(ability => <option key={ability} value={ability}>{ABILITY_LABELS[ability]}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className={labelClass}>Flat Bonus</label>
+                            <input type="number" className={inputClass} value={resource.max.bonus ?? 0} onChange={e => updateMax({ bonus: Number(e.target.value) || 0 })} />
+                            <p className="text-[10px] text-gray-600 mt-1">For formulas like “3 + Charisma modifier.”</p>
+                        </div>
+                    </>
                 )}
                 {resource.max.type === 'table' && (
                     <div className="sm:col-span-2">

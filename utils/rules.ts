@@ -571,7 +571,7 @@ export const getResourceMax = (
             return classLevel * Number(descriptor.multiplier || 1);
         case 'ability': {
             const ability = descriptor.ability || 'int';
-            return Math.max(Number(descriptor.min ?? 1), calculateModifier(abilities[ability as AbilityName] || 10));
+            return Math.max(Number(descriptor.min ?? 1), calculateModifier(abilities[ability as AbilityName] || 10) + Number(descriptor.bonus || 0));
         }
         case 'proficiency':
             return calculateProficiency(totalLevel);
@@ -622,18 +622,31 @@ export const getResourceDefinitions = (character: CharacterState): CharacterReso
     return Array.from(resources.values());
 };
 
+const primaryDamagePart = (value: string): string => String(value || '').replace(/\s*\([^)]*\)\s*/g, ' ').trim();
+
 export const getSpellDamageString = (spell: SpellDetail, characterLevel: number = 1, slotLevel: number = 1): string => {
     if (!spell.damage) return '';
     const damage = spell.damage;
     if (damage.damage_at_character_level) {
         const levels = Object.keys(damage.damage_at_character_level).map(Number).sort((a, b) => a - b).filter(lvl => lvl <= characterLevel);
         const highestLevel = levels[levels.length - 1];
-        return damage.damage_at_character_level[highestLevel] || '';
+        return primaryDamagePart(damage.damage_at_character_level[highestLevel] || '');
     }
     if (damage.damage_at_slot_level) {
-        return damage.damage_at_slot_level[slotLevel] || damage.damage_at_slot_level[spell.level] || '';
+        return primaryDamagePart(damage.damage_at_slot_level[slotLevel] || damage.damage_at_slot_level[spell.level] || '');
     }
     return '';
+};
+
+export const getSpellSecondaryDamageString = (spell: SpellDetail, characterLevel: number = 1, slotLevel: number = 1): string => {
+    if (spell.secondary_damage) return primaryDamagePart(spell.secondary_damage);
+    const damage = spell.damage;
+    if (!damage) return '';
+    const raw = damage.damage_at_character_level
+        ? damage.damage_at_character_level[Object.keys(damage.damage_at_character_level).map(Number).sort((a, b) => a - b).filter(lvl => lvl <= characterLevel).pop() || 1] || ''
+        : damage.damage_at_slot_level?.[slotLevel] || damage.damage_at_slot_level?.[spell.level] || '';
+    const match = String(raw).match(/\(([^)]+)\)/);
+    return match ? primaryDamagePart(match[1]) : '';
 };
 
 export const isSpell = (item: any): item is SpellDetail => {

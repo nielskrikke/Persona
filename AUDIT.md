@@ -1107,6 +1107,7 @@ The earlier anon-key apply attempt was a no-op: PostgREST returned HTTP 200 with
 - Named `spell_access` grants are hydrated as always-prepared spells with `min_level`, free-cast/reset metadata, and optional spellcasting ability; this covers class, subclass, race, background, and feat grants.
 - Spell class lists now come from each spell record's `classes` array, and all spell lookup/pickers use `custom_spells` only. The static `data/spells` files were removed.
 - The spell Forge preserves the full stored record on edit (classes chips, area/source/DC, damage tables) and refreshes existing character spell snapshots by index. Granted spells are locked in the Spell Manager.
+- Free-cast badges now decrement when used and reset on short/long rests. Secondary spell damage is stored/edited and rolled separately; parenthetical damage text is split from the primary roll. Skill-advantage targets are matched case-insensitively. Ability-based resources support a flat bonus (Arena Royale persona points).
 - Race/class feature effects are deduplicated when both `effects` and legacy `modifiers` exist; the race Forge now writes only `effects`.
 - Manage → Choices now attaches the chosen subclass correctly. Background/race feats get sub-choices, and feat pickers filter Origin/General/Epic Boon prerequisites. Race/subrace descriptions come from the content library, and feat actions use their effect names.
 - Developer JSON can now intentionally override `level_table[].class_specific`; omitted values still preserve the existing data.

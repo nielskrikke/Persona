@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { CharacterState, SpellDetail } from '../../../types';
 import { WIDGET_BG } from '../../../data/constants';
-import { getSpellDamageString, calculateModifier, calculateProficiency, formatModifier, getEffectiveAbilities } from '../../../utils/rules';
+import { getSpellDamageString, getSpellSecondaryDamageString, calculateModifier, calculateProficiency, formatModifier, getEffectiveAbilities } from '../../../utils/rules';
 
 interface SpellsTabProps {
     character: CharacterState;
@@ -31,6 +31,30 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
     const spellSaveFor = (spell: SpellDetail) => spell.spellcastingAbility
         ? 8 + proficiency + calculateModifier(effectiveAbilities[spell.spellcastingAbility])
         : spellSave;
+    const freeCastRemaining = (spell: SpellDetail) => Math.max(0, Number(spell.freeCasts || 0) - Number(character.freeCastUsage?.[spell.index] || 0));
+    const castSpell = (spell: SpellDetail) => {
+        const remaining = freeCastRemaining(spell);
+        if (remaining > 0) {
+            setCharacter(prev => ({
+                ...prev,
+                freeCastUsage: { ...(prev.freeCastUsage || {}), [spell.index]: Number(prev.freeCastUsage?.[spell.index] || 0) + 1 },
+                activeConcentration: spell.concentration ? spell : prev.activeConcentration,
+            }));
+        } else if (spell.level > 0) {
+            const slots = character.spellSlots[spell.level];
+            if (!slots || Number(slots.current) <= 0) { alert('No spell slots!'); return; }
+            setCharacter(prev => ({
+                ...prev,
+                spellSlots: { ...prev.spellSlots, [spell.level]: { ...slots, current: Math.max(0, Number(slots.current) - 1) } },
+                activeConcentration: spell.concentration ? spell : prev.activeConcentration,
+            }));
+        } else if (spell.concentration) {
+            setCharacter(prev => ({ ...prev, activeConcentration: spell }));
+        }
+        const descText = spell.desc?.join(' ').toLowerCase() || '';
+        if (descText.includes('spell attack')) roll(`1d20${spellAttackFor(spell)}`, `Attack: ${spell.name}`);
+        if (spell.name.toLowerCase() === 'polymorph' && onPolymorphCast) onPolymorphCast();
+    };
     const [spellSearch, setSpellSearch] = useState('');
     const [ritualOnly, setRitualOnly] = useState(false);
     const [concentrationOnly, setConcentrationOnly] = useState(false);
@@ -165,6 +189,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                 <div className="divide-y divide-[#2e3036]/60 min-w-[500px]">
                                     {spells.map(spell => {
                                         const dmg = getSpellDamageString(spell, character.level, spell.level === 0 ? character.level : Math.max(spell.level, 1));
+                                    const secondaryDmg = getSpellSecondaryDamageString(spell, character.level, spell.level === 0 ? character.level : Math.max(spell.level, 1));
                                         const dcType = getDcType(spell);
                                         return (
                                             <div key={spell.index} onClick={() => setSelectedDetail(spell)} className={`grid gap-2 items-center px-6 py-4 hover:bg-[#2e3036]/50 cursor-pointer group transition-colors grid-cols-[1fr_60px_80px_60px] md:grid-cols-[1fr_80px_120px_80px]`}>
@@ -180,7 +205,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                             {spell.concentration && (<span className="text-[8px] bg-blue-900/40 text-blue-400 border border-blue-800/60 px-1 rounded">C</span>)}
                                                             {spell.ritual && (<span className="text-[8px] bg-yellow-900/40 text-yellow-500 border border-yellow-800/60 px-1 rounded">R</span>)}
                                                             {spell.isGranted && (<span className="text-[8px] bg-dnd-gold/10 text-dnd-gold border border-dnd-gold/40 px-1 rounded" title={spell.grantedBy}>Granted</span>)}
-                                                            {spell.freeCasts ? (<span className="text-[8px] bg-purple-900/40 text-purple-300 border border-purple-800/60 px-1 rounded">{spell.freeCasts}/{(spell.freeCastReset || 'long') === 'short' ? 'SR' : 'LR'}</span>) : null}
+                                                            {spell.freeCasts ? (<span className="text-[8px] bg-purple-900/40 text-purple-300 border border-purple-800/60 px-1 rounded">{freeCastRemaining(spell)}/{spell.freeCasts} {(spell.freeCastReset || 'long') === 'short' ? 'SR' : 'LR'}</span>) : null}
                                                         </div>
                                                     </div>
                                                     <div className="text-[10px] text-gray-500 truncate">{spell.casting_time} • {spell.range} • {spell.duration}</div>
@@ -197,33 +222,17 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                 </div>
                                                 <div className="text-center flex justify-center">
                                                     {dmg ? (
-                                                        <button onClick={(e) => { e.stopPropagation(); roll(dmg, `Damage ${spell.name}`); }} className="text-xs font-bold text-white bg-black/40 hover:bg-gray-700 border border-gray-600/50 rounded px-2 py-1 transition-colors truncate max-w-full">{dmg}</button>
+                                                        <div className="flex flex-col gap-1 items-center">
+                                                            <button onClick={(e) => { e.stopPropagation(); roll(dmg, `Damage ${spell.name}`); }} className="text-xs font-bold text-white bg-black/40 hover:bg-gray-700 border border-gray-600/50 rounded px-2 py-1 transition-colors truncate max-w-full">{dmg}</button>
+                                                            {secondaryDmg && <button onClick={(e) => { e.stopPropagation(); roll(secondaryDmg, `Secondary Damage ${spell.name}`); }} className="text-[9px] font-bold text-dnd-gold bg-dnd-gold/10 hover:bg-dnd-gold/20 border border-dnd-gold/30 rounded px-2 py-0.5 transition-colors">{secondaryDmg}</button>}
+                                                        </div>
                                                     ) : (
                                                         <span className="text-gray-600 text-[10px]">-</span>
                                                     )}
                                                 </div>
                                                 <div className="text-center">
                                                     <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            if (lvl > 0 && slots && Number(slots.current) > 0) {
-                                                                setCharacter(prev => ({
-                                                                    ...prev,
-                                                                    spellSlots: { ...prev.spellSlots, [lvl]: { ...slots, current: Number(slots.current) - 1 } },
-                                                                    activeConcentration: spell.concentration ? spell : prev.activeConcentration
-                                                                }));
-                                                            } else if (lvl > 0) {
-                                                                alert("No spell slots!");
-                                                                return;
-                                                            } else if (spell.concentration) {
-                                                                setCharacter(p => ({ ...p, activeConcentration: spell }));
-                                                            }
-                                                            const descText = spell.desc?.join(' ').toLowerCase() || '';
-                                                            if (descText.includes('spell attack')) roll(`1d20${spellAttackFor(spell)}`, `Attack: ${spell.name}`);
-                                                            if (spell.name.toLowerCase() === 'polymorph' && onPolymorphCast) {
-                                                                onPolymorphCast();
-                                                            }
-                                                        }}
+                                                        onClick={(e) => { e.stopPropagation(); castSpell(spell); }}
                                                         onContextMenu={(e) => {
                                                             e.preventDefault();
                                                             e.stopPropagation();
@@ -243,6 +252,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                             <div className="lg:hidden divide-y divide-[#2e3036]/60">
                                 {spells.map(spell => {
                                     const dmg = getSpellDamageString(spell, character.level, spell.level === 0 ? character.level : Math.max(spell.level, 1));
+                                    const secondaryDmg = getSpellSecondaryDamageString(spell, character.level, spell.level === 0 ? character.level : Math.max(spell.level, 1));
                                     const dcType = getDcType(spell);
                                     const ebCount = spell.name === 'Eldritch Blast' ? (character.level >= 17 ? 4 : character.level >= 11 ? 3 : character.level >= 5 ? 2 : 1) : 0;
                                     return (
@@ -254,7 +264,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                     {spell.concentration && <span className="text-[8px] bg-blue-900/40 text-blue-400 border border-blue-800/60 px-1 rounded">C</span>}
                                                     {spell.ritual && <span className="text-[8px] bg-yellow-900/40 text-yellow-500 border border-yellow-800/60 px-1 rounded">R</span>}
                                                     {spell.isGranted && <span className="text-[8px] bg-dnd-gold/10 text-dnd-gold border border-dnd-gold/40 px-1 rounded" title={spell.grantedBy}>Granted</span>}
-                                                    {spell.freeCasts ? <span className="text-[8px] bg-purple-900/40 text-purple-300 border border-purple-800/60 px-1 rounded">{spell.freeCasts}/{(spell.freeCastReset || 'long') === 'short' ? 'SR' : 'LR'}</span> : null}
+                                                    {spell.freeCasts ? <span className="text-[8px] bg-purple-900/40 text-purple-300 border border-purple-800/60 px-1 rounded">{freeCastRemaining(spell)}/{spell.freeCasts} {(spell.freeCastReset || 'long') === 'short' ? 'SR' : 'LR'}</span> : null}
                                                 </div>
                                                 <div className="text-[10px] text-gray-500 truncate">{spell.casting_time} • {spell.range} • {spell.duration}</div>
                                                 {dmg && (
@@ -262,26 +272,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                 )}
                                             </div>
                                             <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (lvl > 0 && slots && Number(slots.current) > 0) {
-                                                        setCharacter(prev => ({
-                                                            ...prev,
-                                                            spellSlots: { ...prev.spellSlots, [lvl]: { ...slots, current: Number(slots.current) - 1 } },
-                                                            activeConcentration: spell.concentration ? spell : prev.activeConcentration
-                                                        }));
-                                                    } else if (lvl > 0) {
-                                                        alert("No spell slots!");
-                                                        return;
-                                                    } else if (spell.concentration) {
-                                                        setCharacter(p => ({ ...p, activeConcentration: spell }));
-                                                    }
-                                                    const descText = spell.desc?.join(' ').toLowerCase() || '';
-                                                    if (descText.includes('spell attack')) roll(`1d20${spellAttackFor(spell)}`, `Attack: ${spell.name}`);
-                                                    if (spell.name.toLowerCase() === 'polymorph' && onPolymorphCast) {
-                                                        onPolymorphCast();
-                                                    }
-                                                }}
+                                                onClick={(e) => { e.stopPropagation(); castSpell(spell); }}
                                                 className="text-[10px] font-bold uppercase bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold active:bg-dnd-gold active:text-black px-4 py-2 rounded-lg transition-colors shrink-0"
                                             >
                                                 Cast
