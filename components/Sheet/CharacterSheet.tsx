@@ -742,6 +742,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
         if (!ruleCond && condList.length === 0) return true;
 
+        const mechanicalCondition = /armor|shield|weapon|unarmed|melee|ranged|two.hand|one.hand|finesse|dual|no_weapon|not:|wearing|using_shield|concentration|spell/i;
+        const narrativeConditions = [ruleCond, ...condList].filter(condition => condition && !mechanicalCondition.test(condition));
+        if (narrativeConditions.length > 0 && !narrativeConditions.every(condition => character.activeConditions?.[condition] === true)) {
+            return false;
+        }
+
         const equippedItems = character.inventory.filter((i: any) => i.equipped);
 
         const hasArmorEquipped = equippedItems.some((i: any) => i.armor_class && !(i.armor_category?.toLowerCase().includes('shield') || i.name?.toLowerCase().includes('shield')));

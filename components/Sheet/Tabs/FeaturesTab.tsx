@@ -22,6 +22,21 @@ const FeaturesTab: React.FC<FeaturesTabProps> = ({ character, setCharacter, getA
 
     const filteredFeatures = allFeatures.filter(f => (featureFilter === 'All' || f.type === featureFilter) && f.name.toLowerCase().includes(featureSearch.toLowerCase()));
 
+    const narrativeConditions = useMemo(() => {
+        const conditions = new Set<string>();
+        const mechanical = /armor|shield|weapon|unarmed|melee|ranged|two.hand|one.hand|finesse|dual|no_weapon|not:|wearing|using_shield|concentration|spell/i;
+        allFeatures.forEach((feature: any) => {
+            (feature.effects || []).forEach((effect: any) => {
+                if (effect.type === 'spell_access') return;
+                const values = [effect.rule || effect.condition || '', ...(Array.isArray(effect.conditions) ? effect.conditions : [])]
+                    .map((value: any) => String(value || '').toLowerCase().trim())
+                    .filter((value: string) => value && !mechanical.test(value));
+                values.forEach((value: string) => conditions.add(value));
+            });
+        });
+        return Array.from(conditions).sort();
+    }, [allFeatures]);
+
     const updateFeatureUsage = (name: string, used: number) => {
         setCharacter(prev => {
             const usage = prev.featureUsage[name];
@@ -38,6 +53,34 @@ const FeaturesTab: React.FC<FeaturesTabProps> = ({ character, setCharacter, getA
 
     return (
         <div className="max-w-5xl mx-auto space-y-8 pb-20">
+            {narrativeConditions.length > 0 && (
+                <section className="bg-black/30 border border-gray-800 rounded-xl p-4">
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                        <div>
+                            <h3 className="text-xs font-black text-dnd-gold uppercase tracking-widest">Active Stances & Conditions</h3>
+                            <p className="text-[10px] text-gray-500 mt-1">Turn these on only while the feature is actually active. Mechanical armor/weapon conditions are handled automatically.</p>
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        {narrativeConditions.map(condition => {
+                            const active = character.activeConditions?.[condition] === true;
+                            return (
+                                <button
+                                    key={condition}
+                                    type="button"
+                                    onClick={() => setCharacter(prev => ({
+                                        ...prev,
+                                        activeConditions: { ...(prev.activeConditions || {}), [condition]: !active },
+                                    }))}
+                                    className={`px-3 py-1.5 rounded-full border text-[10px] font-bold uppercase tracking-wide transition-all ${active ? 'bg-dnd-gold text-black border-dnd-gold' : 'bg-black/30 text-gray-500 border-gray-700 hover:border-gray-500'}`}
+                                >
+                                    {condition.charAt(0).toUpperCase() + condition.slice(1)}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </section>
+            )}
             {Object.keys(character.featureUsage).length > 0 && (
                 <section className="animate-in fade-in slide-in-from-top-4 duration-500">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

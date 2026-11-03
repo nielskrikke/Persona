@@ -474,6 +474,7 @@ export interface CharacterState {
     background: string;
     spellcastingAbility?: AbilityName;
     freeCastUsage?: Record<string, number>;
+    activeConditions?: Record<string, boolean>;
     alignment: string;
     skills: string[];
     expertise: string[];
