@@ -3,7 +3,7 @@ import Markdown from 'react-markdown';
 import { X, User, GraduationCap, Activity, Shield, Settings, Plus, Trash2, Save, Languages, Palette, Type, Dice5, Eye, EyeOff, Info, Sparkles, AlertTriangle, RotateCcw, AlertCircle } from 'lucide-react';
 import { CharacterState, APIReference, RaceDetail, SubraceDetail, BackgroundDetail, FeatDetail, ABILITY_NAMES, ABILITY_LABELS, AbilityScores, SpellDetail, LevelChoice, AbilityName } from '@/types';
 import { fetchClasses, fetchRaces, fetchSubraces, fetchBackgrounds, fetchFeatsList, fetchRaceDetail, fetchSubraceDetail, fetchBackgroundDetail, fetchSubclasses, fetchSubclassDetail, fetchSubclassLevels, fetchClassLevels, fetchLevelFeatures, fetchClassDetail, fetchAllSpells, RACES, SUBCLASSES } from '@/data/index';
-import { getSpellSlots, calculateModifier, SKILL_LIST, getSubclassLevel, getResourceDefinitions, calculateMaxHp, mergeSpellSlotCurrents, isFeatAvailableForLevel } from '@/utils/rules';
+import { getSpellSlots, calculateModifier, SKILL_LIST, getSubclassLevel, getResourceDefinitions, calculateMaxHp, mergeSpellSlotCurrents, isFeatAvailableForLevel, getChoiceCount } from '@/utils/rules';
 import { STANDARD_LANGUAGES, ARTISAN_TOOLS } from '../../../data/constants';
 import DiceRoller3D from '../Shared/DiceRoller3D';
 
@@ -282,6 +282,22 @@ const ManageCharacterModal = ({
                             });
                         }
                     }
+                    (cls.definition.choices || []).forEach((choice: any) => {
+                        const choiceId = `class-${classIndex}-${choice.id}`;
+                        if (backfilled.some(existing => existing.id === choiceId)) return;
+                        const stored = character.choices.find((existing: any) => existing.id === choiceId);
+                        backfilled.push({
+                            id: choiceId,
+                            level: 1,
+                            source: sourceName,
+                            type: 'other',
+                            label: choice.label || (choice.kind === 'weapon_mastery' ? 'Weapon Mastery' : choice.kind),
+                            value: stored?.value || [],
+                            options: choice.options || [],
+                            count: getChoiceCount(choice, cls.level),
+                            revertData: { classIndex, isClassChoice: true },
+                        });
+                    });
                 }
 
                 // Feats

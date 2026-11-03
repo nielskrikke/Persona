@@ -612,6 +612,49 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         }
     }
 
+    // Ancestry-style choices store the chosen option name in choices; if an
+    // older character does not have the option's effects as a feature yet,
+    // derive it from the race record so Breath Weapon/resistance/etc. work.
+    const raceChoices = [
+        ...((character.race as any)?.choices || []),
+        ...((character.subrace as any)?.choices || []),
+    ];
+    if (raceChoices.length > 0) {
+        const selectedByChoice = new Map<string, string[]>();
+        (character.choices || []).forEach((choice: any) => {
+            const values = Array.isArray(choice.value) ? choice.value : (choice.value ? [choice.value] : []);
+            selectedByChoice.set(String(choice.id), values.map((value: any) => typeof value === 'string' ? value : (value?.name || value?.index || '')));
+        });
+        raceChoices.forEach((choice: any) => {
+            if (choice.kind !== 'ancestry' && choice.kind !== 'feature') return;
+            const selected = selectedByChoice.get(`race-${choice.id}`) || [];
+            selected.forEach((name: string) => {
+                const option = (choice.options || []).find((candidate: any) => {
+                    const label = typeof candidate === 'string' ? candidate : (candidate.name || candidate.index);
+                    return String(label).toLowerCase() === String(name).toLowerCase();
+                });
+                if (!option || typeof option !== 'object' || !Array.isArray(option.effects) || option.effects.length === 0) return;
+                const index = `race-${choice.id}-${option.name}`.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                const source = character.subrace?.name || character.race?.name || 'Race';
+                const existing = classFeatures.find((feature: any) => feature.index === index);
+                const feature = {
+                    index,
+                    name: option.name,
+                    level: 1,
+                    source,
+                    desc: option.desc ? [].concat(option.desc) : [choice.label || choice.id],
+                    effects: option.effects,
+                    url: '',
+                };
+                if (existing) {
+                    classFeatures = classFeatures.map((candidate: any) => candidate === existing ? { ...candidate, ...feature } : candidate);
+                } else {
+                    classFeatures = [...classFeatures, feature];
+                }
+            });
+        });
+    }
+
     return hydrateGrantedSpells({ ...character, classes, classFeatures });
 };
 

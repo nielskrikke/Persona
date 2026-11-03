@@ -600,6 +600,22 @@ export const getResourceDefinitions = (character: CharacterState): CharacterReso
     const abilities = getEffectiveAbilities(character);
     const resources = new Map<string, CharacterResource>();
 
+    const raceDefinitions: ResourceDefinition[] = [
+        ...((character.race as any)?.resources || []),
+        ...((character.subrace as any)?.resources || []),
+    ];
+    raceDefinitions.forEach(resource => {
+        if (resource.level && character.level < resource.level) return;
+        const max = getResourceMax(resource, character.level, abilities, character.level);
+        if (max > 0) resources.set(resource.key, {
+            key: resource.key,
+            name: resource.name,
+            reset: resource.reset,
+            max,
+            source: resource.source || character.race?.name || character.subrace?.name,
+        });
+    });
+
     character.classes?.forEach(characterClass => {
         const definitions: ResourceDefinition[] = [
             ...((characterClass.definition as any)?.resources || []),
@@ -677,4 +693,14 @@ export const resolveDamageFormula = (formula: string, modifier: number = 0, hitD
     return String(formula || '')
         .replace(/\bHD\b/gi, `1d${Number(hitDie) || 8}`)
         .replace(/\bMOD\b/gi, String(Number(modifier) || 0));
+};
+
+
+export const getChoiceCount = (choice: any, level: number): number => {
+    const byLevel = choice?.count_by_level;
+    if (byLevel && typeof byLevel === 'object') {
+        const keys = Object.keys(byLevel).map(Number).filter(key => key <= level).sort((a, b) => b - a);
+        if (keys.length > 0) return Number(byLevel[keys[0]]) || Number(choice.count || 1);
+    }
+    return Number(choice?.count || 1);
 };

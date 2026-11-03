@@ -391,11 +391,12 @@ const App: React.FC = () => {
     });
     const featChoices = (await Promise.all((extraData?.feats || []).map((feat: any) => buildFeatGrantChoices(feat, race.name, 1)))).flat();
     const finalChoices = mergeChoices(character.choices, [...(extraData?.choices || []), ...featChoices]);
-    const grantedSpells = await hydrateGrantedSpells({
+    const hydratedRace = await hydrateCharacterClasses({
         ...character,
         race: finalRace,
         subrace,
         feats: newFeats,
+        choices: finalChoices,
         classFeatures: newFeatures,
         spells: newSpells,
     });
@@ -403,8 +404,8 @@ const App: React.FC = () => {
     updateCharacter({
         race: finalRace,
         subrace,
-        classFeatures: newFeatures,
-        spells: grantedSpells.spells,
+        classFeatures: hydratedRace.classFeatures,
+        spells: hydratedRace.spells,
         skills: Array.from(new Set(newSkills)),
         languages: Array.from(new Set(newLanguages)),
         toolProficiencies: Array.from(new Set(newTools)),
@@ -554,7 +555,7 @@ const App: React.FC = () => {
         ...(extraData.spellcastingAbility ? { spellcastingAbility: extraData.spellcastingAbility } : {}),
         currency: newCurrency,
         maxHp: nextMaxHp,
-        currentHp: Math.min(character.currentHp, nextMaxHp),
+        currentHp: nextMaxHp,
         classFeatures: [...character.classFeatures, bgFeature],
         spells: grantedSpells.spells,
         inventory: newInventory,

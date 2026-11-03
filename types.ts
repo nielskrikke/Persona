@@ -61,6 +61,7 @@ export interface ContentChoice {
     id: string;
     kind: 'skill' | 'tool' | 'language' | 'ability' | 'ancestry' | 'feature' | 'spell' | 'subclass' | 'proficiency' | 'feat' | 'spellcasting_ability' | 'weapon_mastery';
     count: number;
+    count_by_level?: Record<number, number>;
     label?: string;
     level?: number;
     amount?: number;
@@ -143,10 +144,11 @@ export interface RaceDetail extends APIReference {
     languages: APIReference[];
     language_desc: string;
     traits: (APIReference & { desc?: string[]; effects?: FeatureEffect[]; modifiers?: FeatureEffect[] })[];
+    resources?: ResourceDefinition[];
+    choices?: ContentChoice[];
     subraces_details?: SubraceDetail[];
     url?: string;
     source?: string;
-    choices?: ContentChoice[];
 }
 
 export interface ExtendedRaceDetail extends RaceDetail {

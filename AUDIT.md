@@ -1102,6 +1102,7 @@ The earlier anon-key apply attempt was a no-op: PostgREST returned HTTP 200 with
 - Darkvision now displays the range from its `set` effect (60/120/etc.), Harengon's initiative bonus scales with Proficiency Bonus, and flat `set` AC (Tortle 17) no longer adds Dexterity.
 - Background creation now honors generic ability/skill/tool/language/feat choices, applies fixed tool proficiencies, stores chosen ability bonuses/feats, and supports editable currency. The Forge loads the background feature description into Lore.
 - Background and race ability choices now offer the standard +2/+1 or the +1/+1/+1 alternative when the content has a +2 and +1 choice pair.
+- Ancestry option effects are re-derived from stored choices during hydration, and races support resources/trackers. Class-level choices missing at creation are backfilled in Manage, mastery counts scale by level, and background completion finalizes HP at the new maximum.
 - Flat `max_hp` bonuses are now included in max-HP calculation (Boon of Fortitude), and selecting a feat/feature that changes HP recalculates the sheet total.
 - `proficiency_choice` effects can mark `expertise_if_proficient`; Observant and Keen Mind use it, and the Forge exposes the toggle. It is applied on both the sheet and Manage paths.
 - Named `spell_access` grants are hydrated as always-prepared spells with `min_level`, free-cast/reset metadata, and optional spellcasting ability; this covers class, subclass, race, background, and feat grants.

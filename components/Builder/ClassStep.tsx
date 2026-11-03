@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { APIReference, ClassDetail, SubclassDetail, CharacterClass } from '../../types';
 import { fetchClasses, fetchClassDetail, fetchSubclasses, fetchSubclassDetail } from '../../data/index';
-import { SKILL_LIST } from '../../utils/rules';
+import { SKILL_LIST, getChoiceCount } from '../../utils/rules';
 
 interface ClassStepProps {
   onSelect: (classes: CharacterClass[], skills: string[], tools: string[], choices: any[]) => void;
@@ -202,6 +202,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
           const cls = classDetails[classIndex];
           const choice = cls?.choices?.find((item: any) => item.id === choiceId);
           if (!cls || !choice) return;
+          const draftLevel = draftClasses.find(draft => draft.index === classIndex)?.level || 1;
           if (choice.kind === 'weapon_mastery') {
               const weaponOptions = selected.map(name => {
                   const option = (choice.options || []).find((item: any) => (typeof item === 'string' ? item : item.name) === name);
@@ -215,7 +216,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
                   label: 'Weapon Mastery',
                   value: selected,
                   options: weaponOptions,
-                  count: choice.count || 1,
+                  count: getChoiceCount(choice, draftLevel),
               });
               return;
           }
@@ -230,10 +231,10 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
               level: 1,
               source: cls.name,
               type: 'other',
-              label: `${cls.name}: ${choice.kind}`,
+              label: `${cls.name}: ${choice.label || choice.kind}`,
               value: selected,
               options: choice.options,
-              count: choice.count,
+              count: getChoiceCount(choice, draftLevel),
           });
       });
 
@@ -352,12 +353,16 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
                                     const selected = classChoices[key] || [];
                                     return (
                                         <section key={choice.id} className="mt-6 pt-6 border-t border-gray-800 space-y-3">
+                                            {(() => {
+                                                const choiceCount = getChoiceCount(choice, draft.level);
+                                                return (
+                                                <>
                                             <div className="flex items-center justify-between">
                                                 <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
-                                                    Choose {choice.count} {choice.kind === 'proficiency' ? 'proficiency' : choice.kind}
+                                                    Choose {choiceCount} {choice.label || (choice.kind === 'proficiency' ? 'proficiency' : choice.kind === 'weapon_mastery' ? 'weapon mastery' : choice.kind)}
                                                 </h4>
-                                                <span className={`text-[10px] font-bold ${selected.length === choice.count ? 'text-green-500' : 'text-dnd-red'}`}>
-                                                    {selected.length} / {choice.count}
+                                                <span className={`text-[10px] font-bold ${selected.length === choiceCount ? 'text-green-500' : 'text-dnd-red'}`}>
+                                                    {selected.length} / {choiceCount}
                                                 </span>
                                             </div>
                                             <div className="flex flex-wrap gap-2">
@@ -368,7 +373,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
                                                         <button
                                                             key={`${name}-${optionIndex}`}
                                                             type="button"
-                                                            onClick={() => toggleClassChoice(draft.index, choice.id, name, choice.count)}
+                                                            onClick={() => toggleClassChoice(draft.index, choice.id, name, choiceCount)}
                                                             className={`px-3 py-1.5 rounded border text-[10px] font-bold uppercase tracking-wide transition-all ${isSelected ? 'bg-dnd-gold text-black border-dnd-gold' : 'bg-black/20 text-gray-400 border-gray-700 hover:border-gray-500'}`}
                                                         >
                                                             {name}
@@ -376,6 +381,9 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
                                                     );
                                                 })}
                                             </div>
+                                                </>
+                                                );
+                                            })()}
                                         </section>
                                     );
                                 })}

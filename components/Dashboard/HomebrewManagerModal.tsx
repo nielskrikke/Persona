@@ -1554,9 +1554,11 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
             payload = { ...payload, ...advancedData };
             if (activeTab === 'class' || activeTab === 'subclass') {
                 payload.resources = contentResources;
+                payload.resources = contentResources;
                 payload.choices = contentChoices;
             } else if (activeTab === 'race' || activeTab === 'background' || activeTab === 'feat') {
                 payload.choices = contentChoices;
+                if (activeTab === 'race') payload.resources = contentResources;
             }
 
             if (editingId) {
@@ -2510,12 +2512,11 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
 
                                 {(activeTab === 'race' || activeTab === 'background' || activeTab === 'feat') && (
                                     <ContentMechanicsEditor
-                                        resources={[]}
+                                        resources={contentResources}
                                         choices={contentChoices}
-                                        onResourcesChange={() => {}}
+                                        onResourcesChange={setContentResources}
                                         onChoicesChange={setContentChoices}
                                         renderOptionEffects={(effects, onChange) => <EffectEditor effects={effects} onChange={onChange} />}
-                                        showResources={false}
                                     />
                                 )}
 
