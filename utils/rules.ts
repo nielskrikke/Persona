@@ -667,3 +667,9 @@ export const isFeatAvailableForLevel = (feat: any, level: number): boolean => {
     if (genericLevel && level < Number(genericLevel[1])) return false;
     return true;
 };
+
+export const resolveDamageFormula = (formula: string, modifier: number = 0, hitDie: number = 8): string => {
+    return String(formula || '')
+        .replace(/\bHD\b/gi, `1d${Number(hitDie) || 8}`)
+        .replace(/\bMOD\b/gi, String(Number(modifier) || 0));
+};

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import Markdown from 'react-markdown';
 import { Sparkles, Plus, X, Maximize, Search, Info, Heart, Skull, AlertOctagon } from 'lucide-react';
 import { CharacterState, ABILITY_NAMES, ABILITY_LABELS, RollResult, AbilityName, SpellDetail, InventoryItem, Currency, RuleEntry, CreatureDetail, EldritchCannonDetail, SteelDefenderDetail, EquipmentDetail, ItemModifier, DiceCustomizationOptions } from '../../types';
-import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount, getSpellAbilityForClass, getResourceDefinitions, mergeSpellSlotCurrents, hasUiWidget, getClassWithUiWidget } from '../../utils/rules';
+import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount, getSpellAbilityForClass, getResourceDefinitions, mergeSpellSlotCurrents, hasUiWidget, getClassWithUiWidget, resolveDamageFormula } from '../../utils/rules';
 import { rollDice } from '../../utils/dice';
 import CreatureManagerModal from './Modals/CreatureManagerModal';
 import { WIDGET_LABELS, DEFAULT_LAYOUT, STANDARD_CONDITIONS, STANDARD_ACTIONS, STATIC_RULES, WIDGET_BG } from '../../data/constants';
@@ -2581,6 +2581,16 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 modifiers.push({ name: 'Magical Attack', desc: 'This attack counts as magical for the purpose of overcoming resistance and immunity to nonmagical attacks and damage.' });
             }
 
+            if (isSpell) {
+                const spellType = String((attack.source as any)?.damage?.damage_type?.name || '').toLowerCase();
+                activeModifiers
+                    .filter((m: any) => m.type === 'ignore_resistance' && String(m.damage_type || '').toLowerCase() === spellType)
+                    .forEach((m: any) => {
+                        if (modifiers.some((modifier: any) => modifier.name === 'Elemental Adept')) return;
+                        modifiers.push({ name: 'Elemental Adept', desc: `Your ${m.damage_type} spells ignore Resistance, and 1s on ${m.damage_type} damage dice count as 2s.` });
+                    });
+            }
+
             // Attack riders come from feature data (Sneak Attack, Divine Smite,
             // Radiant Strikes, Brutal Strike, Foe Slayer, Empowered Strikes, ...).
             const riderMatches = (condition: string) => {
@@ -3035,10 +3045,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     else spellFlatBonus += Number(effect.value || 0);
                 });
 
-                const combinedSpellDmg = combineDamageParts(dmgStr || '', spellFlatBonus, spellExtraDice);
                 const dc = (spell as any).dc?.dc_type?.name?.substring(0, 3).toUpperCase();
                 const spellAbility = (spell as any).spellcastingAbility as AbilityName | undefined;
                 const spellCastMod = spellAbility ? calculateModifier(getStat(spellAbility)) : spellMod;
+                const combinedSpellDmg = resolveDamageFormula(combineDamageParts(dmgStr || '', spellFlatBonus, spellExtraDice), spellCastMod, Number(character.classes?.[0]?.definition?.hit_die || 8));
                 const spellAttackValue = prof + spellCastMod + extraSpellAttack + spellAttackBonus;
                 const spellSaveValue = 8 + prof + spellCastMod + extraSpellSave;
                 const { hit: spellHit, damage: spellDmg } = applyOverrides(spellAttackValue, combinedSpellDmg || 'See Desc');

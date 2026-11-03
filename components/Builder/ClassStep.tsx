@@ -202,6 +202,23 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
           const cls = classDetails[classIndex];
           const choice = cls?.choices?.find((item: any) => item.id === choiceId);
           if (!cls || !choice) return;
+          if (choice.kind === 'weapon_mastery') {
+              const weaponOptions = selected.map(name => {
+                  const option = (choice.options || []).find((item: any) => (typeof item === 'string' ? item : item.name) === name);
+                  return typeof option === 'object' ? option : { name };
+              });
+              levelChoices.push({
+                  id: `class-${classIndex}-${choiceId}`,
+                  level: 1,
+                  source: cls.name,
+                  type: 'weapon_mastery',
+                  label: 'Weapon Mastery',
+                  value: selected,
+                  options: weaponOptions,
+                  count: choice.count || 1,
+              });
+              return;
+          }
           selected.forEach(name => {
               const option = (choice.options || []).find((item: any) => (typeof item === 'string' ? item : item.name) === name);
               const category = typeof option === 'object' ? option.category : 'skill';
@@ -330,7 +347,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
                                    </section>
                                 )}
 
-                                {detail?.choices?.filter((choice: any) => ['proficiency', 'skill', 'tool'].includes(choice.kind)).map((choice: any) => {
+                                {detail?.choices?.filter((choice: any) => ['proficiency', 'skill', 'tool', 'weapon_mastery'].includes(choice.kind)).map((choice: any) => {
                                     const key = `${draft.index}:${choice.id}`;
                                     const selected = classChoices[key] || [];
                                     return (

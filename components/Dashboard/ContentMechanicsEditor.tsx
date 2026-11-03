@@ -35,6 +35,7 @@ const CHOICE_KINDS: { value: ContentChoice['kind']; label: string; hint: string 
     { value: 'proficiency', label: 'Any proficiency', hint: 'Choose from a mixed list of proficiencies.' },
     { value: 'feat', label: 'Origin feat', hint: 'Choose a feat. Leave options empty to let the player pick any feat.' },
     { value: 'spellcasting_ability', label: 'Spellcasting ability', hint: 'Choose Intelligence, Wisdom, or Charisma for racial spells.' },
+    { value: 'weapon_mastery', label: 'Weapon Mastery', hint: 'Choose the weapons whose mastery properties the character can use.' },
 ];
 
 const optionLabel = (option: any): string => {

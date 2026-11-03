@@ -59,7 +59,7 @@ export interface ResourceDefinition {
 
 export interface ContentChoice {
     id: string;
-    kind: 'skill' | 'tool' | 'language' | 'ability' | 'ancestry' | 'feature' | 'spell' | 'subclass' | 'proficiency' | 'feat' | 'spellcasting_ability';
+    kind: 'skill' | 'tool' | 'language' | 'ability' | 'ancestry' | 'feature' | 'spell' | 'subclass' | 'proficiency' | 'feat' | 'spellcasting_ability' | 'weapon_mastery';
     count: number;
     label?: string;
     level?: number;
@@ -545,7 +545,7 @@ export interface CharacterState {
 }
 
 export interface FeatureEffect {
-    type: 'bonus' | 'set' | 'resistance' | 'immunity' | 'expertise_choice' | 'proficiency_choice' | 'feature_choice' | 'asi' | 'asi_choice' | 'stat_bonus' | 'stat_bonus_attribute' | 'proficiency' | 'advantage' | 'spell_access' | 'feature' | 'bonus_action' | 'action' | 'reaction' | 'class_choice' | 'extra_attack' | 'additional_attack' | 'unarmed_strike' | 'natural_weapon' | 'attack_rider' | 'half_proficiency' | 'smite' | 'speed_bonus' | 'resource' | 'spell_damage_bonus';
+    type: 'bonus' | 'set' | 'resistance' | 'immunity' | 'expertise_choice' | 'proficiency_choice' | 'feature_choice' | 'asi' | 'asi_choice' | 'stat_bonus' | 'stat_bonus_attribute' | 'proficiency' | 'advantage' | 'spell_access' | 'feature' | 'bonus_action' | 'action' | 'reaction' | 'class_choice' | 'extra_attack' | 'additional_attack' | 'unarmed_strike' | 'natural_weapon' | 'attack_rider' | 'half_proficiency' | 'smite' | 'speed_bonus' | 'resource' | 'spell_damage_bonus' | 'ignore_resistance' | 'damage_die_min';
     target?: string;
     attribute?: 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha';
     value?: any;
