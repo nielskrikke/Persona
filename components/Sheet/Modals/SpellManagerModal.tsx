@@ -75,6 +75,7 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
         loadSpells();
     }, [isOpen, activeClassIndex]);
 
+    const isGranted = (spell: SpellDetail) => character.spells.some(s => s.index === spell.index && s.isGranted);
     const isKnown = (spell: SpellDetail) => {
         return character.spells.some(s => s.index === spell.index && s.sourceClassIndex === activeClassIndex);
     };
@@ -82,6 +83,7 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
     const tryAddSpell = (spell: SpellDetail) => {
         const profile = activeClass ? getCasterProfileFor(activeClass) : undefined;
         if (!profile || profile.type === 'none') return;
+        if (isGranted(spell)) return;
         if (isKnown(spell)) {
             onUpdateSpells(character.spells.filter(s => !(s.index === spell.index && s.sourceClassIndex === activeClassIndex)));
             return;
@@ -309,6 +311,7 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
                     ) : (
                         <div className="grid grid-cols-1 gap-3">
                             {filteredAvailableSpells.map(spell => {
+                                const granted = isGranted(spell);
                                 const known = isKnown(spell);
                                 const isExpanded = expandedSpellId === spell.index;
                                 
@@ -357,7 +360,11 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
                                                 <div className={`p-2 rounded-lg transition-colors ${isExpanded ? 'bg-gray-800 text-white' : 'text-gray-500 hover:bg-gray-800 hover:text-white'}`}>
                                                     <Info size={18} />
                                                 </div>
-                                                {known ? (
+                                                {granted ? (
+                                                    <span className="flex items-center gap-2 px-4 py-2 bg-dnd-gold/10 text-dnd-gold border border-dnd-gold/40 rounded-lg text-xs font-black uppercase">
+                                                        Granted
+                                                    </span>
+                                                ) : known ? (
                                                     <button 
                                                         onClick={(e) => { e.stopPropagation(); removeKnownSpell(spell); }}
                                                         className="flex items-center gap-2 px-4 py-2 bg-red-900/20 text-red-400 border border-red-900/50 rounded-lg text-xs font-black uppercase hover:bg-red-900/40 transition-all"

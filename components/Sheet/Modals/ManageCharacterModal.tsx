@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Markdown from 'react-markdown';
 import { X, User, GraduationCap, Activity, Shield, Settings, Plus, Trash2, Save, Languages, Palette, Type, Dice5, Eye, EyeOff, Info, Sparkles, AlertTriangle, RotateCcw, AlertCircle } from 'lucide-react';
 import { CharacterState, APIReference, RaceDetail, SubraceDetail, BackgroundDetail, FeatDetail, ABILITY_NAMES, ABILITY_LABELS, AbilityScores, SpellDetail, LevelChoice, AbilityName } from '@/types';
-import { fetchClasses, fetchRaces, fetchSubraces, fetchBackgrounds, fetchFeatsList, fetchRaceDetail, fetchSubraceDetail, fetchBackgroundDetail, fetchSubclasses, fetchSubclassDetail, fetchSubclassLevels, fetchClassLevels, getLocalSpells, fetchLevelFeatures, fetchClassDetail, fetchAllSpells, RACES, SUBCLASSES } from '@/data/index';
+import { fetchClasses, fetchRaces, fetchSubraces, fetchBackgrounds, fetchFeatsList, fetchRaceDetail, fetchSubraceDetail, fetchBackgroundDetail, fetchSubclasses, fetchSubclassDetail, fetchSubclassLevels, fetchClassLevels, fetchLevelFeatures, fetchClassDetail, fetchAllSpells, RACES, SUBCLASSES } from '@/data/index';
 import { getSpellSlots, calculateModifier, SKILL_LIST, getSubclassLevel, getResourceDefinitions, calculateMaxHp, mergeSpellSlotCurrents, isFeatAvailableForLevel } from '@/utils/rules';
 import { STANDARD_LANGUAGES, ARTISAN_TOOLS } from '../../../data/constants';
 import DiceRoller3D from '../Shared/DiceRoller3D';
@@ -517,6 +517,40 @@ const ManageCharacterModal = ({
         });
 
         setLocalClassFeatures(updatedFeatures);
+
+        // Apply named spell grants from the newly selected subclass immediately,
+        // rather than waiting for a reload.
+        const allSpells = await fetchAllSpells();
+        const grantedSpells = updatedFeatures.flatMap((feature: any) =>
+            (feature.effects || [])
+                .filter((effect: any) => effect.type === 'spell_access' && effect.spell && Number(effect.min_level || feature.level || 0) <= clsDef.level)
+                .map((effect: any) => {
+                    const spell = allSpells.find((entry: any) => entry.index === effect.spell || entry.name.toLowerCase() === String(effect.spell).toLowerCase());
+                    return spell ? {
+                        ...spell,
+                        sourceClassIndex: 'granted',
+                        isPrepared: true,
+                        isGranted: true,
+                        grantedBy: newSubclass.name,
+                        freeCasts: effect.free_casts,
+                        freeCastReset: effect.free_cast_reset || effect.reset,
+                        minLevel: effect.min_level || feature.level,
+                        spellcastingAbility: effect.ability || character.spellcastingAbility,
+                    } : null;
+                })
+                .filter(Boolean)
+        );
+        if (grantedSpells.length > 0) {
+            setLocalSpells(prev => {
+                const next = [...prev];
+                grantedSpells.forEach((spell: any) => {
+                    const index = next.findIndex(existing => existing.index === spell.index);
+                    if (index >= 0) next[index] = { ...next[index], ...spell };
+                    else next.push(spell);
+                });
+                return next;
+            });
+        }
 
         // Auto-inject layout from subclass-declared UI widgets.
         const companionWidget = ((newSubclass as any)?.ui?.widgets || []).find((widget: string) =>
@@ -1267,9 +1301,11 @@ const ManageCharacterModal = ({
                                     } else if (e.type === 'spell_access') {
                                         let filtered = allSpells;
                                         if (e.filter_class) {
-                                            const classSpells = getLocalSpells(e.filter_class);
-                                            const classSpellIndices = new Set(classSpells.map(s => s.index));
-                                            filtered = filtered.filter(s => classSpellIndices.has(s.index));
+                                            const classKey = String(e.filter_class).toLowerCase();
+                                            filtered = filtered.filter(s => Array.isArray(s.classes) && s.classes.some((entry: any) => {
+                                                const key = typeof entry === 'string' ? entry : (entry?.index || entry?.name || '');
+                                                return String(key).toLowerCase() === classKey;
+                                            }));
                                         }
                                         if (e.level !== undefined) {
                                             filtered = filtered.filter(s => s.level === e.level);
@@ -1499,9 +1535,11 @@ const ManageCharacterModal = ({
                             } else if (e.type === 'spell_access') {
                                 let filtered = allSpells;
                                 if (e.filter_class) {
-                                    const classSpells = getLocalSpells(e.filter_class);
-                                    const classSpellIndices = new Set(classSpells.map(s => s.index));
-                                    filtered = filtered.filter(s => classSpellIndices.has(s.index));
+                                    const classKey = String(e.filter_class).toLowerCase();
+                                    filtered = filtered.filter(s => Array.isArray(s.classes) && s.classes.some((entry: any) => {
+                                        const key = typeof entry === 'string' ? entry : (entry?.index || entry?.name || '');
+                                        return String(key).toLowerCase() === classKey;
+                                    }));
                                 }
                                 if (e.level !== undefined) {
                                     filtered = filtered.filter(s => s.level === e.level);

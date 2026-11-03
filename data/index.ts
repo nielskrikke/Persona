@@ -1,15 +1,5 @@
 import { CharacterState, ExtendedFeatDetail } from '../types';
 import { ALL_ITEMS, getItem } from './items/index';
-import { getLocalSpells, getSpellClassTags } from './spells/index';
-import { BARD_SPELLS } from './spells/bard';
-import { CLERIC_SPELLS } from './spells/cleric';
-import { DRUID_SPELLS } from './spells/druid';
-import { PALADIN_SPELLS } from './spells/paladin';
-import { RANGER_SPELLS } from './spells/ranger';
-import { SORCERER_SPELLS } from './spells/sorcerer';
-import { WARLOCK_SPELLS } from './spells/warlock';
-import { WIZARD_SPELLS } from './spells/wizard';
-import { ARTIFICER_SPELLS } from './spells/artificer';
 import { COMMON_CREATURES } from './beasts';
 import { STANDARD_FAMILIARS } from './familiars';
 import { loadHomebrew } from '../services/supabase';
@@ -21,7 +11,6 @@ export const RACES: any[] = [];
 
 import { APIReference, RaceDetail, ClassDetail, SubclassDetail, SubraceDetail, EquipmentDetail, SpellDetail, FeatDetail, TraitDetail, BackgroundDetail, CreatureDetail } from '../types';
 
-export { getLocalSpells } from './spells/index';
 
 export const Library = {
     // Race APIs
@@ -243,43 +232,14 @@ export const fetchBackgroundDetail = async (index: string, userId?: string): Pro
 };
 
 export const fetchSpellsByClass = async (classIndex: string, userId?: string): Promise<SpellDetail[]> => {
-    const custom = await loadHomebrew('custom_spells', userId).catch(() => []);
-    let spellListTags: string[] = [classIndex];
-    try {
-        const detail = await fetchClassDetail(classIndex, userId);
-        const declared = (detail as any)?.spell_list;
-        if (Array.isArray(declared) && declared.length > 0) spellListTags = declared;
-    } catch (e) {}
-    const local = Array.from(new Map(
-        spellListTags.flatMap(tag => getLocalSpells(tag)).map(spell => [spell.index, spell])
-    ).values());
-    const customMap = new Map(custom.map((s: any) => [(s.index || s.name || '').toLowerCase(), s]));
-    const mergedLocal = local.map(s => {
-        const key = s.index.toLowerCase();
-        if (customMap.has(key)) {
-            const override = customMap.get(key);
-            customMap.delete(key);
-            return override;
-        }
-        return s;
-    });
-    const normalizedClassIndex = String(classIndex || '').toLowerCase();
-    const customSpells = Array.from(customMap.values())
-        .filter((s: any) => {
-            const spellClasses = Array.isArray(s.classes) ? s.classes : [];
-            // Legacy/custom spells with no class list are universal. Spells with
-            // a class list are filtered by the content data.
-            if (spellClasses.length === 0) return true;
-            return spellClasses.some((entry: any) => {
-                const index = String(entry?.index || entry?.name || entry || '').toLowerCase();
-                return index === normalizedClassIndex;
-            });
-        })
-        .map((s: any) => ({
-            ...s,
-            name: s.is_homebrew === false ? s.name : (s.name.endsWith('(HB)') ? s.name : `${s.name} (HB)`)
-        }));
-    return [...mergedLocal, ...customSpells];
+    const spells = await loadHomebrew('custom_spells', userId).catch(() => []);
+    const classKey = String(classIndex || '').toLowerCase();
+    return spells
+        .filter((spell: any) => Array.isArray(spell.classes) && spell.classes.some((entry: any) => {
+            const key = typeof entry === 'string' ? entry : (entry?.index || entry?.name || '');
+            return String(key).toLowerCase() === classKey;
+        }))
+        .map((spell: any) => ({ ...spell, sourceClassIndex: classIndex }));
 };
 
 export const fetchSpellsByClassAndLevel = async (classIndex: string, level: number, userId?: string): Promise<SpellDetail[]> => {
@@ -288,34 +248,7 @@ export const fetchSpellsByClassAndLevel = async (classIndex: string, level: numb
 };
 
 export const fetchAllSpells = async (userId?: string): Promise<SpellDetail[]> => {
-    const custom = await loadHomebrew('custom_spells', userId).catch(() => []);
-    const classRows = await loadHomebrew('custom_classes', userId).catch(() => []);
-    const tags = new Set<string>(getSpellClassTags());
-    classRows.forEach((row: any) => {
-        (row.spell_list || []).forEach((tag: string) => tags.add(tag));
-    });
-    const allLocal = Array.from(tags).flatMap(c => getLocalSpells(c));
-    
-    const customMap = new Map(custom.map((s: any) => [(s.index || s.name || '').toLowerCase(), s]));
-    const spellMap = new Map<string, SpellDetail>();
-    
-    allLocal.forEach(s => {
-        const key = s.index.toLowerCase();
-        if (customMap.has(key)) {
-            const override = customMap.get(key);
-            customMap.delete(key);
-            spellMap.set(key, override);
-        } else {
-            spellMap.set(key, { ...s, classes: [...(s.classes || [])] });
-        }
-    });
-
-    customMap.forEach((s, key) => {
-        const displayName = s.is_homebrew === false ? s.name : (s.name.endsWith('(HB)') ? s.name : `${s.name} (HB)`);
-        spellMap.set(key, { ...s, name: displayName });
-    });
-
-    return Array.from(spellMap.values());
+    return loadHomebrew('custom_spells', userId).catch(() => []);
 };
 
 export const fetchFeatsList = async (userId?: string): Promise<ExtendedFeatDetail[]> => {
@@ -610,7 +543,24 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
         });
     });
 
-    let spells = [...(character.spells || [])];
+    const spellByIndex = new Map(allSpells.map(spell => [String(spell.index).toLowerCase(), spell]));
+    const refreshedSpells = (character.spells || []).map(spell => {
+        const latest = spellByIndex.get(String(spell.index).toLowerCase());
+        if (!latest) return spell;
+        return {
+            ...latest,
+            sourceClassIndex: spell.sourceClassIndex ?? latest.sourceClassIndex,
+            isPrepared: spell.isPrepared,
+            isGranted: spell.isGranted,
+            grantedBy: spell.grantedBy,
+            freeCasts: spell.freeCasts,
+            freeCastReset: spell.freeCastReset,
+            minLevel: spell.minLevel,
+            spellcastingAbility: spell.spellcastingAbility ?? latest.spellcastingAbility,
+        };
+    });
+
+    let spells = refreshedSpells;
     grantedByIndex.forEach((granted, index) => {
         const existing = spells.findIndex(spell => spell.index === index);
         if (existing >= 0) spells[existing] = { ...spells[existing], ...granted };

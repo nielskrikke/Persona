@@ -6,7 +6,6 @@ import { createClient } from '@supabase/supabase-js';
 import { ALL_ITEMS } from './data/items';
 import { COMMON_CREATURES } from './data/beasts';
 import { STANDARD_FAMILIARS } from './data/familiars';
-import { getLocalSpells } from './data/spells';
 import { mountBuilder } from './builder/builderServer';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://pducitlqzhcjjeqthkof.supabase.co';
@@ -27,7 +26,6 @@ async function startServer() {
     if (table === 'custom_equipment') items = ALL_ITEMS;
     else if (table === 'custom_beasts') items = COMMON_CREATURES;
     else if (table === 'custom_familiars') items = STANDARD_FAMILIARS;
-    else if (table === 'custom_spells') items = getLocalSpells('wizard');
     else return res.status(404).json({ error: "Table not found or already imported" });
 
     // Build CSV content: columns: name, is_public, data, user_id

@@ -1017,6 +1017,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     const [spellDmgFormula, setSpellDmgFormula] = useState('');
     const [spellDmgType, setSpellDmgType] = useState('Force');
     const [spellClasses, setSpellClasses] = useState<string[]>([]);
+    const [spellOriginal, setSpellOriginal] = useState<any>(null);
 
     // Creature Forge
     const [creatureSize, setCreatureSize] = useState('Medium');
@@ -1169,7 +1170,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
         setArmorProfs([]); setWeaponProfs([]);
         setSpellLevel(0); setSpellSchool('Evocation'); setSpellCastTime('1 Action'); setSpellRange('60 feet'); setSpellDuration('Instantaneous'); setSpellRitual(false); setSpellConcentration(false);
         setSpellComponents(['V', 'S']); setSpellMaterial(''); setSpellHigherLevel(''); setSpellHasAttack(false); setSpellHasSave(false); setSpellDmgFormula('');
-        setSpellDmgType('Force'); setSpellClasses([]);
+        setSpellDmgType('Force'); setSpellClasses([]); setSpellOriginal(null);
         setItemCategory('Other'); setItemSubtype(''); setItemIsWondrous(false); setItemRarity('Common'); setItemWeight(0); setItemCost('0 gp'); setItemAttunement(false);
         setItemDmgDice(''); setItemDmgType('Piercing'); setItemWeaponType('Simple'); setItemArmorType('Light'); setItemAcBase(0); setItemAcDexBonus(false); setItemAcMaxBonus(null);
         setItemIsThrown(false); setItemThrownRange(''); setItemThrownDamage(''); setItemProperties([]); setItemModifiers([]);
@@ -1258,6 +1259,8 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                 effects: f.effects || f.modifiers || []
             })));
         } else if (activeTab === 'spell') {
+            setSpellOriginal(item);
+            setSpellClasses(Array.isArray(item.classes) ? item.classes.map((c: any) => typeof c === 'string' ? c : (c.name || c.index)).filter(Boolean) : []);
             setSpellLevel(item.level || 0);
             setSpellSchool(item.school?.name || 'Evocation');
             setSpellCastTime(item.casting_time || '1 Action');
@@ -1464,19 +1467,30 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     feature: { name: bgFeatureName || 'Custom Feature', desc: [description], effects: bgEffects }
                 };
             } else if (activeTab === 'spell') {
+                const previous = spellOriginal || {};
+                const previousDamage = previous.damage || {};
+                const damageKey = spellLevel === 0 ? 'damage_at_character_level' : 'damage_at_slot_level';
+                const damageTable = { ...(previousDamage[damageKey] || {}), [spellLevel === 0 ? '1' : spellLevel.toString()]: spellDmgFormula };
+                const nextDamage = spellDmgFormula ? {
+                    ...previousDamage,
+                    damage_type: { name: spellDmgType, index: spellDmgType.toLowerCase() },
+                    [damageKey]: damageTable,
+                } : previousDamage;
                 payload = {
-                    ...payload, level: spellLevel, school: { name: spellSchool, index: spellSchool.toLowerCase() },
+                    ...previous,
+                    ...payload,
+                    level: spellLevel, school: { name: spellSchool, index: spellSchool.toLowerCase() },
                     casting_time: spellCastTime, range: spellRange, duration: (spellConcentration ? "Concentration, " : "") + spellDuration,
                     components: spellComponents, material: spellComponents.includes('M') ? spellMaterial : undefined,
                     ritual: spellRitual, concentration: spellConcentration,
                     higher_level: spellHigherLevel ? [spellHigherLevel] : undefined,
-                    classes: spellClasses.map(c => ({ name: c, index: c.toLowerCase() })),
+                    classes: spellClasses.map(c => {
+                        const match = parentClassOptions.find((option: any) => option.name === c || option.index === c);
+                        return { name: match?.name || c, index: match?.index || c.toLowerCase().replace(/[^a-z0-9]+/g, '-') };
+                    }),
                     attack_type: spellHasAttack ? spellAttackType.toLowerCase() : undefined,
-                    damage: spellDmgFormula ? {
-                        damage_type: { name: spellDmgType, index: spellDmgType.toLowerCase() },
-                        [spellLevel === 0 ? 'damage_at_character_level' : 'damage_at_slot_level']: { [spellLevel === 0 ? '1' : spellLevel.toString()]: spellDmgFormula }
-                    } : undefined,
-                    dc: spellHasSave ? { dc_type: { name: spellSaveType, index: spellSaveType.toLowerCase() }, dc_success: 'half' } : undefined
+                    damage: nextDamage,
+                    dc: spellHasSave ? { ...(previous.dc || {}), dc_type: { name: spellSaveType, index: spellSaveType.toLowerCase() }, dc_success: previous.dc?.dc_success || 'half' } : previous.dc
                 };
             } else if (activeTab === 'item') {
                 payload = {

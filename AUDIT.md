@@ -1105,6 +1105,8 @@ The earlier anon-key apply attempt was a no-op: PostgREST returned HTTP 200 with
 - Flat `max_hp` bonuses are now included in max-HP calculation (Boon of Fortitude), and selecting a feat/feature that changes HP recalculates the sheet total.
 - `proficiency_choice` effects can mark `expertise_if_proficient`; Observant and Keen Mind use it, and the Forge exposes the toggle. It is applied on both the sheet and Manage paths.
 - Named `spell_access` grants are hydrated as always-prepared spells with `min_level`, free-cast/reset metadata, and optional spellcasting ability; this covers class, subclass, race, background, and feat grants.
+- Spell class lists now come from each spell record's `classes` array, and all spell lookup/pickers use `custom_spells` only. The static `data/spells` files were removed.
+- The spell Forge preserves the full stored record on edit (classes chips, area/source/DC, damage tables) and refreshes existing character spell snapshots by index. Granted spells are locked in the Spell Manager.
 - Race/class feature effects are deduplicated when both `effects` and legacy `modifiers` exist; the race Forge now writes only `effects`.
 - Manage → Choices now attaches the chosen subclass correctly. Background/race feats get sub-choices, and feat pickers filter Origin/General/Epic Boon prerequisites. Race/subrace descriptions come from the content library, and feat actions use their effect names.
 - Developer JSON can now intentionally override `level_table[].class_specific`; omitted values still preserve the existing data.
