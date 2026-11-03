@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import Markdown from 'react-markdown';
 import { Sparkles, Plus, X, Maximize, Search, Info, Heart, Skull, AlertOctagon } from 'lucide-react';
 import { CharacterState, ABILITY_NAMES, ABILITY_LABELS, RollResult, AbilityName, SpellDetail, InventoryItem, Currency, RuleEntry, CreatureDetail, EldritchCannonDetail, SteelDefenderDetail, EquipmentDetail, ItemModifier, DiceCustomizationOptions } from '../../types';
-import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount, getSpellAbilityForClass, getResourceDefinitions, mergeSpellSlotCurrents, hasUiWidget, getClassWithUiWidget, resolveDamageFormula } from '../../utils/rules';
+import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount, getSpellAbilityForClass, getResourceDefinitions, mergeSpellSlotCurrents, hasUiWidget, getClassWithUiWidget, resolveDamageFormula, appendMinDie } from '../../utils/rules';
 import { rollDice } from '../../utils/dice';
 import CreatureManagerModal from './Modals/CreatureManagerModal';
 import { WIDGET_LABELS, DEFAULT_LAYOUT, STANDARD_CONDITIONS, STANDARD_ACTIONS, STATIC_RULES, WIDGET_BG } from '../../data/constants';
@@ -2892,10 +2892,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             if (isThrown && !notes.includes('Thrown')) notes.push('Thrown');
             const mastery = item.mastery ? (typeof item.mastery === 'string' ? item.mastery : item.mastery.name) : null;
             if (mastery) {
-                const hasWeaponMastery = character.classFeatures.some(f => f.name.toLowerCase().includes('weapon mastery'));
-                if (hasWeaponMastery) {
-                    notes.push(mastery);
-                }
+                const masteredWeapons = (character.choices || [])
+                    .filter((choice: any) => choice.type === 'weapon_mastery')
+                    .flatMap((choice: any) => Array.isArray(choice.value) ? choice.value : [choice.value]);
+                const hasWeaponMastery = character.classFeatures.some(f => f.name.toLowerCase().includes('weapon mastery'))
+                    || masteredWeapons.some((name: any) => String(name).toLowerCase() === item.name.toLowerCase());
+                if (hasWeaponMastery) notes.push(mastery);
             }
 
             let itemHitBonus = 0; let itemDamageBonus = 0; let itemExtraDamageDice: string[] = [];
@@ -3048,7 +3050,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const dc = (spell as any).dc?.dc_type?.name?.substring(0, 3).toUpperCase();
                 const spellAbility = (spell as any).spellcastingAbility as AbilityName | undefined;
                 const spellCastMod = spellAbility ? calculateModifier(getStat(spellAbility)) : spellMod;
-                const combinedSpellDmg = resolveDamageFormula(combineDamageParts(dmgStr || '', spellFlatBonus, spellExtraDice), spellCastMod, Number(character.classes?.[0]?.definition?.hit_die || 8));
+                const minimumDamageDie = activeModifiers
+                    .filter((effect: any) => effect.type === 'damage_die_min' && String(effect.damage_type || '').toLowerCase() === String((spell as any).damage?.damage_type?.name || '').toLowerCase())
+                    .reduce((max: number, effect: any) => Math.max(max, Number(effect.value || 0)), 0);
+                const spellDamageFormula = resolveDamageFormula(combineDamageParts(dmgStr || '', spellFlatBonus, spellExtraDice), spellCastMod, Number(character.classes?.[0]?.definition?.hit_die || 8));
+                const combinedSpellDmg = minimumDamageDie > 1 ? appendMinDie(spellDamageFormula, minimumDamageDie) : spellDamageFormula;
                 const spellAttackValue = prof + spellCastMod + extraSpellAttack + spellAttackBonus;
                 const spellSaveValue = 8 + prof + spellCastMod + extraSpellSave;
                 const { hit: spellHit, damage: spellDmg } = applyOverrides(spellAttackValue, combinedSpellDmg || 'See Desc');

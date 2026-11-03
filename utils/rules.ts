@@ -668,6 +668,11 @@ export const isFeatAvailableForLevel = (feat: any, level: number): boolean => {
     return true;
 };
 
+export const appendMinDie = (formula: string, minimum: number): string => {
+    if (!minimum || minimum <= 1) return formula;
+    return String(formula || '').replace(/(\d*)d(\d+)/gi, (match) => `${match}min${minimum}`);
+};
+
 export const resolveDamageFormula = (formula: string, modifier: number = 0, hitDie: number = 8): string => {
     return String(formula || '')
         .replace(/\bHD\b/gi, `1d${Number(hitDie) || 8}`)

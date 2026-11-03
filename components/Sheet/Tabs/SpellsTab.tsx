@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { CharacterState, SpellDetail } from '../../../types';
 import { WIDGET_BG } from '../../../data/constants';
-import { getSpellDamageString, getSpellSecondaryDamageString, calculateModifier, calculateProficiency, formatModifier, getEffectiveAbilities, resolveDamageFormula } from '../../../utils/rules';
+import { getSpellDamageString, getSpellSecondaryDamageString, calculateModifier, calculateProficiency, formatModifier, getEffectiveAbilities, resolveDamageFormula, appendMinDie } from '../../../utils/rules';
 
 interface SpellsTabProps {
     character: CharacterState;
@@ -35,11 +35,19 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
     const spellModifierFor = (spell: SpellDetail) => spell.spellcastingAbility
         ? calculateModifier(effectiveAbilities[spell.spellcastingAbility])
         : spellMod;
-    const resolveSpellDamage = (formula: string, spell: SpellDetail) => resolveDamageFormula(
-        formula,
-        spellModifierFor(spell),
-        Number(character.classes?.[0]?.definition?.hit_die || 8),
-    );
+    const resolveSpellDamage = (formula: string, spell: SpellDetail) => {
+        const damageType = String(spell.damage?.damage_type?.name || '').toLowerCase();
+        const minimum = character.classFeatures
+            .flatMap((feature: any) => feature.effects || [])
+            .filter((effect: any) => effect.type === 'damage_die_min' && String(effect.damage_type || '').toLowerCase() === damageType)
+            .reduce((max: number, effect: any) => Math.max(max, Number(effect.value || 0)), 0);
+        const resolved = resolveDamageFormula(
+            formula,
+            spellModifierFor(spell),
+            Number(character.classes?.[0]?.definition?.hit_die || 8),
+        );
+        return minimum > 1 ? appendMinDie(resolved, minimum) : resolved;
+    };
     const castSpell = (spell: SpellDetail) => {
         const remaining = freeCastRemaining(spell);
         if (remaining > 0) {

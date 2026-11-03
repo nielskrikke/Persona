@@ -7,6 +7,7 @@ export interface ParsedDiceGroup {
   sides: number;
   sign: 1 | -1;
   keep: KeepRule;
+  min?: number;
 }
 
 export interface ParsedRollFormula {
@@ -44,11 +45,12 @@ export function parseRollFormula(formula: string): ParsedRollFormula | null {
     const sign: 1 | -1 = signStr === '-' ? -1 : 1;
 
     // Check if expr is a dice expression: e.g. 2d20, d20, 2d20kh1, 2d20kl1
-    const diceMatch = expr.match(/^(\d*)d(\d+)(kh1|kl1)?$/);
+    const diceMatch = expr.match(/^(\d*)d(\d+)(kh1|kl1)?(min\d+)?$/);
     if (diceMatch) {
       const count = diceMatch[1] ? parseInt(diceMatch[1], 10) : 1;
       const sides = parseInt(diceMatch[2], 10);
       const keepStr = diceMatch[3];
+      const minStr = diceMatch[4];
 
       if (isNaN(count) || count <= 0 || count > 100 || isNaN(sides) || sides <= 0 || sides > 1000) {
         return null;
@@ -63,6 +65,7 @@ export function parseRollFormula(formula: string): ParsedRollFormula | null {
         sides,
         sign,
         keep,
+        min: minStr ? parseInt(minStr.slice(3), 10) : undefined,
       });
     } else if (/^\d+$/.test(expr)) {
       const val = parseInt(expr, 10);
@@ -103,7 +106,7 @@ export function evaluateParsedFormula(
   let isFail = false;
 
   parsed.groups.forEach((group, i) => {
-    const rolls = groupRolls[i] || [];
+    const rolls = (groupRolls[i] || []).map(value => group.min ? Math.max(group.min, value) : value);
     allRolls.push(...rolls);
 
     if (rolls.length === 0) return;

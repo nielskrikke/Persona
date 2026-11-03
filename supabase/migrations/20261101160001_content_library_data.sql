@@ -2524,7 +2524,7 @@ insert into public.content_migrations (id, notes, stats)
 values (
     '20261101160001_content_library_data',
     'Generated data migration for the content library v2 schema.',
-    '{"generatedAt":"2026-11-03T21:18:05.781Z","records":275,"byTable":[{"table":"custom_classes","label":"Classes","total":18,"changed":10,"errors":0,"warnings":18},{"table":"custom_subclasses","label":"Subclasses","total":105,"changed":3,"errors":0,"warnings":0},{"table":"custom_races","label":"Races","total":56,"changed":25,"errors":0,"warnings":0},{"table":"custom_backgrounds","label":"Backgrounds","total":29,"changed":7,"errors":0,"warnings":0},{"table":"custom_feats","label":"Feats","total":67,"changed":36,"errors":0,"warnings":0}]}'::jsonb
+    '{"generatedAt":"2026-11-03T21:32:08.141Z","records":275,"byTable":[{"table":"custom_classes","label":"Classes","total":18,"changed":10,"errors":0,"warnings":18},{"table":"custom_subclasses","label":"Subclasses","total":105,"changed":3,"errors":0,"warnings":0},{"table":"custom_races","label":"Races","total":56,"changed":25,"errors":0,"warnings":0},{"table":"custom_backgrounds","label":"Backgrounds","total":29,"changed":7,"errors":0,"warnings":0},{"table":"custom_feats","label":"Feats","total":67,"changed":36,"errors":0,"warnings":0}]}'::jsonb
 )
 on conflict (id) do update set notes = excluded.notes, stats = excluded.stats;
 
