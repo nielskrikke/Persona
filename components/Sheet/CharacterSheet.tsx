@@ -76,7 +76,7 @@ const parseDamageBonus = (val: any): { flat: number; dice: string[] } => {
     const diceRegex = /([+-]?\s*\d*d\d+)/gi;
     const diceMatches = (str.match(diceRegex) || []) as string[];
     const dice: string[] = [];
-    
+
     diceMatches.forEach((m: string) => {
         let clean = m.replace(/\s+/g, '');
         if (clean.startsWith('+')) clean = clean.substring(1);
@@ -143,16 +143,16 @@ const getCharacterSpecificRules = (character: CharacterState): RuleEntry[] => {
     return rules;
 };
 
-const SavingThrowRow: React.FC<{ 
-    label: string, 
-    stat: AbilityName, 
-    isProf: boolean, 
-    mod: number, 
-    advantage?: boolean, 
-    onRoll: (formula: string, label: string) => void, 
-    onContextMenu: (e: React.MouseEvent, formula: string, label: string) => void 
+const SavingThrowRow: React.FC<{
+    label: string,
+    stat: AbilityName,
+    isProf: boolean,
+    mod: number,
+    advantage?: boolean,
+    onRoll: (formula: string, label: string) => void,
+    onContextMenu: (e: React.MouseEvent, formula: string, label: string) => void
 }> = ({ label, stat, isProf, mod, advantage, onRoll, onContextMenu }) => (
-    <div 
+    <div
         className="flex items-center justify-between text-xs p-1 hover:bg-[#2e3036]/50 rounded group"
         onContextMenu={(e) => onContextMenu(e, advantage ? `2d20kh1${formatModifier(mod)}` : `1d20${formatModifier(mod)}`, `${label} Save`)}
     >
@@ -172,18 +172,18 @@ const SavingThrowRow: React.FC<{
     </div>
 );
 
-const SkillRow: React.FC<{ 
-    skill: string, 
-    stat: AbilityName, 
-    isProf: boolean, 
-    isExpertise: boolean, 
-    mod: number, 
-    advantage?: boolean, 
-    onRoll: (formula: string, label: string) => void, 
-    onContextMenu: (e: React.MouseEvent, formula: string, label: string) => void 
+const SkillRow: React.FC<{
+    skill: string,
+    stat: AbilityName,
+    isProf: boolean,
+    isExpertise: boolean,
+    mod: number,
+    advantage?: boolean,
+    onRoll: (formula: string, label: string) => void,
+    onContextMenu: (e: React.MouseEvent, formula: string, label: string) => void
 }> = ({ skill, stat, isProf, isExpertise, mod, advantage, onRoll, onContextMenu }) => (
-    <div 
-        className="flex items-center justify-between text-xs p-1 hover:bg-[#2e3036]/50 rounded group cursor-pointer" 
+    <div
+        className="flex items-center justify-between text-xs p-1 hover:bg-[#2e3036]/50 rounded group cursor-pointer"
         onClick={() => onRoll(advantage ? `2d20kh1${formatModifier(mod)}` : `1d20${formatModifier(mod)}`, `${skill} Check`)}
         onContextMenu={(e) => onContextMenu(e, advantage ? `2d20kh1${formatModifier(mod)}` : `1d20${formatModifier(mod)}`, `${skill} Check`)}
     >
@@ -223,12 +223,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const [character, setCharacter] = useState<CharacterState>(() => {
         const isImported = !!initialCharacter.spellSlots && Object.keys(initialCharacter.spellSlots).length > 0 && initialCharacter.classFeatures?.length > 0;
         if (isImported) {
-             return { 
-                 ...initialCharacter, 
-                 favorites: initialCharacter.favorites || [], 
-                 contacts: initialCharacter.contacts || [], 
-                 quests: Array.isArray(initialCharacter.quests) ? initialCharacter.quests : [], 
-                 customCreatures: initialCharacter.customCreatures || [], 
+             return {
+                 ...initialCharacter,
+                 favorites: initialCharacter.favorites || [],
+                 contacts: initialCharacter.contacts || [],
+                 quests: Array.isArray(initialCharacter.quests) ? initialCharacter.quests : [],
+                 customCreatures: initialCharacter.customCreatures || [],
                  creatures: initialCharacter.creatures || [],
                  activeWildShape: initialCharacter.activeWildShape ? (
                      ('creature' in initialCharacter.activeWildShape) ? initialCharacter.activeWildShape : { creature: initialCharacter.activeWildShape as any, currentHp: (initialCharacter.activeWildShape as any).hp || 0, maxHp: (initialCharacter.activeWildShape as any).hp || 0 }
@@ -242,7 +242,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                  activeEldritchCannon: initialCharacter.activeEldritchCannon || null,
                  eldritchCannonFreebieUsed: initialCharacter.eldritchCannonFreebieUsed || false,
                  activeSteelDefender: initialCharacter.activeSteelDefender || null,
-                 show3DDice: initialCharacter.show3DDice !== false, 
+                 show3DDice: initialCharacter.show3DDice !== false,
                  diceEffect: initialCharacter.diceEffect || 'standard',
                  backgroundColor: initialCharacter.backgroundColor || '#151515'
              };
@@ -256,7 +256,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         return {
             ...initialCharacter,
             inventory: inventory,
-            currency: initialCharacter.currency || { cp: 0, sp: 0, ep: 0, gp: 15, pp: 0 }, 
+            currency: initialCharacter.currency || { cp: 0, sp: 0, ep: 0, gp: 15, pp: 0 },
             spellSlots: slots,
             featureUsage: initialFeatures,
             hitDiceUsage: {},
@@ -283,7 +283,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             themeColorSecondary: initialCharacter.themeColorSecondary || '',
             diceColor: initialCharacter.diceColor || '',
             diceEffect: initialCharacter.diceEffect || 'standard',
-            show3DDice: initialCharacter.show3DDice !== false 
+            show3DDice: initialCharacter.show3DDice !== false
         };
     });
 
@@ -332,10 +332,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
     const [activeTab, setActiveTab] = useState<'actions' | 'spells' | 'inventory' | 'features' | 'rules' | 'log' | 'stats' | 'choices'>('actions');
     const [logs, setLogs] = useState<RollResult[]>([]);
-    const [rollHistory, setRollHistory] = useState<RollResult[]>([]); 
+    const [rollHistory, setRollHistory] = useState<RollResult[]>([]);
     const [activeConditions, setActiveConditions] = useState<string[]>([]);
     const [visibleRules, setVisualRules] = useState<RuleEntry[]>([]);
-    
+
     const [showSpellManager, setShowSpellManager] = useState(false);
     const [showHealthManager, setShowHealthManager] = useState(false);
     const [showShortRestModal, setShowShortRestModal] = useState(false);
@@ -357,7 +357,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const [fullScreenFeaturesSearch, setFullScreenFeaturesSearch] = useState('');
     const [homebrewInitialTab, setHomebrewInitialTab] = useState<'race' | 'class' | 'subclass' | 'background' | 'spell' | 'item' | 'creature' | 'feat' | undefined>(undefined);
     const [homebrewInitialData, setHomebrewInitialData] = useState<any>(null);
-    const [viewingFamiliar, setViewingFamiliar] = useState<CreatureDetail | null>(null); 
+    const [viewingFamiliar, setViewingFamiliar] = useState<CreatureDetail | null>(null);
     const [viewingWildShape, setViewingWildShape] = useState<CreatureDetail | null>(null);
     const [viewingCompanion, setViewingCompanion] = useState<any | null>(null);
     const [concentrationCheck, setConcentrationCheck] = useState<{ dc: number; spellName: string } | null>(null);
@@ -399,13 +399,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             mobile: Array.from(new Set(initial.mobile || []))
         };
     });
-    
+
     useEffect(() => {
         if (hasUiWidget(character, 'activeCards')) {
             setLayout(prev => {
                 const hasLeft = prev.left.includes('activeCards');
                 const hasRight = prev.right.includes('activeCards');
-                
+
                 if (hasLeft && hasRight) {
                     // Remove from left, keep in right
                     return {
@@ -414,7 +414,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         right: prev.right.filter((v, i, a) => a.indexOf(v) === i)
                     };
                 }
-                
+
                 if (hasLeft || hasRight) {
                     // Already in one, just deduplicate within arrays
                     return {
@@ -423,7 +423,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         right: prev.right.filter((v, i, a) => a.indexOf(v) === i)
                     };
                 }
-                
+
                 return { ...prev, right: ['activeCards', ...prev.right] };
             });
         }
@@ -434,7 +434,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             setLayout(prev => {
                 const isInLayout = prev.left.includes('polymorph') || prev.right.includes('polymorph');
                 if (isInLayout) return prev;
-                
+
                 // Add to right column by default
                 return {
                     ...prev,
@@ -450,7 +450,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             setLayout(prev => {
                 const isInLayout = prev.left.includes('wildshape') || prev.right.includes('wildshape');
                 if (isInLayout) return prev;
-                
+
                 // Add to right column by default
                 return {
                     ...prev,
@@ -466,7 +466,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             setLayout(prev => {
                 const isInLayout = prev.left.includes('familiar') || prev.right.includes('familiar');
                 if (isInLayout) return prev;
-                
+
                 // Add to right column by default
                 return {
                     ...prev,
@@ -522,10 +522,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     // Sync featureUsage with the class/subclass resources from the content library
     useEffect(() => {
         if (!character) return;
-        
+
         let hasChanges = false;
         const newUsage = { ...character.featureUsage };
-        
+
         getResourceDefinitions(character).forEach(resource => {
             const existing = newUsage[resource.name];
             if (!existing || existing.max !== resource.max) {
@@ -537,14 +537,14 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 hasChanges = true;
             }
         });
-        
+
         if (hasChanges) {
             setCharacter(prev => ({ ...prev, featureUsage: newUsage }));
         }
     }, [character?.classes, character?.abilities, character?.level]);
 
     const prof = calculateProficiency(character.level);
-    
+
     const activeModifiers = React.useMemo(() => {
         const mods: any[] = [];
 
@@ -594,8 +594,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         if (character.race) {
             const race = character.race as any;
             race.traits?.forEach((trait: any) => {
-                if (trait.modifiers) trait.modifiers.forEach((m: any) => mods.push(m));
-                processEffects(trait.effects);
+                if (Array.isArray(trait.effects) && trait.effects.length > 0) processEffects(trait.effects);
+                else if (trait.modifiers) trait.modifiers.forEach((m: any) => mods.push(m));
             });
         }
 
@@ -603,35 +603,36 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         if (character.subrace) {
             const subrace = character.subrace as any;
             subrace.traits?.forEach((trait: any) => {
-                if (trait.modifiers) trait.modifiers.forEach((m: any) => mods.push(m));
-                processEffects(trait.effects);
+                if (Array.isArray(trait.effects) && trait.effects.length > 0) processEffects(trait.effects);
+                else if (trait.modifiers) trait.modifiers.forEach((m: any) => mods.push(m));
             });
         }
 
-        // 3. Class & Subclass Features
+        // 3. Class & Subclass Features. A feature may appear both in the
+        // class definition and in character.classFeatures; process it once.
+        const processedFeatureKeys = new Set<string>();
+        const processFeature = (feature: any, sourceKey: string) => {
+            const key = feature?.index || `${sourceKey}:${feature?.name || ''}`;
+            if (!key || processedFeatureKeys.has(key)) return;
+            processedFeatureKeys.add(key);
+            if (Array.isArray(feature?.effects) && feature.effects.length > 0) processEffects(feature.effects);
+            else if (feature?.modifiers) feature.modifiers.forEach((m: any) => mods.push(m));
+        };
+
         character.classes.forEach(cls => {
-            // Base Class Features
             const classFeatures = cls.definition.feature_details || [];
             classFeatures.forEach(f => {
-                if (f.level <= cls.level) {
-                    processEffects(f.effects);
-                }
+                if (f.level <= cls.level) processFeature(f, cls.definition.index);
             });
-            // Subclass Features
             if (cls.subclass) {
                 const subFeatures = cls.subclass.feature_details || [];
                 subFeatures.forEach(f => {
-                    if (f.level <= cls.level) {
-                        processEffects(f.effects);
-                    }
+                    if (f.level <= cls.level) processFeature(f, cls.subclass?.index || cls.definition.index);
                 });
             }
         });
 
-        // 3b. Features with Choices / Custom Features
-        character.classFeatures?.forEach(f => {
-            processEffects(f.effects);
-        });
+        character.classFeatures?.forEach(f => processFeature(f, f.source || 'feature'));
 
         // Direct choices
         character.choices?.forEach((c: any) => {
@@ -658,8 +659,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
         // 5. Feats
         character.feats?.forEach(feat => {
-            processEffects(feat.effects);
-            if (feat.modifiers) feat.modifiers.forEach((m: any) => mods.push(m));
+            if (Array.isArray(feat.effects) && feat.effects.length > 0) processEffects(feat.effects);
+            else if (feat.modifiers) feat.modifiers.forEach((m: any) => mods.push(m));
         });
 
         return mods;
@@ -676,8 +677,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const knownCount = getSpellsKnownCount(cls, effectiveAbilities, character.classFeatures);
             const currentCantrips = character.spells.filter(s => s.level === 0 && s.sourceClassIndex === cls.definition.index).length;
             const currentSpells = character.spells.filter(s => s.level > 0 && s.sourceClassIndex === cls.definition.index).length;
-            
-            return (knownCount.cantrips > 0 && currentCantrips < knownCount.cantrips) || 
+
+            return (knownCount.cantrips > 0 && currentCantrips < knownCount.cantrips) ||
                    (knownCount.spells > 0 && currentSpells < knownCount.spells);
         });
     }, [character.classes, character.spells, effectiveAbilities]);
@@ -698,7 +699,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const primaryCaster = character.classes.find(c => !!getSpellAbilityForClass(c)) || character.classes[0];
     const spellAbilityRef = getSpellAbilityForClass(primaryCaster);
     const spellMod = spellAbilityRef ? calculateModifier(getStat(spellAbilityRef)) : 0;
-    
+
     let extraSpellAttack = 0;
     let extraSpellSave = 0;
     activeModifiers.forEach(m => {
@@ -731,9 +732,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const intMod = calculateModifier(getStat('int'));
     const chaMod = calculateModifier(getStat('cha'));
     const conSaveBonus = conMod + (character.classes.some(c => c.definition.saving_throws.some(s => s.index === 'con' || s.name === 'CON')) ? prof : 0);
-    
+
     const checkModifierRule = (
-        m: any, 
+        m: any,
         itemContext?: { isOneHanded?: boolean; isTwoHanded?: boolean; isMeleeWeapon?: boolean; isRangedWeapon?: boolean; versatileDamage?: any; isUnarmed?: boolean; isMelee?: boolean; [key: string]: any }
     ) => {
         const ruleCond = (m.rule || m.condition || m.filter || '').toLowerCase().trim();
@@ -830,13 +831,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const calculateAC = () => {
         const armor = character.inventory.find(i => i.equipped && i.armor_class && !i.name.toLowerCase().includes('shield'));
         const shield = character.inventory.find(i => i.equipped && i.armor_class && i.name.toLowerCase().includes('shield'));
-        const hasTwoHandedWeaponEquipped = character.inventory.some(i => 
+        const hasTwoHandedWeaponEquipped = character.inventory.some(i =>
             i.equipped && (
                 i.properties?.some(p => (typeof p === 'string' ? p : p.name) === 'Two-Handed') ||
                 i.wieldedTwoHanded
             )
         );
-        
+
         let baseAC = 10;
         let dexBonus = dexMod;
 
@@ -908,7 +909,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const getACBreakdown = () => {
         const armor = character.inventory.find(i => i.equipped && i.armor_class && !i.name.toLowerCase().includes('shield'));
         const shield = character.inventory.find(i => i.equipped && i.armor_class && i.name.toLowerCase().includes('shield'));
-        
+
         const breakdown: { label: string, value: number }[] = [];
         let baseAC = 10;
         let dexBonus = dexMod;
@@ -1197,9 +1198,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     }, [activeRollItem, rollQueue]);
 
     const roll = (
-        formula: string, 
-        label: string, 
-        preResultOptions?: RollResult | ((result: RollResult) => void), 
+        formula: string,
+        label: string,
+        preResultOptions?: RollResult | ((result: RollResult) => void),
         onCompleteCallback?: (result: RollResult) => void
     ): RollResult => {
         let preResult: RollResult | undefined;
@@ -1298,30 +1299,30 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
         if (card) {
             roll(`1d${dieSize}`, `Pick a Card: ${card.name} (${rollVal})`, rollResult);
-            
+
             const newCard = {
                 roll: rollVal,
                 name: card.name,
                 duration: card.duration,
                 timestamp: Date.now()
             };
-            
+
             setCharacter(prev => {
                 const activeCards = prev.activeCards || [];
                 const updatedCards = [...activeCards, newCard];
-                
+
                 const durationCounts: Record<string, number> = {};
                 updatedCards.forEach(c => {
                     durationCounts[c.duration] = (durationCounts[c.duration] || 0) + 1;
                 });
-                
+
                 let totalExhaustion = 0;
                 Object.values(durationCounts).forEach(count => {
                     if (count > 2) {
                         totalExhaustion += (count - 2);
                     }
                 });
-                
+
                 const oldDurationCounts: Record<string, number> = {};
                 activeCards.forEach(c => {
                     oldDurationCounts[c.duration] = (oldDurationCounts[c.duration] || 0) + 1;
@@ -1332,7 +1333,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 });
 
                 const diff = totalExhaustion - oldExhaustion;
-                
+
                 const newFeatureUsage = { ...prev.featureUsage };
                 if (!isFree && newFeatureUsage['Choice Points']) {
                     newFeatureUsage['Choice Points'] = {
@@ -1377,32 +1378,32 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             setRollMenu(null);
         }
     };
-    
+
     const handleDamageTrigger = (dmg: number) => {
         if (character.activeWildShape && character.activeWildShape.currentHp === 0) setCharacter(prev => ({ ...prev, activeWildShape: null }));
         if (character.activeConcentration) { const dc = Math.max(10, Math.floor(dmg / 2)); setConcentrationCheck({ dc, spellName: character.activeConcentration.name }); }
     };
-    
+
     const handleCreatureAction = (creature: CreatureDetail) => {
         if (creatureModalMode === 'wildshape') {
             const newFeatures = { ...character.featureUsage };
             if (newFeatures['Wild Shape'] && newFeatures['Wild Shape'].current > 0) {
                 newFeatures['Wild Shape'] = { ...newFeatures['Wild Shape'], current: newFeatures['Wild Shape'].current - 1 };
             }
-            setCharacter(prev => ({ 
-                ...prev, 
-                featureUsage: newFeatures, 
-                activeWildShape: { creature, currentHp: creature.hp, maxHp: creature.hp } 
+            setCharacter(prev => ({
+                ...prev,
+                featureUsage: newFeatures,
+                activeWildShape: { creature, currentHp: creature.hp, maxHp: creature.hp }
             }));
         } else if (creatureModalMode === 'familiar') {
-            setCharacter(prev => ({ 
-                ...prev, 
-                activeFamiliar: { creature, currentHp: creature.hp, maxHp: creature.hp } 
+            setCharacter(prev => ({
+                ...prev,
+                activeFamiliar: { creature, currentHp: creature.hp, maxHp: creature.hp }
             }));
         } else if (creatureModalMode === 'polymorph') {
-            setCharacter(prev => ({ 
-                ...prev, 
-                activePolymorph: { creature, currentHp: creature.hp, maxHp: creature.hp } 
+            setCharacter(prev => ({
+                ...prev,
+                activePolymorph: { creature, currentHp: creature.hp, maxHp: creature.hp }
             }));
         }
         setShowCreatureModal(false);
@@ -1417,7 +1418,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const key = type === 'wildshape' ? 'activeWildShape' : type === 'familiar' ? 'activeFamiliar' : 'activePolymorph';
             const active = prev[key];
             if (!active) return prev;
-            
+
             const newHp = Math.max(0, Math.min(active.maxHp, active.currentHp + amount));
             if (newHp === 0) {
                 // All active creature forms (wild shape, familiar, polymorph) drop on 0 HP
@@ -1445,7 +1446,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const handleSummonDefender = (defender: SteelDefenderDetail) => {
         setCharacter(prev => ({ ...prev, activeSteelDefender: defender }));
     };
-    
+
     const handleRest = (type: 'short' | 'long') => {
         if (type === 'short') { setShowShortRestModal(true); return; }
         setCharacter(prev => {
@@ -1468,17 +1469,17 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 recoveryPool -= recovery;
                 if (recoveryPool <= 0) break;
             }
-            return { 
-                ...prev, 
-                currentHp: prev.maxHp, 
-                spellSlots: newSlots, 
-                featureUsage: newFeatures, 
+            return {
+                ...prev,
+                currentHp: prev.maxHp,
+                spellSlots: newSlots,
+                featureUsage: newFeatures,
                 hitDiceUsage: newHitDiceUsage,
-                eldritchCannonFreebieUsed: false 
+                eldritchCannonFreebieUsed: false
             };
         });
     };
-    
+
     const performLevelUp = async (classIndex: string, updates: Partial<CharacterState>) => {
         const newClasses = updates.classes || character.classes;
         const newSlots = mergeSpellSlotCurrents(getSpellSlots(newClasses), character.spellSlots);
@@ -1497,7 +1498,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
         setCharacter(prev => ({ ...prev, ...updates, spellSlots: newSlots, featureUsage: newFeatures }));
     };
-    
+
     const handleExport = () => {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(character, null, 2));
         const anchor = document.createElement('a');
@@ -1506,7 +1507,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         anchor.click();
         anchor.remove();
     };
-    
+
     const updateQuantity = (id: string, newQty: number) => {
         if (newQty <= 0) { setCharacter(prev => ({ ...prev, inventory: prev.inventory.filter(i => i.id !== id) })); if (selectedDetail?.id === id) setSelectedDetail(null); return; }
         setCharacter(prev => ({ ...prev, inventory: prev.inventory.map(i => i.id === id ? { ...i, quantity: newQty } : i) }));
@@ -1563,8 +1564,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 if (!isBattleSmith) return null;
                 const defender = character.activeSteelDefender;
                 return (
-                    <div 
-                        key={widgetKey} 
+                    <div
+                        key={widgetKey}
                         className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3 relative group cursor-pointer hover:border-orange-400 transition-colors`}
                         onClick={() => {
                             if (defender) {
@@ -1617,7 +1618,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                          <div className="text-orange-400 font-bold text-sm">{defender.hp}/{defender.maxHp}</div>
                                      </div>
                                  </div>
-                                 <button 
+                                 <button
                                     onClick={(e) => { e.stopPropagation(); roll(`1d20${formatModifier(spellAttack)}`, 'Steel Defender Slam Attack'); roll(`1d8${formatModifier(prof)}`, 'Slam Force Damage'); }}
                                     className="w-full py-1.5 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[10px] font-bold uppercase hover:bg-gray-700 transition-colors"
                                  >
@@ -1632,8 +1633,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 if (!isArtillerist) return null;
                 const cannon = character.activeEldritchCannon;
                 return (
-                    <div 
-                        key={widgetKey} 
+                    <div
+                        key={widgetKey}
                         className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3 relative group cursor-pointer hover:border-dnd-gold transition-colors`}
                         onClick={() => {
                             if (cannon) {
@@ -1691,7 +1692,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                      </div>
                                  </div>
                                  <div className="grid grid-cols-2 gap-2">
-                                     <button 
+                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             if(cannon.type === 'Flamethrower') roll('2d8', 'Flamethrower Fire Damage');
@@ -1702,7 +1703,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                      >
                                          Activate
                                      </button>
-                                     <button 
+                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             roll('3d8', 'Detonate Explosion Damage');
@@ -1811,8 +1812,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3 relative overflow-hidden group`}>
                         <div className="flex justify-between items-center mb-2">
                             <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest flex items-center gap-2">Trackers</h3>
-                            <button 
-                                onClick={() => setShowAddTracker(!showAddTracker)} 
+                            <button
+                                onClick={() => setShowAddTracker(!showAddTracker)}
                                 className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-dnd-gold border border-gray-700 hover:border-dnd-gold rounded transition-all"
                                 title="Add Custom Tracker"
                             >
@@ -1823,23 +1824,23 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         {showAddTracker && (
                             <div className="mb-3 p-2 bg-black/40 border border-gray-700 rounded animate-in slide-in-from-top-2">
                                 <div className="space-y-2">
-                                    <input 
-                                        type="text" 
-                                        placeholder="Tracker Name (e.g. Rage)" 
+                                    <input
+                                        type="text"
+                                        placeholder="Tracker Name (e.g. Rage)"
                                         className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:border-dnd-gold outline-none"
                                         value={newTrackerName}
                                         onChange={(e) => setNewTrackerName(e.target.value)}
                                         autoFocus
                                     />
-                                    <input 
-                                        type="text" 
-                                        placeholder="Value (optional)" 
+                                    <input
+                                        type="text"
+                                        placeholder="Value (optional)"
                                         className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:border-dnd-gold outline-none"
                                         value={newTrackerValue}
                                         onChange={(e) => setNewTrackerValue(e.target.value)}
                                     />
                                     <div className="flex gap-2">
-                                        <button 
+                                        <button
                                             onClick={() => {
                                                 if (!newTrackerName.trim()) return;
                                                 const newTracker = { id: Date.now().toString(), name: newTrackerName, value: newTrackerValue };
@@ -1885,8 +1886,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                             <div className="font-bold text-gray-200 text-[11px] leading-tight">{tracker.name}</div>
                                             {tracker.value && <div className="text-[9px] text-gray-500 italic">{tracker.value}</div>}
                                         </div>
-                                        <button 
-                                            onClick={() => setCharacter(prev => ({ ...prev, customTrackers: (prev.customTrackers || []).filter(t => t.id !== tracker.id) }))} 
+                                        <button
+                                            onClick={() => setCharacter(prev => ({ ...prev, customTrackers: (prev.customTrackers || []).filter(t => t.id !== tracker.id) }))}
                                             className="text-gray-600 hover:text-red-400 opacity-0 group-hover/tracker:opacity-100 transition-opacity p-0.5 text-sm leading-none"
                                         >
                                             &times;
@@ -1923,7 +1924,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 <div className="flex justify-between items-center mb-2"><h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">{name}</h3><span className="text-[10px] text-gray-500">Reset: {usage.reset || 'Long'}</span></div>
                                 <div className="flex gap-1.5 justify-start">{Array.from({length: usage.max}).map((_, i) => { const isUsed = i < usedCount; return (<div key={i} className={`w-4 h-4 cursor-pointer transition-colors border rounded-full ${isUsed ? 'bg-dnd-red border-dnd-red' : 'bg-transparent border-gray-600 hover:border-gray-300'}`} onClick={() => { let used = i + 1; if (usedCount === used) used = i; setCharacter(prev => ({...prev, featureUsage: {...prev.featureUsage, [name]: {...usage, current: usage.max - used}}})); }}></div>); })}</div>
                                 {name === 'Arrow Crafting' && (
-                                    <button 
+                                    <button
                                         onClick={() => setActiveTab('inventory')}
                                         className="mt-3 text-[9px] text-dnd-gold hover:text-white uppercase font-black tracking-widest flex items-center gap-1.5 transition-colors pt-2 border-t border-gray-800/50 w-full"
                                     >
@@ -1946,7 +1947,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         <div className="flex justify-between items-center mb-3">
                             <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest flex items-center gap-2">
                                 Active Cards
-                                <button 
+                                <button
                                     onClick={() => setShowCardOptionsModal(true)}
                                     className="text-gray-500 hover:text-dnd-gold transition-colors"
                                     title="View Card Reference"
@@ -1956,7 +1957,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             </h3>
                             <div className="text-[10px] text-gray-500 font-bold">DC {spellSave}</div>
                         </div>
-                        
+
                         <div className="space-y-2">
                             {character.activeCards && character.activeCards.length > 0 ? (
                                 character.activeCards.map((card, idx) => (
@@ -1967,17 +1968,17 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                         </div>
                                         <div className="flex items-center gap-2">
                                             {cmLevel >= 4 && (
-                                                <button 
+                                                <button
                                                     onClick={() => {
                                                         const isWorldActive = character.activeCards?.some(c => c.name === 'The World');
                                                         const stacksToAdd = isWorldActive ? 2 : 1;
-                                                        
+
                                                         setCharacter(prev => ({
                                                             ...prev,
                                                             activeCards: prev.activeCards?.filter((_, i) => i !== idx),
                                                             foolStacks: (prev.foolStacks || 0) + stacksToAdd
                                                         }));
-                                                        
+
                                                         if (cmLevel >= 20) {
                                                             handlePickACard(true);
                                                         }
@@ -1988,7 +1989,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                                     Sacrifice
                                                 </button>
                                             )}
-                                            <button 
+                                            <button
                                                 onClick={() => setCharacter(prev => ({
                                                     ...prev,
                                                     activeCards: prev.activeCards?.filter((_, i) => i !== idx)
@@ -2010,14 +2011,14 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 <div className="flex justify-between items-center mb-2">
                                     <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Fool Stacks</span>
                                     <div className="flex items-center gap-2">
-                                        <button 
+                                        <button
                                             onClick={() => setCharacter(prev => ({ ...prev, foolStacks: Math.max(0, (prev.foolStacks || 0) - 1) }))}
                                             className="w-5 h-5 flex items-center justify-center bg-gray-800 border border-gray-700 rounded text-gray-400 hover:text-white"
                                         >
                                             -
                                         </button>
                                         <span className="text-xs font-bold text-purple-400 w-4 text-center">{foolStacks}</span>
-                                        <button 
+                                        <button
                                             onClick={() => setCharacter(prev => ({ ...prev, foolStacks: (prev.foolStacks || 0) + 1 }))}
                                             className="w-5 h-5 flex items-center justify-center bg-gray-800 border border-gray-700 rounded text-gray-400 hover:text-white"
                                         >
@@ -2030,13 +2031,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                         Sacrifice active cards to gain stacks. Expend all stacks to cast the Fool Spell.
                                     </p>
                                     {foolStacks > 0 && (
-                                        <button 
+                                        <button
                                             onClick={() => {
                                                 const isWorldActive = character.activeCards?.some(c => c.name === 'The World');
                                                 const isLevel20 = cmLevel >= 20;
                                                 let diceCount = 3 + (isLevel20 ? foolStacks * 2 : foolStacks);
                                                 if (isWorldActive) diceCount *= 2;
-                                                
+
                                                 roll(`${diceCount}d8`, 'The Fool Spell Damage');
                                                 setCharacter(prev => ({ ...prev, foolStacks: 0 }));
                                             }}
@@ -2054,7 +2055,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 <span className="text-[9px] font-bold text-red-500 uppercase">Exhaustion Level</span>
                                 <div className="flex items-center gap-2">
                                     <span className="text-xs font-bold text-red-400">{character.exhaustion}</span>
-                                    <button 
+                                    <button
                                         onClick={() => setExhaustion(0)}
                                         className="text-[9px] bg-red-900/20 text-red-400 border border-red-900/40 hover:bg-red-900/40 hover:text-white px-1.5 py-0.5 rounded uppercase font-bold transition-colors"
                                     >
@@ -2071,11 +2072,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 return (
                     <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
                          <div className="flex justify-between items-center mb-2"><h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Saving Throws</h3></div>
-                         <div className="space-y-1">{ABILITY_NAMES.map(stat => { 
-                             const isProf = !!character.classes.some(c => c.definition.saving_throws.some(s => s.name === stat.substring(0,3).toUpperCase())) || 
+                         <div className="space-y-1">{ABILITY_NAMES.map(stat => {
+                             const isProf = !!character.classes.some(c => c.definition.saving_throws.some(s => s.name === stat.substring(0,3).toUpperCase())) ||
                                             (character.savingThrowProficiencies || []).includes(stat) ||
-                                            activeModifiers.some(m => m.type === 'proficiency' && m.target === stat.substring(0,3).toUpperCase() && m.category === 'save'); 
-                             
+                                            activeModifiers.some(m => m.type === 'proficiency' && m.target === stat.substring(0,3).toUpperCase() && m.category === 'save');
+
                              const saveBonus = activeModifiers
                                 .filter(m => m.type === 'bonus' && (m.target === stat.substring(0,3).toUpperCase() || m.target === 'saves'))
                                 .reduce((acc, m) => {
@@ -2086,10 +2087,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     return acc + v;
                                 }, 0);
 
-                             const mod = calculateModifier(getStat(stat)) + (isProf ? prof : 0) + globalSaveBonus + saveBonus; 
+                             const mod = calculateModifier(getStat(stat)) + (isProf ? prof : 0) + globalSaveBonus + saveBonus;
                              const hasFullAdv = activeModifiers.some(m => m.type === 'advantage' && (m.target === `${stat}_save` || (m.target === 'saves' && (!m.filter || m.filter.toLowerCase() === ABILITY_LABELS[stat].toLowerCase()))));
-                             
-                             return <SavingThrowRow key={stat} label={ABILITY_LABELS[stat]} stat={stat} isProf={isProf} mod={mod} advantage={hasFullAdv} onRoll={roll} onContextMenu={triggerRollMenu} />; 
+
+                             return <SavingThrowRow key={stat} label={ABILITY_LABELS[stat]} stat={stat} isProf={isProf} mod={mod} advantage={hasFullAdv} onRoll={roll} onContextMenu={triggerRollMenu} />;
                          })}</div>
                          {situationalSaves.length > 0 && (
                              <div className="mt-3 pt-2 border-t border-gray-800/50">
@@ -2109,21 +2110,21 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
                         <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest mb-2">Skills</h3>
                         <div className="space-y-0.5">
-                            {SKILL_LIST.map(skill => { 
+                            {SKILL_LIST.map(skill => {
                                 const hasFeatureProf = activeModifiers.some(m => m.type === 'proficiency' && m.target === skill.name && m.category === 'skill');
                                 const hasFeatureExpertise = activeModifiers.some(m => m.type === 'expertise' && m.target === skill.name);
-                                
+
                                 // Special logic for "Trust the Destiny"
                                 const isCardMaster2 = !!getClassWithUiWidget(character, 'activeCards') && (getClassWithUiWidget(character, 'activeCards')?.level || 0) >= 2;
                                 const isTrustSkill = isCardMaster2 && (skill.name === 'Arcana' || skill.name === 'Religion');
-                                
-                                const isProf = character.skills.includes(skill.name) || hasFeatureProf || isTrustSkill; 
-                                
+
+                                const isProf = character.skills.includes(skill.name) || hasFeatureProf || isTrustSkill;
+
                                 // Expertise if already proficient and has the feature
-                                const isExpertise = character.expertise?.includes(skill.name) || 
-                                                  hasFeatureExpertise || 
-                                                  (isTrustSkill && character.skills.includes(skill.name)); 
-                                
+                                const isExpertise = character.expertise?.includes(skill.name) ||
+                                                  hasFeatureExpertise ||
+                                                  (isTrustSkill && character.skills.includes(skill.name));
+
                                 const skillBonus = activeModifiers
                                     .filter(m => m.type === 'bonus' && (m.target === skill.name || m.target === 'skills'))
                                     .reduce((acc, m) => {
@@ -2134,10 +2135,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                         return acc + v;
                                     }, 0);
 
-                                const mod = calculateModifier(getStat(skill.ability)) + (isProf ? prof : 0) + (isExpertise ? prof : 0) + skillBonus; 
+                                const mod = calculateModifier(getStat(skill.ability)) + (isProf ? prof : 0) + (isExpertise ? prof : 0) + skillBonus;
                                 const hasFullAdv = activeModifiers.some(m => m.type === 'advantage' && (m.target === skill.name.toLowerCase().replace(/\s+/g, '_') || (m.target === 'skills' && (!m.filter || m.filter.toLowerCase() === skill.name.toLowerCase())))) || isTrustSkill;
 
-                                return <SkillRow key={skill.name} skill={skill.name} stat={skill.ability} isProf={isProf} isExpertise={isExpertise} mod={mod} advantage={hasFullAdv} onRoll={roll} onContextMenu={triggerRollMenu} />; 
+                                return <SkillRow key={skill.name} skill={skill.name} stat={skill.ability} isProf={isProf} isExpertise={isExpertise} mod={mod} advantage={hasFullAdv} onRoll={roll} onContextMenu={triggerRollMenu} />;
                             })}
                         </div>
                         {situationalSkills.length > 0 && (
@@ -2156,7 +2157,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const charLanguages = Array.from(new Set([...(character.languages || []), ...(character.race?.languages?.map(l => l.name) || [])]));
                 const charTools = Array.from(new Set([...(character.toolProficiencies || []), ...activeModifiers.filter(m => m.type === 'proficiency' && m.category === 'tool').map(m => m.target)]));
                 const allProfs = Array.from(new Set([
-                    ...character.classes.flatMap(c => c.definition.proficiencies.map(p => p.name)), 
+                    ...character.classes.flatMap(c => c.definition.proficiencies.map(p => p.name)),
                     ...(character.race?.starting_proficiencies?.map(p => p.name) || []),
                     ...activeModifiers.filter(m => m.type === 'proficiency' && (m.category === 'weapon' || m.category === 'armor')).map(m => m.target)
                 ]));
@@ -2208,7 +2209,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         <div className="flex justify-between items-center mb-2">
                             <h3 className="font-bold text-xs text-dnd-red uppercase tracking-widest">Exhaustion</h3>
                             {(character.exhaustion || 0) > 0 && (
-                                <button 
+                                <button
                                     onClick={() => setExhaustion(0)}
                                     className="text-[9px] text-gray-500 hover:text-white uppercase font-bold"
                                 >
@@ -2219,8 +2220,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         <div className="flex items-center justify-between">
                             <div className="flex gap-1">
                                 {[1, 2, 3, 4, 5, 6].map(lvl => (
-                                    <button 
-                                        key={lvl} 
+                                    <button
+                                        key={lvl}
                                         onClick={() => setExhaustion(character.exhaustion === lvl ? lvl - 1 : lvl)}
                                         className={`w-5 h-5 rounded-full border flex items-center justify-center text-[10px] font-bold transition-all ${lvl <= (character.exhaustion || 0) ? 'bg-dnd-red border-dnd-red text-white' : 'bg-gray-800 border-gray-600 text-gray-500 hover:border-dnd-red'}`}
                                     >
@@ -2263,10 +2264,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3 relative`}>
                         <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest mb-2">Movement</h3>
                         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
-                            <SquareStatBox 
-                                label="Walking" 
-                                subLabel="Speed" 
-                                value={`${speed} ft.`} 
+                            <SquareStatBox
+                                label="Walking"
+                                subLabel="Speed"
+                                value={`${speed} ft.`}
                                 tooltip={
                                     <div className="space-y-1">
                                         {speedBreakdown.map((entry, i) => (
@@ -2283,11 +2284,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 }
                             />
                             {specialSpeeds.map((sp, idx) => (
-                                <SquareStatBox 
+                                <SquareStatBox
                                     key={idx}
-                                    label={sp.type} 
-                                    subLabel="Speed" 
-                                    value={`${sp.speed} ft.`} 
+                                    label={sp.type}
+                                    subLabel="Speed"
+                                    value={`${sp.speed} ft.`}
                                     tooltip={
                                         <div className="text-[10px]">
                                             <span className="text-gray-400">Source: </span>
@@ -2303,7 +2304,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const res = activeModifiers.filter(m => m.type === 'resistance').map(m => String(m.value));
                 const imm = activeModifiers.filter(m => m.type === 'immunity').map(m => String(m.value));
                 const advDef = activeModifiers.filter(m => m.type === 'advantage' && (m.target === 'saves' || m.target === 'skills') && m.filter).map(m => String(m.filter));
-                
+
                 const defensiveFeatureNames = new Set([
                     'Evasion', 'Uncanny Dodge', 'Aura of Protection', 'Danger Sense', 'Deflect Energy',
                 ]);
@@ -2358,15 +2359,15 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             {sortedConditions.map(c => {
                                 const isActive = activeConditions.includes(c) || (c === 'Exhaustion' && (character.exhaustion || 0) > 0);
                                 return (
-                                    <button 
-                                        key={c} 
+                                    <button
+                                        key={c}
                                         onClick={() => {
                                             if (c === 'Exhaustion' && (character.exhaustion || 0) > 0) {
                                                 // If exhaustion is from cards, maybe we shouldn't allow toggling it here?
                                                 // Or we toggle the manual condition.
                                             }
                                             setActiveConditions(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]);
-                                        }} 
+                                        }}
                                         className={`px-2 py-1 rounded text-[9px] uppercase font-bold border transition-colors ${isActive ? 'bg-dnd-red border-dnd-red text-white' : 'bg-[#0b0c0e] border-gray-800 text-gray-700 hover:text-gray-500'}`}
                                     >
                                         {c}
@@ -2388,7 +2389,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             default: return null;
         }
     };
-    
+
     const getAttacks = () => {
         const attacks: any[] = [];
         const overrides = character.combatOverrides || { hitBonus: 0, damageBonus: 0, hitOverride: null, damageOverride: null };
@@ -2546,7 +2547,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         }
 
         const { hit: unarmedHit, damage: unarmedDmg } = applyOverrides(prof + unarmedHitMod + unarmedHitBonus, baseUnarmedDmgStr);
-        
+
         const getAttackModifiers = (attack: any) => {
             const modifiers: { name: string, desc: string }[] = [];
             const isMelee = attack.range === '5 ft.' || attack.range === '10 ft.';
@@ -2631,13 +2632,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const target = (m.stat || m.target || '').toLowerCase();
 
             if (
-                type === 'extra_attack' || 
-                type === 'additional_attack' || 
-                target === 'extra_attack' || 
-                target === 'additional_attack' || 
-                target === 'extra_attacks' || 
-                target === 'additional_attacks' || 
-                target === 'attacks_per_action' || 
+                type === 'extra_attack' ||
+                type === 'additional_attack' ||
+                target === 'extra_attack' ||
+                target === 'additional_attack' ||
+                target === 'extra_attacks' ||
+                target === 'additional_attacks' ||
+                target === 'attacks_per_action' ||
                 target === 'attack_count'
             ) {
                 if (checkModifierRule(m)) {
@@ -2653,30 +2654,30 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
         attackCount = Math.max(attackCount, maxSetAttacks) + additionalAttackBonus;
 
-        const unarmedAttack = { 
-            id: 'action-unarmed', 
-            name: customUnarmedName, 
-            range: '5 ft.', 
-            hit: unarmedHit, 
-            damage: unarmedDmg, 
-            type: unarmedDmgType, 
+        const unarmedAttack = {
+            id: 'action-unarmed',
+            name: customUnarmedName,
+            range: '5 ft.',
+            hit: unarmedHit,
+            damage: unarmedDmg,
+            type: unarmedDmgType,
             attackCount,
-            notes: [], 
-            source: { name: customUnarmedName, desc: 'A punch, kick, head-butt, or similar forceful blow.' } 
+            notes: [],
+            source: { name: customUnarmedName, desc: 'A punch, kick, head-butt, or similar forceful blow.' }
         };
         (unarmedAttack as any).modifiers = getAttackModifiers(unarmedAttack);
         attacks.push(unarmedAttack);
-        
+
         // --- Card Master: The Fool Spell ---
         const cmClass = getClassWithUiWidget(character, 'activeCards');
         if (cmClass && cmClass.level >= 4 && (character.foolStacks || 0) > 0) {
             const foolStacks = character.foolStacks || 0;
             const isWorldActive = character.activeCards?.some(c => c.name === 'The World');
             const isLevel20 = cmClass.level >= 20;
-            
+
             let diceCount = 3 + (isLevel20 ? foolStacks * 2 : foolStacks);
             if (isWorldActive) diceCount *= 2;
-            
+
             const damageDice = `${diceCount}d8`;
             const { hit: foolHit, damage: foolDmg } = applyOverrides(null, damageDice);
             attacks.push({
@@ -2688,8 +2689,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 damage: foolDmg,
                 type: 'Necrotic',
                 notes: [`Consumes all ${foolStacks} Fool Stacks on use.`, 'Half damage on save.'],
-                source: { 
-                    name: 'The Fool Spell', 
+                source: {
+                    name: 'The Fool Spell',
                     desc: [
                         `As an action, you expend all ${foolStacks} Fool Stacks to cast this spell.`,
                         `The spell deals ${damageDice} necrotic damage in a 20-foot radius. Targets that pass a Wisdom Saving Throw take half damage.`
@@ -2706,7 +2707,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
         // --- Eldritch Blast ---
         // Removed manual block to handle in spell loop below
-        
+
         // --- Arrowsmith Specific Arrows ---
         const arrowsmithCls = character.classes.find(c => (c.definition as any).options?.arrowCrafting);
         if (arrowsmithCls) {
@@ -2714,12 +2715,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const asDC = 8 + prof + intMod;
             const bow = character.inventory.find(i => i.equipped && (i.name.toLowerCase().includes('bow') || i.name.toLowerCase().includes('crossbow')));
             const rangeStr = bow?.range || '80/320 ft.';
-            
+
             // Made to Kill Bonus: +1 at 10, +2 at 15, +3 at 20
             const mtkBonus = lvl >= 20 ? 3 : lvl >= 15 ? 2 : lvl >= 10 ? 1 : 0;
             // Trained Archer Bonus (Lvl 17): Add Int to hit/dmg
             const taBonus = lvl >= 17 ? intMod : 0;
-            
+
             const bowHit = prof + dexMod + mtkBonus + taBonus;
             const bowDmg = bow?.damage?.damage_dice || '1d8';
             const baseDmgBonus = dexMod + mtkBonus + taBonus;
@@ -2730,12 +2731,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
             // Only show arrows that are actually in the inventory (quantity > 0)
             const arrowInventory = character.inventory.filter(i => i.id.startsWith('as-arrow-') && i.quantity > 0);
-            
+
             arrowInventory.forEach(invItem => {
                 // Extract base name from ID as-arrow-silent -> silent
                 const arrowBaseName = invItem.id.replace('as-arrow-', '').replace(/-/g, ' ');
                 const def = allArrowDefinitions.find(d => d.name.toLowerCase() === arrowBaseName);
-                
+
                 if (def && def.level <= lvl) {
                     const desc = String(def.desc || '').replace(/\{dc\}/g, String(asDC));
                     const damageFormula = def.calc === 'halfBow'
@@ -2746,15 +2747,15 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 ? `${bowDmg}${def.dmgPlus}${formatModifier(baseDmgBonus)}`
                                 : finalBowDmg;
                     const { hit: arrowHit, damage: arrowDmg } = applyOverrides(def.autoHit ? null : bowHit, damageFormula);
-                    const arrowAttack = { 
-                        id: invItem.id, 
-                        name: `${def.name} Arrow`, 
-                        range: def.rangeLabel || rangeStr, 
-                        hit: arrowHit, 
-                        damage: arrowDmg, 
-                        type: def.type || 'Piercing', 
+                    const arrowAttack = {
+                        id: invItem.id,
+                        name: `${def.name} Arrow`,
+                        range: def.rangeLabel || rangeStr,
+                        hit: arrowHit,
+                        damage: arrowDmg,
+                        type: def.type || 'Piercing',
                         save: def.saveType ? { type: def.saveType, dc: asDC } : null,
-                        notes: ['Arrowsmith', `Qty: ${invItem.quantity}`, ...(def.notes || [])], 
+                        notes: ['Arrowsmith', `Qty: ${invItem.quantity}`, ...(def.notes || [])],
                         source: { name: `${def.name} Arrow`, desc }
                     };
                     (arrowAttack as any).modifiers = getAttackModifiers(arrowAttack);
@@ -2765,43 +2766,43 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
         character.inventory.forEach(item => {
             if (!item.equipped || !item.damage || item.id.startsWith('as-arrow-')) return;
-            
+
             const properties = item.properties?.map(p => typeof p === 'string' ? p : p.name) || [];
             const isFinesse = properties.includes('Finesse');
             const isThrown = item.isThrown || properties.includes('Thrown') || (item.range && item.weapon_range !== 'Ranged' && !item.weapon_category?.toLowerCase().includes('ranged'));
             const isReach = properties.includes('Reach');
             const isRanged = item.weapon_range === 'Ranged' || item.weapon_category?.toLowerCase().includes('ranged') || item.equipment_category?.name?.toLowerCase().includes('ranged') || properties.includes('Ammunition');
             const isMonkWeapon = item.isMonkWeapon || item.isKenseiWeapon || (monk && (item.equipment_category?.index === 'weapon' && (Library.getItem(item.index || '')?.properties?.some(p => (typeof p === 'string' ? p : p.index) === 'simple') || item.name === 'Shortsword')));
-            
+
             // Special Attack Modifiers
             const isMagic = item.requires_attunement || (item.modifiers && item.modifiers.length > 0) || item.isInfusion;
             const canUseInt = item.isBattleReady && isMagic;
             const canUseCha = item.isHexWeapon || item.isPactWeapon;
             const canUseWis = item.isShillelagh;
-            
+
             let statMod = strMod;
             if (isFinesse || isMonkWeapon) statMod = Math.max(statMod, dexMod);
             if (canUseInt) statMod = Math.max(statMod, intMod);
             if (canUseCha) statMod = Math.max(statMod, chaMod);
             if (canUseWis) statMod = Math.max(statMod, wisMod);
-            
+
             let hitBonus = 0; let damageBonus = 0;
             item.modifiers?.forEach(mod => { if (mod.type === 'bonus') { if (mod.target === 'attack') hitBonus += Number(mod.value); if (mod.target === 'damage') damageBonus += Number(mod.value); } });
-            
+
             const fightingStyles = character.classFeatures.filter(f => f.name.includes('Fighting Style'));
             let hasGWF = false;
             let hasDueling = false;
             let hasTWF = false;
             let archeryBonus = 0;
-            
-            fightingStyles.forEach(fs => { 
-                const desc = fs.desc?.join(' ') || ''; 
-                if (desc.includes('Archery') && (properties.includes('Ammunition') || (isRanged && item.range))) archeryBonus += 2; 
+
+            fightingStyles.forEach(fs => {
+                const desc = fs.desc?.join(' ') || '';
+                if (desc.includes('Archery') && (properties.includes('Ammunition') || (isRanged && item.range))) archeryBonus += 2;
                 if (desc.includes('Dueling')) hasDueling = true;
                 if (desc.includes('Great Weapon Fighting')) hasGWF = true;
                 if (desc.includes('Two-Weapon Fighting')) hasTWF = true;
             });
-            
+
             let damageDice = item.damage.damage_dice;
             let damageType = item.isShillelagh ? 'Bludgeoning' : (typeof item.damage.damage_type === 'string' ? item.damage.damage_type : item.damage.damage_type.name);
 
@@ -2818,7 +2819,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
             let baseRangeVal = isRanged ? (typeof item.range === 'string' ? item.range : (item.range ? `${item.range.normal}${item.range.long ? `/${item.range.long}` : ''} ft.` : '')) : (isReach ? '10 ft.' : '5 ft.');
             let rangeStr = baseRangeVal;
-            
+
             if (typeof item.range === 'string' && !isRanged && item.range.includes('(')) {
                 rangeStr = item.range;
             } else if (isThrown) {
@@ -2834,7 +2835,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         tr = `${item.range.normal}${item.range.long ? `/${item.range.long}` : ''} ft.`;
                     }
                 }
-                
+
                 if (tr && tr !== baseRangeVal) {
                     if (!isRanged) {
                         if (!rangeStr.includes(tr)) {
@@ -2847,7 +2848,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             }
 
             const notes = [...(item.properties?.map(p => typeof p === 'string' ? p : p.name) || [])];
-            
+
             // Heavy property check for small creatures
             const isSmall = character.race?.size === 'Small' || character.race?.size === 'Tiny';
             if (isSmall && notes.includes('Heavy')) {
@@ -2872,15 +2873,15 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             }
 
             let itemHitBonus = 0; let itemDamageBonus = 0; let itemExtraDamageDice: string[] = [];
-            item.modifiers?.forEach(mod => { 
-                if (mod.type === 'bonus') { 
-                    if (mod.target === 'attack') itemHitBonus += Number(mod.value) || 0; 
+            item.modifiers?.forEach(mod => {
+                if (mod.type === 'bonus') {
+                    if (mod.target === 'attack') itemHitBonus += Number(mod.value) || 0;
                     if (mod.target === 'damage') {
                         const parsed = parseDamageBonus(mod.value);
                         itemDamageBonus += parsed.flat;
                         itemExtraDamageDice.push(...parsed.dice);
                     }
-                } 
+                }
             });
 
             const isTwoHanded = Boolean(item.wieldedTwoHanded || notes.includes('Two-Handed') || properties.some((p: any) => typeof p === 'string' ? p.toLowerCase().includes('two-handed') : (p?.name || '').toLowerCase().includes('two-handed')));
@@ -2934,9 +2935,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             });
 
             const baseHit = prof + statMod + itemHitBonus + archeryBonus + extraAttackBonus;
-            
+
             const isWieldingTwoHanded = item.wieldedTwoHanded || notes.includes('Two-Handed');
-            
+
             let currentDamageDice = damageDice;
             if (isWieldingTwoHanded && item.versatileDamage) {
                 currentDamageDice = item.versatileDamage.damage_dice;
@@ -2968,16 +2969,16 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 attackName = `${item.name} (Two-Handed)`;
             }
 
-            const weaponAttack = { 
-                id: item.id, 
-                name: attackName, 
-                range: rangeStr, 
-                hit: finalHit, 
-                damage: displayDamage, 
-                type: damageType, 
+            const weaponAttack = {
+                id: item.id,
+                name: attackName,
+                range: rangeStr,
+                hit: finalHit,
+                damage: displayDamage,
+                type: damageType,
                 attackCount,
-                notes: finalNotes, 
-                source: item 
+                notes: finalNotes,
+                source: item
             };
             (weaponAttack as any).modifiers = getAttackModifiers(weaponAttack);
             attacks.push(weaponAttack);
@@ -2987,7 +2988,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const desc = spell.desc?.join(' ').toLowerCase() || '';
             if (desc.includes('spell attack') || spell.attack_type !== undefined) {
                 let dmgStr = getSpellDamageString(spell, character.level, spell.level || 1);
-                
+
                 let spellFlatBonus = 0;
                 let spellExtraDice: string[] = [];
                 let spellAttackBonus = 0;
@@ -3020,8 +3021,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
                 const combinedSpellDmg = combineDamageParts(dmgStr || '', spellFlatBonus, spellExtraDice);
                 const dc = (spell as any).dc?.dc_type?.name?.substring(0, 3).toUpperCase();
-                const { hit: spellHit, damage: spellDmg } = applyOverrides(spellAttack + spellAttackBonus, combinedSpellDmg || 'See Desc');
-                
+                const spellAbility = (spell as any).spellcastingAbility as AbilityName | undefined;
+                const spellCastMod = spellAbility ? calculateModifier(getStat(spellAbility)) : spellMod;
+                const spellAttackValue = prof + spellCastMod + extraSpellAttack + spellAttackBonus;
+                const spellSaveValue = 8 + prof + spellCastMod + extraSpellSave;
+                const { hit: spellHit, damage: spellDmg } = applyOverrides(spellAttackValue, combinedSpellDmg || 'See Desc');
+
                 let spellAttackCount = 1;
                 if (spell.name === 'Eldritch Blast') {
                     const lvl = character.level;
@@ -3029,18 +3034,18 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     else if (lvl >= 11) spellAttackCount = 3;
                     else if (lvl >= 5) spellAttackCount = 2;
                 }
-                
-                const spellAttackObj = { 
-                    id: spell.index, 
-                    name: spell.name, 
-                    range: spell.range, 
-                    hit: spellHit, 
-                    save: dc ? { dc: spellSave, type: dc } : null, 
-                    damage: spellDmg, 
-                    type: spell.damage?.damage_type?.name || 'Magic', 
+
+                const spellAttackObj = {
+                    id: spell.index,
+                    name: spell.name,
+                    range: spell.range,
+                    hit: spellHit,
+                    save: dc ? { dc: spellSaveValue, type: dc } : null,
+                    damage: spellDmg,
+                    type: spell.damage?.damage_type?.name || 'Magic',
                     attackCount: spellAttackCount,
-                    notes: [spell.level === 0 ? 'Cantrip' : `Lvl ${spell.level}`], 
-                    source: spell 
+                    notes: [spell.level === 0 ? 'Cantrip' : `Lvl ${spell.level}`],
+                    source: spell
                 };
                 (spellAttackObj as any).modifiers = getAttackModifiers(spellAttackObj);
                 attacks.push(spellAttackObj);
@@ -3051,9 +3056,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             let save: { type: string, dc: number } | null = null;
 
             if (action.saveDC !== undefined) {
-                save = { 
-                    type: action.saveAbility?.toUpperCase() || 'DC', 
-                    dc: action.saveDC 
+                save = {
+                    type: action.saveAbility?.toUpperCase() || 'DC',
+                    dc: action.saveDC
                 };
             } else if (action.hit !== undefined) {
                 hit = action.hit;
@@ -3081,10 +3086,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const combinedActionDmg = combineDamageParts(action.damage || '0', actionFlatBonus, actionExtraDice);
             const { hit: finalHit, damage: finalDamage } = applyOverrides(hit, combinedActionDmg);
 
-            attacks.push({ 
-                id: action.id, 
-                name: action.name, 
-                range: action.range || '-', 
+            attacks.push({
+                id: action.id,
+                name: action.name,
+                range: action.range || '-',
                 hit: finalHit,
                 save,
                 damage: finalDamage,
@@ -3103,12 +3108,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const foolStacks = character.foolStacks || 0;
             const isWorldActive = character.activeCards?.some(c => c.name === 'The World');
             const isLevel20 = (cmClass?.level || 0) >= 20;
-            
+
             let diceCount = 3 + (isLevel20 ? foolStacks * 2 : foolStacks);
             if (isWorldActive) diceCount *= 2;
-            
+
             const damageDice = `${diceCount}d8`;
-            
+
             return {
                 ...f_item,
                 damage: damageDice,
@@ -3138,7 +3143,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         }
 
         if (f_item.desc && Array.isArray(f_item.desc) && f_item.desc.length > 0 && !isChoice) return f_item;
-        
+
         let match_f: any = null;
         for(const c_item of Library.getClasses()) {
             match_f = c_item.feature_details.find(fd => fd.index === f_item.index || fd.name === baseName);
@@ -3176,23 +3181,23 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
         const feat_item = Library.getFeat(f_item.index);
         if(feat_item && feat_item.desc) return { ...f_item, desc: feat_item.desc };
-        
+
         return f_item;
     };
 
     const getBonusActions = () => {
          const list: any[] = [];
-         
+
          // 1. Spells with bonus action casting time
-         character.spells.forEach(spell => { 
+         character.spells.forEach(spell => {
              if (spell.casting_time.toLowerCase().includes('bonus')) {
-                 list.push({ 
-                     id: spell.index, 
-                     name: spell.name, 
-                     category: 'Action', 
-                     desc: `Cast ${spell.name} as a bonus action.`, 
-                     source: spell 
-                 }); 
+                 list.push({
+                     id: spell.index,
+                     name: spell.name,
+                     category: 'Action',
+                     desc: `Cast ${spell.name} as a bonus action.`,
+                     source: spell
+                 });
              }
          });
 
@@ -3236,19 +3241,37 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
              });
          });
 
-         // 4. Feats scanning
+         // 4. Feats scanning. Prefer the effect's own name so a feat's
+         // Bonus Action is not labelled with the feat name (e.g. "Quick Study",
+         // not just "Observant").
          character.feats?.forEach(feat => {
             const enriched = enrichFeature(feat);
-            const descStr = Array.isArray(enriched.desc) 
-               ? enriched.desc.join(' ').toLowerCase() 
+            const actionEffects = (enriched.effects || []).filter((effect: any) =>
+                effect.type === 'bonus_action' || effect.type === 'action' || effect.type === 'reaction'
+            );
+            if (actionEffects.length > 0) {
+                actionEffects.forEach((effect: any) => {
+                    const effectName = effect.name || enriched.name;
+                    if (list.some(item => item.name === effectName)) return;
+                    list.push({
+                        id: `feat-effect-${enriched.index || enriched.name}-${effectName}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+                        name: effectName,
+                        category: 'Feat',
+                        desc: [effect.description || effect.desc || (Array.isArray(enriched.desc) ? enriched.desc[0] : enriched.desc) || ''],
+                        source: { ...enriched, name: effectName },
+                    });
+                });
+                return;
+            }
+            const descStr = Array.isArray(enriched.desc)
+               ? enriched.desc.join(' ').toLowerCase()
                : (enriched.desc || '').toLowerCase();
-            
             if (descStr.includes('bonus action')) {
                 if (!list.some(item => item.name === enriched.name)) {
-                    list.push({ 
-                        ...enriched, 
+                    list.push({
+                        ...enriched,
                         id: enriched.id || `feat-${enriched.index || enriched.name.toLowerCase().replace(/\s+/g, '-')}`,
-                        category: 'Feat' 
+                        category: 'Feat'
                     });
                 }
             }
@@ -3257,12 +3280,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
          // 5. Custom Actions
          character.customActions?.forEach(action => {
             if (action.activationType === 'bonus') {
-                list.push({ 
-                    id: action.id, 
-                    name: action.name, 
-                    category: 'Custom', 
-                    desc: action.description || action.desc || '', 
-                    source: { ...action, category: 'Custom' } 
+                list.push({
+                    id: action.id,
+                    name: action.name,
+                    category: 'Custom',
+                    desc: action.description || action.desc || '',
+                    source: { ...action, category: 'Custom' }
                 });
             }
         });
@@ -3285,7 +3308,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
     const getAllFeaturesSorted = () => {
          const list: any[] = [];
-         
+
         // 1. Gather all unique features from character.classFeatures
         const skipNames = ["Subclass feature", "Subclass Feature", "Divine Domain", "Divine Order", "Subclass choice", "Subclass Selection"];
         const enrichedFeatures = character.classFeatures
@@ -3338,7 +3361,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const trimmedName = f.name.trim();
             // Case 1: If another feature exists that starts with "f.name: ", this is a parent feature with a choice already made
             if (featureNames.some(name => name.startsWith(`${trimmedName}: `))) return false;
-            
+
             // Case 2: If this feature name is just "Protector" or "Thaumaturge", but "Divine Order: [Name]" exists, filter out the bare name
             if (featureNames.some(name => name.endsWith(`: ${trimmedName}`))) return false;
 
@@ -3352,7 +3375,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         character.feats.forEach((feat, idx) => list.push({ ...enrichFeature(feat), type: 'Feat', source: 'Feat', level: '-', uniqueId: `feat-${feat.index}-${idx}` }));
         character.race?.traits.forEach((trait, idx) => list.push({ ...enrichFeature(trait), type: 'Race', source: character.race?.name, level: '-', uniqueId: `race-${trait.index}-${idx}` }));
         character.subrace?.traits.forEach((trait, idx) => list.push({ ...enrichFeature(trait), type: 'Race', source: character.subrace?.name, level: '-', uniqueId: `subrace-${trait.index}-${idx}` }));
-        
+
         return list.sort((a,b) => {
              if (a.type !== b.type) return a.type.localeCompare(b.type);
              const la = parseInt(a.level) || 0;
@@ -3368,35 +3391,35 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         <div className="flex flex-col h-full text-gray-200 overflow-hidden font-scalable relative" style={{ '--sheet-scale': character.fontScale || 1.0, backgroundColor: character.backgroundColor || '#151515' } as any}>
             {saving && <div className="fixed top-2 left-1/2 transform -translate-x-1/2 z-[1000] bg-black/80 text-dnd-gold px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest border border-dnd-gold shadow-lg animate-pulse">Saving...</div>}
             {character.backgroundImageUrl && <div className="fixed inset-0 z-0 pointer-events-none" style={{ backgroundImage: `url('${character.backgroundImageUrl}')`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }}/>}
-            
+
             <DiceRoller3D request={current3DRequest} onComplete={handle3DRollComplete} onError={handle3DRollError} />
             {rollMenu && <RollContextMenu x={rollMenu.x} y={rollMenu.y} onClose={() => setRollMenu(null)} onOptionSelect={handleContextMenuRoll} />}
             <RollHistory history={rollHistory} onClear={() => setRollHistory([])} campaignId={character.campaign_id} characterName={character.name} />
             <DiceTray logs={logs} onRoll={(f) => roll(f, 'Manual')} />
-            
-            <DiceCustomizerModal 
+
+            <DiceCustomizerModal
                 isOpen={showDiceCustomizerModal}
                 onClose={() => setShowDiceCustomizerModal(false)}
                 character={character}
                 onUpdate={(updates) => setCharacter(prev => ({ ...prev, ...updates }))}
             />
-            <ManageCharacterModal 
-                isOpen={showManageCharacterModal} 
-                character={character} 
-                onClose={() => setShowManageCharacterModal(false)} 
-                onUpdate={(updates) => setCharacter(prev => ({...prev, ...updates}))} 
-                onLevelUp={performLevelUp} 
+            <ManageCharacterModal
+                isOpen={showManageCharacterModal}
+                character={character}
+                onClose={() => setShowManageCharacterModal(false)}
+                onUpdate={(updates) => setCharacter(prev => ({...prev, ...updates}))}
+                onLevelUp={performLevelUp}
                 onOpenDiceCustomizer={() => setShowDiceCustomizerModal(true)}
             />
-            <HealthManagerModal 
-                isOpen={showHealthManager} 
-                character={character} 
-                onClose={() => setShowHealthManager(false)} 
-                onUpdate={(updates) => setCharacter(prev => ({ ...prev, ...updates }))} 
-                onTakeDamage={handleDamageTrigger} 
+            <HealthManagerModal
+                isOpen={showHealthManager}
+                character={character}
+                onClose={() => setShowHealthManager(false)}
+                onUpdate={(updates) => setCharacter(prev => ({ ...prev, ...updates }))}
+                onTakeDamage={handleDamageTrigger}
                 onRoll={roll}
             />
-            <ConcentrationCheckModal 
+            <ConcentrationCheckModal
                 isOpen={!!concentrationCheck}
                 dc={concentrationCheck?.dc || 10}
                 spellName={concentrationCheck?.spellName || ''}
@@ -3413,9 +3436,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 }}
             />
             <ShortRestModal isOpen={showShortRestModal} character={character} onUpdate={(updates) => setCharacter(prev => ({...prev, ...updates}))} onClose={() => setShowShortRestModal(false)} onRoll={roll} />
-            <CustomActionModal 
-                isOpen={showCustomActionModal} 
-                onClose={() => setShowCustomActionModal(false)} 
+            <CustomActionModal
+                isOpen={showCustomActionModal}
+                onClose={() => setShowCustomActionModal(false)}
                 onSave={(action) => setCharacter(prev => {
                     const newState = { ...prev, customActions: [...(prev.customActions || []), action] };
                     if (action.maxUses) {
@@ -3425,38 +3448,38 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         };
                     }
                     return newState;
-                })} 
+                })}
             />
-            <ItemSearchModal 
-                isOpen={showItemSearchModal} 
-                onClose={() => { setShowItemSearchModal(false); setDuplicateItem(null); }} 
-                items={allEquipment} 
-                onSelectItem={handleAddItem} 
+            <ItemSearchModal
+                isOpen={showItemSearchModal}
+                onClose={() => { setShowItemSearchModal(false); setDuplicateItem(null); }}
+                items={allEquipment}
+                onSelectItem={handleAddItem}
                 initialMode={itemSearchMode}
                 initialItem={duplicateItem}
                 currentUser={character?.user_id ? { id: character.user_id } : undefined}
                 onDuplicateToHomebrew={(item) => handleDuplicateToHomebrew('item', item)}
             />
-            <LayoutManagerModal 
-                isOpen={showLayoutManager} 
-                onClose={() => setShowLayoutManager(false)} 
-                layout={layout} 
-                onSave={(newLayout) => { 
+            <LayoutManagerModal
+                isOpen={showLayoutManager}
+                onClose={() => setShowLayoutManager(false)}
+                layout={layout}
+                onSave={(newLayout) => {
                     const seen = new Set<string>();
                     const cleanLayout = {
                         left: (newLayout.left || []).filter(w => { if (seen.has(w)) return false; seen.add(w); return true; }),
                         right: (newLayout.right || []).filter(w => { if (seen.has(w)) return false; seen.add(w); return true; }),
                         mobile: Array.from(new Set(newLayout.mobile || []))
                     };
-                    setLayout(cleanLayout); 
-                    setCharacter(prev => ({ ...prev, layout: cleanLayout })); 
-                }} 
-                character={character} 
+                    setLayout(cleanLayout);
+                    setCharacter(prev => ({ ...prev, layout: cleanLayout }));
+                }}
+                character={character}
             />
-            <CustomSpellModal 
-                isOpen={showCustomSpellModal} 
-                onClose={() => { setShowCustomSpellModal(false); setDuplicateSpell(null); }} 
-                onSave={(spell) => setCharacter(prev => ({...prev, spells: [...prev.spells, spell]}))} 
+            <CustomSpellModal
+                isOpen={showCustomSpellModal}
+                onClose={() => { setShowCustomSpellModal(false); setDuplicateSpell(null); }}
+                onSave={(spell) => setCharacter(prev => ({...prev, spells: [...prev.spells, spell]}))}
                 currentUser={character?.user_id ? { id: character.user_id } : undefined}
                 initialSpell={duplicateSpell}
             />
@@ -3466,8 +3489,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             <EldritchCannonModal isOpen={showEldritchCannonModal} onClose={() => setShowEldritchCannonModal(false)} character={character} onSummon={handleSummonCannon} />
             <SteelDefenderModal isOpen={showSteelDefenderModal} onClose={() => setShowSteelDefenderModal(false)} character={character} onSummon={handleSummonDefender} />
             <CardOptionsModal isOpen={showCardOptionsModal} onClose={() => setShowCardOptionsModal(false)} isWorldUnlocked={cmLevel >= 10} cards={character.classes.map(c => (c.definition as any).options?.pickACardTable).find((table: any) => Array.isArray(table) && table.length > 0) || []} />
-            
-            <HomebrewManagerModal 
+
+            <HomebrewManagerModal
                 isOpen={showHomebrewModal}
                 onClose={() => { setShowHomebrewModal(false); setHomebrewInitialData(null); }}
                 currentUser={{ id: character.user_id || 'anonymous' }}
@@ -3485,7 +3508,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         </div>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                        <button 
+                        <button
                             onClick={() => setShowHealthManager(true)}
                             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-700 bg-black/40 active:scale-95 transition-transform"
                             title="Manage Health"
@@ -3518,11 +3541,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     <div className="text-sm text-gray-400 font-medium uppercase tracking-wide">
                                         {`${character.race?.name} | ${character.classes.map(c => `${c.definition.name} ${c.level}`).join(' / ')}`}
                                     </div>
-                                    
+
                                     <div className="flex items-center gap-2">
                                         {character.activeConcentration && (
                                             <div className="flex items-center gap-2 bg-blue-900/40 border border-blue-500 rounded px-2 py-0.5 text-[10px] font-bold text-blue-100 uppercase animate-in fade-in duration-500">
-                                                <span className="animate-pulse text-blue-400">●</span> 
+                                                <span className="animate-pulse text-blue-400">●</span>
                                                 Concentrating: {character.activeConcentration.name}
                                                 <button onClick={() => setCharacter(p => ({ ...p, activeConcentration: null }))} className="ml-1 text-blue-400 hover:text-white transition-colors" title="Break Concentration">&times;</button>
                                             </div>
@@ -3534,9 +3557,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                                 <div key={tracker.id} className={`flex items-center gap-2 ${colorCfg.bg} border ${colorCfg.border} rounded px-2 py-0.5 text-[10px] font-bold ${colorCfg.text} uppercase animate-in fade-in duration-500 group/header-tracker`}>
                                                     <span className={`animate-pulse ${colorCfg.dot}`}>●</span>
                                                     <span>{tracker.name}{tracker.value ? `: ${tracker.value}` : ''}</span>
-                                                    <button 
-                                                        onClick={() => setCharacter(prev => ({ ...prev, customTrackers: (prev.customTrackers || []).filter(t => t.id !== tracker.id) }))} 
-                                                        className={`ml-1 ${colorCfg.dot} hover:text-red-400 transition-colors`} 
+                                                    <button
+                                                        onClick={() => setCharacter(prev => ({ ...prev, customTrackers: (prev.customTrackers || []).filter(t => t.id !== tracker.id) }))}
+                                                        className={`ml-1 ${colorCfg.dot} hover:text-red-400 transition-colors`}
                                                         title="Remove Tracker"
                                                     >
                                                         &times;
@@ -3545,8 +3568,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                             );
                                         })}
 
-                                        <button 
-                                            onClick={() => setShowAddTracker(!showAddTracker)} 
+                                        <button
+                                            onClick={() => setShowAddTracker(!showAddTracker)}
                                             className={`w-5 h-5 flex items-center justify-center rounded border transition-all ${showAddTracker ? 'bg-dnd-gold border-dnd-gold text-black' : 'bg-black/40 border-gray-600 text-gray-400 hover:text-white hover:border-gray-400'}`}
                                             title="Add Tracker"
                                         >
@@ -3559,27 +3582,27 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     <div ref={trackerPopupRef} className="absolute top-full left-0 mt-2 z-[200] bg-[#1b1c20] border border-gray-700 rounded-xl p-3 shadow-2xl w-64 animate-in zoom-in-95 duration-200">
                                         <div className="space-y-3">
                                             <div className="text-[10px] font-black text-dnd-gold uppercase tracking-widest mb-1">New Tracker</div>
-                                            <input 
-                                                type="text" 
-                                                placeholder="Name (e.g. Rage)" 
+                                            <input
+                                                type="text"
+                                                placeholder="Name (e.g. Rage)"
                                                 className="w-full bg-black/40 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white focus:border-dnd-gold outline-none"
                                                 value={newTrackerName}
                                                 onChange={(e) => setNewTrackerName(e.target.value)}
                                                 autoFocus
                                             />
-                                            <input 
-                                                type="text" 
-                                                placeholder="Value (optional)" 
+                                            <input
+                                                type="text"
+                                                placeholder="Value (optional)"
                                                 className="w-full bg-black/40 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white focus:border-dnd-gold outline-none"
                                                 value={newTrackerValue}
                                                 onChange={(e) => setNewTrackerValue(e.target.value)}
                                             />
-                                            
+
                                             <div className="space-y-2">
                                                 <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Color</div>
                                                 <div className="flex gap-2">
                                                     {TRACKER_COLORS.map(color => (
-                                                        <button 
+                                                        <button
                                                             key={color.id}
                                                             onClick={() => setNewTrackerColor(color.id)}
                                                             className={`w-6 h-6 rounded-full border-2 transition-all ${color.bg} ${color.border} ${newTrackerColor === color.id ? 'scale-110 ring-2 ring-dnd-gold ring-offset-2 ring-offset-[#1b1c20]' : 'opacity-60 hover:opacity-100'}`}
@@ -3590,12 +3613,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                             </div>
 
                                             <div className="flex gap-2 pt-1">
-                                                <button 
+                                                <button
                                                     onClick={() => {
                                                         if (!newTrackerName.trim()) return;
-                                                        const newTracker = { 
-                                                            id: Date.now().toString(), 
-                                                            name: newTrackerName, 
+                                                        const newTracker = {
+                                                            id: Date.now().toString(),
+                                                            name: newTrackerName,
                                                             value: newTrackerValue,
                                                             color: newTrackerColor
                                                         };
@@ -3623,10 +3646,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     <div className="max-w-[1400px] mx-auto px-4 flex justify-between items-center min-w-max">
                         <div className="flex gap-3">{ABILITY_NAMES.map(stat => (<HeaderStatBox key={stat} label={stat} value={getStat(stat)} modifier={calculateModifier(getStat(stat))} onRoll={roll} onContextMenu={triggerRollMenu} />))}</div>
                         <div className="flex gap-3 border-l border-gray-700/50 pl-4 lg:pl-8">
-                             <SquareStatBox 
-                                label="Armor" 
-                                subLabel="Class" 
-                                value={`${acValue}`} 
+                             <SquareStatBox
+                                label="Armor"
+                                subLabel="Class"
+                                value={`${acValue}`}
                                 tooltipPosition="bottom"
                                 tooltip={
                                     <div className="space-y-1">
@@ -3646,9 +3669,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                              {(() => {
                                 const totalInitMod = dexMod + extraInitiative;
                                 return (
-                                 <div 
-                                    onClick={() => roll(initAdv ? `2d20kh1${formatModifier(totalInitMod)}` : `1d20${formatModifier(totalInitMod)}`, "Initiative Roll")} 
-                                    onContextMenu={(e) => triggerRollMenu(e, initAdv ? `2d20kh1${formatModifier(totalInitMod)}` : `1d20${formatModifier(totalInitMod)}`, "Initiative Roll")} 
+                                 <div
+                                    onClick={() => roll(initAdv ? `2d20kh1${formatModifier(totalInitMod)}` : `1d20${formatModifier(totalInitMod)}`, "Initiative Roll")}
+                                    onContextMenu={(e) => triggerRollMenu(e, initAdv ? `2d20kh1${formatModifier(totalInitMod)}` : `1d20${formatModifier(totalInitMod)}`, "Initiative Roll")}
                                     className="flex flex-col items-center justify-center w-16 h-16 lg:w-20 lg:h-20 border border-gray-600 rounded bg-[#1b1c20]/80 cursor-pointer hover:border-dnd-gold group transition-colors relative"
                                  >
                                     {initAdv && <span className="absolute top-1 right-1 text-[7px] bg-gray-800/60 text-gray-500 px-0.5 rounded border border-gray-700/50">ADV</span>}
@@ -3658,10 +3681,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 );
                              })()}
                              <SquareStatBox label="Proficiency" subLabel="Bonus" value={`+${prof}`} />
-                             <SquareStatBox 
-                                label="Walking" 
-                                subLabel="Speed" 
-                                value={`${speed} ft.`} 
+                             <SquareStatBox
+                                label="Walking"
+                                subLabel="Speed"
+                                value={`${speed} ft.`}
                                 tooltipPosition="bottom"
                                 tooltip={
                                     <div className="space-y-1">
@@ -3679,11 +3702,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 }
                              />
                              {specialSpeeds.map((sp, idx) => (
-                                 <SquareStatBox 
+                                 <SquareStatBox
                                      key={idx}
-                                     label={sp.type} 
-                                     subLabel="Speed" 
-                                     value={`${sp.speed} ft.`} 
+                                     label={sp.type}
+                                     subLabel="Speed"
+                                     value={`${sp.speed} ft.`}
                                      tooltipPosition="bottom"
                                      tooltip={
                                          <div className="text-[10px]">
@@ -3693,20 +3716,20 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                      }
                                  />
                              ))}
-                             <div 
-                                 onClick={() => setCharacter(p => ({...p, inspiration: !p.inspiration}))} 
+                             <div
+                                 onClick={() => setCharacter(p => ({...p, inspiration: !p.inspiration}))}
                                  title={character.inspiration ? "Heroic Inspiration Active (Click to toggle)" : "Click to toggle Heroic Inspiration"}
                                  className={`flex flex-col items-center justify-between w-16 h-16 lg:w-20 lg:h-20 p-1.5 lg:p-2 border rounded cursor-pointer transition-all duration-200 select-none group ${
-                                     character.inspiration 
-                                         ? 'bg-[#232018] border-dnd-gold shadow-[0_0_12px_rgba(201,173,106,0.25)]' 
+                                     character.inspiration
+                                         ? 'bg-[#232018] border-dnd-gold shadow-[0_0_12px_rgba(201,173,106,0.25)]'
                                          : 'bg-[#1b1c20]/80 border-gray-600 hover:border-dnd-gold/70 hover:bg-[#1f2025]'
                                  }`}
                              >
                                  <div className="flex-1 flex items-center justify-center">
-                                     <div 
+                                     <div
                                          className={`w-3.5 h-3.5 lg:w-4 lg:h-4 border-2 transform rotate-45 transition-all duration-200 ${
-                                             character.inspiration 
-                                                 ? 'bg-dnd-gold border-dnd-gold scale-110 shadow-[0_0_8px_rgba(201,173,106,0.8)]' 
+                                             character.inspiration
+                                                 ? 'bg-dnd-gold border-dnd-gold scale-110 shadow-[0_0_8px_rgba(201,173,106,0.8)]'
                                                  : 'border-gray-500 group-hover:border-dnd-gold group-hover:scale-105'
                                          }`}
                                      />
@@ -3717,12 +3740,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                      Heroic<br/>Inspiration
                                  </div>
                              </div>
-                             <div 
+                             <div
                                  className={`flex flex-col h-16 lg:h-20 border rounded overflow-hidden min-w-[150px] cursor-pointer transition-all duration-200 select-none ${
-                                     character.currentHp === 0 
-                                         ? 'bg-red-950/40 border-red-600 shadow-[0_0_12px_rgba(239,68,68,0.3)] hover:border-red-400' 
+                                     character.currentHp === 0
+                                         ? 'bg-red-950/40 border-red-600 shadow-[0_0_12px_rgba(239,68,68,0.3)] hover:border-red-400'
                                          : 'bg-[#1b1c20]/80 border-gray-600 hover:border-dnd-gold'
-                                 }`} 
+                                 }`}
                                  onClick={() => setShowHealthManager(true)}
                              >
                                  {character.currentHp === 0 ? (
@@ -3738,18 +3761,18 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                                  {/* Mini hearts */}
                                                  <div className="flex items-center gap-0.5" title={`${character.deathSaves?.successes || 0}/3 Successes`}>
                                                      {[1, 2, 3].map(n => (
-                                                         <Heart 
-                                                             key={`hs-${n}`} 
-                                                             className={`w-3 h-3 ${n <= (character.deathSaves?.successes || 0) ? 'fill-emerald-500 text-emerald-400' : 'text-gray-600'}`} 
+                                                         <Heart
+                                                             key={`hs-${n}`}
+                                                             className={`w-3 h-3 ${n <= (character.deathSaves?.successes || 0) ? 'fill-emerald-500 text-emerald-400' : 'text-gray-600'}`}
                                                          />
                                                      ))}
                                                  </div>
                                                  {/* Mini skulls */}
                                                  <div className="flex items-center gap-0.5" title={`${character.deathSaves?.failures || 0}/3 Failures`}>
                                                      {[1, 2, 3].map(n => (
-                                                         <Skull 
-                                                             key={`fs-${n}`} 
-                                                             className={`w-3 h-3 ${n <= (character.deathSaves?.failures || 0) ? 'fill-red-600 text-red-500' : 'text-gray-600'}`} 
+                                                         <Skull
+                                                             key={`fs-${n}`}
+                                                             className={`w-3 h-3 ${n <= (character.deathSaves?.failures || 0) ? 'fill-red-600 text-red-500' : 'text-gray-600'}`}
                                                          />
                                                      ))}
                                                  </div>
@@ -3814,7 +3837,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     { label: 'Character Vault', sub: 'Open the vault', action: onOpenVault },
                                     { label: 'Customize Dice', sub: 'Change dice colors & effects', action: () => setShowDiceCustomizerModal(true) },
                                 ] as { label: string; sub: string; action: () => void }[]).map(item => (
-                                    <button 
+                                    <button
                                         key={item.label}
                                         onClick={() => { setShowMobileMenu(false); item.action(); }}
                                         className="w-full flex items-center justify-between gap-3 px-4 py-3.5 text-left active:bg-gray-800/60 transition-colors"
@@ -3833,8 +3856,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             )}
 
             <main className="flex-grow flex flex-col lg:flex-row overflow-hidden max-w-[1400px] mx-auto w-full relative font-scalable-text z-10 pt-safe-52 lg:pt-0 pb-safe-64 lg:pb-0">
-                <aside className={isSidePanelPinned && !!selectedDetail 
-                    ? "hidden lg:flex flex-col lg:w-[340px] xl:w-[320px] bg-[#121316]/50 border-r border-[#3e4149] p-4 gap-4 overflow-y-auto custom-scrollbar shrink-0 backdrop-blur-md" 
+                <aside className={isSidePanelPinned && !!selectedDetail
+                    ? "hidden lg:flex flex-col lg:w-[340px] xl:w-[320px] bg-[#121316]/50 border-r border-[#3e4149] p-4 gap-4 overflow-y-auto custom-scrollbar shrink-0 backdrop-blur-md"
                     : "hidden lg:flex lg:flex-col xl:grid xl:grid-cols-2 lg:w-[340px] xl:w-[600px] bg-[#121316]/50 border-r border-[#3e4149] p-4 gap-4 overflow-y-auto custom-scrollbar shrink-0 backdrop-blur-md"
                 }>
                     <div className="flex flex-col gap-4">
@@ -3850,9 +3873,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 <section className={`flex-grow flex flex-col ${character.backgroundImageUrl ? "bg-[#121316]/50" : "bg-transparent"} overflow-hidden backdrop-blur-md`}>
                     <nav className="hidden lg:flex items-center gap-2 px-4 py-2 bg-[#121316]/50 shrink-0 overflow-x-auto custom-scrollbar border-b border-[#3e4149]/40">
             {['actions', 'spells', 'inventory', 'features', 'rules', 'log'].map(tab_key => (
-                <button 
-                    key={tab_key} 
-                    onClick={() => setActiveTab(tab_key as any)} 
+                <button
+                    key={tab_key}
+                    onClick={() => setActiveTab(tab_key as any)}
                     className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-widest rounded-lg transition-all whitespace-nowrap shadow-sm border relative ${activeTab === tab_key ? 'text-white border-dnd-red bg-dnd-red/20 ring-1 ring-dnd-red/50' : 'text-gray-500 border-[#3e4149]/50 bg-black/40 hover:text-gray-300 hover:border-gray-600 hover:bg-gray-800'}`}
                 >
                     {tabIcons[tab_key]}
@@ -3878,14 +3901,14 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         {activeTab === 'log' && <LogTab character={character} setCharacter={setCharacter} onOpenVault={onOpenVault} setShowLayoutManager={setShowLayoutManager} handleRest={handleRest} />}
                     </div>
                 </section>
-                
+
                 {!!selectedDetail && !isSidePanelPinned && (<div className="absolute inset-0 z-[150] bg-transparent" onClick={() => { setSelectedDetail(null); }}></div>)}
-                <DetailSidePanel 
-                    item={selectedDetail} 
-                    character={character} 
+                <DetailSidePanel
+                    item={selectedDetail}
+                    character={character}
                     activeModifiers={activeModifiers}
-                    onClose={() => setSelectedDetail(null)} 
-                    onAction={(action, itm) => { 
+                    onClose={() => setSelectedDetail(null)}
+                    onAction={(action, itm) => {
                         if (action === 'toggleFeatureUsage') {
                             setCharacter(prev => {
                                 const newUsage = { ...prev.featureUsage };
@@ -3899,8 +3922,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 return { ...prev, featureUsage: newUsage };
                             });
                         }
-                        if (action === 'toggleEquip') toggleEquipped(itm.id); 
-                        if (action === 'toggleAttune') toggleAttunement(itm.id); 
+                        if (action === 'toggleEquip') toggleEquipped(itm.id);
+                        if (action === 'toggleAttune') toggleAttunement(itm.id);
                         if (action === 'toggleFlag') toggleItemFlag(itm.id, itm.flag);
                         if (action === 'updateItem') {
                             setCharacter(prev => ({
@@ -3934,7 +3957,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         if (action === 'cast') {
                             if (isSpell(itm)) {
                                 roll((itm as any).formula || '1d20', `Casting ${itm.name}`);
-                                
+
                                 // Trigger Polymorph Modal
                                 if (itm.name === 'Polymorph') {
                                     setCreatureModalMode('polymorph');
@@ -3967,7 +3990,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     return i;
                                 }).filter(i => i.quantity > 0);
                                 setCharacter(prev => ({ ...prev, inventory: newPersonalInv }));
-                                
+
                                 loadPartyInventory(cmpId).then(async (data) => {
                                     const partyCopy = [...(data.inventory || [])];
                                     const existingIdx = partyCopy.findIndex(i => i.name.toLowerCase() === itemToTransfer.name.toLowerCase());
@@ -3995,7 +4018,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 const cmpId = character.campaign_id;
                                 const partyItem = itm;
                                 const requestedQty = typeof partyItem.transferQty === 'number' ? partyItem.transferQty : (typeof partyItem.amount === 'number' ? partyItem.amount : 1);
-                                
+
                                 loadPartyInventory(cmpId).then(async (data) => {
                                     const partyCopy = data.inventory || [];
                                     let actualClaim = requestedQty;
@@ -4006,9 +4029,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                         }
                                         return i;
                                     }).filter((i: any) => i.quantity > 0);
-                                    
+
                                     await savePartyInventory(cmpId, updatedParty, data.currency || { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 });
-                                    
+
                                     setCharacter(prev => {
                                         const personalCopy = [...prev.inventory];
                                         const existingIdx = personalCopy.findIndex(i => i.name.toLowerCase() === partyItem.name.toLowerCase());
@@ -4032,16 +4055,16 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             }
                             setSelectedDetail(null);
                         }
-                        if (action === 'remove') { 
-                            if ('quantity' in itm) updateQuantity(itm.id, 0); 
-                            else setCharacter(prev => ({ ...prev, spells: prev.spells.filter(s => s.index !== itm.index || s.sourceClassIndex !== itm.sourceClassIndex) })); 
-                            setSelectedDetail(null); 
-                        } 
-                    }} 
-                    isPinned={isSidePanelPinned} 
-                    onTogglePin={() => setIsSidePanelPinned(!isSidePanelPinned)} 
-                    isFavorite={selectedDetail ? character.favorites.includes(getEntityId(selectedDetail)) : false} 
-                    onToggleFavorite={() => { if (selectedDetail) toggleFavorite(getEntityId(selectedDetail)); }} 
+                        if (action === 'remove') {
+                            if ('quantity' in itm) updateQuantity(itm.id, 0);
+                            else setCharacter(prev => ({ ...prev, spells: prev.spells.filter(s => s.index !== itm.index || s.sourceClassIndex !== itm.sourceClassIndex) }));
+                            setSelectedDetail(null);
+                        }
+                    }}
+                    isPinned={isSidePanelPinned}
+                    onTogglePin={() => setIsSidePanelPinned(!isSidePanelPinned)}
+                    isFavorite={selectedDetail ? character.favorites.includes(getEntityId(selectedDetail)) : false}
+                    onToggleFavorite={() => { if (selectedDetail) toggleFavorite(getEntityId(selectedDetail)); }}
                 />
             </main>
             <CreatureManagerModal
@@ -4054,22 +4077,22 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 onRemoveCustom={(id) => setCharacter(prev => ({...prev, customCreatures: (prev.customCreatures || []).filter(b => b.index !== id)}))}
                 onOpenForge={() => { setHomebrewInitialTab('creature'); setShowHomebrewModal(true); setShowCreatureModal(false); }}
             />
-            <SpellManagerModal 
-                character={character} 
-                isOpen={showSpellManager} 
-                onClose={() => setShowSpellManager(false)} 
-                onUpdateSpells={(spells) => setCharacter(prev => ({...prev, spells}))} 
-                onAddCustom={() => setShowCustomSpellModal(true)} 
+            <SpellManagerModal
+                character={character}
+                isOpen={showSpellManager}
+                onClose={() => setShowSpellManager(false)}
+                onUpdateSpells={(spells) => setCharacter(prev => ({...prev, spells}))}
+                onAddCustom={() => setShowCustomSpellModal(true)}
                 onDuplicateToHomebrew={(spell) => handleDuplicateToHomebrew('spell', spell)}
             />
 
             {/* Full Screen Features Modal */}
             {showFullScreenFeatures && (
-                <div 
+                <div
                     className="fixed inset-0 bg-black/95 z-[500] flex flex-col p-4 md:p-8 backdrop-blur-xl animate-in fade-in duration-300"
                     onClick={() => setShowFullScreenFeatures(false)}
                 >
-                    <div 
+                    <div
                         className="max-w-7xl mx-auto w-full flex flex-col h-full bg-[#1b1c20] border border-gray-800 rounded-2xl shadow-2xl overflow-hidden"
                         onClick={(e) => e.stopPropagation()}
                     >
@@ -4084,7 +4107,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mt-1">Comprehensive Archive of your character's abilities</p>
                                 </div>
                             </div>
-                            <button 
+                            <button
                                 onClick={() => setShowFullScreenFeatures(false)}
                                 className="p-2 hover:bg-white/5 rounded-full text-gray-500 hover:text-white transition-colors"
                             >
@@ -4096,12 +4119,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         <div className="p-6 bg-black/20 border-b border-gray-800">
                             <div className="relative max-w-2xl mx-auto">
                                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
-                                <input 
+                                <input
                                     autoFocus
-                                    type="text" 
-                                    placeholder="Search by name or description..." 
-                                    value={fullScreenFeaturesSearch} 
-                                    onChange={(e) => setFullScreenFeaturesSearch(e.target.value)} 
+                                    type="text"
+                                    placeholder="Search by name or description..."
+                                    value={fullScreenFeaturesSearch}
+                                    onChange={(e) => setFullScreenFeaturesSearch(e.target.value)}
                                     className="w-full bg-[#0b0c0e] border border-gray-700 rounded-xl py-4 pl-12 pr-4 text-white font-serif focus:border-dnd-gold outline-none shadow-inner transition-all"
                                 />
                             </div>
@@ -4111,20 +4134,20 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         <div className="flex-grow overflow-y-auto p-6 custom-scrollbar">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {getAllFeaturesSorted()
-                                    .filter(f => 
-                                        f.name.toLowerCase().includes(fullScreenFeaturesSearch.toLowerCase()) || 
+                                    .filter(f =>
+                                        f.name.toLowerCase().includes(fullScreenFeaturesSearch.toLowerCase()) ||
                                         getTextString(f.desc).toLowerCase().includes(fullScreenFeaturesSearch.toLowerCase())
                                     )
                                     .map(feat => (
-                                    <div 
+                                    <div
                                         key={feat.uniqueId}
                                         className="bg-black/40 border border-gray-800 rounded-xl p-6 transition-all flex flex-col h-full"
                                     >
                                         <div className="flex justify-between items-start mb-4">
                                             <h3 className="font-bold text-lg text-white group-hover:text-dnd-gold transition-colors">{feat.name}</h3>
                                             <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold border ${
-                                                feat.type === 'Class' ? 'bg-blue-900/20 border-blue-800 text-blue-400' : 
-                                                feat.type === 'Race' ? 'bg-green-900/20 border-green-800 text-green-400' : 
+                                                feat.type === 'Class' ? 'bg-blue-900/20 border-blue-800 text-blue-400' :
+                                                feat.type === 'Race' ? 'bg-green-900/20 border-green-800 text-green-400' :
                                                 'bg-orange-900/20 border-orange-800 text-orange-400'
                                             }`}>
                                                 {feat.source || feat.type}
@@ -4146,8 +4169,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                         </div>
                                     </div>
                                 ))}
-                                {getAllFeaturesSorted().filter(f => 
-                                    f.name.toLowerCase().includes(fullScreenFeaturesSearch.toLowerCase()) || 
+                                {getAllFeaturesSorted().filter(f =>
+                                    f.name.toLowerCase().includes(fullScreenFeaturesSearch.toLowerCase()) ||
                                     getTextString(f.desc).toLowerCase().includes(fullScreenFeaturesSearch.toLowerCase())
                                 ).length === 0 && (
                                     <div className="col-span-full py-20 text-center">

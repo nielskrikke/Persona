@@ -12,7 +12,8 @@ import SpellSelectionStep from './components/Builder/SpellSelectionStep';
 import { CharacterSheet } from './components/Sheet/CharacterSheet';
 import ErrorBoundary from './components/ErrorBoundary';
 import { getSpellSlots, SKILL_LIST, getCasterProfileFor, calculateMaxHp, mergeSpellSlotCurrents } from './utils/rules';
-import { hydrateCharacterClasses } from './data/index';
+import { STANDARD_LANGUAGES, ARTISAN_TOOLS } from './data/constants';
+import { hydrateCharacterClasses, fetchAllSpells, hydrateGrantedSpells } from './data/index';
 import { saveCharacterToDb, loginUser } from './services/supabase';
 import AuthModal from './components/Auth/AuthModal';
 import CharacterDashboard from './components/Dashboard/CharacterDashboard';
@@ -23,6 +24,50 @@ const hasCasterClass = (classes: CharacterClass[]) => classes.some(c => {
     const profile = getCasterProfileFor(c);
     return !!profile && profile.type !== 'none';
 });
+
+const buildFeatGrantChoices = async (feat: any, source: string, level: number): Promise<any[]> => {
+    if (!feat?.effects?.length) return [];
+    const allSpells = await fetchAllSpells();
+    const choices: any[] = [];
+    feat.effects.forEach((effect: any, index: number) => {
+        if (effect.type === 'spell_access' && effect.spell) return;
+        if (!effect.type?.endsWith('_choice') && effect.type !== 'spell_access') return;
+        let options: any[] = effect.options || [];
+        if (options.length === 0) {
+            if (effect.type === 'proficiency_choice') {
+                if (effect.category === 'skill') options = SKILL_LIST.map(skill => skill.name);
+                else if (effect.category === 'tool') options = ARTISAN_TOOLS;
+                else if (effect.category === 'language') options = STANDARD_LANGUAGES;
+            } else if (effect.type === 'spell_access') {
+                let filtered = allSpells;
+                if (effect.filter_class) {
+                    filtered = filtered.filter(spell => spell.classes?.some((entry: any) => entry.name === effect.filter_class || entry.index === effect.filter_class));
+                }
+                if (effect.level !== undefined) filtered = filtered.filter(spell => spell.level === effect.level);
+                options = filtered.map(spell => ({ index: spell.index, name: spell.name }));
+            }
+        }
+        choices.push({
+            id: `feat-${feat.index}-${index}-${Date.now()}`,
+            level,
+            source: `${source} (${feat.name})`,
+            type: effect.type === 'asi_choice' ? 'asi'
+                : effect.type === 'proficiency_choice' ? (effect.category === 'skill' ? 'skill' : effect.category === 'language' ? 'language' : 'other')
+                : effect.type === 'expertise_choice' ? 'expertise'
+                : effect.type === 'spell_access' ? 'spell' : 'other',
+            label: `${feat.name}: ${effect.name || (effect.type === 'spell_access' ? 'Spell' : effect.type.replace(/_/g, ' '))}`,
+            value: null,
+            options,
+            count: effect.count || 1,
+            revertData: {
+                featIndex: feat.index,
+                isSubChoice: true,
+                expertiseIfProficient: !!effect.expertise_if_proficient,
+            },
+        });
+    });
+    return choices;
+};
 
 const mergeChoices = (existing: any[], incoming: any[]) => {
     const map = new Map<string, any>();
@@ -264,7 +309,7 @@ const App: React.FC = () => {
       setPhase('race');
   };
 
-  const handleRaceSelect = (race: RaceDetail, subrace: SubraceDetail | null, extraData?: any) => {
+  const handleRaceSelect = async (race: RaceDetail, subrace: SubraceDetail | null, extraData?: any) => {
     const finalRace = { ...race };
     const newFeatures: ClassFeature[] = [...character.classFeatures];
     const newSpells: SpellDetail[] = [...character.spells];
@@ -344,16 +389,27 @@ const App: React.FC = () => {
     (extraData?.feats || []).forEach((feat: any) => {
         if (!newFeats.some(existing => (existing.index || existing.name) === (feat.index || feat.name))) newFeats.push(feat);
     });
+    const featChoices = (await Promise.all((extraData?.feats || []).map((feat: any) => buildFeatGrantChoices(feat, race.name, 1)))).flat();
+    const finalChoices = mergeChoices(character.choices, [...(extraData?.choices || []), ...featChoices]);
+    const grantedSpells = await hydrateGrantedSpells({
+        ...character,
+        race: finalRace,
+        subrace,
+        feats: newFeats,
+        classFeatures: newFeatures,
+        spells: newSpells,
+    });
 
     updateCharacter({
         race: finalRace,
         subrace,
         classFeatures: newFeatures,
-        spells: newSpells,
+        spells: grantedSpells.spells,
         skills: Array.from(new Set(newSkills)),
         languages: Array.from(new Set(newLanguages)),
         toolProficiencies: Array.from(new Set(newTools)),
         feats: newFeats,
+        choices: finalChoices,
         ...(extraData?.spellcastingAbility ? { spellcastingAbility: extraData.spellcastingAbility } : {}),
     });
     setPhase('class');
@@ -416,8 +472,9 @@ const App: React.FC = () => {
     setPhase('leveling');
   };
 
-  const handleLevelingComplete = (updates: Partial<CharacterState>) => {
-      updateCharacter(updates);
+  const handleLevelingComplete = async (updates: Partial<CharacterState>) => {
+      const granted = await hydrateGrantedSpells({ ...character, ...updates });
+      updateCharacter({ ...updates, spells: granted.spells });
       if (hasCasterClass(character.classes)) {
           setPhase('spells');
       } else {
@@ -426,7 +483,7 @@ const App: React.FC = () => {
   };
 
   const handleSpellComplete = (spells: SpellDetail[]) => {
-      const racialSpells = character.spells.filter(s => s.sourceClassIndex === 'racial');
+      const racialSpells = character.spells.filter(s => s.sourceClassIndex === 'racial' || s.isGranted);
       const spellMap = new Map();
       [...racialSpells, ...spells].forEach(s => spellMap.set(s.index + (s.sourceClassIndex || ''), s));
       const newSlots = getSpellSlots(character.classes);
@@ -475,7 +532,16 @@ const App: React.FC = () => {
         });
     }
 
+    const featChoices = (await Promise.all((extraData.feats || []).map(feat => buildFeatGrantChoices(feat, 'Background', 1)))).flat();
+    const finalChoices = mergeChoices(newChoices, featChoices);
     const nextMaxHp = calculateMaxHp({ ...character, abilities: newAbilities, feats: newFeats });
+    const grantedSpells = await hydrateGrantedSpells({
+        ...character,
+        abilities: newAbilities,
+        feats: newFeats,
+        classFeatures: [...character.classFeatures, bgFeature],
+        spells: character.spells,
+    });
     updateCharacter({
         name,
         background: background.name,
@@ -489,8 +555,9 @@ const App: React.FC = () => {
         maxHp: nextMaxHp,
         currentHp: Math.min(character.currentHp, nextMaxHp),
         classFeatures: [...character.classFeatures, bgFeature],
+        spells: grantedSpells.spells,
         inventory: newInventory,
-        choices: newChoices
+        choices: finalChoices
     });
     setPhase('gear');
   };

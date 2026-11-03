@@ -313,15 +313,13 @@ export const getHpPerLevelBonus = (character: CharacterState): number => {
             }
         });
     };
+    const collectFeature = (entry: any) => {
+        if (Array.isArray(entry?.effects) && entry.effects.length > 0) collect(entry.effects);
+        else collect(entry?.modifiers || []);
+    };
 
-    character.race?.traits?.forEach((trait: any) => {
-        collect(trait.effects || []);
-        collect(trait.modifiers || []);
-    });
-    character.subrace?.traits?.forEach((trait: any) => {
-        collect(trait.effects || []);
-        collect(trait.modifiers || []);
-    });
+    character.race?.traits?.forEach(collectFeature);
+    character.subrace?.traits?.forEach(collectFeature);
     character.classes?.forEach(characterClass => {
         (characterClass.definition as any)?.feature_details?.forEach((feature: any) => {
             if ((feature.level || 0) <= characterClass.level) collect(feature.effects || []);
@@ -330,12 +328,12 @@ export const getHpPerLevelBonus = (character: CharacterState): number => {
             if ((feature.level || 0) <= characterClass.level) collect(feature.effects || []);
         });
     });
-    character.classFeatures?.forEach(feature => collect(feature.effects || []));
-    character.feats?.forEach(feature => collect(feature.effects || []));
+    character.classFeatures?.forEach(collectFeature);
+    character.feats?.forEach(collectFeature);
     character.inventory?.forEach(item => {
         if (item.equipped && (!item.requires_attunement || item.attuned)) {
-            collect((item as any).effects || []);
-            collect(item.modifiers || []);
+            if (Array.isArray((item as any).effects) && (item as any).effects.length > 0) collect((item as any).effects);
+            else collect(item.modifiers || []);
         }
     });
     return bonus;
@@ -358,8 +356,12 @@ export const getFlatMaxHpBonus = (character: CharacterState): number => {
         });
     };
 
-    character.race?.traits?.forEach((trait: any) => { collect(trait.effects || []); collect(trait.modifiers || []); });
-    character.subrace?.traits?.forEach((trait: any) => { collect(trait.effects || []); collect(trait.modifiers || []); });
+    const collectFeature = (entry: any) => {
+        if (Array.isArray(entry?.effects) && entry.effects.length > 0) collect(entry.effects);
+        else collect(entry?.modifiers || []);
+    };
+    character.race?.traits?.forEach(collectFeature);
+    character.subrace?.traits?.forEach(collectFeature);
     character.classes?.forEach(characterClass => {
         (characterClass.definition as any)?.feature_details?.forEach((feature: any) => {
             if ((feature.level || 0) <= characterClass.level) collect(feature.effects || []);
@@ -368,12 +370,12 @@ export const getFlatMaxHpBonus = (character: CharacterState): number => {
             if ((feature.level || 0) <= characterClass.level) collect(feature.effects || []);
         });
     });
-    character.classFeatures?.forEach(feature => collect(feature.effects || []));
-    character.feats?.forEach(feature => collect(feature.effects || []));
+    character.classFeatures?.forEach(collectFeature);
+    character.feats?.forEach(collectFeature);
     character.inventory?.forEach(item => {
         if (item.equipped && (!item.requires_attunement || item.attuned)) {
-            collect((item as any).effects || []);
-            collect(item.modifiers || []);
+            if (Array.isArray((item as any).effects) && (item as any).effects.length > 0) collect((item as any).effects);
+            else collect(item.modifiers || []);
         }
     });
     return bonus;
@@ -636,4 +638,19 @@ export const getSpellDamageString = (spell: SpellDetail, characterLevel: number 
 
 export const isSpell = (item: any): item is SpellDetail => {
     return item && 'school' in item;
+};
+
+export const isFeatAvailableForLevel = (feat: any, level: number): boolean => {
+    const prerequisite = String(feat?.prerequisite || '').toLowerCase();
+    const description = (Array.isArray(feat?.desc) ? feat.desc.join(' ') : String(feat?.desc || '')).toLowerCase();
+    const text = `${prerequisite} ${description}`;
+
+    if ((text.includes('epic boon') || text.includes('epic boon')) && level < 19) return false;
+    if (text.includes('origin feat') && level > 1) return false;
+
+    const sourceMatch = text.match(/prerequisite:\s*level\s+(\d+)/i) || prerequisite.match(/level\s+(\d+)/i);
+    if (sourceMatch && level < Number(sourceMatch[1])) return false;
+    const genericLevel = description.match(/level\s+(\d+)\s*\+/i);
+    if (genericLevel && level < Number(genericLevel[1])) return false;
+    return true;
 };

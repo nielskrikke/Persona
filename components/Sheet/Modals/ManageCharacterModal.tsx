@@ -3,7 +3,7 @@ import Markdown from 'react-markdown';
 import { X, User, GraduationCap, Activity, Shield, Settings, Plus, Trash2, Save, Languages, Palette, Type, Dice5, Eye, EyeOff, Info, Sparkles, AlertTriangle, RotateCcw, AlertCircle } from 'lucide-react';
 import { CharacterState, APIReference, RaceDetail, SubraceDetail, BackgroundDetail, FeatDetail, ABILITY_NAMES, ABILITY_LABELS, AbilityScores, SpellDetail, LevelChoice, AbilityName } from '@/types';
 import { fetchClasses, fetchRaces, fetchSubraces, fetchBackgrounds, fetchFeatsList, fetchRaceDetail, fetchSubraceDetail, fetchBackgroundDetail, fetchSubclasses, fetchSubclassDetail, fetchSubclassLevels, fetchClassLevels, getLocalSpells, fetchLevelFeatures, fetchClassDetail, fetchAllSpells, RACES, SUBCLASSES } from '@/data/index';
-import { getSpellSlots, calculateModifier, SKILL_LIST, getSubclassLevel, getResourceDefinitions, calculateMaxHp, mergeSpellSlotCurrents } from '@/utils/rules';
+import { getSpellSlots, calculateModifier, SKILL_LIST, getSubclassLevel, getResourceDefinitions, calculateMaxHp, mergeSpellSlotCurrents, isFeatAvailableForLevel } from '@/utils/rules';
 import { STANDARD_LANGUAGES, ARTISAN_TOOLS } from '../../../data/constants';
 import DiceRoller3D from '../Shared/DiceRoller3D';
 
@@ -55,6 +55,8 @@ const ManageCharacterModal = ({
     // Selections
     const [selectedRaceIndex, setSelectedRaceIndex] = useState('');
     const [selectedSubraceIndex, setSelectedSubraceIndex] = useState('');
+    const [raceDetail, setRaceDetail] = useState<any>(null);
+    const [subraceDetail, setSubraceDetail] = useState<any>(null);
     const [selectedBackgroundIndex, setSelectedBackgroundIndex] = useState('');
 
     // Classes State
@@ -135,6 +137,8 @@ const ManageCharacterModal = ({
             setSavingThrowProficiencies([...(character.savingThrowProficiencies || [])]);
             setSelectedRaceIndex(character.race?.index || '');
             setSelectedSubraceIndex(character.subrace?.index || '');
+            setRaceDetail(character.race || null);
+            setSubraceDetail(character.subrace || null);
             // Attempt to match background by name or index
             setSelectedBackgroundIndex(character.background.toLowerCase().replace(/\s+/g, '-'));
             setAbilities({...character.abilities});
@@ -1180,7 +1184,7 @@ const ManageCharacterModal = ({
         if (choice.type === 'subclass') {
             const subclassIndex = typeof finalValue === 'string' ? finalValue : finalValue?.index;
             if (subclassIndex) {
-                const classIndex = choice.id.replace('subclass-', '');
+                const classIndex = choice.revertData?.classIndex || choice.id.replace(/^subclass-/, '').replace(/-\d+$/, '');
                 handleSubclassChange(classIndex, subclassIndex);
             }
         }
@@ -1296,7 +1300,8 @@ const ManageCharacterModal = ({
                                             parentChoiceId: choiceId, 
                                             featIndex: featDetail.index,
                                             isSubChoice: true,
-                                            linked_save_proficiency: (e as any).linked_save_proficiency
+                                            linked_save_proficiency: (e as any).linked_save_proficiency,
+                                            expertiseIfProficient: !!e.expertise_if_proficient
                                         }
                                     };
                                 });
@@ -1374,6 +1379,8 @@ const ManageCharacterModal = ({
                     return Array.from(new Set([...filtered, ...newProfs]));
                 });
 
+                setRaceDetail(newRaceDetail);
+                setSubraceDetail(null);
                 setSelectedRaceIndex(newValue);
                 
                 // Reset subrace if it's not valid for the new race
@@ -1423,6 +1430,7 @@ const ManageCharacterModal = ({
                 // Subrace Skills/Languages could be added here if needed
             }
             
+            setSubraceDetail(newSubDetail);
             setSelectedSubraceIndex(newValue);
         } else if (choiceId === 'initial-background') {
             const oldBgDetail = selectedBackgroundIndex ? await fetchBackgroundDetail(selectedBackgroundIndex) : null;
@@ -1539,11 +1547,18 @@ const ManageCharacterModal = ({
         } else if (choice.type === 'skill') {
             const oldSkills = Array.isArray(oldValue) ? oldValue : [oldValue];
             const newSkills = Array.isArray(finalValue) ? finalValue : [finalValue];
-            
+            const alreadyProficient = choice.revertData?.expertiseIfProficient
+                ? newSkills.filter(skill => skills.includes(skill))
+                : [];
+            const newProficiencies = newSkills.filter(skill => !alreadyProficient.includes(skill));
+
             setSkills(prev => {
                 const filtered = prev.filter(s => !oldSkills.includes(s));
-                return Array.from(new Set([...filtered, ...newSkills]));
+                return Array.from(new Set([...filtered, ...newProficiencies]));
             });
+            if (alreadyProficient.length > 0) {
+                setExpertise(prev => Array.from(new Set([...prev, ...alreadyProficient])));
+            }
         } else if (choice.type === 'other' || choice.type === 'feature_choice') {
             if (choice.label.toLowerCase().includes('tool')) {
                 const oldTools = Array.isArray(oldValue) ? oldValue : [oldValue];
@@ -1601,7 +1616,7 @@ const ManageCharacterModal = ({
             if (!featIndex) return;
             
             if (choice.type === 'subclass') {
-                const classIndex = choice.id.replace('subclass-', '');
+                const classIndex = choice.revertData?.classIndex || choice.id.replace(/^subclass-/, '').replace(/-\d+$/, '');
                 handleSubclassChange(classIndex, featIndex);
                 finalValue = featIndex;
             } else {
@@ -2281,11 +2296,9 @@ const ManageCharacterModal = ({
                                                     <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Race Description</span>
                                                 </div>
                                                 <div className="text-[10px] text-gray-400 leading-relaxed markdown-body">
-                                                    {(() => {
-                                                        const race = RACES.find(r => r.index === selectedRaceIndex);
-                                                        if (!race) return 'No description available.';
-                                                        return <Markdown>{`${race.alignment} ${race.age} ${race.size_description}`}</Markdown>;
-                                                    })()}
+                                                    {raceDetail && raceDetail.index === selectedRaceIndex
+                                                        ? <Markdown>{`${raceDetail.alignment || ''} ${raceDetail.age || ''} ${raceDetail.size_description || ''}`.trim() || 'No description available.'}</Markdown>
+                                                        : 'No description available.'}
                                                 </div>
                                             </div>
                                         )}
@@ -2310,12 +2323,9 @@ const ManageCharacterModal = ({
                                                     <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Subrace Description</span>
                                                 </div>
                                                 <div className="text-[10px] text-gray-400 leading-relaxed markdown-body">
-                                                    {(() => {
-                                                        const race = RACES.find(r => r.subraces_details?.some(s => s.index === selectedSubraceIndex));
-                                                        const subrace = race?.subraces_details?.find(s => s.index === selectedSubraceIndex);
-                                                        if (!subrace) return 'No description available.';
-                                                        return <Markdown>{subrace.desc?.join('\n\n') || 'No description available.'}</Markdown>;
-                                                    })()}
+                                                    {subraceDetail && subraceDetail.index === selectedSubraceIndex
+                                                        ? <Markdown>{subraceDetail.desc?.join('\n\n') || 'No description available.'}</Markdown>
+                                                        : 'No description available.'}
                                                 </div>
                                             </div>
                                         )}
@@ -2537,7 +2547,7 @@ const ManageCharacterModal = ({
                                                                                     className="w-full bg-black/40 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-dnd-gold/50 transition-all"
                                                                                 >
                                                                                     <option value="">Select a Feat...</option>
-                                                                                    {allFeats.map(f => (
+                                                                                    {allFeats.filter(f => isFeatAvailableForLevel(f, character.level)).map(f => (
                                                                                         <option key={f.index} value={f.index}>{f.name}</option>
                                                                                     ))}
                                                                                 </select>
@@ -2596,7 +2606,7 @@ const ManageCharacterModal = ({
                                                                             className="w-full max-w-md bg-black/40 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-dnd-gold/50 transition-all"
                                                                         >
                                                                             <option value="">Select a Feat...</option>
-                                                                            {allFeats.map(f => (
+                                                                            {allFeats.filter(f => isFeatAvailableForLevel(f, character.level)).map(f => (
                                                                                 <option key={f.index} value={f.index}>{f.name}</option>
                                                                             ))}
                                                                         </select>
@@ -2934,7 +2944,7 @@ const ManageCharacterModal = ({
                                                                                                                 className="w-full bg-black/40 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-dnd-gold/50 transition-all"
                                                                                                             >
                                                                                                                 <option value="">Select a Feat...</option>
-                                                                                                                {allFeats.map(f => (
+                                                                                                                {allFeats.filter(f => isFeatAvailableForLevel(f, character.level)).map(f => (
                                                                                                                     <option key={f.index} value={f.index}>{f.name}</option>
                                                                                                                 ))}
                                                                                                             </select>
@@ -2992,7 +3002,7 @@ const ManageCharacterModal = ({
                                                                                                         className="w-full max-w-md bg-black/40 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-dnd-gold/50 transition-all"
                                                                                                     >
                                                                                                         <option value="">Select a Feat...</option>
-                                                                                                        {allFeats.map(f => (
+                                                                                                        {allFeats.filter(f => isFeatAvailableForLevel(f, character.level)).map(f => (
                                                                                                             <option key={f.index} value={f.index}>{f.name}</option>
                                                                                                         ))}
                                                                                                     </select>

@@ -909,9 +909,24 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
 
                         {/* Spell Access */}
                         {eff.type === 'spell_access' && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                <input type="text" placeholder="Spell Name (e.g. Misty Step)" value={eff.spell || eff.name || ''} onChange={e => updateEffect(i, { spell: e.target.value, name: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" />
-                                <input type="text" placeholder="Free Casts / Usage (e.g. 1/Long Rest)" value={eff.condition || eff.reset || ''} onChange={e => updateEffect(i, { condition: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white" />
+                            <div className="space-y-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <input type="text" placeholder="Spell Name (e.g. Misty Step)" value={eff.spell || eff.name || ''} onChange={e => updateEffect(i, { spell: e.target.value, name: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" />
+                                    <input type="number" min={1} max={20} placeholder="Minimum Character Level" value={eff.min_level ?? ''} onChange={e => updateEffect(i, { min_level: e.target.value ? Number(e.target.value) : undefined })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white" />
+                                    <input type="number" min={0} placeholder="Free Casts (optional)" value={eff.free_casts ?? ''} onChange={e => updateEffect(i, { free_casts: e.target.value ? Number(e.target.value) : undefined })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white" />
+                                    <select value={eff.free_cast_reset || eff.reset || ''} onChange={e => updateEffect(i, { free_cast_reset: e.target.value || undefined })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white">
+                                        <option value="">No reset / not applicable</option>
+                                        <option value="short">Recharge: Short Rest</option>
+                                        <option value="long">Recharge: Long Rest</option>
+                                    </select>
+                                    <select value={eff.ability || ''} onChange={e => updateEffect(i, { ability: e.target.value || undefined })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white">
+                                        <option value="">Use primary spellcasting ability</option>
+                                        <option value="int">Intelligence</option>
+                                        <option value="wis">Wisdom</option>
+                                        <option value="cha">Charisma</option>
+                                    </select>
+                                </div>
+                                <p className="text-[9px] text-gray-600">Named spells are auto-granted and always prepared. Leave the spell name blank only for a player spell picker.</p>
                             </div>
                         )}
                     </div>
@@ -1408,7 +1423,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                 payload = {
                     ...payload, speed: speeds.walk, size, alignment: description,
                     ability_bonuses: abilityBonuses.map(ab => ({ ability_score: { index: ab.stat, name: ab.stat.toUpperCase() }, bonus: ab.bonus })),
-                    traits: traits.map(t => ({ index: t.name.toLowerCase().replace(/\s+/g, '-'), name: t.name, desc: [t.desc], modifiers: t.effects, effects: t.effects })),
+                    traits: traits.map(t => ({ index: t.name.toLowerCase().replace(/\s+/g, '-'), name: t.name, desc: [t.desc], effects: t.effects })),
                     fly_speed: speeds.fly > 0 ? speeds.fly : undefined,
                     swim_speed: speeds.swim > 0 ? speeds.swim : undefined,
                     climb_speed: speeds.climb > 0 ? speeds.climb : undefined

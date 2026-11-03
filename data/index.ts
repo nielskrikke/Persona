@@ -558,6 +558,69 @@ export const fetchSubclassLevels = async (subclassIndex: string, userId?: string
  * library. Characters created before the content migration keep a snapshot of
  * the old class document; hydrating on load makes them use the current rules.
  */
+export const hydrateGrantedSpells = async (character: CharacterState): Promise<CharacterState> => {
+    const allSpells = await fetchAllSpells();
+    if (!allSpells?.length) return character;
+
+    const grants: { effect: any; source: string; defaultMinLevel: number }[] = [];
+    const collect = (effects: any[], source: string, defaultMinLevel: number = 0) => {
+        (effects || []).forEach(effect => {
+            if (effect?.type === 'spell_access' && effect.spell) grants.push({ effect, source, defaultMinLevel });
+        });
+    };
+    const collectFeature = (entry: any, source: string, defaultMinLevel: number = 0) => {
+        if (Array.isArray(entry?.effects) && entry.effects.length > 0) collect(entry.effects, source, defaultMinLevel);
+        else collect(entry?.modifiers || [], source, defaultMinLevel);
+    };
+
+    (character.race as any)?.traits?.forEach((trait: any) => collectFeature(trait, character.race.name, 1));
+    (character.subrace as any)?.traits?.forEach((trait: any) => collectFeature(trait, character.subrace.name, 1));
+
+    (character.classes || []).forEach(characterClass => {
+        (characterClass.definition as any)?.feature_details?.forEach((feature: any) => {
+            if ((feature.level || 0) <= characterClass.level) collectFeature(feature, characterClass.definition.name, feature.level || 0);
+        });
+        (characterClass.subclass as any)?.feature_details?.forEach((feature: any) => {
+            if ((feature.level || 0) <= characterClass.level) collectFeature(feature, characterClass.subclass?.name || characterClass.definition.name, feature.level || 0);
+        });
+    });
+    (character.classFeatures || []).forEach(feature => collectFeature(feature, feature.source || 'Feature', feature.level || 0));
+    (character.feats || []).forEach(feat => collectFeature(feat, feat.name || 'Feat', 1));
+
+    const grantedByIndex = new Map<string, any>();
+    grants.forEach(({ effect, source, defaultMinLevel }) => {
+        const minLevel = Number(effect.min_level || defaultMinLevel || 0);
+        if (minLevel > character.level) return;
+        const spell = allSpells.find(candidate =>
+            candidate.index === effect.spell
+            || candidate.name.toLowerCase() === String(effect.spell).toLowerCase()
+            || candidate.index === String(effect.spell).toLowerCase().replace(/\s+/g, '-')
+        );
+        if (!spell) return;
+        grantedByIndex.set(spell.index, {
+            ...spell,
+            sourceClassIndex: 'granted',
+            isPrepared: true,
+            isGranted: true,
+            grantedBy: source,
+            freeCasts: effect.free_casts,
+            freeCastReset: effect.free_cast_reset || effect.reset,
+            minLevel,
+            spellcastingAbility: effect.ability || character.spellcastingAbility,
+        });
+    });
+
+    let spells = [...(character.spells || [])];
+    grantedByIndex.forEach((granted, index) => {
+        const existing = spells.findIndex(spell => spell.index === index);
+        if (existing >= 0) spells[existing] = { ...spells[existing], ...granted };
+        else spells.push(granted);
+    });
+    spells = spells.filter(spell => !spell.isGranted || grantedByIndex.has(spell.index));
+
+    return { ...character, spells };
+};
+
 export const hydrateCharacterClasses = async (character: CharacterState): Promise<CharacterState> => {
     if (!character) return character;
     const classes = character.classes?.length
@@ -599,7 +662,7 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         }
     }
 
-    return { ...character, classes, classFeatures };
+    return hydrateGrantedSpells({ ...character, classes, classFeatures });
 };
 
 export const fetchCreatures = async (userId?: string): Promise<any[]> => {

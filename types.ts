@@ -69,6 +69,10 @@ export interface ContentChoice {
     effects?: FeatureEffect[];
     linked_save_proficiency?: boolean;
     expertise_if_proficient?: boolean;
+    min_level?: number;
+    free_casts?: number;
+    free_cast_reset?: 'short' | 'long';
+    ability?: string;
 }
 
 export interface ContentUiHook {
@@ -115,6 +119,12 @@ export interface SpellDetail extends APIReference {
     dc?: any;
     sourceClassIndex?: string;
     isPrepared?: boolean;
+    isGranted?: boolean;
+    grantedBy?: string;
+    freeCasts?: number;
+    freeCastReset?: 'short' | 'long';
+    minLevel?: number;
+    spellcastingAbility?: AbilityName;
 }
 
 export interface RaceDetail extends APIReference {
@@ -548,6 +558,10 @@ export interface FeatureEffect {
     school?: string;
     linked_save_proficiency?: boolean;
     expertise_if_proficient?: boolean;
+    min_level?: number;
+    free_casts?: number;
+    free_cast_reset?: 'short' | 'long';
+    ability?: string;
     cast_free?: boolean;
     key?: string;
     stat?: string;

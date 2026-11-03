@@ -1103,7 +1103,10 @@ The earlier anon-key apply attempt was a no-op: PostgREST returned HTTP 200 with
 - Background creation now honors generic ability/skill/tool/language/feat choices, applies fixed tool proficiencies, stores chosen ability bonuses/feats, and supports editable currency. The Forge loads the background feature description into Lore.
 - Background and race ability choices now offer the standard +2/+1 or the +1/+1/+1 alternative when the content has a +2 and +1 choice pair.
 - Flat `max_hp` bonuses are now included in max-HP calculation (Boon of Fortitude), and selecting a feat/feature that changes HP recalculates the sheet total.
-- `proficiency_choice` effects can mark `expertise_if_proficient`; Observant and Keen Mind use it, and the Forge exposes the toggle.
+- `proficiency_choice` effects can mark `expertise_if_proficient`; Observant and Keen Mind use it, and the Forge exposes the toggle. It is applied on both the sheet and Manage paths.
+- Named `spell_access` grants are hydrated as always-prepared spells with `min_level`, free-cast/reset metadata, and optional spellcasting ability; this covers class, subclass, race, background, and feat grants.
+- Race/class feature effects are deduplicated when both `effects` and legacy `modifiers` exist; the race Forge now writes only `effects`.
+- Manage → Choices now attaches the chosen subclass correctly. Background/race feats get sub-choices, and feat pickers filter Origin/General/Epic Boon prerequisites. Race/subrace descriptions come from the content library, and feat actions use their effect names.
 - Developer JSON can now intentionally override `level_table[].class_specific`; omitted values still preserve the existing data.
 - Legacy `proficiency_choices` was removed from class documents (18 rows); the builder uses `choices`. Backgrounds still use their `proficiency_choices` because its builder reads them.
 - The Forge choice editor now supports feat and spellcasting-ability choices, and ancestry options expose the same per-option effect editor used by Feature Choice options.
