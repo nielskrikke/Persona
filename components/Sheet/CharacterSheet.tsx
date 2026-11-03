@@ -717,7 +717,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     let extraInitiative = 0;
     activeModifiers.forEach(m => {
         if ((m.type === 'bonus' || m.type === 'stat_bonus') && (m.target === 'initiative' || m.stat === 'initiative')) {
-            extraInitiative += Number(m.value || 0);
+            const raw = m.value ?? m.amount;
+            if (m.scaling === 'proficiency' || m.scale === 'proficiency' || raw?.type === 'proficiency') {
+                extraInitiative += prof;
+            } else {
+                extraInitiative += Number(raw || 0) || 0;
+            }
         }
     });
     const initAdv = activeModifiers.some(m => m.type === 'advantage' && (m.target === 'initiative' || m.stat === 'initiative'));
@@ -802,6 +807,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     };
 
     const resolveEffectValue = (m: any): number => {
+        if (m?.scaling === 'proficiency' || m?.scale === 'proficiency') return prof;
         const raw = m?.value ?? m?.amount;
         if (typeof raw === 'number') return raw;
         if (typeof raw === 'string') {
@@ -834,11 +840,14 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         let baseAC = 10;
         let dexBonus = dexMod;
 
-        // Check for 'set' AC modifiers (like Natural Armor)
+        // A `set` AC effect is a complete natural-armor base (for example
+        // Tortle's 17). It replaces 10 + Dexterity and does not stack with Dex.
+        let setAC: number | null = null;
         activeModifiers.forEach(m => {
             if (m.type === 'set' && (m.target === 'ac' || m.stat === 'ac')) {
                 if (checkModifierRule(m)) {
-                    baseAC = Math.max(baseAC, Number(m.value || 0));
+                    const value = Number(m.value || 0);
+                    setAC = setAC === null ? value : Math.max(setAC, value);
                 }
             }
         });
@@ -850,6 +859,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             } else {
                 dexBonus = 0;
             }
+        } else if (setAC !== null) {
+            baseAC = setAC;
+            dexBonus = 0;
         } else {
              // Unarmored Defense comes from data effects (stat_bonus_attribute).
              let attrBonus: number | null = null;
@@ -947,7 +959,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                  }
              });
 
-             if (attrBonus !== null) {
+             if (setAC === -1 && attrBonus !== null) {
                  breakdown.push({ label: attrSource, value: attrBonus });
              }
 
@@ -2236,7 +2248,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const passPerc = 10 + calculateModifier(getStat('wis')) + (character.skills.includes('Perception') ? prof : 0) + (character.expertise?.includes('Perception') ? prof : 0);
                 const passInv = 10 + calculateModifier(getStat('int')) + (character.skills.includes('Investigation') ? prof : 0) + (character.expertise?.includes('Investigation') ? prof : 0);
                 const passIns = 10 + calculateModifier(getStat('wis')) + (character.skills.includes('Insight') ? prof : 0) + (character.expertise?.includes('Insight') ? prof : 0);
-                const dv = (character.race?.traits?.find(t => t.index === 'darkvision') ? '60ft' : 'None');
+                const dvRange = activeModifiers
+                    .filter((m: any) => m.type === 'set' && (m.target === 'darkvision' || m.stat === 'darkvision'))
+                    .reduce((max: number, m: any) => Math.max(max, Number(m.value || 0)), 0);
+                const dv = dvRange > 0 ? `${dvRange} ft` : 'None';
                 return (
                     <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
                          <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest mb-2">Senses</h3>

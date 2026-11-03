@@ -73,7 +73,7 @@ export const mergeContentData = (table: string, existingData: any, patch: any): 
             merged.languages = next.languages ?? existing.languages;
             merged.proficiency_choices = next.proficiency_choices ?? existing.proficiency_choices;
             merged.source = next.source || existing.source;
-            merged.currency = existing.currency || next.currency;
+            merged.currency = next.currency ?? existing.currency;
             merged.choices = next.choices ?? existing.choices;
 
             if (existing.feature || next.feature) {

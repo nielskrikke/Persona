@@ -1,13 +1,21 @@
 
 import React, { useState, useEffect } from 'react';
-import { APIReference, BackgroundDetail } from '../../types';
-import { fetchBackgrounds, fetchBackgroundDetail } from '../../data/index';
+import { APIReference, BackgroundDetail, ContentChoice, FeatDetail, AbilityName, ABILITY_LABELS, ABILITY_NAMES } from '../../types';
+import { fetchBackgrounds, fetchBackgroundDetail, fetchFeatsList } from '../../data/index';
 import { STANDARD_LANGUAGES } from '../../data/constants';
 
 const LANGUAGE_LIST = ["Abyssal", "Celestial", "Common", "Deep Speech", "Draconic", "Dwarvish", "Elvish", "Giant", "Gnomish", "Goblin", "Halfling", "Infernal", "Orc", "Primordial", "Sylvan", "Undercommon"];
 
 interface BackgroundStepProps {
-    onComplete: (name: string, background: BackgroundDetail, extraData: { languages: string[], tools: string[], skills: string[] }) => void;
+    onComplete: (name: string, background: BackgroundDetail, extraData: {
+        languages: string[];
+        tools: string[];
+        skills: string[];
+        choices?: any[];
+        abilities?: Record<string, number>;
+        feats?: FeatDetail[];
+        spellcastingAbility?: AbilityName;
+    }) => void;
     onBack: () => void;
     userId?: string;
 }
@@ -23,14 +31,20 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
     const [chosenLanguages, setChosenLanguages] = useState<string[]>([]);
     const [extraPersonalLanguages, setExtraPersonalLanguages] = useState<string[]>([]);
     const [newLangInput, setNewLangInput] = useState('');
-    
+
     // Using an object to store choices per choice group index
     const [choiceSelections, setChoiceSelections] = useState<Record<number, string[]>>({});
+    const [allFeats, setAllFeats] = useState<FeatDetail[]>([]);
+    const [genericSelections, setGenericSelections] = useState<Record<string, string[]>>({});
 
     useEffect(() => {
         const load = async () => {
-            const results = await fetchBackgrounds(userId);
+            const [results, feats] = await Promise.all([
+                fetchBackgrounds(userId),
+                fetchFeatsList(userId),
+            ]);
             setBackgrounds(results);
+            setAllFeats(feats);
             setLoading(false);
             if(results.length > 0) {
                  const details = await fetchBackgroundDetail(results[0].index, userId);
@@ -45,6 +59,7 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
         setSelectedBackground(detail);
         setChosenLanguages([]);
         setChoiceSelections({});
+        setGenericSelections({});
         setValidationError(null);
     };
 
@@ -82,10 +97,65 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
         });
     };
 
+    const choiceOptions = (choice: ContentChoice): any[] => {
+        if (choice.kind === 'feat') {
+            return Array.isArray(choice.options) && choice.options.length > 0 ? choice.options : allFeats;
+        }
+        if (choice.kind === 'spellcasting_ability') return ABILITY_NAMES;
+        return Array.isArray(choice.options) ? choice.options : [];
+    };
+
+    const optionValue = (option: any): string => {
+        if (typeof option === 'string') return option;
+        return option?.index || option?.name || option?.label || '';
+    };
+
+    const optionDisplay = (option: any): string => {
+        if (typeof option === 'string') {
+            const ability = normalizeAbility(option);
+            return ability ? ABILITY_LABELS[ability] : option;
+        }
+        return option?.name || option?.label || option?.index || 'Option';
+    };
+
+    const normalizeAbility = (value: string): AbilityName | null => {
+        const lower = String(value || '').toLowerCase();
+        const byName: Record<string, AbilityName> = {
+            strength: 'str', dexterity: 'dex', constitution: 'con',
+            intelligence: 'int', wisdom: 'wis', charisma: 'cha',
+            str: 'str', dex: 'dex', con: 'con', int: 'int', wis: 'wis', cha: 'cha',
+        };
+        return byName[lower] || null;
+    };
+
+    const isAbilitySelectedElsewhere = (choiceId: string, value: string) => {
+        const ability = normalizeAbility(value);
+        if (!ability) return false;
+        return (selectedBackground?.choices || []).some(choice => {
+            if (choice.id === choiceId || choice.kind !== 'ability') return false;
+            return (genericSelections[choice.id] || []).some(selected => normalizeAbility(selected) === ability);
+        });
+    };
+
+    const toggleGenericChoice = (choice: ContentChoice, value: string) => {
+        setValidationError(null);
+        const current = genericSelections[choice.id] || [];
+        if (current.includes(value)) {
+            setGenericSelections(prev => ({ ...prev, [choice.id]: current.filter(item => item !== value) }));
+            return;
+        }
+        if (current.length >= (choice.count || 1)) return;
+        if (choice.kind === 'ability' && isAbilitySelectedElsewhere(choice.id, value)) {
+            setValidationError('Choose a different ability for each increase.');
+            return;
+        }
+        setGenericSelections(prev => ({ ...prev, [choice.id]: [...current, value] }));
+    };
+
     const handleSubmit = () => {
-        if (!name.trim()) { 
-            setValidationError("Please give your character a name."); 
-            return; 
+        if (!name.trim()) {
+            setValidationError("Please give your character a name.");
+            return;
         }
         if (!selectedBackground) return;
 
@@ -104,11 +174,20 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
             }
         }
 
+        const genericChoices = selectedBackground.choices || [];
+        for (const choice of genericChoices) {
+            const selected = genericSelections[choice.id] || [];
+            if (selected.length !== (choice.count || 1)) {
+                setValidationError(`Please choose ${choice.count || 1} option(s) for ${(choice as any).label || choice.kind}.`);
+                return;
+            }
+        }
+
         setValidationError(null);
         // Segregate choices into Skills and Tools based on item name heuristics
         const extraSkills: string[] = [];
         const extraTools: string[] = [];
-        
+
         (Object.values(choiceSelections).flat() as string[]).forEach((item: string) => {
             if (item.includes("Skill: ")) extraSkills.push(item.replace("Skill: ", ""));
             else if (item.includes("Musical Instrument: ")) extraTools.push(item.replace("Musical Instrument: ", ""));
@@ -134,7 +213,7 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
                 count: langCount
             });
         }
-        
+
         selectedBackground.proficiency_choices?.forEach((choice, cIdx) => {
             levelChoices.push({
                 id: `background-proficiency-${selectedBackground.index}-${cIdx}`,
@@ -148,11 +227,64 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
             });
         });
 
-        onComplete(name, selectedBackground, { 
-            languages: [...chosenLanguages, ...extraPersonalLanguages], 
-            tools: extraTools, 
+        const genericLanguages: string[] = [];
+        const abilityBonuses: Record<string, number> = {};
+        const selectedFeats: FeatDetail[] = [];
+        let spellcastingAbility: AbilityName | undefined;
+
+        const cleanName = (value: string) => String(value || '')
+            .replace(/^Skill:\s*/i, '')
+            .replace(/^Tool:\s*/i, '')
+            .replace(/^Musical Instrument:\s*/i, '')
+            .replace(/^Gaming Set:\s*/i, '')
+            .trim();
+
+        genericChoices.forEach(choice => {
+            const selected = genericSelections[choice.id] || [];
+            selected.forEach(value => {
+                if (choice.kind === 'ability') {
+                    const ability = normalizeAbility(value);
+                    if (ability) abilityBonuses[ability] = (abilityBonuses[ability] || 0) + Number(choice.amount || 1);
+                } else if (choice.kind === 'feat') {
+                    const feat = allFeats.find(item => item.index === value || item.name === value)
+                        || (choice.options || []).find((option: any) => typeof option === 'object' && (option.index === value || option.name === value));
+                    if (feat) selectedFeats.push(feat as FeatDetail);
+                } else if (choice.kind === 'language') {
+                    genericLanguages.push(cleanName(value));
+                } else if (choice.kind === 'spellcasting_ability') {
+                    spellcastingAbility = normalizeAbility(value) || undefined;
+                } else if (choice.kind === 'skill') {
+                    extraSkills.push(cleanName(value));
+                } else if (choice.kind === 'tool') {
+                    extraTools.push(cleanName(value));
+                } else {
+                    const cleaned = cleanName(value);
+                    const skillNames = ['Acrobatics', 'Animal Handling', 'Arcana', 'Athletics', 'Deception', 'History', 'Insight', 'Intimidation', 'Investigation', 'Medicine', 'Nature', 'Perception', 'Performance', 'Persuasion', 'Religion', 'Sleight of Hand', 'Stealth', 'Survival'];
+                    if (skillNames.some(skill => skill.toLowerCase() === cleaned.toLowerCase())) extraSkills.push(cleaned);
+                    else extraTools.push(cleaned);
+                }
+            });
+
+            levelChoices.push({
+                id: `background-choice-${selectedBackground.index}-${choice.id}`,
+                level: 1,
+                source: selectedBackground.name,
+                type: choice.kind === 'ability' ? 'asi' : choice.kind,
+                label: (choice as any).label || choice.kind,
+                value: selected,
+                options: choiceOptions(choice),
+                count: choice.count || 1,
+            });
+        });
+
+        onComplete(name, selectedBackground, {
+            languages: [...chosenLanguages, ...extraPersonalLanguages, ...genericLanguages],
+            tools: extraTools,
             skills: extraSkills,
-            choices: levelChoices
+            choices: levelChoices,
+            abilities: abilityBonuses,
+            feats: selectedFeats,
+            spellcastingAbility,
         } as any);
     };
 
@@ -175,8 +307,8 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
                                 key={bg.index}
                                 onClick={() => handleBackgroundSelect(bg.index)}
                                 className={`w-full text-left px-4 py-3 rounded-lg text-sm font-bold transition-all ${
-                                    selectedBackground?.index === bg.index 
-                                    ? 'bg-dnd-gold text-black shadow-lg translate-x-1' 
+                                    selectedBackground?.index === bg.index
+                                    ? 'bg-dnd-gold text-black shadow-lg translate-x-1'
                                     : 'text-gray-400 hover:text-white hover:bg-gray-800'
                                 }`}
                             >
@@ -190,11 +322,11 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
                 <div className="md:col-span-2 bg-[#1b1c20] border border-gray-800 rounded-xl flex flex-col overflow-hidden shadow-2xl h-full">
                     <div className="p-6 bg-[#121316] border-b border-gray-800 shrink-0">
                         <h2 className="text-4xl font-serif text-white mb-4">Identity & Origin</h2>
-                        
+
                         <div className="relative">
                             <label className="block text-gray-500 text-[10px] uppercase font-black tracking-widest mb-2">Character Name</label>
-                            <input 
-                                type="text" 
+                            <input
+                                type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 className="w-full bg-[#0b0c0e] text-white border border-gray-700 rounded-xl p-4 focus:border-dnd-gold outline-none text-2xl font-serif placeholder:text-gray-800 shadow-inner"
@@ -239,8 +371,8 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
                                                         const isSelected = (choiceSelections[cIdx] || []).includes(itemName);
                                                         return (
                                                             <label key={oIdx} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer border transition-all ${isSelected ? 'bg-dnd-gold/10 border-dnd-gold text-dnd-gold' : 'bg-black/40 border-transparent hover:bg-gray-800 text-gray-500'}`}>
-                                                                <input 
-                                                                    type="checkbox" 
+                                                                <input
+                                                                    type="checkbox"
                                                                     checked={isSelected}
                                                                     onChange={() => toggleChoice(cIdx, itemName, choice.choose)}
                                                                     disabled={!isSelected && (choiceSelections[cIdx] || []).length >= choice.choose}
@@ -256,6 +388,57 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
                                             </section>
                                         ))}
 
+                                        {(selectedBackground.choices || []).map(choice => {
+                                            const options = choiceOptions(choice);
+                                            const selected = genericSelections[choice.id] || [];
+                                            const max = choice.count || 1;
+                                            const label = (choice as any).label || ({
+                                                ability: 'Ability Score Increase',
+                                                skill: 'Skill Proficiency',
+                                                tool: 'Tool Proficiency',
+                                                language: 'Language',
+                                                feat: 'Origin Feat',
+                                                spellcasting_ability: 'Spellcasting Ability',
+                                                proficiency: 'Proficiency',
+                                            } as Record<string, string>)[choice.kind] || choice.kind;
+
+                                            return (
+                                                <section key={choice.id} className="bg-black/20 p-5 rounded-xl border border-gray-800">
+                                                    <h4 className="text-[10px] font-black text-dnd-gold uppercase tracking-widest mb-3">
+                                                        {label}
+                                                        <span className={`ml-2 ${selected.length === max ? 'text-green-500' : 'text-dnd-red'}`}>
+                                                            {selected.length} / {max}
+                                                        </span>
+                                                        {choice.kind === 'ability' && choice.amount && (
+                                                            <span className="ml-2 text-gray-500 normal-case tracking-normal">+{choice.amount} per pick</span>
+                                                        )}
+                                                    </h4>
+                                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                                        {options.map((option: any) => {
+                                                            const value = optionValue(option);
+                                                            const isSelected = selected.includes(value);
+                                                            const disabled = !isSelected && (selected.length >= max || (choice.kind === 'ability' && isAbilitySelectedElsewhere(choice.id, value)));
+                                                            return (
+                                                                <label key={value} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer border transition-all ${isSelected ? 'bg-dnd-gold/10 border-dnd-gold text-dnd-gold' : disabled ? 'bg-black/20 border-transparent text-gray-700 cursor-not-allowed' : 'bg-black/40 border-transparent hover:bg-gray-800 text-gray-500'}`}>
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={isSelected}
+                                                                        disabled={disabled}
+                                                                        onChange={() => toggleGenericChoice(choice, value)}
+                                                                        className="accent-dnd-gold"
+                                                                    />
+                                                                    <span className="text-xs font-black uppercase tracking-tight">{optionDisplay(option)}</span>
+                                                                </label>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                    {options.length === 0 && (
+                                                        <p className="text-[10px] text-gray-600 italic">No options defined for this choice.</p>
+                                                    )}
+                                                </section>
+                                            );
+                                        })}
+
                                         {extraLanguages > 0 && (
                                             <section>
                                                 <span className="text-[10px] font-black text-dnd-gold uppercase tracking-[0.2em] block mb-3 border-b border-dnd-gold/20 pb-2">Background Languages</span>
@@ -263,8 +446,8 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
                                                 <div className="grid grid-cols-2 gap-2">
                                                     {LANGUAGE_LIST.map(lang => (
                                                         <label key={lang} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer border transition-all ${chosenLanguages.includes(lang) ? 'bg-dnd-gold/10 border-dnd-gold text-dnd-gold' : 'bg-black/20 border-transparent hover:bg-gray-800 text-gray-500'}`}>
-                                                            <input 
-                                                                type="checkbox" 
+                                                            <input
+                                                                type="checkbox"
                                                                 checked={chosenLanguages.includes(lang)}
                                                                 onChange={() => toggleLanguage(lang, extraLanguages)}
                                                                 disabled={!chosenLanguages.includes(lang) && chosenLanguages.length >= extraLanguages}
@@ -281,11 +464,11 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
                                             <span className="text-[10px] font-black text-dnd-gold uppercase tracking-[0.2em] block mb-3 border-b border-gray-700 pb-2">Bonus Languages (Custom)</span>
                                             <div className="flex gap-2 mb-4">
                                                 <div className="flex-grow relative">
-                                                    <input 
-                                                        type="text" 
+                                                    <input
+                                                        type="text"
                                                         list="standard-languages-bg"
-                                                        value={newLangInput} 
-                                                        onChange={e => setNewLangInput(e.target.value)} 
+                                                        value={newLangInput}
+                                                        onChange={e => setNewLangInput(e.target.value)}
                                                         placeholder="Add language..."
                                                         className="w-full bg-[#0b0c0e] border border-gray-700 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-dnd-gold"
                                                         onKeyDown={e => e.key === 'Enter' && addExtraLanguage()}
@@ -337,13 +520,13 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
                         </div>
                     )}
                     <div className="flex gap-4">
-                        <button 
+                        <button
                             onClick={onBack}
                             className="px-10 py-4 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white font-black uppercase text-xs tracking-widest rounded-xl transition-all shadow-xl"
                         >
                             &larr; Back
                         </button>
-                        <button 
+                        <button
                             onClick={handleSubmit}
                             disabled={!name.trim() || !selectedBackground}
                             className={`flex-grow py-4 font-black uppercase text-xs tracking-[0.2em] rounded-xl shadow-2xl transition-all transform active:scale-95 ${!name.trim() || !selectedBackground ? 'bg-gray-800 text-gray-600 cursor-not-allowed border border-gray-700' : 'bg-dnd-gold hover:bg-yellow-600 text-black'}`}

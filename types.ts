@@ -58,7 +58,7 @@ export interface ResourceDefinition {
 
 export interface ContentChoice {
     id: string;
-    kind: 'skill' | 'tool' | 'language' | 'ability' | 'ancestry' | 'feature' | 'spell' | 'subclass' | 'proficiency';
+    kind: 'skill' | 'tool' | 'language' | 'ability' | 'ancestry' | 'feature' | 'spell' | 'subclass' | 'proficiency' | 'feat' | 'spellcasting_ability';
     count: number;
     level?: number;
     amount?: number;
@@ -458,6 +458,7 @@ export interface CharacterState {
     level: number;
     abilities: AbilityScores;
     background: string;
+    spellcastingAbility?: AbilityName;
     alignment: string;
     skills: string[];
     expertise: string[];

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 /* Import AbilityName type from types */
-import { APIReference, RaceDetail, SubraceDetail, SpellDetail, AbilityName, ABILITY_NAMES, ABILITY_LABELS } from '../../types';
-import { fetchRaces, fetchRaceDetail, fetchSubraces, fetchSubraceDetail, fetchSpellsByClass } from '../../data/index';
+import { APIReference, RaceDetail, SubraceDetail, SpellDetail, FeatDetail, AbilityName, ABILITY_NAMES, ABILITY_LABELS } from '../../types';
+import { fetchRaces, fetchRaceDetail, fetchSubraces, fetchSubraceDetail, fetchSpellsByClass, fetchFeatsList } from '../../data/index';
 import { SKILL_LIST } from '../../utils/rules';
 import { SIMPLE_WEAPONS, MARTIAL_WEAPONS, TOOLS, SKILLS, LANGUAGES, getProficiencyType, getAllowedSwaps } from '../../data/origin_customization';
 
@@ -37,11 +37,13 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
   
   // Data for spell choices
   const [spellChoiceOptions, setSpellChoiceOptions] = useState<Record<string, SpellDetail[]>>({});
+  const [allFeats, setAllFeats] = useState<FeatDetail[]>([]);
 
   useEffect(() => {
     const load = async () => {
-      const results = await fetchRaces(userId);
+      const [results, feats] = await Promise.all([fetchRaces(userId), fetchFeatsList(userId)]);
       setRaces(results);
+      setAllFeats(feats);
       setLoading(false);
     };
     load();
@@ -108,6 +110,8 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
   const getChoiceOptions = (choice: any): any[] => {
       if (Array.isArray(choice.options) && choice.options.length > 0) return choice.options;
       if (choice.kind === 'spell' && choice.sourceClass) return spellChoiceOptions[choice.sourceClass] || [];
+      if (choice.kind === 'feat') return (choice.options && choice.options.length > 0) ? choice.options : allFeats;
+      if (choice.kind === 'spellcasting_ability') return ABILITY_NAMES;
       if (choice.kind === 'skill') return SKILL_LIST.map(skill => skill.name);
       if (choice.kind === 'tool') return TOOLS;
       if (choice.kind === 'language') return LANGUAGE_LIST;
@@ -196,6 +200,15 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
                 });
             } else if (choice.kind === 'spell' && option && typeof option === 'object') {
                 extraData.cantrip = { ...option, sourceClassIndex: 'racial', isPrepared: true };
+            } else if (choice.kind === 'feat') {
+                const feat = allFeats.find(item => item.index === name || item.name === name)
+                    || (option && typeof option === 'object' ? option : null);
+                if (feat) {
+                    extraData.feats = extraData.feats || [];
+                    extraData.feats.push(feat);
+                }
+            } else if (choice.kind === 'spellcasting_ability') {
+                extraData.spellcastingAbility = name;
             } else if (option && typeof option === 'object' && Array.isArray(option.effects) && option.effects.length > 0) {
                 features.push({
                     index: `race-${choice.id}-${label}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
@@ -213,7 +226,7 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
             id: `race-${choice.id}`,
             level: 1,
             source: selectedSubrace?.name || previewRace.name,
-            type: choice.kind === 'ability' ? 'asi' : choice.kind === 'spell' ? 'spell' : choice.kind === 'language' ? 'language' : 'other',
+            type: choice.kind === 'ability' ? 'asi' : choice.kind === 'spell' ? 'spell' : choice.kind === 'feat' ? 'feat' : choice.kind === 'language' ? 'language' : 'other',
             label: choice.label || choice.kind,
             value: selected,
             options,
@@ -543,7 +556,9 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
                                     <div className="flex flex-wrap gap-2">
                                         {options.map((option: any, index: number) => {
                                             const name = typeof option === 'string' ? option : option.name;
-                                            const display = choice.kind === 'ability' ? String(name).toUpperCase() : name;
+                                            const display = (choice.kind === 'ability' || choice.kind === 'spellcasting_ability')
+                                                ? (ABILITY_LABELS[String(name).toLowerCase() as keyof typeof ABILITY_LABELS] || String(name).toUpperCase())
+                                                : name;
                                             const isSelected = selected.includes(name);
                                             return (
                                                 <button

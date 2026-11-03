@@ -7,6 +7,7 @@ interface ContentMechanicsEditorProps {
     choices: ContentChoice[];
     onResourcesChange: (value: ResourceDefinition[]) => void;
     onChoicesChange: (value: ContentChoice[]) => void;
+    renderOptionEffects?: (effects: any[], onChange: (effects: any[]) => void) => React.ReactNode;
     showResources?: boolean;
 }
 
@@ -32,6 +33,8 @@ const CHOICE_KINDS: { value: ContentChoice['kind']; label: string; hint: string 
     { value: 'spell', label: 'Spell', hint: 'Choose a spell from a spell list.' },
     { value: 'subclass', label: 'Subclass', hint: 'Choose a subclass.' },
     { value: 'proficiency', label: 'Any proficiency', hint: 'Choose from a mixed list of proficiencies.' },
+    { value: 'feat', label: 'Origin feat', hint: 'Choose a feat. Leave options empty to let the player pick any feat.' },
+    { value: 'spellcasting_ability', label: 'Spellcasting ability', hint: 'Choose Intelligence, Wisdom, or Charisma for racial spells.' },
 ];
 
 const optionLabel = (option: any): string => {
@@ -107,30 +110,48 @@ const ResourceRow = ({ resource, onChange, onRemove }: { resource: ResourceDefin
     );
 };
 
-const OptionListEditor = ({ options, onChange }: { options: any[]; onChange: (value: any[]) => void }) => {
+const OptionListEditor = ({ options, onChange, renderEffects }: { options: any[]; onChange: (value: any[]) => void; renderEffects?: (effects: any[], onChange: (effects: any[]) => void) => React.ReactNode }) => {
     const [newOption, setNewOption] = useState('');
+    const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const addOption = () => {
         const value = newOption.trim();
         if (!value) return;
         onChange([...options, value]);
         setNewOption('');
     };
+    const toObject = (option: any) => typeof option === 'object' && option !== null ? option : { name: String(option), effects: [] };
+    const updateOption = (index: number, patch: any) => onChange(options.map((option, i) => i === index ? { ...toObject(option), ...patch } : option));
+    const effectsFor = (option: any) => Array.isArray(option?.effects) ? option.effects : [];
+
     return (
         <div>
             <label className={labelClass}>Available Options</label>
-            <div className="space-y-2">
+            <div className="space-y-3">
                 {options.length === 0 ? (
                     <p className="text-[11px] text-gray-600 italic">No options yet. Add the choices the player can pick from.</p>
                 ) : (
                     <div className="flex flex-wrap gap-2">
-                        {options.map((option, index) => (
-                            <span key={index} className="inline-flex items-center gap-2 bg-gray-800/80 border border-gray-700 rounded-full pl-3 pr-1.5 py-1 text-xs text-gray-200">
-                                {optionLabel(option)}
-                                <button type="button" onClick={() => onChange(options.filter((_, i) => i !== index))} className="w-5 h-5 rounded-full text-gray-500 hover:text-red-300 hover:bg-red-900/30 flex items-center justify-center" title="Remove option">
-                                    <Trash2 size={11} />
-                                </button>
-                            </span>
-                        ))}
+                        {options.map((option, index) => {
+                            const effects = effectsFor(option);
+                            return (
+                                <span key={index} className="inline-flex items-center gap-1.5 bg-gray-800/80 border border-gray-700 rounded-full pl-3 pr-1.5 py-1 text-xs text-gray-200">
+                                    {optionLabel(option)}
+                                    {effects.length > 0 && (
+                                        <span className="text-[9px] font-black text-dnd-gold bg-dnd-gold/10 border border-dnd-gold/30 rounded-full px-1.5 py-0.5" title={`${effects.length} effect(s)`}>
+                                            {effects.length} fx
+                                        </span>
+                                    )}
+                                    {renderEffects && (
+                                        <button type="button" onClick={() => setEditingIndex(editingIndex === index ? null : index)} className="w-5 h-5 rounded-full text-gray-400 hover:text-dnd-gold hover:bg-dnd-gold/10 flex items-center justify-center text-[9px] font-black" title="Edit option effects">
+                                            fx
+                                        </button>
+                                    )}
+                                    <button type="button" onClick={() => onChange(options.filter((_, i) => i !== index))} className="w-5 h-5 rounded-full text-gray-500 hover:text-red-300 hover:bg-red-900/30 flex items-center justify-center" title="Remove option">
+                                        <Trash2 size={11} />
+                                    </button>
+                                </span>
+                            );
+                        })}
                     </div>
                 )}
                 <div className="flex gap-2">
@@ -145,19 +166,38 @@ const OptionListEditor = ({ options, onChange }: { options: any[]; onChange: (va
                         Add
                     </button>
                 </div>
+                {renderEffects && editingIndex !== null && options[editingIndex] !== undefined && (
+                    <div className="bg-black/40 border border-gray-700 rounded-xl p-3 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                            <p className="text-[10px] font-black text-dnd-gold uppercase tracking-widest">Effects for {optionLabel(options[editingIndex])}</p>
+                            <button type="button" onClick={() => setEditingIndex(null)} className="text-[10px] text-gray-500 hover:text-white">Close</button>
+                        </div>
+                        {renderEffects(effectsFor(options[editingIndex]), (effects) => updateOption(editingIndex, { effects }))}
+                    </div>
+                )}
             </div>
         </div>
     );
 };
 
-const ChoiceRow = ({ choice, onChange, onRemove }: { choice: ContentChoice; onChange: (value: ContentChoice) => void; onRemove: () => void }) => {
+const ChoiceRow = ({ choice, onChange, onRemove, renderEffects }: { choice: ContentChoice; onChange: (value: ContentChoice) => void; onRemove: () => void; renderEffects?: (effects: any[], onChange: (effects: any[]) => void) => React.ReactNode }) => {
     const kind = CHOICE_KINDS.find(item => item.value === choice.kind) || CHOICE_KINDS[0];
     return (
         <div className="bg-black/30 border border-gray-800 rounded-xl p-4 space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                     <label className={labelClass}>What does the player choose?</label>
-                    <select className={inputClass} value={choice.kind} onChange={e => onChange({ ...choice, kind: e.target.value as ContentChoice['kind'] })}>
+                    <select
+                        className={inputClass}
+                        value={choice.kind}
+                        onChange={e => {
+                            const kind = e.target.value as ContentChoice['kind'];
+                            const options = (kind === 'spellcasting_ability' || kind === 'ability') && (!choice.options || choice.options.length === 0)
+                                ? ['str', 'dex', 'con', 'int', 'wis', 'cha']
+                                : choice.options;
+                            onChange({ ...choice, kind, options });
+                        }}
+                    >
                         {CHOICE_KINDS.map(kind => <option key={kind.value} value={kind.value}>{kind.label}</option>)}
                     </select>
                 </div>
@@ -184,7 +224,7 @@ const ChoiceRow = ({ choice, onChange, onRemove }: { choice: ContentChoice; onCh
                 )}
             </div>
             <p className="text-[11px] text-gray-500">{kind.hint}</p>
-            <OptionListEditor options={choice.options || []} onChange={options => onChange({ ...choice, options })} />
+            <OptionListEditor options={choice.options || []} onChange={options => onChange({ ...choice, options })} renderEffects={renderEffects} />
             <button type="button" onClick={onRemove} className="text-[10px] uppercase font-black tracking-widest text-red-400/80 hover:text-red-300 flex items-center gap-1.5">
                 <Trash2 size={12} /> Remove Choice
             </button>
@@ -197,6 +237,7 @@ const ContentMechanicsEditor: React.FC<ContentMechanicsEditorProps> = ({
     choices,
     onResourcesChange,
     onChoicesChange,
+    renderOptionEffects,
     showResources = true,
 }) => {
     const addResource = () => onResourcesChange([
@@ -254,6 +295,7 @@ const ContentMechanicsEditor: React.FC<ContentMechanicsEditorProps> = ({
                         choice={choice}
                         onChange={next => onChoicesChange(choices.map((item, i) => i === index ? next : item))}
                         onRemove={() => onChoicesChange(choices.filter((_, i) => i !== index))}
+                        renderEffects={renderOptionEffects}
                     />
                 ))}
             </section>

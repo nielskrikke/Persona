@@ -1099,8 +1099,11 @@ The earlier anon-key apply attempt was a no-op: PostgREST returned HTTP 200 with
 - Arrowsmith ammunition definitions live in `options.arrows`; both attack generation and the quiver UI read the class document.
 - Warlock Eldritch Invocations are data-driven: the class has `options.invocations`, the builder/level-up queue choices from `class_specific.invocations`, and Agonizing Blast/Thirsting Blade effects are applied generically.
 - Pugilist's Iron Chin description now matches the implemented 10 + DEX + CON unarmored formula, and the unarmed die reads either `martial_arts` or `fisticuffs`.
+- Darkvision now displays the range from its `set` effect (60/120/etc.), Harengon's initiative bonus scales with Proficiency Bonus, and flat `set` AC (Tortle 17) no longer adds Dexterity.
+- Background creation now honors generic ability/skill/tool/language/feat choices, applies fixed tool proficiencies, stores chosen ability bonuses/feats, and supports editable currency. The Forge loads the background feature description into Lore.
 - Developer JSON can now intentionally override `level_table[].class_specific`; omitted values still preserve the existing data.
 - Legacy `proficiency_choices` was removed from class documents (18 rows); the builder uses `choices`. Backgrounds still use their `proficiency_choices` because its builder reads them.
+- The Forge choice editor now supports feat and spellcasting-ability choices, and ancestry options expose the same per-option effect editor used by Feature Choice options.
 - Background feature effects are copied onto the character and rehydrated from the content library for existing characters; changing background in Manage Character also refreshes them.
 - Racial spell choices load spells by the choice's `sourceClass` instead of a hardcoded Wizard list.
 - Item flags, Artificer companion layout, and card/Artificer widget selection use data `ui`/`options` flags.

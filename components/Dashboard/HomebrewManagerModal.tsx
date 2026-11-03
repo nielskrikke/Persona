@@ -118,7 +118,7 @@ const RuleConditionInput: React.FC<{
                         const label = CONDITION_OPTIONS.find(o => o.id === mappedId)?.label || mappedId.replace('_', ' ');
 
                         return (
-                            <div 
+                            <div
                                 key={`${cond}-${idx}`}
                                 className="inline-flex items-center gap-1.5 px-2 py-1 bg-[#12141a] border border-gray-700 rounded-md text-[11px] shadow-sm group"
                             >
@@ -127,8 +127,8 @@ const RuleConditionInput: React.FC<{
                                     onClick={() => toggleNotMode(idx)}
                                     title="Click to toggle between IF and IF NOT"
                                     className={`px-1.5 py-0.5 rounded text-[9px] font-black tracking-wider uppercase border transition-all ${
-                                        isNot 
-                                            ? 'bg-rose-950/80 text-rose-300 border-rose-600/60 hover:bg-rose-900 shadow-sm' 
+                                        isNot
+                                            ? 'bg-rose-950/80 text-rose-300 border-rose-600/60 hover:bg-rose-900 shadow-sm'
                                             : 'bg-emerald-950/80 text-emerald-300 border-emerald-600/60 hover:bg-emerald-900 shadow-sm'
                                     }`}
                                 >
@@ -149,7 +149,7 @@ const RuleConditionInput: React.FC<{
                 </div>
             )}
 
-            <input 
+            <input
                 type="text"
                 placeholder="Or custom IF statement (e.g. If Two-handed melee weapon)"
                 value={rule}
@@ -180,8 +180,8 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                         <div className="flex justify-between items-center gap-2">
                             <div className="flex items-center gap-2 flex-grow">
                                 <span className="text-[9px] uppercase font-bold text-gray-500">Effect Type:</span>
-                                <select 
-                                    value={eff.type || 'feature'} 
+                                <select
+                                    value={eff.type || 'feature'}
                                     onChange={e => {
                                         const newType = e.target.value;
                                         const updates: any = { type: newType };
@@ -230,23 +230,23 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
                                         <label className="text-[9px] uppercase font-bold text-gray-400 block mb-1">Choice Group Title</label>
-                                        <input 
-                                            type="text" 
-                                            placeholder="Choice Title (e.g. Fighting Style)" 
-                                            value={eff.name || ''} 
-                                            onChange={e => updateEffect(i, { name: e.target.value })} 
-                                            className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" 
+                                        <input
+                                            type="text"
+                                            placeholder="Choice Title (e.g. Fighting Style)"
+                                            value={eff.name || ''}
+                                            onChange={e => updateEffect(i, { name: e.target.value })}
+                                            className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold"
                                         />
                                     </div>
                                     <div>
                                         <label className="text-[9px] uppercase font-bold text-gray-400 block mb-1">Selections Allowed</label>
-                                        <input 
-                                            type="number" 
-                                            min="1" 
-                                            placeholder="Choose Count" 
-                                            value={eff.count || 1} 
-                                            onChange={e => updateEffect(i, { count: Math.max(1, parseInt(e.target.value) || 1) })} 
-                                            className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" 
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            placeholder="Choose Count"
+                                            value={eff.count || 1}
+                                            onChange={e => updateEffect(i, { count: Math.max(1, parseInt(e.target.value) || 1) })}
+                                            className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold"
                                         />
                                     </div>
                                 </div>
@@ -256,12 +256,12 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                         <span className="text-[10px] font-black text-dnd-gold uppercase tracking-wider">
                                             Selectable Options ({eff.options?.length || 0})
                                         </span>
-                                        <button 
-                                            type="button" 
+                                        <button
+                                            type="button"
                                             onClick={() => {
                                                 const currentOpts = Array.isArray(eff.options) ? eff.options : [];
                                                 updateEffect(i, { options: [...currentOpts, { name: '', desc: '', effects: [] }] });
-                                            }} 
+                                            }}
                                             className="text-[10px] bg-dnd-gold/20 hover:bg-dnd-gold/30 text-dnd-gold px-2 py-1 rounded font-bold transition-colors"
                                         >
                                             + Add Option
@@ -276,37 +276,37 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                         <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
                                             {eff.options.map((opt: any, optIdx: number) => (
                                                 <div key={optIdx} className="bg-[#111215] p-3 rounded-lg border border-gray-800 relative group space-y-2">
-                                                    <button 
-                                                        type="button" 
+                                                    <button
+                                                        type="button"
                                                         onClick={() => {
                                                             const newOpts = eff.options.filter((_: any, idx: number) => idx !== optIdx);
                                                             updateEffect(i, { options: newOpts });
-                                                        }} 
+                                                        }}
                                                         className="absolute top-2 right-2 text-red-500 hover:text-red-400 text-xs font-bold"
                                                     >
                                                         &times;
                                                     </button>
                                                     <div className="space-y-1.5 pr-6">
-                                                        <input 
-                                                            type="text" 
-                                                            placeholder="Option Name (e.g. Archery)" 
-                                                            value={opt.name || ''} 
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Option Name (e.g. Archery)"
+                                                            value={opt.name || ''}
                                                             onChange={e => {
                                                                 const newOpts = [...eff.options];
                                                                 newOpts[optIdx] = { ...newOpts[optIdx], name: e.target.value };
                                                                 updateEffect(i, { options: newOpts });
-                                                            }} 
-                                                            className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" 
+                                                            }}
+                                                            className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold"
                                                         />
-                                                        <textarea 
-                                                            placeholder="Option Description & Mechanics..." 
-                                                            value={Array.isArray(opt.desc) ? opt.desc.join('\n') : (opt.desc || opt.description || '')} 
+                                                        <textarea
+                                                            placeholder="Option Description & Mechanics..."
+                                                            value={Array.isArray(opt.desc) ? opt.desc.join('\n') : (opt.desc || opt.description || '')}
                                                             onChange={e => {
                                                                 const newOpts = [...eff.options];
                                                                 newOpts[optIdx] = { ...newOpts[optIdx], desc: e.target.value };
                                                                 updateEffect(i, { options: newOpts });
-                                                            }} 
-                                                            className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-gray-300 h-16 resize-y font-serif" 
+                                                            }}
+                                                            className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-gray-300 h-16 resize-y font-serif"
                                                         />
                                                     </div>
 
@@ -316,28 +316,28 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                                             <span className="text-[9px] uppercase font-bold text-dnd-gold tracking-wider">
                                                                 Option Mechanical Effects ({(opt.effects || []).length})
                                                             </span>
-                                                            <button 
-                                                                type="button" 
+                                                            <button
+                                                                type="button"
                                                                 onClick={() => {
                                                                     const newOpts = [...eff.options];
                                                                     const currentOptEffects = newOpts[optIdx].effects || [];
                                                                     const lastEff = currentOptEffects.length > 0 ? currentOptEffects[currentOptEffects.length - 1] : null;
                                                                     const inheritedConditions = lastEff?.conditions ? [...lastEff.conditions] : [];
                                                                     const inheritedRule = lastEff?.rule || lastEff?.condition || '';
-                                                                    
-                                                                    newOpts[optIdx] = { 
-                                                                        ...newOpts[optIdx], 
+
+                                                                    newOpts[optIdx] = {
+                                                                        ...newOpts[optIdx],
                                                                         effects: [
-                                                                            ...currentOptEffects, 
-                                                                            { 
-                                                                                type: 'stat_bonus', 
-                                                                                stat: 'attack', 
+                                                                            ...currentOptEffects,
+                                                                            {
+                                                                                type: 'stat_bonus',
+                                                                                stat: 'attack',
                                                                                 value: 1,
                                                                                 conditions: inheritedConditions,
                                                                                 rule: inheritedRule,
                                                                                 condition: inheritedRule
                                                                             }
-                                                                        ] 
+                                                                        ]
                                                                     };
                                                                     updateEffect(i, { options: newOpts });
                                                                 }}
@@ -351,8 +351,8 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                                                 {opt.effects.map((subEff: any, subIdx: number) => (
                                                                     <div key={subIdx} className="bg-black/50 p-2 rounded border border-gray-800 flex flex-col gap-2 text-xs">
                                                                         <div className="flex flex-wrap gap-2 items-center w-full">
-                                                                            <select 
-                                                                                value={subEff.type || 'stat_bonus'} 
+                                                                            <select
+                                                                                value={subEff.type || 'stat_bonus'}
                                                                                 onChange={e => {
                                                                                     const newOpts = [...eff.options];
                                                                                     const currentOptEffects = [...(newOpts[optIdx].effects || [])];
@@ -376,8 +376,8 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
 
                                                                             {subEff.type === 'stat_bonus' && (
                                                                                 <>
-                                                                                    <select 
-                                                                                        value={subEff.stat || 'ac'} 
+                                                                                    <select
+                                                                                        value={subEff.stat || 'ac'}
                                                                                         onChange={e => {
                                                                                             const newOpts = [...eff.options];
                                                                                             const currentOptEffects = [...(newOpts[optIdx].effects || [])];
@@ -416,10 +416,10 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                                                                         <option value="one_handed_melee_damage">One-Handed Melee Damage</option>
                                                                                         <option value="two_handed_melee_damage">Two-Handed Melee Damage</option>
                                                                                     </select>
-                                                                                    <input 
-                                                                                        type="number" 
-                                                                                        placeholder="Val" 
-                                                                                        value={subEff.value !== undefined ? subEff.value : 1} 
+                                                                                    <input
+                                                                                        type="number"
+                                                                                        placeholder="Val"
+                                                                                        value={subEff.value !== undefined ? subEff.value : 1}
                                                                                         onChange={e => {
                                                                                             const newOpts = [...eff.options];
                                                                                             const currentOptEffects = [...(newOpts[optIdx].effects || [])];
@@ -433,10 +433,10 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                                                             )}
 
                                                                             {(subEff.type === 'resistance' || subEff.type === 'immunity') && (
-                                                                                <input 
-                                                                                    type="text" 
-                                                                                    placeholder="Damage Type" 
-                                                                                    value={subEff.value || subEff.damage_type || ''} 
+                                                                                <input
+                                                                                    type="text"
+                                                                                    placeholder="Damage Type"
+                                                                                    value={subEff.value || subEff.damage_type || ''}
                                                                                     onChange={e => {
                                                                                         const newOpts = [...eff.options];
                                                                                         const currentOptEffects = [...(newOpts[optIdx].effects || [])];
@@ -503,10 +503,10 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
 
                                                                             {(subEff.type === 'action' || subEff.type === 'bonus_action' || subEff.type === 'reaction' || subEff.type === 'feature') && (
                                                                                 <>
-                                                                                    <input 
-                                                                                        type="text" 
-                                                                                        placeholder="Name" 
-                                                                                        value={subEff.name || ''} 
+                                                                                    <input
+                                                                                        type="text"
+                                                                                        placeholder="Name"
+                                                                                        value={subEff.name || ''}
                                                                                         onChange={e => {
                                                                                             const newOpts = [...eff.options];
                                                                                             const currentOptEffects = [...(newOpts[optIdx].effects || [])];
@@ -516,10 +516,10 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                                                                         }}
                                                                                         className="bg-[#0b0c0e] border border-gray-700 rounded p-1 text-[10px] text-white font-bold"
                                                                                     />
-                                                                                    <input 
-                                                                                        type="text" 
-                                                                                        placeholder="Desc" 
-                                                                                        value={subEff.desc || ''} 
+                                                                                    <input
+                                                                                        type="text"
+                                                                                        placeholder="Desc"
+                                                                                        value={subEff.desc || ''}
                                                                                         onChange={e => {
                                                                                             const newOpts = [...eff.options];
                                                                                             const currentOptEffects = [...(newOpts[optIdx].effects || [])];
@@ -533,10 +533,10 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                                                             )}
 
                                                                             {subEff.type === 'advantage' && (
-                                                                                <input 
-                                                                                    type="text" 
-                                                                                    placeholder="Target (e.g. Perception)" 
-                                                                                    value={subEff.stat || subEff.target || ''} 
+                                                                                <input
+                                                                                    type="text"
+                                                                                    placeholder="Target (e.g. Perception)"
+                                                                                    value={subEff.stat || subEff.target || ''}
                                                                                     onChange={e => {
                                                                                         const newOpts = [...eff.options];
                                                                                         const currentOptEffects = [...(newOpts[optIdx].effects || [])];
@@ -549,10 +549,10 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                                                             )}
 
                                                                             {subEff.type === 'spell_access' && (
-                                                                                <input 
-                                                                                    type="text" 
-                                                                                    placeholder="Spell Name" 
-                                                                                    value={subEff.spell || subEff.name || ''} 
+                                                                                <input
+                                                                                    type="text"
+                                                                                    placeholder="Spell Name"
+                                                                                    value={subEff.spell || subEff.name || ''}
                                                                                     onChange={e => {
                                                                                         const newOpts = [...eff.options];
                                                                                         const currentOptEffects = [...(newOpts[optIdx].effects || [])];
@@ -565,8 +565,8 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                                                             )}
 
                                                                             <div className="flex items-center gap-1 ml-auto">
-                                                                                <button 
-                                                                                    type="button" 
+                                                                                <button
+                                                                                    type="button"
                                                                                     onClick={() => {
                                                                                         const newOpts = [...eff.options];
                                                                                         const currentOptEffects = [...(newOpts[optIdx].effects || [])];
@@ -580,8 +580,8 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                                                                 >
                                                                                     + Duplicate
                                                                                 </button>
-                                                                                <button 
-                                                                                    type="button" 
+                                                                                <button
+                                                                                    type="button"
                                                                                     onClick={() => {
                                                                                         const newOpts = [...eff.options];
                                                                                         const currentOptEffects = (newOpts[optIdx].effects || []).filter((_: any, sIdx: number) => sIdx !== subIdx);
@@ -596,7 +596,7 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                                                             </div>
                                                                         </div>
 
-                                                                        <RuleConditionInput 
+                                                                        <RuleConditionInput
                                                                             conditions={subEff.conditions || []}
                                                                             rule={subEff.rule || subEff.condition || ''}
                                                                             onChange={(newConditions, newRule) => {
@@ -628,19 +628,19 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     <div>
                                         <label className="text-[9px] uppercase font-bold text-gray-400 block mb-1">Feature / Attack Name</label>
-                                        <input 
-                                            type="text" 
-                                            placeholder="e.g. Cat's Claws, Hungry Jaws, Unarmed Strike" 
-                                            value={eff.name || ''} 
-                                            onChange={e => updateEffect(i, { name: e.target.value })} 
-                                            className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" 
+                                        <input
+                                            type="text"
+                                            placeholder="e.g. Cat's Claws, Hungry Jaws, Unarmed Strike"
+                                            value={eff.name || ''}
+                                            onChange={e => updateEffect(i, { name: e.target.value })}
+                                            className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold"
                                         />
                                     </div>
                                     <div>
                                         <label className="text-[9px] uppercase font-bold text-gray-400 block mb-1">Damage Die</label>
-                                        <select 
-                                            value={eff.die || eff.damage_die || '1d4'} 
-                                            onChange={e => updateEffect(i, { die: e.target.value, damage_die: e.target.value })} 
+                                        <select
+                                            value={eff.die || eff.damage_die || '1d4'}
+                                            onChange={e => updateEffect(i, { die: e.target.value, damage_die: e.target.value })}
                                             className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold cursor-pointer"
                                         >
                                             <option value="1d4">1d4</option>
@@ -657,9 +657,9 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     <div>
                                         <label className="text-[9px] uppercase font-bold text-gray-400 block mb-1">Damage Type</label>
-                                        <select 
-                                            value={eff.damage_type || 'Slashing'} 
-                                            onChange={e => updateEffect(i, { damage_type: e.target.value })} 
+                                        <select
+                                            value={eff.damage_type || 'Slashing'}
+                                            onChange={e => updateEffect(i, { damage_type: e.target.value })}
                                             className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold cursor-pointer"
                                         >
                                             <option value="Slashing">Slashing</option>
@@ -679,9 +679,9 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                     </div>
                                     <div>
                                         <label className="text-[9px] uppercase font-bold text-gray-400 block mb-1">Ability Modifier</label>
-                                        <select 
-                                            value={eff.ability || 'str'} 
-                                            onChange={e => updateEffect(i, { ability: e.target.value, stat: e.target.value })} 
+                                        <select
+                                            value={eff.ability || 'str'}
+                                            onChange={e => updateEffect(i, { ability: e.target.value, stat: e.target.value })}
                                             className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold cursor-pointer"
                                         >
                                             <option value="str">Strength (STR)</option>
@@ -695,7 +695,7 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                     </div>
                                 </div>
 
-                                <RuleConditionInput 
+                                <RuleConditionInput
                                     conditions={eff.conditions || []}
                                     rule={eff.rule || eff.condition || ''}
                                     onChange={(newConditions, newRule) => updateEffect(i, { conditions: newConditions, rule: newRule, condition: newRule })}
@@ -709,9 +709,9 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     <div>
                                         <label className="text-[9px] uppercase font-bold text-gray-400 block mb-1">Calculation Mode</label>
-                                        <select 
-                                            value={eff.mode || 'bonus'} 
-                                            onChange={e => updateEffect(i, { mode: e.target.value })} 
+                                        <select
+                                            value={eff.mode || 'bonus'}
+                                            onChange={e => updateEffect(i, { mode: e.target.value })}
                                             className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold cursor-pointer"
                                         >
                                             <option value="bonus">Bonus (+X Attacks per Attack Action)</option>
@@ -720,18 +720,18 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                     </div>
                                     <div>
                                         <label className="text-[9px] uppercase font-bold text-gray-400 block mb-1">Number of Attacks</label>
-                                        <input 
-                                            type="number" 
-                                            min="1" 
-                                            placeholder="e.g. 1 (for +1 additional attack)" 
-                                            value={eff.value !== undefined ? eff.value : (eff.count !== undefined ? eff.count : 1)} 
-                                            onChange={e => updateEffect(i, { value: parseInt(e.target.value) || 1, count: parseInt(e.target.value) || 1 })} 
-                                            className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" 
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            placeholder="e.g. 1 (for +1 additional attack)"
+                                            value={eff.value !== undefined ? eff.value : (eff.count !== undefined ? eff.count : 1)}
+                                            onChange={e => updateEffect(i, { value: parseInt(e.target.value) || 1, count: parseInt(e.target.value) || 1 })}
+                                            className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold"
                                         />
                                     </div>
                                 </div>
 
-                                <RuleConditionInput 
+                                <RuleConditionInput
                                     conditions={eff.conditions || []}
                                     rule={eff.rule || eff.condition || ''}
                                     onChange={(newConditions, newRule) => updateEffect(i, { conditions: newConditions, rule: newRule, condition: newRule })}
@@ -743,7 +743,7 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                         {eff.type === 'stat_bonus' && (
                             <div className="space-y-2">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                    <select value={eff.stat || 'ac'} onChange={e => updateEffect(i, { stat: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white">
+                                    <select value={eff.stat || eff.target || 'ac'} onChange={e => updateEffect(i, { stat: e.target.value, target: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white">
                                         <option value="ac">Armor Class (AC)</option>
                                         <option value="extra_attack">Additional Attacks (+1 per Attack Action)</option>
                                         <option value="speed">Speed (Walking)</option>
@@ -776,9 +776,27 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                         <option value="one_handed_melee_damage">One-Handed Melee Damage</option>
                                         <option value="two_handed_melee_damage">Two-Handed Melee Damage</option>
                                     </select>
-                                    <input type="text" placeholder="Value or Dice (e.g. +1, 1d4, 4d4, +1 + 1d4)" value={eff.value !== undefined ? eff.value : ''} onChange={e => updateEffect(i, { value: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" />
+                                    {(eff.stat || eff.target) === 'initiative' ? (
+                                        <div className="space-y-2">
+                                            <label className="flex items-center gap-2 text-[10px] text-gray-300">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={eff.scaling === 'proficiency'}
+                                                    onChange={e => updateEffect(i, e.target.checked
+                                                        ? { scaling: 'proficiency', value: undefined }
+                                                        : { scaling: undefined, value: 1 })}
+                                                />
+                                                Use Proficiency Bonus instead of a fixed number
+                                            </label>
+                                            {eff.scaling !== 'proficiency' && (
+                                                <input type="text" placeholder="Value (e.g. +1)" value={eff.value !== undefined ? eff.value : ''} onChange={e => updateEffect(i, { value: e.target.value })} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" />
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <input type="text" placeholder="Value or Dice (e.g. +1, 1d4, 4d4, +1 + 1d4)" value={eff.value !== undefined ? eff.value : ''} onChange={e => updateEffect(i, { value: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" />
+                                    )}
                                 </div>
-                                <RuleConditionInput 
+                                <RuleConditionInput
                                     conditions={eff.conditions || []}
                                     rule={eff.rule || eff.condition || ''}
                                     onChange={(newConditions, newRule) => updateEffect(i, { conditions: newConditions, rule: newRule, condition: newRule })}
@@ -990,6 +1008,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     const [bgTools, setBgTools] = useState<string[]>([]);
     const [bgFeatureName, setBgFeatureName] = useState('');
     const [bgEquipment, setBgEquipment] = useState('');
+    const [bgCurrency, setBgCurrency] = useState({ gp: 0, sp: 0, cp: 0 });
     const [bgEffects, setBgEffects] = useState<any[]>([]);
 
     // Feat fields
@@ -1004,7 +1023,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
         }).catch(() => {});
     }, [isOpen, currentUser?.id]);
 
-    useEffect(() => { 
+    useEffect(() => {
         if (isOpen) {
             if (!prevOpenRef.current) {
                 // Just opened
@@ -1014,7 +1033,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                 }
             }
             fetchList();
-        } 
+        }
         prevOpenRef.current = isOpen;
     }, [isOpen, activeTab]); // Removed initialTab from dependencies to prevent glitching back when switching tabs
 
@@ -1033,12 +1052,12 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                 setItemIsWondrous(!!initialData.is_wondrous);
                 setItemProperties(initialData.properties?.map((p: any) => typeof p === 'string' ? p : p.name).join(', ') || '');
                 setItemModifiers(initialData.modifiers || []);
-                
+
                 if (initialData.damage) {
                     setItemDmgDice(initialData.damage.damage_dice || '');
                     setItemDmgType(typeof initialData.damage.damage_type === 'string' ? initialData.damage.damage_type : initialData.damage.damage_type?.name || 'Piercing');
                 }
-                
+
                 if (initialData.armor_class) {
                     setItemAcBase(initialData.armor_class.base?.toString() || '');
                     setItemAcDexBonus(!!initialData.armor_class.dex_bonus);
@@ -1078,10 +1097,10 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
 
     const fetchList = async () => {
         setLoading(true);
-        const tableMap = { 
-            race: 'custom_races', 
-            class: 'custom_classes', 
-            subclass: 'custom_subclasses', 
+        const tableMap = {
+            race: 'custom_races',
+            class: 'custom_classes',
+            subclass: 'custom_subclasses',
             background: 'custom_backgrounds',
             spell: 'custom_spells',
             item: 'custom_equipment',
@@ -1119,12 +1138,12 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
         setAbilityBonuses([]); setTraits([]); setSize('Medium');
         setSaves([]); setLevelFeatures([]); setHitDie(8);
         setCasterType('none'); setCasterAbility('int'); setSubclassLevel(3); setSubclassLabel('Subclass'); setAdvancedJson(''); setEditingIsHomebrew(true); setContentResources([]); setContentChoices([]);
-        setBgSkills([]); setBgFeatureName(''); setBgTools([]); setBgEquipment(''); setBgEffects([]);
+        setBgSkills([]); setBgFeatureName(''); setBgTools([]); setBgEquipment(''); setBgCurrency({ gp: 0, sp: 0, cp: 0 }); setBgEffects([]);
         setArmorProfs([]); setWeaponProfs([]);
         setSpellLevel(0); setSpellSchool('Evocation'); setSpellCastTime('1 Action'); setSpellRange('60 feet'); setSpellDuration('Instantaneous'); setSpellRitual(false); setSpellConcentration(false);
         setSpellComponents(['V', 'S']); setSpellMaterial(''); setSpellHigherLevel(''); setSpellHasAttack(false); setSpellHasSave(false); setSpellDmgFormula('');
         setSpellDmgType('Force'); setSpellClasses([]);
-        setItemCategory('Other'); setItemSubtype(''); setItemIsWondrous(false); setItemRarity('Common'); setItemWeight(0); setItemCost('0 gp'); setItemAttunement(false); 
+        setItemCategory('Other'); setItemSubtype(''); setItemIsWondrous(false); setItemRarity('Common'); setItemWeight(0); setItemCost('0 gp'); setItemAttunement(false);
         setItemDmgDice(''); setItemDmgType('Piercing'); setItemWeaponType('Simple'); setItemArmorType('Light'); setItemAcBase(0); setItemAcDexBonus(false); setItemAcMaxBonus(null);
         setItemIsThrown(false); setItemThrownRange(''); setItemThrownDamage(''); setItemProperties([]); setItemModifiers([]);
         setCreatureSize('Medium'); setCreatureType('Creature'); setCreatureAc(10); setCreatureHp(10); setCreatureSpeed('30 ft.'); setCreatureAbilities({ str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 }); setCreatureSenses(''); setCreatureLanguages(''); setCreatureCr(0); setCreatureActions([]);
@@ -1143,11 +1162,11 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
         setIsSharedGlobally(item.is_public || false);
 
         if (activeTab === 'race') {
-            setSpeeds({ 
-                walk: item.speed || 30, 
-                fly: item.fly_speed || 0, 
-                swim: item.swim_speed || 0, 
-                climb: item.climb_speed || 0 
+            setSpeeds({
+                walk: item.speed || 30,
+                fly: item.fly_speed || 0,
+                swim: item.swim_speed || 0,
+                climb: item.climb_speed || 0
             });
             setSize(item.size || 'Medium');
             if (item.ability_bonuses) {
@@ -1259,7 +1278,15 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
             setBgTools(item.tool_proficiencies || []);
             setBgFeatureName(item.feature?.name || '');
             setBgEquipment(Array.isArray(item.equipment) ? item.equipment.join(', ') : (item.equipment || ''));
+            setBgCurrency({
+                gp: Number(item.currency?.gp || 0),
+                sp: Number(item.currency?.sp || 0),
+                cp: Number(item.currency?.cp || 0),
+            });
             setBgEffects(item.effects || item.feature?.effects || []);
+            if ((!item.desc || (Array.isArray(item.desc) && item.desc.length === 0)) && Array.isArray(item.feature?.desc)) {
+                setDescription(item.feature.desc.join('\n'));
+            }
         } else if (activeTab === 'feat') {
             setFeatPrerequisite(item.prerequisite || '');
             setFeatEffects(item.effects || []);
@@ -1312,10 +1339,10 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     return;
                 }
             }
-            const tableMap = { 
-                race: 'custom_races', 
-                class: 'custom_classes', 
-                subclass: 'custom_subclasses', 
+            const tableMap = {
+                race: 'custom_races',
+                class: 'custom_classes',
+                subclass: 'custom_subclasses',
                 background: 'custom_backgrounds',
                 spell: 'custom_spells',
                 item: 'custom_equipment',
@@ -1346,27 +1373,27 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     return;
                 }
             }
-            const tableMap = { 
-                race: 'custom_races', 
-                class: 'custom_classes', 
-                subclass: 'custom_subclasses', 
+            const tableMap = {
+                race: 'custom_races',
+                class: 'custom_classes',
+                subclass: 'custom_subclasses',
                 background: 'custom_backgrounds',
                 spell: 'custom_spells',
                 item: 'custom_equipment',
                 creature: 'custom_beasts',
                 feat: 'custom_feats'
             };
-            
-            let payload: any = { 
-                name, 
-                index: name.toLowerCase().replace(/\s+/g, '-'), 
+
+            let payload: any = {
+                name,
+                index: name.toLowerCase().replace(/\s+/g, '-'),
                 desc: [description],
                 is_public: isSharedGlobally,
                 is_homebrew: editingIsHomebrew
             };
-            
+
             if (activeTab === 'race') {
-                payload = { 
+                payload = {
                     ...payload, speed: speeds.walk, size, alignment: description,
                     ability_bonuses: abilityBonuses.map(ab => ({ ability_score: { index: ab.stat, name: ab.stat.toUpperCase() }, bonus: ab.bonus })),
                     traits: traits.map(t => ({ index: t.name.toLowerCase().replace(/\s+/g, '-'), name: t.name, desc: [t.desc], modifiers: t.effects, effects: t.effects })),
@@ -1381,7 +1408,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     features: levelFeatures.filter(f => f.level === i + 1).map(f => f.name)
                 }));
                 const profs = [...armorProfs.map(p => ({name: p})), ...weaponProfs.map(p => ({name: p}))];
-                payload = { 
+                payload = {
                     ...payload, hit_die: hitDie, saving_throws: saves.map(s => ({ index: s, name: s.toUpperCase() })),
                     proficiencies: profs, level_table,
                     caster: casterType === 'none' ? { type: 'none' } : { type: casterType, ability: casterAbility },
@@ -1391,8 +1418,8 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     feature_details: levelFeatures.map(f => ({ index: f.name.toLowerCase().replace(/\s+/g, '-'), name: f.name, level: f.level, desc: [f.desc], effects: f.effects }))
                 };
             } else if (activeTab === 'subclass') {
-                payload = { 
-                    ...payload, 
+                payload = {
+                    ...payload,
                     class: { index: parentClass, name: parentClass.charAt(0).toUpperCase() + parentClass.slice(1) },
                     class_index: parentClass,
                     subclass_level: subclassLevel,
@@ -1400,25 +1427,25 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     feature_details: levelFeatures.map(f => ({ index: f.name.toLowerCase().replace(/\s+/g, '-'), name: f.name, level: f.level, desc: [f.desc], effects: f.effects }))
                 };
             } else if (activeTab === 'background') {
-                payload = { 
-                    ...payload, 
-                    skill_proficiencies: bgSkills, 
+                payload = {
+                    ...payload,
+                    skill_proficiencies: bgSkills,
                     tool_proficiencies: bgTools,
-                    equipment: bgEquipment.split(',').filter(Boolean).map(s => s.trim()), 
-                    currency: { cp: 0, sp: 0, ep: 0, gp: 10, pp: 0 }, 
+                    equipment: bgEquipment.split(',').filter(Boolean).map(s => s.trim()),
+                    currency: { ...bgCurrency, ep: 0, pp: 0 },
                     effects: bgEffects,
-                    feature: { name: bgFeatureName || 'Custom Feature', desc: [description], effects: bgEffects } 
+                    feature: { name: bgFeatureName || 'Custom Feature', desc: [description], effects: bgEffects }
                 };
             } else if (activeTab === 'spell') {
                 payload = {
                     ...payload, level: spellLevel, school: { name: spellSchool, index: spellSchool.toLowerCase() },
                     casting_time: spellCastTime, range: spellRange, duration: (spellConcentration ? "Concentration, " : "") + spellDuration,
-                    components: spellComponents, material: spellComponents.includes('M') ? spellMaterial : undefined, 
+                    components: spellComponents, material: spellComponents.includes('M') ? spellMaterial : undefined,
                     ritual: spellRitual, concentration: spellConcentration,
                     higher_level: spellHigherLevel ? [spellHigherLevel] : undefined,
                     classes: spellClasses.map(c => ({ name: c, index: c.toLowerCase() })),
                     attack_type: spellHasAttack ? spellAttackType.toLowerCase() : undefined,
-                    damage: spellDmgFormula ? { 
+                    damage: spellDmgFormula ? {
                         damage_type: { name: spellDmgType, index: spellDmgType.toLowerCase() },
                         [spellLevel === 0 ? 'damage_at_character_level' : 'damage_at_slot_level']: { [spellLevel === 0 ? '1' : spellLevel.toString()]: spellDmgFormula }
                     } : undefined,
@@ -1426,12 +1453,12 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                 };
             } else if (activeTab === 'item') {
                 payload = {
-                    ...payload, 
+                    ...payload,
                     equipment_category: { name: itemCategory, index: itemCategory.toLowerCase() },
                     subtype: itemSubtype,
                     is_wondrous: itemIsWondrous,
                     rarity: itemRarity,
-                    weight: itemWeight, 
+                    weight: itemWeight,
                     cost: { quantity: parseInt(itemCost) || 0, unit: itemCost.includes('gp') ? 'gp' : 'sp' },
                     requires_attunement: itemAttunement,
                     isThrown: itemIsThrown,
@@ -1496,7 +1523,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     return (
         <div className="fixed inset-0 bg-black/85 z-[200] flex items-center justify-center p-4">
             <div ref={modalRef} className="bg-[#15161a] border border-gray-800 rounded-xl w-full max-w-6xl shadow-2xl flex flex-col h-[90dvh] max-h-[90dvh] overflow-hidden isolate">
-                
+
                 {/* Forge Header */}
                 <div className="p-4 sm:p-6 border-b border-gray-800 bg-[#121316] rounded-t-xl shrink-0 flex justify-between items-center gap-4">
                     <div className="flex items-center gap-4 min-w-0">
@@ -1516,7 +1543,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
 
                 <div className="flex border-b border-gray-800 bg-[#1b1c20] shrink-0 overflow-x-auto no-scrollbar">
                     {(['race', 'class', 'subclass', 'background', 'spell', 'item', 'creature', 'feat'] as const).map(t => (
-                        <button 
+                        <button
                             key={t}
                             onClick={() => { setActiveTab(t); setShowForm(false); }}
                             className={`px-8 py-4 font-bold uppercase text-xs tracking-[0.2em] transition-all border-b-2 whitespace-nowrap ${activeTab === t ? 'text-dnd-gold border-dnd-gold bg-dnd-gold/5' : 'text-gray-600 border-transparent hover:text-gray-400'}`}
@@ -1527,7 +1554,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                 </div>
 
                 <div className="flex-grow overflow-hidden flex flex-col md:flex-row">
-                    
+
                     {/* Public Archive Sidebar */}
                     <div className="md:w-72 border-r border-gray-800 bg-black/20 flex flex-col shrink-0 max-h-64 md:max-h-none">
                         <div className="p-4 border-b border-gray-800 flex justify-between items-center">
@@ -1540,17 +1567,17 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                         <div className="p-3 border-b border-gray-800 space-y-2">
                             <div className="relative">
                                 <Search size={14} className="absolute left-2.5 top-2.5 text-gray-500" />
-                                <input 
-                                    type="text" 
-                                    placeholder="Search entries..." 
+                                <input
+                                    type="text"
+                                    placeholder="Search entries..."
                                     value={searchQuery}
                                     onChange={e => setSearchQuery(e.target.value)}
                                     className="w-full bg-[#121316] border border-gray-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-dnd-gold"
                                 />
                             </div>
                             <div className="flex gap-2">
-                                <select 
-                                    value={filterCategory} 
+                                <select
+                                    value={filterCategory}
                                     onChange={e => setFilterCategory(e.target.value)}
                                     className="w-full bg-[#121316] border border-gray-700 rounded-lg px-2 py-1 text-[10px] text-gray-300 focus:outline-none focus:border-dnd-gold"
                                 >
@@ -1600,8 +1627,8 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                         return true;
                                     })
                                     .map(item => (
-                                    <div 
-                                        key={item.id} 
+                                    <div
+                                        key={item.id}
                                         onClick={() => handleEdit(item)}
                                         className="p-3 bg-gray-800/20 rounded-lg border border-gray-700/50 hover:border-dnd-gold transition-colors group relative cursor-pointer"
                                     >
@@ -1617,7 +1644,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                 ) : (
                                                     <span className="text-[7px] bg-blue-900/30 text-blue-500 px-1 rounded border border-blue-900/50 uppercase font-black">Personal</span>
                                                 )}
-                                                <button 
+                                                <button
                                                     onClick={(e) => handleDuplicate(item, e)}
                                                     className="text-gray-400 hover:text-dnd-gold opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity p-1.5"
                                                     title="Duplicate Entry"
@@ -1628,13 +1655,13 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                     <div className="flex items-center gap-1">
                                                         {deleteConfirmId === item.id ? (
                                                             <div className="flex items-center gap-1 animate-in fade-in slide-in-from-right-2 duration-200">
-                                                                <button 
+                                                                <button
                                                                     onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
                                                                     className="text-[8px] bg-red-600 text-white px-1.5 py-0.5 rounded font-black uppercase hover:bg-red-500"
                                                                 >
                                                                     Confirm
                                                                 </button>
-                                                                <button 
+                                                                <button
                                                                     onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(null); }}
                                                                     className="text-[8px] bg-gray-700 text-gray-300 px-1.5 py-0.5 rounded font-black uppercase hover:bg-gray-600"
                                                                 >
@@ -1642,7 +1669,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                                 </button>
                                                             </div>
                                                         ) : (
-                                                            <button 
+                                                            <button
                                                                 onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(item.id); }}
                                                                 className="text-red-500 hover:text-red-400 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity p-1.5"
                                                             >
@@ -1671,22 +1698,22 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                             </div>
                         ) : (
                             <form onSubmit={handleSave} className="p-4 sm:p-8 space-y-12 max-w-4xl mx-auto pb-40 animate-in fade-in duration-300">
-                                
+
                                  {/* IDENTITY SECTION */}
                                  <section className="space-y-6">
                                      <div className="border-l-4 border-dnd-gold pl-4 flex justify-between items-center">
                                          <h4 className="text-sm font-black text-gray-400 uppercase tracking-widest">Basic Identity</h4>
-                                         
+
                                          {/* Sharing Toggle */}
                                          <div className="flex items-center gap-3 bg-black/40 p-1.5 rounded-full border border-gray-800">
-                                             <button 
+                                             <button
                                                  type="button"
                                                  onClick={() => setIsSharedGlobally(false)}
                                                  className={`px-4 py-1 rounded-full text-[9px] font-black uppercase transition-all ${!isSharedGlobally ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
                                              >
                                                  Personal
                                              </button>
-                                             <button 
+                                             <button
                                                  type="button"
                                                  onClick={() => setIsSharedGlobally(true)}
                                                  className={`px-4 py-1 rounded-full text-[9px] font-black uppercase transition-all ${isSharedGlobally ? 'bg-green-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
@@ -1867,7 +1894,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                 <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block">Available for Classes</label>
                                                 <div className="flex flex-wrap gap-2">
                                                     {parentClassOptions.map((cls: any) => (
-                                                        <button 
+                                                        <button
                                                             key={cls.index} type="button"
                                                             onClick={() => setSpellClasses(prev => prev.includes(cls.name) ? prev.filter(x => x !== cls.name) : [...prev, cls.name])}
                                                             className={`px-3 py-1.5 rounded border text-[10px] font-bold transition-all ${spellClasses.includes(cls.name) ? 'bg-blue-600 text-white border-blue-600' : 'bg-black/20 text-gray-500 border-gray-700 hover:border-gray-500'}`}
@@ -1882,7 +1909,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                 <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block">Components</label>
                                                 <div className="flex gap-4">
                                                     {['V', 'S', 'M'].map(c => (
-                                                        <button 
+                                                        <button
                                                             key={c} type="button"
                                                             onClick={() => setSpellComponents(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c])}
                                                             className={`px-4 py-2 rounded border text-xs font-black transition-all ${spellComponents.includes(c) ? 'bg-dnd-gold text-black border-dnd-gold' : 'bg-black/20 text-gray-600 border-gray-700 hover:border-gray-500'}`}
@@ -1892,10 +1919,10 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                     ))}
                                                 </div>
                                                 {spellComponents.includes('M') && (
-                                                    <input 
-                                                        type="text" value={spellMaterial} onChange={e => setSpellMaterial(e.target.value)} 
-                                                        className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-white outline-none focus:border-dnd-gold" 
-                                                        placeholder="e.g. a pinch of powdered lead" 
+                                                    <input
+                                                        type="text" value={spellMaterial} onChange={e => setSpellMaterial(e.target.value)}
+                                                        className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-white outline-none focus:border-dnd-gold"
+                                                        placeholder="e.g. a pinch of powdered lead"
                                                     />
                                                 )}
                                             </div>
@@ -2039,12 +2066,12 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                 <div className="md:col-span-3 pt-4 border-t border-red-900/20">
                                                     <div className="flex items-center justify-between mb-4">
                                                         <div className="flex items-center gap-3">
-                                                            <input 
-                                                                type="checkbox" 
+                                                            <input
+                                                                type="checkbox"
                                                                 id="itemIsThrown"
-                                                                checked={itemIsThrown} 
-                                                                onChange={e => setItemIsThrown(e.target.checked)} 
-                                                                className="accent-red-500 w-4 h-4" 
+                                                                checked={itemIsThrown}
+                                                                onChange={e => setItemIsThrown(e.target.checked)}
+                                                                className="accent-red-500 w-4 h-4"
                                                             />
                                                             <label htmlFor="itemIsThrown" className="text-[10px] font-bold text-gray-400 uppercase tracking-widest cursor-pointer">Thrown Weapon</label>
                                                         </div>
@@ -2054,22 +2081,22 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-top-2 duration-200">
                                                             <div>
                                                                 <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Thrown Range</label>
-                                                                <input 
-                                                                    type="text" 
-                                                                    value={itemThrownRange} 
-                                                                    onChange={e => setItemThrownRange(e.target.value)} 
-                                                                    className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-sm text-white font-mono" 
-                                                                    placeholder="e.g. 20/60" 
+                                                                <input
+                                                                    type="text"
+                                                                    value={itemThrownRange}
+                                                                    onChange={e => setItemThrownRange(e.target.value)}
+                                                                    className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-sm text-white font-mono"
+                                                                    placeholder="e.g. 20/60"
                                                                 />
                                                             </div>
                                                             <div>
                                                                 <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Thrown Damage (Optional)</label>
-                                                                <input 
-                                                                    type="text" 
-                                                                    value={itemThrownDamage} 
-                                                                    onChange={e => setItemThrownDamage(e.target.value)} 
-                                                                    className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-sm text-white font-mono" 
-                                                                    placeholder="e.g. 1d4" 
+                                                                <input
+                                                                    type="text"
+                                                                    value={itemThrownDamage}
+                                                                    onChange={e => setItemThrownDamage(e.target.value)}
+                                                                    className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-sm text-white font-mono"
+                                                                    placeholder="e.g. 1d4"
                                                                 />
                                                             </div>
                                                         </div>
@@ -2346,6 +2373,23 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                 <input type="text" value={bgEquipment} onChange={e => setBgEquipment(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-800 rounded p-3 text-white text-sm" placeholder="e.g. A backpack, 5 gold, a letter from a friend" />
                                             </div>
                                             <div>
+                                                <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Starting Currency</label>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    {(['gp', 'sp', 'cp'] as const).map(coin => (
+                                                        <label key={coin} className="block">
+                                                            <span className="text-[9px] text-gray-500 uppercase font-black">{coin.toUpperCase()}</span>
+                                                            <input
+                                                                type="number"
+                                                                min={0}
+                                                                value={bgCurrency[coin]}
+                                                                onChange={e => setBgCurrency(prev => ({ ...prev, [coin]: Number(e.target.value) || 0 }))}
+                                                                className="w-full bg-[#0b0c0e] border border-gray-800 rounded p-3 text-white text-sm mt-1"
+                                                            />
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div>
                                                 <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Special Feature Name</label>
                                                 <input type="text" value={bgFeatureName} onChange={e => setBgFeatureName(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-800 rounded p-3 text-white text-sm font-serif" placeholder="e.g. Position of Privilege" />
                                             </div>
@@ -2378,6 +2422,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                         choices={contentChoices}
                                         onResourcesChange={setContentResources}
                                         onChoicesChange={setContentChoices}
+                                        renderOptionEffects={(effects, onChange) => <EffectEditor effects={effects} onChange={onChange} />}
                                     />
                                 )}
 
@@ -2387,6 +2432,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                         choices={contentChoices}
                                         onResourcesChange={() => {}}
                                         onChoicesChange={setContentChoices}
+                                        renderOptionEffects={(effects, onChange) => <EffectEditor effects={effects} onChange={onChange} />}
                                         showResources={false}
                                     />
                                 )}

@@ -340,6 +340,11 @@ const App: React.FC = () => {
         if (name.startsWith('Skill: ')) newSkills.push(name.replace('Skill: ', ''));
     });
 
+    const newFeats = [...character.feats];
+    (extraData?.feats || []).forEach((feat: any) => {
+        if (!newFeats.some(existing => (existing.index || existing.name) === (feat.index || feat.name))) newFeats.push(feat);
+    });
+
     updateCharacter({
         race: finalRace,
         subrace,
@@ -347,7 +352,9 @@ const App: React.FC = () => {
         spells: newSpells,
         skills: Array.from(new Set(newSkills)),
         languages: Array.from(new Set(newLanguages)),
-        toolProficiencies: Array.from(new Set(newTools))
+        toolProficiencies: Array.from(new Set(newTools)),
+        feats: newFeats,
+        ...(extraData?.spellcastingAbility ? { spellcastingAbility: extraData.spellcastingAbility } : {}),
     });
     setPhase('class');
   };
@@ -427,11 +434,20 @@ const App: React.FC = () => {
       setPhase('background');
   };
 
-  const handleBackgroundComplete = async (name: string, background: BackgroundDetail, extraData: { languages: string[], tools: string[], skills: string[], choices?: any[] }) => {
+  const handleBackgroundComplete = async (name: string, background: BackgroundDetail, extraData: { languages: string[], tools: string[], skills: string[], choices?: any[], abilities?: Record<string, number>, feats?: any[], spellcastingAbility?: any }) => {
     const newSkills = Array.from(new Set([...character.skills, ...background.skill_proficiencies, ...extraData.skills]));
     const newLanguages = Array.from(new Set([...character.languages, ...extraData.languages]));
-    const newTools = Array.from(new Set([...character.toolProficiencies, ...extraData.tools]));
+    const newTools = Array.from(new Set([...character.toolProficiencies, ...(background.tool_proficiencies || []), ...extraData.tools]));
     const newChoices = mergeChoices(character.choices, extraData.choices || []);
+    const newAbilities = { ...character.abilities };
+    Object.entries(extraData.abilities || {}).forEach(([ability, bonus]) => {
+        const key = ability as keyof typeof newAbilities;
+        newAbilities[key] = (newAbilities[key] || 0) + Number(bonus || 0);
+    });
+    const newFeats = [...character.feats];
+    (extraData.feats || []).forEach(feat => {
+        if (!newFeats.some(existing => (existing.index || existing.name) === (feat.index || feat.name))) newFeats.push(feat);
+    });
 
     const newCurrency = { ...character.currency };
     newCurrency.gp += background.currency.gp;
@@ -465,6 +481,9 @@ const App: React.FC = () => {
         skills: newSkills,
         languages: newLanguages,
         toolProficiencies: newTools,
+        abilities: newAbilities,
+        feats: newFeats,
+        ...(extraData.spellcastingAbility ? { spellcastingAbility: extraData.spellcastingAbility } : {}),
         currency: newCurrency,
         classFeatures: [...character.classFeatures, bgFeature],
         inventory: newInventory,
