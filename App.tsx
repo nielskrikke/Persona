@@ -460,7 +460,16 @@ const App: React.FC = () => {
         currentHp: totalHp,
         skills: mergedSkills,
         toolProficiencies: mergedTools,
-        classFeatures: [...character.classFeatures.filter(f => f.source === 'Race'), ...choiceFeatures],
+        classFeatures: [
+            ...character.classFeatures.filter(f =>
+                f.source === 'Race'
+                || f.source === character.race?.name
+                || f.source === character.subrace?.name
+                || f.source === 'Background'
+                || f.source === character.background
+            ),
+            ...choiceFeatures,
+        ],
         choices: mergeChoices(character.choices, choices)
     });
     setPhase('abilities');

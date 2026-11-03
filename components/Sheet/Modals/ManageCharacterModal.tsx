@@ -238,7 +238,8 @@ const ManageCharacterModal = ({
                 // Classes & Subclasses
                 for (const cls of character.classes) {
                     const classIndex = cls.definition.index;
-                    const sourceName = cls.definition.name;
+                    const liveDefinition = await fetchClassDetail(classIndex) || cls.definition;
+                    const sourceName = liveDefinition.name;
 
                     for (let i = 1; i <= cls.level; i++) {
                         // Level Advancement
@@ -253,7 +254,7 @@ const ManageCharacterModal = ({
                         });
 
                         // Subclass
-                        const subLvl = getSubclassLevel(cls.definition);
+                        const subLvl = getSubclassLevel(liveDefinition);
                         if (i === subLvl) {
                             const subclasses = await fetchSubclasses(classIndex);
                             backfilled.push({
@@ -282,7 +283,7 @@ const ManageCharacterModal = ({
                             });
                         }
                     }
-                    (cls.definition.choices || []).forEach((choice: any) => {
+                    (liveDefinition.choices || []).forEach((choice: any) => {
                         const choiceId = `class-${classIndex}-${choice.id}`;
                         if (backfilled.some(existing => existing.id === choiceId)) return;
                         const stored = character.choices.find((existing: any) => existing.id === choiceId);

@@ -612,12 +612,23 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         }
     }
 
+    // Re-resolve the race/subrace so ancestry choices and resources come from
+    // the live content library, not a stale character snapshot.
+    let race = character.race;
+    let subrace = character.subrace;
+    if (race?.index) {
+        race = await fetchRaceDetail(race.index, character.user_id) || race;
+    }
+    if (subrace?.index) {
+        subrace = await fetchSubraceDetail(subrace.index, character.user_id) || subrace;
+    }
+
     // Ancestry-style choices store the chosen option name in choices; if an
     // older character does not have the option's effects as a feature yet,
     // derive it from the race record so Breath Weapon/resistance/etc. work.
     const raceChoices = [
-        ...((character.race as any)?.choices || []),
-        ...((character.subrace as any)?.choices || []),
+        ...((race as any)?.choices || []),
+        ...((subrace as any)?.choices || []),
     ];
     if (raceChoices.length > 0) {
         const selectedByChoice = new Map<string, string[]>();
@@ -635,7 +646,7 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
                 });
                 if (!option || typeof option !== 'object' || !Array.isArray(option.effects) || option.effects.length === 0) return;
                 const index = `race-${choice.id}-${option.name}`.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-                const source = character.subrace?.name || character.race?.name || 'Race';
+                const source = subrace?.name || race?.name || 'Race';
                 const existing = classFeatures.find((feature: any) => feature.index === index);
                 const feature = {
                     index,
@@ -655,7 +666,7 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         });
     }
 
-    return hydrateGrantedSpells({ ...character, classes, classFeatures });
+    return hydrateGrantedSpells({ ...character, race, subrace, classes, classFeatures });
 };
 
 export const fetchCreatures = async (userId?: string): Promise<any[]> => {
