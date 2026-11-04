@@ -163,7 +163,7 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
                                         if (e.level !== undefined) filtered = filtered.filter(s => s.level === e.level);
                                         opts = filtered.map(s => ({ index: s.index, name: s.name }));
                                     } else if (e.type === 'proficiency_choice') {
-                                        if (e.category === 'skill') opts = SKILL_LIST.map(s => s.name);
+                                        if (e.category === 'skill') opts = (/tool/i.test(e.name || '') || f.name === 'Skilled') ? [...SKILL_LIST.map(s => s.name), ...ARTISAN_TOOLS] : SKILL_LIST.map(s => s.name);
                                         else if (e.category === 'tool') opts = ARTISAN_TOOLS;
                                         else if (e.category === 'language') opts = STANDARD_LANGUAGES;
                                     } else if (e.type === 'expertise_choice') {

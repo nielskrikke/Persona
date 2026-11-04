@@ -42,6 +42,11 @@ const ManageCharacterModal = ({
     const [localClassFeatures, setLocalClassFeatures] = useState(character.classFeatures);
     const [localMaxHp, setLocalMaxHp] = useState(character.maxHp);
     const [levelDownConfirm, setLevelDownConfirm] = useState<number | null>(null);
+    const isChoiceComplete = (choice: any) => {
+        if (!choice) return false;
+        if (Array.isArray(choice.value)) return choice.value.length >= (choice.count || 1);
+        return choice.value !== null && choice.value !== undefined && choice.value !== '';
+    };
     
     // Lists
     const [allRaces, setAllRaces] = useState<APIReference[]>([]);
@@ -1185,7 +1190,10 @@ const ManageCharacterModal = ({
                 if (values.length >= count) return currentChoice;
                 return { ...currentChoice, value: [...values, newValue] };
             }));
-            if (choice.type === 'skill') setSkills(prev => adding ? Array.from(new Set([...prev, newValue])) : prev.filter(value => value !== newValue));
+            if (choice.type === 'skill') {
+                if (ARTISAN_TOOLS.includes(newValue)) setToolProficiencies(prev => adding ? Array.from(new Set([...prev, newValue])) : prev.filter(value => value !== newValue));
+                else setSkills(prev => adding ? Array.from(new Set([...prev, newValue])) : prev.filter(value => value !== newValue));
+            }
             if (choice.type === 'expertise') setExpertise(prev => adding ? Array.from(new Set([...prev, newValue])) : prev.filter(value => value !== newValue));
             if (choice.type === 'language') setLanguages(prev => adding ? Array.from(new Set([...prev, newValue])) : prev.filter(value => value !== newValue));
             if ((choice.type as string) === 'tool') setToolProficiencies(prev => adding ? Array.from(new Set([...prev, newValue])) : prev.filter(value => value !== newValue));
@@ -1289,7 +1297,7 @@ const ManageCharacterModal = ({
                             }
                             options = filtered.map(s => ({ index: s.index, name: s.name }));
                         } else if (e.type === 'proficiency_choice') {
-                            if (e.category === 'skill') options = SKILL_LIST.map(s => s.name);
+                            if (e.category === 'skill') options = (/tool/i.test(e.name || '') || choice.label?.includes('Skilled')) ? [...SKILL_LIST.map(s => s.name), ...ARTISAN_TOOLS] : SKILL_LIST.map(s => s.name);
                             else if (e.category === 'language') options = STANDARD_LANGUAGES;
                             else if (e.category === 'tool') options = ARTISAN_TOOLS;
                         }
@@ -1410,7 +1418,7 @@ const ManageCharacterModal = ({
                                         options = e.options;
                                     } else if (e.type === 'proficiency_choice') {
                                         if (e.category === 'language') options = STANDARD_LANGUAGES;
-                                        else if (e.category === 'skill') options = SKILL_LIST.map(s => s.name);
+                                        else if (e.category === 'skill') options = (/tool/i.test(e.name || '') || featDetail?.name === 'Skilled') ? [...SKILL_LIST.map(s => s.name), ...ARTISAN_TOOLS] : SKILL_LIST.map(s => s.name);
                                         else if (e.category === 'tool') options = ARTISAN_TOOLS;
                                     } else if (e.type === 'spell_access') {
                                         let filtered = allSpells;
@@ -1645,7 +1653,7 @@ const ManageCharacterModal = ({
                                 options = e.options;
                             } else if (e.type === 'proficiency_choice') {
                                 if (e.category === 'language') options = STANDARD_LANGUAGES;
-                                else if (e.category === 'skill') options = SKILL_LIST.map(s => s.name);
+                                else if (e.category === 'skill') options = (/tool/i.test(e.name || '') || newFeat?.name === 'Skilled') ? [...SKILL_LIST.map(s => s.name), ...ARTISAN_TOOLS] : SKILL_LIST.map(s => s.name);
                                 else if (e.category === 'tool') options = ARTISAN_TOOLS;
                             } else if (e.type === 'spell_access') {
                                 let filtered = allSpells;
@@ -1842,7 +1850,7 @@ const ManageCharacterModal = ({
                         { id: 'choices', label: 'Choices', icon: Settings },
                         { id: 'theme', label: 'Theme', icon: Palette }
                     ].map(t => {
-                        const hasPending = t.id === 'choices' && localChoices.some(c => (c.value === null || c.value === undefined || (Array.isArray(c.value) && c.value.length === 0)) && c.type !== 'Level Advancement');
+                        const hasPending = t.id === 'choices' && localChoices.some(c => !isChoiceComplete(c) && c.type !== 'Level Advancement');
                         return (
                             <button 
                                 key={t.id}
@@ -2570,6 +2578,13 @@ const ManageCharacterModal = ({
                                             if ((mode === 'feat' || c.type === 'feat' || c.type === 'feat-selection') && c.revertData?.abilities?.[stat]) {
                                                 contributors.push({ name: c.label || 'Feat ASI', bonus: c.revertData.abilities[stat] });
                                             }
+                                            const values = Array.isArray(c.value) ? c.value : [c.value];
+                                            values.forEach((value: any) => {
+                                                const text = typeof value === 'string' ? value : (value?.name || value?.label || '');
+                                                const match = String(text).match(new RegExp(`${ABILITY_LABELS[stat]}\\s*\\+?(\\d+)`, 'i'))
+                                                    || String(text).match(new RegExp(`${stat}\\s*\\+?(\\d+)`, 'i'));
+                                                if (match) contributors.push({ name: c.label || c.source || 'Choice', bonus: Number(match[1]) });
+                                            });
                                         });
 
                                         const bonusTotal = contributors.reduce((sum, c) => sum + c.bonus, 0);
@@ -2611,7 +2626,7 @@ const ManageCharacterModal = ({
                             ) : (
                                 <div className="space-y-8">
                                     {/* Pending Choices Section */}
-                                    {localChoices.filter(c => (c.value === null || c.value === undefined || c.value === '' || (Array.isArray(c.value) && c.value.length === 0)) && c.type !== 'Level Advancement').length > 0 && (
+                                    {localChoices.filter(c => !isChoiceComplete(c) && c.type !== 'Level Advancement').length > 0 && (
                                         <section className="space-y-4">
                                             <div className="flex items-center gap-3 px-2">
                                                 <div className="w-2 h-2 rounded-full bg-dnd-gold animate-pulse" />
@@ -2619,7 +2634,7 @@ const ManageCharacterModal = ({
                                             </div>
                                             <div className="space-y-4">
                                                 {localChoices
-                                                    .filter(c => (c.value === null || c.value === undefined || c.value === '' || (Array.isArray(c.value) && c.value.length === 0)) && c.type !== 'Level Advancement')
+                                                    .filter(c => !isChoiceComplete(c) && c.type !== 'Level Advancement')
                                                     .sort((a, b) => a.level - b.level)
                                                     .map(choice => (
                                                         <div key={choice.id} className="bg-black/40 border border-dnd-gold/30 rounded-2xl p-6 shadow-xl shadow-dnd-gold/5">
@@ -2907,7 +2922,7 @@ const ManageCharacterModal = ({
                                             <h4 className="text-gray-500 font-black uppercase tracking-[0.2em] text-[11px]">Progression History</h4>
                                         </div>
                                         
-                                        {localChoices.filter(c => c.value !== null && c.value !== undefined && c.value !== '' && !(Array.isArray(c.value) && c.value.length === 0)).length === 0 ? (
+                                        {localChoices.filter(c => isChoiceComplete(c)).length === 0 ? (
                                             <div className="bg-black/10 border border-dashed border-gray-800 rounded-2xl p-8 text-center">
                                                 <p className="text-gray-600 text-[10px] italic">No completed choices yet.</p>
                                             </div>
@@ -3009,7 +3024,7 @@ const ManageCharacterModal = ({
 
                                                                 {/* Choices Made */}
                                                                 {localChoices
-                                                                    .filter(c => c.level === level && c.value !== null && c.value !== undefined && c.value !== '' && !(Array.isArray(c.value) && c.value.length === 0) && c.type !== 'Level Advancement')
+                                                                    .filter(c => c.level === level && isChoiceComplete(c) && c.type !== 'Level Advancement')
                                                                     .map(choice => {
                                                                         const isExpanded = expandedChoices.includes(choice.id);
                                                                         return (

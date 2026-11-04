@@ -577,6 +577,26 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
         else spells.push(granted);
     });
     spells = spells.filter(spell => !spell.isGranted || grantedByIndex.has(spell.index));
+    const deduped = new Map<string, any>();
+    spells.forEach(spell => {
+        const key = String(spell.index).toLowerCase();
+        const existing = deduped.get(key);
+        if (!existing) {
+            deduped.set(key, spell);
+            return;
+        }
+        const preferred = spell.isGranted && !existing.isGranted ? spell : existing;
+        const other = preferred === spell ? existing : spell;
+        deduped.set(key, {
+            ...other,
+            ...preferred,
+            isPrepared: preferred.isPrepared || other.isPrepared,
+            isGranted: preferred.isGranted || other.isGranted,
+            freeCasts: preferred.freeCasts ?? other.freeCasts,
+            freeCastReset: preferred.freeCastReset ?? other.freeCastReset,
+        });
+    });
+    spells = Array.from(deduped.values());
 
     return { ...character, spells };
 };

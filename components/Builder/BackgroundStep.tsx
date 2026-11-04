@@ -420,7 +420,7 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
                                             );
                                             if (duplicateSkills.length === 0) return null;
                                             const skillOptions = ['Acrobatics', 'Animal Handling', 'Arcana', 'Athletics', 'Deception', 'History', 'Insight', 'Intimidation', 'Investigation', 'Medicine', 'Nature', 'Perception', 'Performance', 'Persuasion', 'Religion', 'Sleight of Hand', 'Stealth', 'Survival']
-                                                .filter(skill => !currentSkills.includes(skill) && !duplicateSkills.includes(skill));
+                                                .filter(skill => !currentSkills.includes(skill) && !duplicateSkills.includes(skill) && !(selectedBackground.skill_proficiencies || []).includes(skill));
                                             return (
                                                 <section className="bg-dnd-gold/5 border border-dnd-gold/30 rounded-xl p-4 space-y-3">
                                                     <span className="text-[10px] font-black text-dnd-gold uppercase tracking-[0.2em] block border-b border-dnd-gold/20 pb-2">Duplicate Skill Replacement</span>

@@ -35,7 +35,7 @@ const buildFeatGrantChoices = async (feat: any, source: string, level: number): 
         let options: any[] = effect.options || [];
         if (options.length === 0) {
             if (effect.type === 'proficiency_choice') {
-                if (effect.category === 'skill') options = SKILL_LIST.map(skill => skill.name);
+                if (effect.category === 'skill') options = (/tool/i.test(effect.name || '') || feat.name === 'Skilled') ? [...SKILL_LIST.map(skill => skill.name), ...ARTISAN_TOOLS] : SKILL_LIST.map(skill => skill.name);
                 else if (effect.category === 'tool') options = ARTISAN_TOOLS;
                 else if (effect.category === 'language') options = STANDARD_LANGUAGES;
             } else if (effect.type === 'spell_access') {
@@ -63,6 +63,12 @@ const buildFeatGrantChoices = async (feat: any, source: string, level: number): 
                 featIndex: feat.index,
                 isSubChoice: true,
                 expertiseIfProficient: !!effect.expertise_if_proficient,
+                spellGrant: {
+                    freeCasts: effect.free_casts,
+                    freeCastReset: effect.free_cast_reset || effect.reset,
+                    ability: effect.ability,
+                    minLevel: effect.min_level,
+                },
             },
         });
     });
@@ -573,12 +579,12 @@ const App: React.FC = () => {
     setPhase('gear');
   };
 
-  const handleEquipmentComplete = async (inventory: InventoryItem[]) => {
+  const handleEquipmentComplete = async (inventory: InventoryItem[], currency?: { gp: number; sp: number; cp: number }) => {
     const finalInventory = [...character.inventory, ...inventory];
     const { id, user_id, ...charProps } = character;
-    const finalChar = { ...charProps, inventory: finalInventory };
+    const finalChar = { ...charProps, inventory: finalInventory, ...(currency ? { currency: { ...character.currency, gp: character.currency.gp + currency.gp, sp: character.currency.sp + currency.sp, cp: character.currency.cp + currency.cp } } : {}) };
 
-    updateCharacter({ inventory: finalInventory });
+    updateCharacter({ inventory: finalInventory, ...(currency ? { currency: { ...character.currency, gp: character.currency.gp + currency.gp, sp: character.currency.sp + currency.sp, cp: character.currency.cp + currency.cp } } : {}) });
 
     if (currentUser) {
         try {
