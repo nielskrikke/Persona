@@ -1136,6 +1136,23 @@ const ManageCharacterModal = ({
         const count = choice.count || 1;
         const isMulti = count > 1;
 
+        if (isMulti && ['skill', 'expertise', 'language', 'tool'].includes(choice.type)) {
+            const current = Array.isArray(choice.value) ? choice.value : [];
+            const adding = !current.includes(newValue);
+            setLocalChoices(prev => prev.map(currentChoice => {
+                if (currentChoice.id !== choiceId) return currentChoice;
+                const values = Array.isArray(currentChoice.value) ? currentChoice.value : [];
+                if (values.includes(newValue)) return { ...currentChoice, value: values.filter(value => value !== newValue) };
+                if (values.length >= count) return currentChoice;
+                return { ...currentChoice, value: [...values, newValue] };
+            }));
+            if (choice.type === 'skill') setSkills(prev => adding ? Array.from(new Set([...prev, newValue])) : prev.filter(value => value !== newValue));
+            if (choice.type === 'expertise') setExpertise(prev => adding ? Array.from(new Set([...prev, newValue])) : prev.filter(value => value !== newValue));
+            if (choice.type === 'language') setLanguages(prev => adding ? Array.from(new Set([...prev, newValue])) : prev.filter(value => value !== newValue));
+            if ((choice.type as string) === 'tool') setToolProficiencies(prev => adding ? Array.from(new Set([...prev, newValue])) : prev.filter(value => value !== newValue));
+            return;
+        }
+
         let finalValue = newValue;
         if (isMulti) {
             const currentArray = Array.isArray(oldValue) ? oldValue : [];
