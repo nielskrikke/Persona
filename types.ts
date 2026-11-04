@@ -496,6 +496,7 @@ export interface CharacterState {
     freeCastUsage?: Record<string, number>;
     activeConditions?: Record<string, boolean>;
     combatTarget?: CombatTarget | null;
+    masteryUsage?: Record<string, boolean>;
     alignment: string;
     skills: string[];
     expertise: string[];
