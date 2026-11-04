@@ -2575,6 +2575,22 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const spellName = isSpell ? attack.name : '';
 
             const source = attack.source;
+            const target = character.combatTarget;
+            const targetDamageType = String(
+                (isSpell ? (source as any)?.damage?.damage_type?.name : attack.type) || ''
+            ).toLowerCase();
+            const ignoresTargetResistance = activeModifiers.some((effect: any) =>
+                effect.type === 'ignore_resistance'
+                && String(effect.damage_type || '').toLowerCase() === targetDamageType
+            );
+            if (target && targetDamageType && !ignoresTargetResistance) {
+                if ((target.resistances || []).some(type => type.toLowerCase() === targetDamageType)) {
+                    modifiers.push({ name: 'Target: Resistant', desc: `The target resists ${targetDamageType}; damage is halved.` });
+                }
+                if ((target.immunities || []).some(type => type.toLowerCase() === targetDamageType)) {
+                    modifiers.push({ name: 'Target: Immune', desc: `The target is immune to ${targetDamageType}; no damage.` });
+                }
+            }
             const isMonkWeapon = attack.notes?.includes('Monk Weapon') || attack.notes?.includes('Kensei Weapon');
             const isMagic = source?.requires_attunement || (source?.modifiers && source.modifiers.length > 0) || source?.isInfusion || source?.isPactWeapon || (isMonkWeapon && activeModifiers.some((m: any) => m.type === 'attack_rider' && m.name === 'Empowered Strikes'));
             if (isMagic && isWeapon && !isSpell) {
@@ -3971,7 +3987,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         {activeTab === 'stats' && <StatsTab character={character} roll={roll} triggerRollMenu={triggerRollMenu} layout={layout} renderWidget={renderWidget} setShowLayoutManager={setShowLayoutManager} />}
                         {activeTab === 'actions' && (
                             <ErrorBoundary>
-                                <ActionsTab character={character} roll={roll} triggerRollMenu={triggerRollMenu} setSelectedDetail={setSelectedDetail} getAttacks={getAttacks} bonusActionList={getBonusActions()} setShowCustomActionModal={setShowCustomActionModal} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} spellSave={spellSave} spellMod={spellMod} />
+                                <ActionsTab character={character} roll={roll} triggerRollMenu={triggerRollMenu} setSelectedDetail={setSelectedDetail} getAttacks={getAttacks} bonusActionList={getBonusActions()} setShowCustomActionModal={setShowCustomActionModal} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} spellSave={spellSave} spellMod={spellMod} setCharacter={setCharacter} />
                             </ErrorBoundary>
                         )}
                         {activeTab === 'spells' && <SpellsTab character={character} setCharacter={setCharacter} roll={roll} triggerRollMenu={triggerRollMenu} setSelectedDetail={setSelectedDetail} spellSave={spellSave} spellAttackStr={spellAttackStr} spellMod={spellMod} setShowSpellManager={setShowSpellManager} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} onPolymorphCast={() => { setCreatureModalMode('polymorph'); setShowCreatureModal(true); }} />}

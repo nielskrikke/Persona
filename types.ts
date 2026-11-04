@@ -468,6 +468,17 @@ export interface DiceCustomizationOptions {
     soundEnabled?: boolean;
 }
 
+export interface CombatTarget {
+    name: string;
+    ac?: number;
+    hp?: number;
+    maxHp?: number;
+    resistances: string[];
+    immunities: string[];
+    conditions: string[];
+    notes?: string[];
+}
+
 export interface CharacterState {
     id?: string;
     user_id?: string;
@@ -482,6 +493,7 @@ export interface CharacterState {
     spellcastingAbility?: AbilityName;
     freeCastUsage?: Record<string, number>;
     activeConditions?: Record<string, boolean>;
+    combatTarget?: CombatTarget | null;
     alignment: string;
     skills: string[];
     expertise: string[];

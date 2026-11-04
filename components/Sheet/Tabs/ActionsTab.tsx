@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CharacterState, SpellDetail, CreatureDetail } from '../../../types';
-import { STANDARD_ACTIONS, WIDGET_BG, MASTERY_DESCRIPTIONS } from '../../../data/constants';
+import { STANDARD_ACTIONS, WIDGET_BG, MASTERY_DESCRIPTIONS, STANDARD_CONDITIONS } from '../../../data/constants';
 import { formatModifier, getSpellDamageString, hasUiWidget } from '../../../utils/rules';
 
 interface ActionsTabProps {
@@ -14,6 +14,7 @@ interface ActionsTabProps {
     setShowHomebrewModal: (val: boolean, tab?: 'race' | 'class' | 'subclass' | 'background' | 'spell' | 'item' | 'creature' | 'feat') => void;
     spellSave: number;
     spellMod: number;
+    setCharacter: React.Dispatch<React.SetStateAction<CharacterState>>;
 }
 
 const IconSword = () => (
@@ -37,7 +38,7 @@ const IconFeatures = () => (
 );
 
 const ActionsTab: React.FC<ActionsTabProps> = ({ 
-    character, roll, triggerRollMenu, setSelectedDetail, getAttacks, bonusActionList, setShowCustomActionModal, setShowHomebrewModal, spellSave, spellMod 
+    character, roll, triggerRollMenu, setSelectedDetail, getAttacks, bonusActionList, setShowCustomActionModal, setShowHomebrewModal, spellSave, spellMod, setCharacter
 }) => {
     const [actionFilter, setActionFilter] = useState('ALL');
 
@@ -115,6 +116,73 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                 </div>
             </div>
 
+            <section className={`${WIDGET_BG} border border-gray-700 rounded-xl p-4 space-y-3`}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-dnd-gold">Combat Target</span>
+                        <input
+                            value={character.combatTarget?.name || ''}
+                            onChange={e => setCharacter(prev => ({
+                                ...prev,
+                                combatTarget: { name: e.target.value, resistances: [], immunities: [], conditions: [], ...(prev.combatTarget || {}) },
+                            }))}
+                            placeholder="Target name"
+                            className="bg-black/30 border border-gray-700 rounded-lg px-2 py-1 text-xs text-white outline-none focus:border-dnd-gold"
+                        />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <label className="text-[9px] uppercase text-gray-500 font-bold">AC</label>
+                        <input type="number" value={character.combatTarget?.ac ?? ''} onChange={e => setCharacter(prev => ({ ...prev, combatTarget: { name: '', resistances: [], immunities: [], conditions: [], ...(prev.combatTarget || {}), ac: e.target.value ? Number(e.target.value) : undefined } }))} className="w-16 bg-black/30 border border-gray-700 rounded px-2 py-1 text-xs text-white" />
+                        <label className="text-[9px] uppercase text-gray-500 font-bold">HP</label>
+                        <input type="number" value={character.combatTarget?.hp ?? ''} onChange={e => setCharacter(prev => ({ ...prev, combatTarget: { name: '', resistances: [], immunities: [], conditions: [], ...(prev.combatTarget || {}), hp: e.target.value ? Number(e.target.value) : undefined } }))} className="w-16 bg-black/30 border border-gray-700 rounded px-2 py-1 text-xs text-white" />
+                        <button type="button" onClick={() => setCharacter(prev => ({ ...prev, combatTarget: null }))} className="text-[9px] uppercase font-bold text-gray-500 hover:text-red-400">Clear</button>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {(['resistances', 'immunities'] as const).map(kind => (
+                        <div key={kind} className="flex items-center gap-2">
+                            <span className="text-[9px] uppercase text-gray-500 font-bold w-20">{kind}</span>
+                            <select
+                                value=""
+                                onChange={e => {
+                                    if (!e.target.value) return;
+                                    setCharacter(prev => {
+                                        const current = prev.combatTarget || { name: '', resistances: [], immunities: [], conditions: [] };
+                                        const list = Array.from(new Set([...(current[kind] || []), e.target.value]));
+                                        return { ...prev, combatTarget: { ...current, [kind]: list } };
+                                    });
+                                }}
+                                className="bg-black/30 border border-gray-700 rounded px-2 py-1 text-[10px] text-white"
+                            >
+                                <option value="">Add...</option>
+                                {['Acid','Cold','Fire','Force','Lightning','Necrotic','Poison','Psychic','Radiant','Thunder','Bludgeoning','Piercing','Slashing'].map(type => <option key={type} value={type}>{type}</option>)}
+                            </select>
+                            <div className="flex flex-wrap gap-1">
+                                {(character.combatTarget?.[kind] || []).map((type: string) => (
+                                    <button key={type} type="button" onClick={() => setCharacter(prev => ({ ...prev, combatTarget: { ...(prev.combatTarget || { name: '', resistances: [], immunities: [], conditions: [] }), [kind]: (prev.combatTarget?.[kind] || []).filter((value: string) => value !== type) } }))} className="text-[9px] bg-gray-800 border border-gray-700 rounded-full px-2 py-0.5 text-gray-300">{type} ×</button>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[9px] uppercase text-gray-500 font-bold">Conditions</span>
+                    <select value="" onChange={e => {
+                        if (!e.target.value) return;
+                        setCharacter(prev => {
+                            const current = prev.combatTarget || { name: '', resistances: [], immunities: [], conditions: [] };
+                            return { ...prev, combatTarget: { ...current, conditions: Array.from(new Set([...(current.conditions || []), e.target.value])) } };
+                        });
+                    }} className="bg-black/30 border border-gray-700 rounded px-2 py-1 text-[10px] text-white">
+                        <option value="">Add condition...</option>
+                        {STANDARD_CONDITIONS.map((condition: any) => <option key={condition.name} value={condition.name}>{condition.name}</option>)}
+                    </select>
+                    {(character.combatTarget?.conditions || []).map((condition: string) => (
+                        <button key={condition} type="button" onClick={() => setCharacter(prev => ({ ...prev, combatTarget: { ...(prev.combatTarget || { name: '', resistances: [], immunities: [], conditions: [] }), conditions: (prev.combatTarget?.conditions || []).filter((value: string) => value !== condition) } }))} className="text-[9px] bg-purple-900/30 border border-purple-700/50 rounded-full px-2 py-0.5 text-purple-200">{condition} ×</button>
+                    ))}
+                </div>
+            </section>
+
             {hasFavorites && (
                 <div className={`${WIDGET_BG} border border-dnd-gold/50 rounded-xl overflow-hidden shadow-sm mb-6`}>
                     <div className="bg-[#121316]/80 px-6 py-2 flex justify-between items-center border-b border-dnd-gold/30">
@@ -164,6 +232,29 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                                     if (attack.mastery.damage) roll(attack.mastery.damage, `Extra Damage ${attack.name}`);
                                                 }} className="text-[9px] bg-emerald-900/30 text-emerald-200 border border-emerald-700/50 px-1.5 py-0.5 rounded font-bold">
                                                     Extra Attack
+                                                </button>
+                                            )}
+                                            {['topple','push','sap','slow','vex'].includes(String(attack.mastery.name).toLowerCase()) && (
+                                                <button onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const label = String(attack.mastery.name);
+                                                    setCharacter(prev => {
+                                                        const current = prev.combatTarget || { name: '', resistances: [], immunities: [], conditions: [] };
+                                                        return { ...prev, combatTarget: { ...current, conditions: Array.from(new Set([...(current.conditions || []), label])) } };
+                                                    });
+                                                }} className="text-[9px] bg-amber-900/30 text-amber-200 border border-amber-700/50 px-1.5 py-0.5 rounded font-bold">
+                                                    Apply {attack.mastery.name}
+                                                </button>
+                                            )}
+                                            {attack.mastery.missDamage !== undefined && character.combatTarget?.hp !== undefined && (
+                                                <button onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setCharacter(prev => {
+                                                        if (!prev.combatTarget || prev.combatTarget.hp === undefined) return prev;
+                                                        return { ...prev, combatTarget: { ...prev.combatTarget, hp: Math.max(0, prev.combatTarget.hp - Number(attack.mastery.missDamage || 0)) } };
+                                                    });
+                                                }} className="text-[9px] bg-red-900/30 text-red-200 border border-red-700/50 px-1.5 py-0.5 rounded font-bold">
+                                                    Apply Miss Damage
                                                 </button>
                                             )}
                                         </div>
@@ -317,6 +408,29 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                                     if (attack.mastery.damage) roll(attack.mastery.damage, `Extra Damage ${attack.name}`);
                                                 }} className="text-[9px] bg-emerald-900/30 text-emerald-200 border border-emerald-700/50 px-1.5 py-0.5 rounded font-bold">
                                                     Extra Attack
+                                                </button>
+                                            )}
+                                            {['topple','push','sap','slow','vex'].includes(String(attack.mastery.name).toLowerCase()) && (
+                                                <button onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const label = String(attack.mastery.name);
+                                                    setCharacter(prev => {
+                                                        const current = prev.combatTarget || { name: '', resistances: [], immunities: [], conditions: [] };
+                                                        return { ...prev, combatTarget: { ...current, conditions: Array.from(new Set([...(current.conditions || []), label])) } };
+                                                    });
+                                                }} className="text-[9px] bg-amber-900/30 text-amber-200 border border-amber-700/50 px-1.5 py-0.5 rounded font-bold">
+                                                    Apply {attack.mastery.name}
+                                                </button>
+                                            )}
+                                            {attack.mastery.missDamage !== undefined && character.combatTarget?.hp !== undefined && (
+                                                <button onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setCharacter(prev => {
+                                                        if (!prev.combatTarget || prev.combatTarget.hp === undefined) return prev;
+                                                        return { ...prev, combatTarget: { ...prev.combatTarget, hp: Math.max(0, prev.combatTarget.hp - Number(attack.mastery.missDamage || 0)) } };
+                                                    });
+                                                }} className="text-[9px] bg-red-900/30 text-red-200 border border-red-700/50 px-1.5 py-0.5 rounded font-bold">
+                                                    Apply Miss Damage
                                                 </button>
                                             )}
                                         </div>
