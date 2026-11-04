@@ -172,6 +172,45 @@ const ManageCharacterModal = ({
         }
     }, [isOpen, character]);
 
+    // Reconcile passive features for multi-select feature choices. The click
+    // handler updates the chosen values immediately; this pass makes every
+    // selected option contribute its passive effects instead of only the last.
+    useEffect(() => {
+        const featureChoices = localChoices.filter((choice: any) =>
+            choice.type === 'feature_choice' && Array.isArray(choice.value) && choice.value.length > 0 && Array.isArray(choice.options)
+        );
+        if (featureChoices.length === 0) return;
+        const choiceIds = new Set(featureChoices.map((choice: any) => choice.id));
+        setLocalClassFeatures(prev => {
+            const retained = prev.filter((feature: any) => !feature.revertData?.choiceId || !choiceIds.has(feature.revertData.choiceId));
+            const additions: any[] = [];
+            featureChoices.forEach((choice: any) => {
+                choice.value.forEach((selectedName: any) => {
+                    const option = choice.options.find((candidate: any) =>
+                        (typeof candidate === 'string' ? candidate : (candidate.name || candidate.index)) === selectedName
+                    );
+                    if (!option || typeof option === 'string') return;
+                    const effects = (option.effects || []).filter((effect: any) =>
+                        !effect.type?.endsWith('_choice') && effect.type !== 'spell_access'
+                    );
+                    if (effects.length === 0 && !option.desc) return;
+                    additions.push({
+                        index: `${choice.id}-${option.name}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+                        name: `${choice.label}: ${option.name}`,
+                        level: choice.level || 1,
+                        source: choice.source,
+                        desc: option.desc ? [option.desc] : [],
+                        effects,
+                        revertData: { choiceId: choice.id },
+                    });
+                });
+            });
+            const byIndex = new Map<string, any>();
+            [...retained, ...additions].forEach(feature => byIndex.set(feature.index, feature));
+            return Array.from(byIndex.values());
+        });
+    }, [localChoices]);
+
     // Backfill logic for existing characters
     useEffect(() => {
         const backfill = async () => {
