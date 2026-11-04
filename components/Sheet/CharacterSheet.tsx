@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import Markdown from 'react-markdown';
 import { Sparkles, Plus, X, Maximize, Search, Info, Heart, Skull, AlertOctagon } from 'lucide-react';
 import { CharacterState, ABILITY_NAMES, ABILITY_LABELS, RollResult, AbilityName, SpellDetail, InventoryItem, Currency, RuleEntry, CreatureDetail, EldritchCannonDetail, SteelDefenderDetail, EquipmentDetail, ItemModifier, DiceCustomizationOptions } from '../../types';
-import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount, getSpellAbilityForClass, getResourceDefinitions, mergeSpellSlotCurrents, hasUiWidget, getClassWithUiWidget, resolveDamageFormula, appendMinDie, getWeaponMasteryEffect } from '../../utils/rules';
+import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount, getSpellAbilityForClass, getResourceDefinitions, mergeSpellSlotCurrents, hasUiWidget, getClassWithUiWidget, resolveDamageFormula, appendMinDie, getWeaponMasteryEffect, getWeaponMasteryData } from '../../utils/rules';
 import { rollDice } from '../../utils/dice';
 import CreatureManagerModal from './Modals/CreatureManagerModal';
 import { WIDGET_LABELS, DEFAULT_LAYOUT, STANDARD_CONDITIONS, STANDARD_ACTIONS, STATIC_RULES, WIDGET_BG } from '../../data/constants';
@@ -3021,6 +3021,17 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 source: item
             };
             (weaponAttack as any).modifiers = getAttackModifiers(weaponAttack);
+            const masteryName = mastery ? (typeof item.mastery === 'string' ? item.mastery : item.mastery.name) : null;
+            const masteredWeapons = (character.choices || [])
+                .filter((choice: any) => choice.type === 'weapon_mastery')
+                .flatMap((choice: any) => Array.isArray(choice.value) ? choice.value : [choice.value]);
+            if (masteryName && masteredWeapons.some((name: any) => String(name).toLowerCase() === item.name.toLowerCase())) {
+                (weaponAttack as any).mastery = {
+                    ...getWeaponMasteryData(masteryName, prof, strMod, dexMod),
+                    hit: finalHit,
+                    damage: displayDamage,
+                };
+            }
             attacks.push(weaponAttack);
         });
 

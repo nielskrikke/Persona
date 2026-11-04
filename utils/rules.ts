@@ -720,3 +720,33 @@ export const getWeaponMasteryEffect = (mastery: string, proficiency: number, str
         default: return '';
     }
 };
+
+export const getWeaponMasteryData = (mastery: string, proficiency: number, strMod: number, dexMod: number): {
+    name: string;
+    description: string;
+    saveAbility?: string;
+    saveDC?: number;
+    missDamage?: number;
+    extraAttack?: boolean;
+} => {
+    const key = String(mastery || '').toLowerCase();
+    const ability = Math.max(strMod, dexMod);
+    const descriptions: Record<string, string> = {
+        cleave: 'On a hit, make one extra melee attack against a second creature within 5 feet (once per turn).',
+        graze: `On a miss, deal ${Math.max(0, ability)} damage of the weapon's type.`,
+        nick: 'Make the extra Light weapon attack as part of the Attack action instead of a Bonus Action (once per turn).',
+        push: 'On a hit, push the target up to 10 feet away.',
+        sap: 'On a hit, the target has Disadvantage on its next attack roll before your next turn.',
+        slow: 'On a hit, reduce the target’s Speed by 10 feet until your next turn.',
+        topple: `On a hit, CON save DC ${8 + proficiency + ability} or the target has the Prone condition.`,
+        vex: 'On a hit, you have Advantage on your next attack against that target before your next turn.',
+    };
+    return {
+        name: mastery,
+        description: descriptions[key] || '',
+        saveAbility: key === 'topple' ? 'CON' : undefined,
+        saveDC: key === 'topple' ? 8 + proficiency + ability : undefined,
+        missDamage: key === 'graze' ? Math.max(0, ability) : undefined,
+        extraAttack: key === 'cleave' || key === 'nick',
+    };
+};

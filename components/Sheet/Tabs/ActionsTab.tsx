@@ -144,7 +144,31 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                                 )}
                                             </div>
                                             <div className="text-[10px] text-gray-500 lowercase line-clamp-2 leading-tight">{attack.type}{attack.notes?.length ? ` • ${attack.notes.join(' • ')}` : ''}</div>
-                                            {attack.modifiers && attack.modifiers.length > 0 && (
+                                            {attack.mastery && (
+                                        <div className="flex flex-wrap gap-1 mt-1 items-center">
+                                            <span className="text-[9px] uppercase font-black tracking-widest text-dnd-gold">Mastery: {attack.mastery.name}</span>
+                                            {attack.mastery.saveDC && (
+                                                <button onClick={(e) => { e.stopPropagation(); roll('1d20', `${attack.mastery.saveAbility} Save vs ${attack.mastery.name}`); }} className="text-[9px] bg-purple-900/30 text-purple-200 border border-purple-700/50 px-1.5 py-0.5 rounded font-bold">
+                                                    {attack.mastery.saveAbility} DC {attack.mastery.saveDC}
+                                                </button>
+                                            )}
+                                            {attack.mastery.missDamage !== undefined && (
+                                                <button onClick={(e) => { e.stopPropagation(); roll(String(attack.mastery.missDamage), `Graze Miss ${attack.name}`); }} className="text-[9px] bg-gray-800/60 text-gray-200 border border-gray-600/50 px-1.5 py-0.5 rounded font-bold">
+                                                    Miss: {attack.mastery.missDamage}
+                                                </button>
+                                            )}
+                                            {attack.mastery.extraAttack && (
+                                                <button onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (attack.mastery.hit !== null) roll(`1d20${formatModifier(attack.mastery.hit)}`, `Extra Attack ${attack.name}`);
+                                                    if (attack.mastery.damage) roll(attack.mastery.damage, `Extra Damage ${attack.name}`);
+                                                }} className="text-[9px] bg-emerald-900/30 text-emerald-200 border border-emerald-700/50 px-1.5 py-0.5 rounded font-bold">
+                                                    Extra Attack
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+                                    {attack.modifiers && attack.modifiers.length > 0 && (
                                                 <div className="flex flex-wrap gap-1 mt-1">
                                                     {attack.modifiers.map((mod: any, idx: number) => (
                                                         <div key={idx} className="group/mod relative">
@@ -273,6 +297,30 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                             </span>
                                         )}
                                     </div>
+                                    {attack.mastery && (
+                                        <div className="flex flex-wrap gap-1 mt-1 items-center">
+                                            <span className="text-[9px] uppercase font-black tracking-widest text-dnd-gold">Mastery: {attack.mastery.name}</span>
+                                            {attack.mastery.saveDC && (
+                                                <button onClick={(e) => { e.stopPropagation(); roll('1d20', `${attack.mastery.saveAbility} Save vs ${attack.mastery.name}`); }} className="text-[9px] bg-purple-900/30 text-purple-200 border border-purple-700/50 px-1.5 py-0.5 rounded font-bold">
+                                                    {attack.mastery.saveAbility} DC {attack.mastery.saveDC}
+                                                </button>
+                                            )}
+                                            {attack.mastery.missDamage !== undefined && (
+                                                <button onClick={(e) => { e.stopPropagation(); roll(String(attack.mastery.missDamage), `Graze Miss ${attack.name}`); }} className="text-[9px] bg-gray-800/60 text-gray-200 border border-gray-600/50 px-1.5 py-0.5 rounded font-bold">
+                                                    Miss: {attack.mastery.missDamage}
+                                                </button>
+                                            )}
+                                            {attack.mastery.extraAttack && (
+                                                <button onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (attack.mastery.hit !== null) roll(`1d20${formatModifier(attack.mastery.hit)}`, `Extra Attack ${attack.name}`);
+                                                    if (attack.mastery.damage) roll(attack.mastery.damage, `Extra Damage ${attack.name}`);
+                                                }} className="text-[9px] bg-emerald-900/30 text-emerald-200 border border-emerald-700/50 px-1.5 py-0.5 rounded font-bold">
+                                                    Extra Attack
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
                                     {attack.modifiers && attack.modifiers.length > 0 && (
                                         <div className="flex flex-wrap gap-1 mt-1">
                                             {attack.modifiers.map((mod: any, idx: number) => (
