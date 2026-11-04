@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { CharacterState, SpellDetail } from '../../../types';
 import { WIDGET_BG } from '../../../data/constants';
-import { getSpellDamageString, getSpellSecondaryDamageString, calculateModifier, calculateProficiency, formatModifier, getEffectiveAbilities, resolveDamageFormula, appendMinDie, getSpellCastLevel } from '../../../utils/rules';
+import { getSpellDamageString, getSpellSecondaryDamageString, calculateModifier, calculateProficiency, formatModifier, getEffectiveAbilities, resolveDamageFormula, appendMinDie, getSpellCastLevel, getSpellUpcastCount } from '../../../utils/rules';
 
 interface SpellsTabProps {
     character: CharacterState;
@@ -263,8 +263,11 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                 </div>
                                 <div className="divide-y divide-[#2e3036]/60 min-w-[500px]">
                                     {spells.map(spell => {
-                                        const dmg = resolveSpellDamage(getSpellDamageString(spell, character.level, spell.level === 0 ? character.level : getSpellCastLevel(character, spell)), spell);
-                                    const secondaryDmg = resolveSpellDamage(getSpellSecondaryDamageString(spell, character.level, spell.level === 0 ? character.level : getSpellCastLevel(character, spell)), spell);
+                                        const castLevel = spell.level === 0 ? character.level : getSpellCastLevel(character, spell);
+                                        const dmg = resolveSpellDamage(getSpellDamageString(spell, character.level, castLevel), spell);
+                                        const secondaryDmg = resolveSpellDamage(getSpellSecondaryDamageString(spell, character.level, castLevel), spell);
+                                        const upcast = getSpellUpcastCount(spell, castLevel);
+                                        const displayDmg = dmg;
                                         const dcType = getDcType(spell);
                                         return (
                                             <div key={spell.index} onClick={() => setSelectedDetail(spell)} className={`grid gap-2 items-center px-6 py-4 hover:bg-[#2e3036]/50 cursor-pointer group transition-colors grid-cols-[1fr_60px_80px_60px] md:grid-cols-[1fr_80px_120px_80px]`}>
@@ -281,6 +284,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                             {spell.ritual && (<span className="text-[8px] bg-yellow-900/40 text-yellow-500 border border-yellow-800/60 px-1 rounded">R</span>)}
                                                             {hasGrantBadge(spell) && (<span className="text-[8px] bg-dnd-gold/10 text-dnd-gold border border-dnd-gold/40 px-1 rounded" title={spell.grantedBy}>Granted</span>)}
                                                             {spell.level > 0 && getSpellCastLevel(character, spell) > spell.level && (<span className="text-[8px] bg-blue-900/40 text-blue-300 border border-blue-800/60 px-1 rounded">Cast L{getSpellCastLevel(character, spell)}</span>)}
+                                                            {upcast && upcast.count > upcast.base && (<span className="text-[8px] bg-emerald-900/40 text-emerald-300 border border-emerald-800/60 px-1 rounded">{upcast.count} {upcast.unit}</span>)}
                                                             {freeCastTotal(spell) > 0 ? (<span className="text-[8px] bg-purple-900/40 text-purple-300 border border-purple-800/60 px-1 rounded">{freeCastRemaining(spell)}/{freeCastTotal(spell)} {(spell.freeCastReset || 'long') === 'short' ? 'SR' : 'LR'}</span>) : null}
                                                         </div>
                                                     </div>
@@ -297,9 +301,9 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                     )}
                                                 </div>
                                                 <div className="text-center flex justify-center">
-                                                    {dmg ? (
+                                                    {displayDmg ? (
                                                         <div className="flex flex-col gap-1 items-center">
-                                                            <button onClick={(e) => { e.stopPropagation(); roll(dmg, `Damage ${spell.name}`, undefined, (result) => applyTargetDamage(result.total, String(spell.damage?.damage_type?.name || ''))); }} className="text-xs font-bold text-white bg-black/40 hover:bg-gray-700 border border-gray-600/50 rounded px-2 py-1 transition-colors truncate max-w-full">{dmg}</button>
+                                                            <button onClick={(e) => { e.stopPropagation(); roll(displayDmg, `Damage ${spell.name}`, undefined, (result) => applyTargetDamage(result.total, String(spell.damage?.damage_type?.name || ''))); }} className="text-xs font-bold text-white bg-black/40 hover:bg-gray-700 border border-gray-600/50 rounded px-2 py-1 transition-colors truncate max-w-full">{displayDmg}</button>
                                                             {secondaryDmg && <button onClick={(e) => { e.stopPropagation(); roll(secondaryDmg, `Secondary Damage ${spell.name}`, undefined, (result) => applyTargetDamage(result.total, String(spell.damage?.damage_type?.name || ''))); }} className="text-[9px] font-bold text-dnd-gold bg-dnd-gold/10 hover:bg-dnd-gold/20 border border-dnd-gold/30 rounded px-2 py-0.5 transition-colors">{secondaryDmg}</button>}
                                                         </div>
                                                     ) : (
@@ -327,8 +331,11 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                             {/* Mobile: tappable spell rows (tap row for details) */}
                             <div className="lg:hidden divide-y divide-[#2e3036]/60">
                                 {spells.map(spell => {
-                                    const dmg = resolveSpellDamage(getSpellDamageString(spell, character.level, spell.level === 0 ? character.level : getSpellCastLevel(character, spell)), spell);
-                                    const secondaryDmg = resolveSpellDamage(getSpellSecondaryDamageString(spell, character.level, spell.level === 0 ? character.level : getSpellCastLevel(character, spell)), spell);
+                                    const castLevel = spell.level === 0 ? character.level : getSpellCastLevel(character, spell);
+                                    const dmg = resolveSpellDamage(getSpellDamageString(spell, character.level, castLevel), spell);
+                                    const secondaryDmg = resolveSpellDamage(getSpellSecondaryDamageString(spell, character.level, castLevel), spell);
+                                    const upcast = getSpellUpcastCount(spell, castLevel);
+                                    const displayDmg = dmg;
                                     const dcType = getDcType(spell);
                                     const ebCount = spell.name === 'Eldritch Blast' ? (character.level >= 17 ? 4 : character.level >= 11 ? 3 : character.level >= 5 ? 2 : 1) : 0;
                                     return (
@@ -341,11 +348,12 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                     {spell.ritual && <span className="text-[8px] bg-yellow-900/40 text-yellow-500 border border-yellow-800/60 px-1 rounded">R</span>}
                                                     {hasGrantBadge(spell) && <span className="text-[8px] bg-dnd-gold/10 text-dnd-gold border border-dnd-gold/40 px-1 rounded" title={spell.grantedBy}>Granted</span>}
                                                     {spell.level > 0 && getSpellCastLevel(character, spell) > spell.level && <span className="text-[8px] bg-blue-900/40 text-blue-300 border border-blue-800/60 px-1 rounded">Cast L{getSpellCastLevel(character, spell)}</span>}
+                                                    {upcast && upcast.count > upcast.base && <span className="text-[8px] bg-emerald-900/40 text-emerald-300 border border-emerald-800/60 px-1 rounded">{upcast.count} {upcast.unit}</span>}
                                                     {freeCastTotal(spell) > 0 ? <span className="text-[8px] bg-purple-900/40 text-purple-300 border border-purple-800/60 px-1 rounded">{freeCastRemaining(spell)}/{freeCastTotal(spell)} {(spell.freeCastReset || 'long') === 'short' ? 'SR' : 'LR'}</span> : null}
                                                 </div>
                                                 <div className="text-[10px] text-gray-500 truncate">{spell.casting_time} • {spell.range} • {spell.duration}</div>
                                                 {dmg && (
-                                                    <div className="text-[10px] text-gray-400 truncate">Dmg: <span className="text-white font-bold">{dmg}</span>{dcType ? ` • ${dcType} ${spellSaveFor(spell)}` : ''}</div>
+                                                    <div className="text-[10px] text-gray-400 truncate">Dmg: <span className="text-white font-bold">{displayDmg}</span>{dcType ? ` • ${dcType} ${spellSaveFor(spell)}` : ''}</div>
                                                 )}
                                             </div>
                                             <button

@@ -640,6 +640,41 @@ export const getResourceDefinitions = (character: CharacterState): CharacterReso
 
 const primaryDamagePart = (value: string): string => String(value || '').replace(/\s*\([^)]*\)\s*/g, ' ').trim();
 
+
+const UPCAST_NUMBERS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
+
+export const getSpellUpcastCount = (spell: SpellDetail, castLevel: number): { count: number; base: number; unit: string } | null => {
+    if (!spell || castLevel <= Number(spell.level || 0)) return null;
+    const text = (spell.higher_level || []).join(' ');
+    if (!text) return null;
+    const additional = text.match(/(one|two|three|four|five|six|\d+)\s+(?:additional|more)\s+(rays?|darts?|beams?|creatures?|targets?|undead|beasts?|humanoids?)/i);
+    const increases = text.match(/number[^.]*?increases by (one|two|three|\d+)/i);
+    const baseMatch = text.match(/up to (one|two|three|four|five|six|\d+)\s+willing creatures/i);
+    let base = 1;
+    let unit = 'targets';
+    let increment = 1;
+    if (additional) {
+        increment = UPCAST_NUMBERS[additional[1].toLowerCase()] || Number(additional[1]) || 1;
+        const rawUnit = additional[2].toLowerCase();
+        unit = rawUnit.endsWith('s') ? rawUnit : `${rawUnit}s`;
+        if (unit.startsWith('ray')) base = 3;
+        else if (unit.startsWith('dart')) base = 3;
+        else if (unit.startsWith('beam')) base = 1;
+        else if (unit.startsWith('undead')) base = 1;
+    } else if (increases) {
+        increment = UPCAST_NUMBERS[increases[1].toLowerCase()] || Number(increases[1]) || 1;
+        unit = 'targets';
+    } else if (baseMatch) {
+        base = UPCAST_NUMBERS[baseMatch[1].toLowerCase()] || Number(baseMatch[1]) || 1;
+        increment = base;
+        unit = 'creatures';
+    } else {
+        return null;
+    }
+    const levelsAbove = castLevel - Number(spell.level || 0);
+    return { count: base + increment * levelsAbove, base, unit };
+};
+
 export const getSpellCastLevel = (character: CharacterState, spell: SpellDetail): number => {
     if (!spell || Number(spell.level) === 0) return Math.max(1, Number(character.level) || 1);
     const available = Object.entries(character.spellSlots || {})
@@ -658,7 +693,17 @@ export const getSpellDamageString = (spell: SpellDetail, characterLevel: number 
         return primaryDamagePart(damage.damage_at_character_level[highestLevel] || '');
     }
     if (damage.damage_at_slot_level) {
-        return primaryDamagePart(damage.damage_at_slot_level[slotLevel] || damage.damage_at_slot_level[spell.level] || '');
+        const base = primaryDamagePart(damage.damage_at_slot_level[slotLevel] || damage.damage_at_slot_level[spell.level] || '');
+        if (String(spell.name).toLowerCase() === 'magic missile') {
+            const info = getSpellUpcastCount(spell, slotLevel);
+            const match = base.match(/^(\d+)d(\d+)(?:\s*\+\s*(\d+))?$/i);
+            if (info && match) {
+                const dice = Number(match[1]) * info.count;
+                const flat = Number(match[3] || 0) * info.count;
+                return `${dice}d${match[2]}${flat ? `+${flat}` : ''}`;
+            }
+        }
+        return base;
     }
     return '';
 };
