@@ -644,7 +644,7 @@ const primaryDamagePart = (value: string): string => String(value || '').replace
 const UPCAST_NUMBERS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
 
 export const getSpellUpcastCount = (spell: SpellDetail, castLevel: number): { count: number; base: number; unit: string } | null => {
-    if (!spell || castLevel <= Number(spell.level || 0)) return null;
+    if (!spell) return null;
     const text = (spell.higher_level || []).join(' ');
     if (!text) return null;
     const additional = text.match(/(one|two|three|four|five|six|\d+)\s+(?:additional|more)\s+(rays?|darts?|beams?|creatures?|targets?|undead|beasts?|humanoids?)/i);
@@ -671,7 +671,7 @@ export const getSpellUpcastCount = (spell: SpellDetail, castLevel: number): { co
     } else {
         return null;
     }
-    const levelsAbove = castLevel - Number(spell.level || 0);
+    const levelsAbove = Math.max(0, castLevel - Number(spell.level || 0));
     return { count: base + increment * levelsAbove, base, unit };
 };
 
