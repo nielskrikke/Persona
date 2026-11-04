@@ -175,7 +175,7 @@ const ManageCharacterModal = ({
     // Backfill logic for existing characters
     useEffect(() => {
         const backfill = async () => {
-            if (isOpen && (!localChoices || localChoices.length === 0) && allRaces.length > 0 && allBackgrounds.length > 0) {
+            if (isOpen && allRaces.length > 0 && allBackgrounds.length > 0) {
                 const backfilled: LevelChoice[] = [];
                 
                 // Race
@@ -316,7 +316,13 @@ const ManageCharacterModal = ({
                 });
 
                 if (backfilled.length > 0) {
-                    setLocalChoices(backfilled);
+                    setLocalChoices(prev => {
+                        const merged = [...prev];
+                        backfilled.forEach(card => {
+                            if (!merged.some(existing => existing.id === card.id)) merged.push(card);
+                        });
+                        return merged;
+                    });
                 }
             }
         };

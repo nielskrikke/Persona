@@ -616,11 +616,24 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
     // the live content library, not a stale character snapshot.
     let race = character.race;
     let subrace = character.subrace;
+    const storedRace = character.race as any;
+    const storedSubrace = character.subrace as any;
     if (race?.index) {
         race = await fetchRaceDetail(race.index, character.user_id) || race;
     }
     if (subrace?.index) {
         subrace = await fetchSubraceDetail(subrace.index, character.user_id) || subrace;
+    }
+    const hasStoredChoiceFor = (choices: any[]) => (character.choices || []).some((choice: any) =>
+        choices.some((recordChoice: any) => choice.id === `race-${recordChoice.id}` && (
+            Array.isArray(choice.value) ? choice.value.length > 0 : choice.value
+        ))
+    );
+    if (storedRace?.ability_bonuses?.length && (!(race as any)?.ability_bonuses?.length) && !hasStoredChoiceFor((race as any)?.choices || [])) {
+        race = { ...(race as any), ability_bonuses: storedRace.ability_bonuses };
+    }
+    if (storedSubrace?.ability_bonuses?.length && (!(subrace as any)?.ability_bonuses?.length) && !hasStoredChoiceFor((subrace as any)?.choices || [])) {
+        subrace = { ...(subrace as any), ability_bonuses: storedSubrace.ability_bonuses };
     }
 
     // Ancestry-style choices store the chosen option name in choices; if an
