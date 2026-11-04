@@ -104,11 +104,23 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                 activeConcentration: spell.concentration ? spell : prev.activeConcentration,
             }));
         } else if (spell.level > 0) {
-            const slots = character.spellSlots[spell.level];
-            if (!slots || Number(slots.current) <= 0) { alert('No spell slots!'); return; }
+            const slotLevel = Object.entries(character.spellSlots || {})
+                .map(([level, slots]) => ({ level: Number(level), ...(slots as any) }))
+                .filter(slot => Number(slot.max) > 0 && Number(slot.current) > 0 && slot.level >= spell.level)
+                .sort((a, b) => a.level - b.level)[0];
+            if (!slotLevel) {
+                alert(`No spell slot of level ${spell.level} or higher available.`);
+                return;
+            }
             setCharacter(prev => ({
                 ...prev,
-                spellSlots: { ...prev.spellSlots, [spell.level]: { ...slots, current: Math.max(0, Number(slots.current) - 1) } },
+                spellSlots: {
+                    ...prev.spellSlots,
+                    [slotLevel.level]: {
+                        ...prev.spellSlots[slotLevel.level],
+                        current: Math.max(0, Number(slotLevel.current) - 1),
+                    },
+                },
                 activeConcentration: spell.concentration ? spell : prev.activeConcentration,
             }));
         } else if (spell.concentration) {
