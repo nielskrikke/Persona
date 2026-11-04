@@ -640,6 +640,15 @@ export const getResourceDefinitions = (character: CharacterState): CharacterReso
 
 const primaryDamagePart = (value: string): string => String(value || '').replace(/\s*\([^)]*\)\s*/g, ' ').trim();
 
+export const getSpellCastLevel = (character: CharacterState, spell: SpellDetail): number => {
+    if (!spell || Number(spell.level) === 0) return Math.max(1, Number(character.level) || 1);
+    const available = Object.entries(character.spellSlots || {})
+        .map(([level, slots]) => ({ level: Number(level), ...(slots as any) }))
+        .filter(slot => Number(slot.max) > 0 && Number(slot.current) > 0 && slot.level >= Number(spell.level))
+        .sort((a, b) => a.level - b.level);
+    return available[0]?.level || Number(spell.level);
+};
+
 export const getSpellDamageString = (spell: SpellDetail, characterLevel: number = 1, slotLevel: number = 1): string => {
     if (!spell.damage) return '';
     const damage = spell.damage;

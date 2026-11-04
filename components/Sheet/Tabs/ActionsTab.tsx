@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CharacterState, SpellDetail, CreatureDetail } from '../../../types';
 import { STANDARD_ACTIONS, WIDGET_BG, MASTERY_DESCRIPTIONS, STANDARD_CONDITIONS } from '../../../data/constants';
-import { formatModifier, getSpellDamageString, hasUiWidget } from '../../../utils/rules';
+import { formatModifier, getSpellDamageString, getSpellCastLevel, hasUiWidget } from '../../../utils/rules';
 
 interface ActionsTabProps {
     character: CharacterState;
@@ -90,7 +90,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
         if(spell.casting_time.toLowerCase().includes('bonus')) notes.push('Bonus');
         const dcType = spell.dc?.dc_type?.name?.substring(0, 3).toUpperCase();
         
-        const dmgStr = getSpellDamageString(spell, character.level, spell.level || 1);
+        const dmgStr = getSpellDamageString(spell, character.level, getSpellCastLevel(character, spell));
         
         return { 
             id: spell.index, 

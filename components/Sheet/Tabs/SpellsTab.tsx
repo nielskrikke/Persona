@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { CharacterState, SpellDetail } from '../../../types';
 import { WIDGET_BG } from '../../../data/constants';
-import { getSpellDamageString, getSpellSecondaryDamageString, calculateModifier, calculateProficiency, formatModifier, getEffectiveAbilities, resolveDamageFormula, appendMinDie } from '../../../utils/rules';
+import { getSpellDamageString, getSpellSecondaryDamageString, calculateModifier, calculateProficiency, formatModifier, getEffectiveAbilities, resolveDamageFormula, appendMinDie, getSpellCastLevel } from '../../../utils/rules';
 
 interface SpellsTabProps {
     character: CharacterState;
@@ -263,8 +263,8 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                 </div>
                                 <div className="divide-y divide-[#2e3036]/60 min-w-[500px]">
                                     {spells.map(spell => {
-                                        const dmg = resolveSpellDamage(getSpellDamageString(spell, character.level, spell.level === 0 ? character.level : Math.max(spell.level, 1)), spell);
-                                    const secondaryDmg = resolveSpellDamage(getSpellSecondaryDamageString(spell, character.level, spell.level === 0 ? character.level : Math.max(spell.level, 1)), spell);
+                                        const dmg = resolveSpellDamage(getSpellDamageString(spell, character.level, spell.level === 0 ? character.level : getSpellCastLevel(character, spell)), spell);
+                                    const secondaryDmg = resolveSpellDamage(getSpellSecondaryDamageString(spell, character.level, spell.level === 0 ? character.level : getSpellCastLevel(character, spell)), spell);
                                         const dcType = getDcType(spell);
                                         return (
                                             <div key={spell.index} onClick={() => setSelectedDetail(spell)} className={`grid gap-2 items-center px-6 py-4 hover:bg-[#2e3036]/50 cursor-pointer group transition-colors grid-cols-[1fr_60px_80px_60px] md:grid-cols-[1fr_80px_120px_80px]`}>
@@ -326,8 +326,8 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                             {/* Mobile: tappable spell rows (tap row for details) */}
                             <div className="lg:hidden divide-y divide-[#2e3036]/60">
                                 {spells.map(spell => {
-                                    const dmg = resolveSpellDamage(getSpellDamageString(spell, character.level, spell.level === 0 ? character.level : Math.max(spell.level, 1)), spell);
-                                    const secondaryDmg = resolveSpellDamage(getSpellSecondaryDamageString(spell, character.level, spell.level === 0 ? character.level : Math.max(spell.level, 1)), spell);
+                                    const dmg = resolveSpellDamage(getSpellDamageString(spell, character.level, spell.level === 0 ? character.level : getSpellCastLevel(character, spell)), spell);
+                                    const secondaryDmg = resolveSpellDamage(getSpellSecondaryDamageString(spell, character.level, spell.level === 0 ? character.level : getSpellCastLevel(character, spell)), spell);
                                     const dcType = getDcType(spell);
                                     const ebCount = spell.name === 'Eldritch Blast' ? (character.level >= 17 ? 4 : character.level >= 11 ? 3 : character.level >= 5 ? 2 : 1) : 0;
                                     return (
