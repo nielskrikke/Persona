@@ -7,7 +7,7 @@ import { getSpellDamageString, getSpellSecondaryDamageString, calculateModifier,
 interface SpellsTabProps {
     character: CharacterState;
     setCharacter: React.Dispatch<React.SetStateAction<CharacterState>>;
-    roll: (formula: string, label: string) => void;
+    roll: (formula: string, label: string, preResult?: any, onComplete?: (result: any) => void) => any;
     triggerRollMenu: (e: React.MouseEvent, formula: string, label: string) => void;
     setSelectedDetail: (item: any) => void;
     spellSave: number;
@@ -47,6 +47,23 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
             Number(character.classes?.[0]?.definition?.hit_die || 8),
         );
         return minimum > 1 ? appendMinDie(resolved, minimum) : resolved;
+    };
+    const applyTargetDamage = (amount: number, damageType: string) => {
+        const target = character.combatTarget;
+        if (!target || target.hp === undefined) return;
+        const type = String(damageType || '').toLowerCase();
+        const effects = [
+            ...(character.classFeatures || []).flatMap((feature: any) => feature.effects || []),
+            ...(character.feats || []).flatMap((feat: any) => feat.effects || []),
+        ];
+        const ignores = effects.some((effect: any) => effect.type === 'ignore_resistance' && String(effect.damage_type || '').toLowerCase() === type);
+        const immune = !ignores && (target.immunities || []).some(value => value.toLowerCase() === type);
+        const resistant = !ignores && (target.resistances || []).some(value => value.toLowerCase() === type);
+        const applied = immune ? 0 : resistant ? Math.floor(amount / 2) : amount;
+        setCharacter(prev => {
+            if (!prev.combatTarget || prev.combatTarget.hp === undefined) return prev;
+            return { ...prev, combatTarget: { ...prev.combatTarget, hp: Math.max(0, prev.combatTarget.hp - applied) } };
+        });
     };
     const castSpell = (spell: SpellDetail) => {
         const remaining = freeCastRemaining(spell);
@@ -239,8 +256,8 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                 <div className="text-center flex justify-center">
                                                     {dmg ? (
                                                         <div className="flex flex-col gap-1 items-center">
-                                                            <button onClick={(e) => { e.stopPropagation(); roll(dmg, `Damage ${spell.name}`); }} className="text-xs font-bold text-white bg-black/40 hover:bg-gray-700 border border-gray-600/50 rounded px-2 py-1 transition-colors truncate max-w-full">{dmg}</button>
-                                                            {secondaryDmg && <button onClick={(e) => { e.stopPropagation(); roll(secondaryDmg, `Secondary Damage ${spell.name}`); }} className="text-[9px] font-bold text-dnd-gold bg-dnd-gold/10 hover:bg-dnd-gold/20 border border-dnd-gold/30 rounded px-2 py-0.5 transition-colors">{secondaryDmg}</button>}
+                                                            <button onClick={(e) => { e.stopPropagation(); roll(dmg, `Damage ${spell.name}`, undefined, (result) => applyTargetDamage(result.total, String(spell.damage?.damage_type?.name || ''))); }} className="text-xs font-bold text-white bg-black/40 hover:bg-gray-700 border border-gray-600/50 rounded px-2 py-1 transition-colors truncate max-w-full">{dmg}</button>
+                                                            {secondaryDmg && <button onClick={(e) => { e.stopPropagation(); roll(secondaryDmg, `Secondary Damage ${spell.name}`, undefined, (result) => applyTargetDamage(result.total, String(spell.damage?.damage_type?.name || ''))); }} className="text-[9px] font-bold text-dnd-gold bg-dnd-gold/10 hover:bg-dnd-gold/20 border border-dnd-gold/30 rounded px-2 py-0.5 transition-colors">{secondaryDmg}</button>}
                                                         </div>
                                                     ) : (
                                                         <span className="text-gray-600 text-[10px]">-</span>

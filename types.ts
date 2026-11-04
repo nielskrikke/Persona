@@ -477,6 +477,8 @@ export interface CombatTarget {
     immunities: string[];
     conditions: string[];
     notes?: string[];
+    lastAttack?: number;
+    lastHit?: boolean;
 }
 
 export interface CharacterState {
