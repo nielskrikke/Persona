@@ -967,6 +967,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     const [subclassLevel, setSubclassLevel] = useState(3);
     const [subclassLabel, setSubclassLabel] = useState('Subclass');
     const [advancedJson, setAdvancedJson] = useState('');
+    const [editingIndex, setEditingIndex] = useState<string | null>(null);
     const [editingIsHomebrew, setEditingIsHomebrew] = useState(true);
     const [contentResources, setContentResources] = useState<ResourceDefinition[]>([]);
     const [contentChoices, setContentChoices] = useState<ContentChoice[]>([]);
@@ -1167,7 +1168,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
         setSpeeds({ walk: 30, fly: 0, swim: 0, climb: 0 });
         setAbilityBonuses([]); setTraits([]); setSize('Medium');
         setSaves([]); setLevelFeatures([]); setHitDie(8);
-        setCasterType('none'); setCasterAbility('int'); setSubclassLevel(3); setSubclassLabel('Subclass'); setAdvancedJson(''); setEditingIsHomebrew(true); setContentResources([]); setContentChoices([]);
+        setCasterType('none'); setCasterAbility('int'); setSubclassLevel(3); setSubclassLabel('Subclass'); setAdvancedJson(''); setEditingIndex(null); setEditingIsHomebrew(true); setContentResources([]); setContentChoices([]);
         setBgSkills([]); setBgFeatureName(''); setBgTools([]); setBgEquipment(''); setBgEquipmentOptions([]); setBgCurrency({ gp: 0, sp: 0, cp: 0 }); setBgEffects([]);
         setArmorProfs([]); setWeaponProfs([]);
         setSpellLevel(0); setSpellSchool('Evocation'); setSpellCastTime('1 Action'); setSpellRange('60 feet'); setSpellDuration('Instantaneous'); setSpellRitual(false); setSpellConcentration(false);
@@ -1184,6 +1185,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     const handleEdit = (item: any) => {
         resetForm();
         setEditingId(item.id);
+        setEditingIndex(item.index || null);
         setEditingIsHomebrew(item.is_homebrew ?? item.homebrew ?? true);
         setContentResources(Array.isArray(item.resources) ? item.resources : []);
         setContentChoices(Array.isArray(item.choices) ? item.choices : []);
@@ -1424,7 +1426,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
 
             let payload: any = {
                 name,
-                index: name.toLowerCase().replace(/\s+/g, '-'),
+                index: editingIndex || name.toLowerCase().replace(/\s+/g, '-'),
                 desc: [description],
                 is_public: isSharedGlobally,
                 is_homebrew: editingIsHomebrew
@@ -1488,7 +1490,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     ...previousDamage,
                     damage_type: { name: spellDmgType, index: spellDmgType.toLowerCase() },
                     [damageKey]: damageTable,
-                } : previousDamage;
+                } : (Object.keys(previousDamage).length > 0 ? previousDamage : undefined);
                 payload = {
                     ...previous,
                     ...payload,

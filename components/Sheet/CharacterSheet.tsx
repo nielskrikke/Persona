@@ -2142,7 +2142,15 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                         return acc + v;
                                     }, 0);
 
-                                const mod = calculateModifier(getStat(skill.ability)) + (isProf ? prof : 0) + (isExpertise ? prof : 0) + skillBonus;
+                                const halfProficiency = activeModifiers.some(m =>
+                                    m.type === 'half_proficiency'
+                                    && (!m.target || ['ability_checks', 'skills', 'skill'].includes(String(m.target).toLowerCase()) || String(m.target).toLowerCase() === skill.name.toLowerCase())
+                                );
+                                const mod = calculateModifier(getStat(skill.ability))
+                                    + (isProf ? prof : 0)
+                                    + (isExpertise ? prof : 0)
+                                    + (!isProf && !isExpertise && halfProficiency ? Math.floor(prof / 2) : 0)
+                                    + skillBonus;
                                 const skillKey = skill.name.toLowerCase();
                                 const skillSnake = skillKey.replace(/\s+/g, '_');
                                 const hasFullAdv = activeModifiers.some(m => {
@@ -3325,7 +3333,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
              }
 
              (enriched.effects || []).forEach((eff: any) => {
-                 if (eff.type !== 'bonus_action' && eff.type !== 'action') return;
+                 if (eff.type !== 'bonus_action') return;
                  if (!eff.name || list.some(item => item.name === eff.name)) return;
                  list.push({
                      id: `effect-${eff.name.toLowerCase().replace(/\s+/g, '-')}`,

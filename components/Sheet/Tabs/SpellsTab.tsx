@@ -107,7 +107,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
             <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 ${WIDGET_BG} p-4 rounded-xl border border-[#3e4149]/50 shadow-sm`}>
                 <div className="flex flex-col items-center justify-center p-2">
                     <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Modifier</span>
-                    <span className="text-2xl font-bold text-dnd-gold">{spellAttackStr}</span>
+                    <span className="text-2xl font-bold text-dnd-gold">{formatModifier(spellMod)}</span>
                 </div>
                 <div className="flex flex-col items-center justify-center p-2 sm:border-l sm:border-gray-800">
                     <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Spell Attack</span>

@@ -750,3 +750,29 @@ export const getWeaponMasteryData = (mastery: string, proficiency: number, strMo
         extraAttack: key === 'cleave' || key === 'nick',
     };
 };
+
+export const isFeatAvailableForCharacter = (feat: any, character: CharacterState): boolean => {
+    if (!isFeatAvailableForLevel(feat, character.level)) return false;
+    const text = `${feat?.prerequisite || ''} ${Array.isArray(feat?.desc) ? feat.desc.join(' ') : (feat?.desc || '')}`.toLowerCase();
+    const race = String(character.race?.name || character.race?.index || '').toLowerCase();
+    const classDefinitions = (character.classes || []).map(entry => entry.definition as any);
+    const hasHeavyArmor = classDefinitions.some(definition =>
+        (definition.armor_proficiencies || []).some((armor: any) => /heavy/i.test(typeof armor === 'string' ? armor : armor.name || ''))
+    );
+    const hasSpellcasting = classDefinitions.some(definition => definition.caster && definition.caster.type !== 'none')
+        || classDefinitions.some(definition => definition.spellcasting);
+
+    if (/elf or half-elf/.test(text) && !/elf/.test(race)) return false;
+    if (/heavy armor training/.test(text) && !hasHeavyArmor) return false;
+    if (/(spellcasting|pact magic)/.test(text) && !hasSpellcasting) return false;
+
+    const abilities: Record<string, string> = {
+        strength: 'str', dexterity: 'dex', constitution: 'con',
+        intelligence: 'int', wisdom: 'wis', charisma: 'cha',
+    };
+    for (const [name, key] of Object.entries(abilities)) {
+        const match = text.match(new RegExp(`${name}\\s+(\\d+)`));
+        if (match && Number(character.abilities[key as keyof typeof character.abilities] || 0) < Number(match[1])) return false;
+    }
+    return true;
+};

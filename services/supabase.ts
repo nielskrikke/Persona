@@ -326,7 +326,14 @@ export const saveHomebrew = async (
 
     const validUserId = (userId && isValidUUID(userId)) ? userId : null;
     const itemIndex = (payload.index || (payload.name ? payload.name.toLowerCase().replace(/\s+/g, '-') : '')).toLowerCase();
-    const finalId = id || payload.id || `hb-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
+    let resolvedId = id || payload.id;
+    if (!resolvedId && itemIndex) {
+        let matchQuery = supabase.from(table).select('id').eq('data->>index', itemIndex).order('created_at', { ascending: false }).limit(1);
+        if (validUserId) matchQuery = matchQuery.eq('user_id', validUserId);
+        const { data: indexMatch } = await matchQuery.maybeSingle();
+        if (indexMatch?.id) resolvedId = indexMatch.id;
+    }
+    const finalId = resolvedId || `hb-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
 
     // Load the current remote row first. This serves two purposes:
     //   1. we can merge instead of replacing the document;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CharacterState, LevelChoice, AbilityScores, ABILITY_NAMES, ABILITY_LABELS, AbilityName, SpellDetail, FeatDetail, SubclassDetail } from '../../../types';
 import { AlertTriangle, CheckCircle2, ChevronRight, RotateCcw, Sparkles, Info } from 'lucide-react';
-import { calculateModifier, SKILL_LIST, calculateMaxHp, isFeatAvailableForLevel } from '../../../utils/rules';
+import { calculateModifier, SKILL_LIST, calculateMaxHp, isFeatAvailableForLevel, isFeatAvailableForCharacter } from '../../../utils/rules';
 import { STANDARD_LANGUAGES, ARTISAN_TOOLS } from '../../../data/constants';
 import { fetchFeatsList, fetchAllSpells, fetchSubclasses, fetchSubclassDetail, fetchSubclassLevels, fetchClassLevels } from '../../../data/index';
 
@@ -59,7 +59,7 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
 
         matchingOptions.forEach(selectedOption => {
             const effects = selectedOption.effects || [];
-            const triggerEffects = effects.filter((e: any) => e.type.endsWith('_choice') || e.type === 'spell_access');
+            const triggerEffects = effects.filter((e: any) => e.type.endsWith('_choice') || (e.type === 'spell_access' && !e.spell));
             if (triggerEffects.length > 0) {
                 const newSubChoices = triggerEffects.map((e: any, idx: number) => {
                     let opts: any[] = [];
@@ -92,7 +92,7 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
                         value: null,
                         options: opts,
                         count: e.count || 1,
-                        revertData: { parentChoiceId: choiceId, isSubChoice: true, expertiseIfProficient: !!e.expertise_if_proficient }
+                        revertData: { parentChoiceId: choiceId, isSubChoice: true, expertiseIfProficient: !!e.expertise_if_proficient, spellGrant: { freeCasts: e.free_casts, freeCastReset: e.free_cast_reset || e.reset, ability: e.ability, minLevel: e.min_level } }
                     };
                 });
                 additionalUpdates.choices = [...(additionalUpdates.choices || character.choices), ...newSubChoices];
@@ -182,7 +182,7 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
                                         value: null,
                                         options: opts,
                                         count: e.count || 1,
-                                        revertData: { parentChoiceId: choiceId, isSubChoice: true, expertiseIfProficient: !!e.expertise_if_proficient }
+                                        revertData: { parentChoiceId: choiceId, isSubChoice: true, expertiseIfProficient: !!e.expertise_if_proficient, spellGrant: { freeCasts: e.free_casts, freeCastReset: e.free_cast_reset || e.reset, ability: e.ability, minLevel: e.min_level } }
                                     });
                                 } else if (e.type === 'spell_access' && e.spell) {
                                     // Automatic spells (Domain Spells)
@@ -299,7 +299,7 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
                     revertData.spells = [...(revertData.spells || []), ...grantedSpells.map((s: any) => s.index)];
                 }
                 const newSubChoices = featDetail.effects
-                    .filter(e => e.type.endsWith('_choice') || e.type === 'spell_access')
+                    .filter(e => e.type.endsWith('_choice') || (e.type === 'spell_access' && !e.spell))
                     .map((e, idx) => ({
                         id: `feat-${featDetail.index}-${idx}-${Date.now()}`,
                         level: choice.level,
@@ -312,7 +312,7 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
                         value: null,
                         options: e.options || (e.category === 'language' ? STANDARD_LANGUAGES : (e.type === 'proficiency_choice' && e.category === 'skill' ? SKILL_LIST.map(s => s.name) : [])),
                         count: e.count || 1,
-                        revertData: { parentChoiceId: choiceId, featIndex: featDetail.index, expertiseIfProficient: !!e.expertise_if_proficient }
+                        revertData: { parentChoiceId: choiceId, featIndex: featDetail.index, expertiseIfProficient: !!e.expertise_if_proficient, spellGrant: { freeCasts: e.free_casts, freeCastReset: e.free_cast_reset || e.reset, ability: e.ability, minLevel: e.min_level } }
                     }));
                 if (newSubChoices.length > 0) {
                     additionalUpdates.choices = [...(additionalUpdates.choices || character.choices), ...newSubChoices];
@@ -351,7 +351,20 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
                     updates.feats = [...(prev.feats || []), ...revertData.feats];
                 }
                 if (revertData.spells) {
-                    const spellsToAdd = allSpells.filter(s => revertData.spells.includes(s.index));
+                    const spellGrant = (choice.revertData as any)?.spellGrant;
+                    const spellsToAdd = allSpells
+                        .filter(s => revertData.spells.includes(s.index))
+                        .map(s => spellGrant ? {
+                            ...s,
+                            sourceClassIndex: 'granted',
+                            isPrepared: true,
+                            isGranted: true,
+                            grantedBy: choice.label,
+                            freeCasts: spellGrant.freeCasts,
+                            freeCastReset: spellGrant.freeCastReset,
+                            minLevel: spellGrant.minLevel,
+                            spellcastingAbility: spellGrant.ability || prev.spellcastingAbility,
+                        } : s);
                     updates.spells = [...prev.spells, ...spellsToAdd];
                 }
                 if (revertData.features) {
@@ -695,7 +708,7 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onMakeChoice, allFeats,
                                 onChange={(e) => setSelection(e.target.value)}
                             >
                                 <option value="">Select a Feat...</option>
-                                {allFeats.filter(f => isFeatAvailableForLevel(f, character.level)).map(f => (
+                                {allFeats.filter(f => isFeatAvailableForCharacter(f, character)).map(f => (
                                     <option key={f.index} value={f.index}>{f.name}</option>
                                 ))}
                             </select>
@@ -711,7 +724,7 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onMakeChoice, allFeats,
                         onChange={(e) => setSelection(e.target.value)}
                     >
                         <option value="">Select a Feat...</option>
-                        {allFeats.filter(f => isFeatAvailableForLevel(f, character.level)).map(f => (
+                        {allFeats.filter(f => isFeatAvailableForCharacter(f, character)).map(f => (
                             <option key={f.index} value={f.index}>{f.name}</option>
                         ))}
                     </select>

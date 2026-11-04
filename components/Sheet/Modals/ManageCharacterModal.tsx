@@ -3,7 +3,7 @@ import Markdown from 'react-markdown';
 import { X, User, GraduationCap, Activity, Shield, Settings, Plus, Trash2, Save, Languages, Palette, Type, Dice5, Eye, EyeOff, Info, Sparkles, AlertTriangle, RotateCcw, AlertCircle } from 'lucide-react';
 import { CharacterState, APIReference, RaceDetail, SubraceDetail, BackgroundDetail, FeatDetail, ABILITY_NAMES, ABILITY_LABELS, AbilityScores, SpellDetail, LevelChoice, AbilityName } from '@/types';
 import { fetchClasses, fetchRaces, fetchSubraces, fetchBackgrounds, fetchFeatsList, fetchRaceDetail, fetchSubraceDetail, fetchBackgroundDetail, fetchSubclasses, fetchSubclassDetail, fetchSubclassLevels, fetchClassLevels, fetchLevelFeatures, fetchClassDetail, fetchAllSpells, RACES, SUBCLASSES } from '@/data/index';
-import { getSpellSlots, calculateModifier, SKILL_LIST, getSubclassLevel, getResourceDefinitions, calculateMaxHp, mergeSpellSlotCurrents, isFeatAvailableForLevel, getChoiceCount } from '@/utils/rules';
+import { getSpellSlots, calculateModifier, SKILL_LIST, getSubclassLevel, getResourceDefinitions, calculateMaxHp, mergeSpellSlotCurrents, isFeatAvailableForLevel, isFeatAvailableForCharacter, getChoiceCount } from '@/utils/rules';
 import { STANDARD_LANGUAGES, ARTISAN_TOOLS } from '../../../data/constants';
 import DiceRoller3D from '../Shared/DiceRoller3D';
 
@@ -288,6 +288,9 @@ const ManageCharacterModal = ({
                         if (backfilled.some(existing => existing.id === choiceId)) return;
                         const stored = character.choices.find((existing: any) => existing.id === choiceId);
                         const optionNames = (choice.options || []).map((option: any) => typeof option === 'string' ? option : (option.name || option.index || '')).filter(Boolean);
+                        const normalizedOptions = ['proficiency', 'skill', 'tool', 'language'].includes(choice.kind)
+                            ? optionNames
+                            : (choice.options || []);
                         const existingProficiencies = choice.kind === 'tool'
                             ? character.toolProficiencies
                             : choice.kind === 'language'
@@ -305,7 +308,7 @@ const ManageCharacterModal = ({
                             type: 'other',
                             label: choice.label || (choice.kind === 'weapon_mastery' ? 'Weapon Mastery' : choice.kind),
                             value: stored?.value || (matched.length > 0 ? matched.slice(0, required) : []),
-                            options: choice.options || [],
+                            options: normalizedOptions,
                             count: required,
                             revertData: { classIndex, isClassChoice: true },
                         });
@@ -1155,7 +1158,14 @@ const ManageCharacterModal = ({
         setLocalChoices(prev => {
             const updatedChoices = prev.map(c => {
                 if (c.id === choiceId) {
-                    const updated = { ...c, value: skipImmediateValue ? c.value : finalValue };
+                    let nextValue = skipImmediateValue ? c.value : finalValue;
+                    if (isMulti && !skipImmediateValue) {
+                        const current = Array.isArray(c.value) ? c.value : [];
+                        if (current.includes(newValue)) nextValue = current.filter(value => value !== newValue);
+                        else if (current.length < count) nextValue = [...current, newValue];
+                        else nextValue = current;
+                    }
+                    const updated = { ...c, value: nextValue };
                     if (choice.type === 'subclass' || choice.type === 'feat-selection') {
                         updated.revertData = { ...c.revertData, featIndex: finalValue };
                     }
@@ -1207,7 +1217,7 @@ const ManageCharacterModal = ({
             const allSpells = await fetchAllSpells();
             matchingOptions.forEach(selectedOption => {
                 const effects = selectedOption.effects || [];
-                const triggerEffects = effects.filter((e: any) => e.type.endsWith('_choice') || e.type === 'spell_access');
+                const triggerEffects = effects.filter((e: any) => e.type.endsWith('_choice') || (e.type === 'spell_access' && !e.spell));
                 if (triggerEffects.length > 0) {
                     const newSubChoices = triggerEffects.map((e: any, idx: number) => {
                         let options: any[] = [];
@@ -1337,7 +1347,7 @@ const ManageCharacterModal = ({
                         if (featDetail.effects) {
                             const allSpells = await fetchAllSpells();
                             const newSubChoices = featDetail.effects
-                                .filter(e => e.type.endsWith('_choice') || e.type === 'spell_access')
+                                .filter(e => e.type.endsWith('_choice') || (e.type === 'spell_access' && !e.spell))
                                 .map((e, idx) => {
                                     let options: any[] = [];
                                     if (e.options) {
@@ -1385,7 +1395,8 @@ const ManageCharacterModal = ({
                                             featIndex: featDetail.index,
                                             isSubChoice: true,
                                             linked_save_proficiency: (e as any).linked_save_proficiency,
-                                            expertiseIfProficient: !!e.expertise_if_proficient
+                                            expertiseIfProficient: !!e.expertise_if_proficient,
+                                            spellGrant: { freeCasts: e.free_casts, freeCastReset: e.free_cast_reset || e.reset, ability: e.ability, minLevel: e.min_level }
                                         }
                                     };
                                 });
@@ -1571,7 +1582,7 @@ const ManageCharacterModal = ({
                 if (newFeat.effects) {
                     const allSpells = await fetchAllSpells();
                     const newSubChoices = newFeat.effects
-                        .filter(e => e.type.endsWith('_choice') || e.type === 'spell_access')
+                        .filter(e => e.type.endsWith('_choice') || (e.type === 'spell_access' && !e.spell))
                         .map((e, idx) => {
                             let options: any[] = [];
                             if (e.options) {
@@ -1611,7 +1622,7 @@ const ManageCharacterModal = ({
                                 value: null,
                                 options: options,
                                 count: e.count || 1,
-                                revertData: { parentChoiceId: choiceId, featIndex: newFeat.index }
+                                revertData: { parentChoiceId: choiceId, featIndex: newFeat.index, spellGrant: { freeCasts: e.free_casts, freeCastReset: e.free_cast_reset || e.reset, ability: e.ability, minLevel: e.min_level } }
                             };
                         });
                     if (newSubChoices.length > 0) {
@@ -1672,7 +1683,20 @@ const ManageCharacterModal = ({
                 // Filter out old spells by index OR name (for backward compatibility)
                 const filtered = prev.filter(s => !oldSpells.includes(s.index) && !oldSpells.includes(s.name));
                 // Add new spells by index OR name
-                const addedSpells = allSpells.filter(s => newSpells.includes(s.index) || newSpells.includes(s.name));
+                const spellGrant = (choice.revertData as any)?.spellGrant;
+                const addedSpells = allSpells
+                    .filter(s => newSpells.includes(s.index) || newSpells.includes(s.name))
+                    .map(s => spellGrant ? {
+                        ...s,
+                        sourceClassIndex: 'granted',
+                        isPrepared: true,
+                        isGranted: true,
+                        grantedBy: choice.label,
+                        freeCasts: spellGrant.freeCasts,
+                        freeCastReset: spellGrant.freeCastReset,
+                        minLevel: spellGrant.minLevel,
+                        spellcastingAbility: spellGrant.ability || character.spellcastingAbility,
+                    } : s);
                 return [...filtered, ...addedSpells];
             });
         }
@@ -2633,7 +2657,7 @@ const ManageCharacterModal = ({
                                                                                     className="w-full bg-black/40 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-dnd-gold/50 transition-all"
                                                                                 >
                                                                                     <option value="">Select a Feat...</option>
-                                                                                    {allFeats.filter(f => isFeatAvailableForLevel(f, character.level)).map(f => (
+                                                                                    {allFeats.filter(f => isFeatAvailableForCharacter(f, character)).map(f => (
                                                                                         <option key={f.index} value={f.index}>{f.name}</option>
                                                                                     ))}
                                                                                 </select>
@@ -2692,7 +2716,7 @@ const ManageCharacterModal = ({
                                                                             className="w-full max-w-md bg-black/40 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-dnd-gold/50 transition-all"
                                                                         >
                                                                             <option value="">Select a Feat...</option>
-                                                                            {allFeats.filter(f => isFeatAvailableForLevel(f, character.level)).map(f => (
+                                                                            {allFeats.filter(f => isFeatAvailableForCharacter(f, character)).map(f => (
                                                                                 <option key={f.index} value={f.index}>{f.name}</option>
                                                                             ))}
                                                                         </select>
@@ -3030,7 +3054,7 @@ const ManageCharacterModal = ({
                                                                                                                 className="w-full bg-black/40 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-dnd-gold/50 transition-all"
                                                                                                             >
                                                                                                                 <option value="">Select a Feat...</option>
-                                                                                                                {allFeats.filter(f => isFeatAvailableForLevel(f, character.level)).map(f => (
+                                                                                                                {allFeats.filter(f => isFeatAvailableForCharacter(f, character)).map(f => (
                                                                                                                     <option key={f.index} value={f.index}>{f.name}</option>
                                                                                                                 ))}
                                                                                                             </select>
@@ -3088,7 +3112,7 @@ const ManageCharacterModal = ({
                                                                                                         className="w-full max-w-md bg-black/40 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-dnd-gold/50 transition-all"
                                                                                                     >
                                                                                                         <option value="">Select a Feat...</option>
-                                                                                                        {allFeats.filter(f => isFeatAvailableForLevel(f, character.level)).map(f => (
+                                                                                                        {allFeats.filter(f => isFeatAvailableForCharacter(f, character)).map(f => (
                                                                                                             <option key={f.index} value={f.index}>{f.name}</option>
                                                                                                         ))}
                                                                                                     </select>

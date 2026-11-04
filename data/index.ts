@@ -517,7 +517,17 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
             if ((feature.level || 0) <= characterClass.level) collectFeature(feature, characterClass.subclass?.name || characterClass.definition.name, feature.level || 0);
         });
     });
-    (character.classFeatures || []).forEach(feature => collectFeature(feature, feature.source || 'Feature', feature.level || 0));
+    const classSourceNames = new Set<string>();
+    (character.classes || []).forEach(characterClass => {
+        classSourceNames.add(characterClass.definition.name);
+        if (characterClass.subclass?.name) classSourceNames.add(characterClass.subclass.name);
+    });
+    (character.classFeatures || []).forEach(feature => {
+        // Class/subclass features are read from the live definition above;
+        // stale snapshots must not keep removed domain/patron spells alive.
+        if (feature.source && classSourceNames.has(feature.source)) return;
+        collectFeature(feature, feature.source || 'Feature', feature.level || 0);
+    });
     (character.feats || []).forEach(feat => collectFeature(feat, feat.name || 'Feat', 1));
 
     const grantedByIndex = new Map<string, any>();
@@ -560,7 +570,7 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
         };
     });
 
-    let spells = refreshedSpells;
+    let spells = refreshedSpells.filter(spell => !spell.isGranted && !spell.grantedBy);
     grantedByIndex.forEach((granted, index) => {
         const existing = spells.findIndex(spell => spell.index === index);
         if (existing >= 0) spells[existing] = { ...spells[existing], ...granted };
@@ -573,7 +583,7 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
 
 export const hydrateCharacterClasses = async (character: CharacterState): Promise<CharacterState> => {
     if (!character) return character;
-    const classes = character.classes?.length
+    let classes = character.classes?.length
         ? await Promise.all(character.classes.map(async characterClass => {
             const definition = await fetchClassDetail(characterClass.definition.index, character.user_id)
                 || characterClass.definition;
@@ -585,6 +595,22 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
             return { ...characterClass, definition, subclass };
         }))
         : character.classes;
+
+    // Old characters stored the subclass only as a choice; fill it in from
+    // that choice so subclass features/spells can resolve.
+    if (classes?.length) {
+        classes = await Promise.all(classes.map(async characterClass => {
+            if (characterClass.subclass) return characterClass;
+            const choice = (character.choices || []).find((entry: any) =>
+                String(entry.id).startsWith(`subclass-${characterClass.definition.index}-`)
+                && entry.value
+            );
+            const value = choice?.value || choice?.revertData?.featIndex;
+            if (!value) return characterClass;
+            const subclass = await fetchSubclassDetail(String(value), character.user_id);
+            return subclass ? { ...characterClass, subclass } : characterClass;
+        }));
+    }
 
     // Backgrounds are stored as a name on the character; rehydrate their
     // feature effects from the content library so migrated background effects
