@@ -287,15 +287,26 @@ const ManageCharacterModal = ({
                         const choiceId = `class-${classIndex}-${choice.id}`;
                         if (backfilled.some(existing => existing.id === choiceId)) return;
                         const stored = character.choices.find((existing: any) => existing.id === choiceId);
+                        const optionNames = (choice.options || []).map((option: any) => typeof option === 'string' ? option : (option.name || option.index || '')).filter(Boolean);
+                        const existingProficiencies = choice.kind === 'tool'
+                            ? character.toolProficiencies
+                            : choice.kind === 'language'
+                                ? character.languages
+                                : [...character.skills, ...(character.toolProficiencies || [])];
+                        const matched = optionNames.filter((name: string) => existingProficiencies.includes(name));
+                        const required = getChoiceCount(choice, cls.level);
+                        if (!stored?.value?.length && matched.length >= required && ['proficiency', 'skill', 'tool', 'language'].includes(choice.kind)) {
+                            return;
+                        }
                         backfilled.push({
                             id: choiceId,
                             level: 1,
                             source: sourceName,
                             type: 'other',
                             label: choice.label || (choice.kind === 'weapon_mastery' ? 'Weapon Mastery' : choice.kind),
-                            value: stored?.value || [],
+                            value: stored?.value || (matched.length > 0 ? matched.slice(0, required) : []),
                             options: choice.options || [],
-                            count: getChoiceCount(choice, cls.level),
+                            count: required,
                             revertData: { classIndex, isClassChoice: true },
                         });
                     });
@@ -1103,6 +1114,20 @@ const ManageCharacterModal = ({
     const handleChoiceChange = async (choiceId: string, newValue: any) => {
         const choice = localChoices.find(c => c.id === choiceId);
         if (!choice) return;
+
+        if (choice.revertData?.isClassChoice) {
+            setLocalChoices(prev => prev.map(currentChoice => {
+                if (currentChoice.id !== choiceId) return currentChoice;
+                const current = Array.isArray(currentChoice.value) ? currentChoice.value : [];
+                const count = currentChoice.count || 1;
+                let next: any[];
+                if (current.includes(newValue)) next = current.filter(value => value !== newValue);
+                else if (current.length < count) next = [...current, newValue];
+                else next = current;
+                return { ...currentChoice, value: next };
+            }));
+            return;
+        }
 
         const oldValue = choice.value;
         const count = choice.count || 1;
