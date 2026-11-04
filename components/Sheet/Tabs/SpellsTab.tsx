@@ -31,14 +31,37 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
     const spellSaveFor = (spell: SpellDetail) => spell.spellcastingAbility
         ? 8 + proficiency + calculateModifier(effectiveAbilities[spell.spellcastingAbility])
         : spellSave;
-    const freeCastRemaining = (spell: SpellDetail) => Math.max(0, Number((spell as any).freeCasts || (spell as any).free_casts || 0) - Number(character.freeCastUsage?.[spell.index] || 0));
+    const grantMetaFor = (spell: SpellDetail) => {
+        const effects = [
+            ...(character.classFeatures || []).flatMap((feature: any) => feature.effects || []),
+            ...(character.feats || []).flatMap((feat: any) => feat.effects || []),
+            ...(character.race?.traits || []).flatMap((trait: any) => trait.effects || []),
+            ...(character.subrace?.traits || []).flatMap((trait: any) => trait.effects || []),
+        ];
+        const effect = effects.find((entry: any) =>
+            entry.type === 'spell_access'
+            && entry.spell
+            && (String(entry.spell).toLowerCase() === String(spell.index).toLowerCase()
+                || String(entry.spell).toLowerCase() === String(spell.name).toLowerCase())
+        );
+        return effect ? {
+            freeCasts: Number(effect.free_casts || 0),
+            freeCastReset: effect.free_cast_reset || effect.reset || 'long',
+            grantedBy: effect.name || 'Feature',
+        } : null;
+    };
+    const freeCastTotal = (spell: SpellDetail) => {
+        const stored = Number((spell as any).freeCasts || (spell as any).free_casts || 0);
+        return stored || Number(grantMetaFor(spell)?.freeCasts || 0);
+    };
+    const freeCastRemaining = (spell: SpellDetail) => Math.max(0, freeCastTotal(spell) - Number(character.freeCastUsage?.[spell.index] || 0));
     const hasGrantBadge = (spell: SpellDetail) => Boolean(
         (spell as any).isGranted
         || (spell as any).is_granted
         || spell.grantedBy
-        || Number((spell as any).freeCasts || (spell as any).free_casts || 0) > 0
+        || freeCastTotal(spell) > 0
+        || grantMetaFor(spell)
     );
-    const freeCastTotal = (spell: SpellDetail) => Number((spell as any).freeCasts || (spell as any).free_casts || 0);
     const spellModifierFor = (spell: SpellDetail) => spell.spellcastingAbility
         ? calculateModifier(effectiveAbilities[spell.spellcastingAbility])
         : spellMod;

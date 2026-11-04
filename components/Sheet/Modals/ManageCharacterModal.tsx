@@ -2586,7 +2586,7 @@ const ManageCharacterModal = ({
                                         localChoices.forEach(c => {
                                             const mode = c.revertData?.mode || c.type;
                                             if ((mode === 'asi' || c.type === 'asi') && c.revertData?.abilities?.[stat]) {
-                                                contributors.push({ name: `ASI (Lvl ${c.level === 0 ? 'Init' : c.level})`, bonus: c.revertData.abilities[stat] });
+                                                contributors.push({ name: c.revertData?.featIndex ? (allFeats.find(f => f.index === c.revertData.featIndex)?.name || 'Feat') : `ASI (Lvl ${c.level === 0 ? 'Init' : c.level})`, bonus: c.revertData.abilities[stat] });
                                             }
                                             if ((mode === 'feat' || c.type === 'feat' || c.type === 'feat-selection') && c.revertData?.abilities?.[stat]) {
                                                 contributors.push({ name: c.label || 'Feat ASI', bonus: c.revertData.abilities[stat] });
