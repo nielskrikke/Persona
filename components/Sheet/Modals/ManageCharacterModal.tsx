@@ -2591,16 +2591,33 @@ const ManageCharacterModal = ({
                                             if ((mode === 'feat' || c.type === 'feat' || c.type === 'feat-selection') && c.revertData?.abilities?.[stat]) {
                                                 contributors.push({ name: c.label || 'Feat ASI', bonus: c.revertData.abilities[stat] });
                                             }
-                                            const values = Array.isArray(c.value) ? c.value : [c.value];
-                                            values.forEach((value: any) => {
-                                                const text = typeof value === 'string' ? value : (value?.name || value?.label || '');
-                                                const match = String(text).match(new RegExp(`${ABILITY_LABELS[stat]}\\s*\\+?(\\d+)`, 'i'))
-                                                    || String(text).match(new RegExp(`${stat}\\s*\\+?(\\d+)`, 'i'));
-                                                if (match) contributors.push({ name: c.label || c.source || 'Choice', bonus: Number(match[1]) });
-                                            });
+                                            if (!c.revertData?.abilities?.[stat]) {
+                                                const amount = Number(c.revertData?.amount || String(c.label || '').match(/\+(\d+)/)?.[1] || 0);
+                                                const values = Array.isArray(c.value) ? c.value : [c.value];
+                                                values.forEach((value: any) => {
+                                                    const text = typeof value === 'string' ? value : (value?.name || value?.label || '');
+                                                    const normalized = String(text).toLowerCase();
+                                                    const directAbility = Object.entries({
+                                                        str: ['str', 'strength'], dex: ['dex', 'dexterity'], con: ['con', 'constitution'],
+                                                        int: ['int', 'intelligence'], wis: ['wis', 'wisdom'], cha: ['cha', 'charisma'],
+                                                    }).find(([key, aliases]) => key === stat && aliases.some(alias => normalized === alias || normalized.startsWith(`${alias} `)));
+                                                    if (directAbility && amount > 0) {
+                                                        contributors.push({ name: c.label || c.source || 'Background', bonus: amount });
+                                                        return;
+                                                    }
+                                                    const match = String(text).match(new RegExp(`${ABILITY_LABELS[stat]}\\s*\\+?(\\d+)`, 'i'))
+                                                        || String(text).match(new RegExp(`${stat}\\s*\\+?(\\d+)`, 'i'));
+                                                    if (match) contributors.push({ name: c.label || c.source || 'Choice', bonus: Number(match[1]) });
+                                                });
+                                            }
                                         });
 
-                                        const bonusTotal = contributors.reduce((sum, c) => sum + c.bonus, 0);
+                                        const dedupedContributors = contributors.filter(c =>
+                                            !(String(c.name).startsWith('ASI') && contributors.some(other =>
+                                                /feat|fey|touched/i.test(String(other.name)) && other.bonus === c.bonus
+                                            ))
+                                        );
+                                        const bonusTotal = dedupedContributors.reduce((sum, c) => sum + c.bonus, 0);
                                         const total = abilities[stat] || 0;
                                         const base = total - bonusTotal;
                                         const mod = calculateModifier(total);
@@ -2608,7 +2625,7 @@ const ManageCharacterModal = ({
                                         // Add base to contributors for display
                                         const displayContributors = [
                                             { name: 'Base', bonus: base },
-                                            ...contributors
+                                            ...dedupedContributors
                                         ].filter(c => c.bonus !== 0 || c.name === 'Base');
 
                                         return (

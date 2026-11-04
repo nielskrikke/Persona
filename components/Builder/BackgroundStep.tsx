@@ -313,6 +313,7 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
                 value: selected,
                 options: choiceOptions(choice),
                 count: choice.count || 1,
+                ...(choice.kind === 'ability' ? { revertData: { amount: (choice as any).amount } } : {}),
             });
         });
 

@@ -3,6 +3,8 @@ import { ALL_ITEMS, getItem } from './items/index';
 import { COMMON_CREATURES } from './beasts';
 import { STANDARD_FAMILIARS } from './familiars';
 import { loadHomebrew } from '../services/supabase';
+import { ARTISAN_TOOLS } from './constants';
+import { SKILL_LIST } from '../utils/rules';
 
 export const CLASSES: any[] = [];
 export const SUBCLASSES: any[] = [];
@@ -740,7 +742,31 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         });
     }
 
-    return hydrateGrantedSpells({ ...character, race, subrace, classes, classFeatures });
+    // Choice-granted proficiencies (Skilled, etc.) must survive the Manage
+    // save path even when the card only persisted its value.
+    const derivedSkills = new Set(character.skills || []);
+    const derivedTools = new Set(character.toolProficiencies || []);
+    (character.choices || []).forEach((choice: any) => {
+        const values = Array.isArray(choice.value) ? choice.value : [choice.value];
+        values.forEach((value: any) => {
+            const name = typeof value === 'string' ? value : (value?.name || value?.label || '');
+            if (!name) return;
+            const skill = SKILL_LIST.find(entry => entry.name.toLowerCase() === name.toLowerCase());
+            if (skill) derivedSkills.add(skill.name);
+            const tool = ARTISAN_TOOLS.find(entry => entry.toLowerCase() === name.toLowerCase());
+            if (tool) derivedTools.add(tool);
+        });
+    });
+
+    return hydrateGrantedSpells({
+        ...character,
+        race,
+        subrace,
+        classes,
+        classFeatures,
+        skills: Array.from(derivedSkills),
+        toolProficiencies: Array.from(derivedTools),
+    });
 };
 
 export const fetchCreatures = async (userId?: string): Promise<any[]> => {

@@ -31,7 +31,14 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
     const spellSaveFor = (spell: SpellDetail) => spell.spellcastingAbility
         ? 8 + proficiency + calculateModifier(effectiveAbilities[spell.spellcastingAbility])
         : spellSave;
-    const freeCastRemaining = (spell: SpellDetail) => Math.max(0, Number(spell.freeCasts || 0) - Number(character.freeCastUsage?.[spell.index] || 0));
+    const freeCastRemaining = (spell: SpellDetail) => Math.max(0, Number((spell as any).freeCasts || (spell as any).free_casts || 0) - Number(character.freeCastUsage?.[spell.index] || 0));
+    const hasGrantBadge = (spell: SpellDetail) => Boolean(
+        (spell as any).isGranted
+        || (spell as any).is_granted
+        || spell.grantedBy
+        || Number((spell as any).freeCasts || (spell as any).free_casts || 0) > 0
+    );
+    const freeCastTotal = (spell: SpellDetail) => Number((spell as any).freeCasts || (spell as any).free_casts || 0);
     const spellModifierFor = (spell: SpellDetail) => spell.spellcastingAbility
         ? calculateModifier(effectiveAbilities[spell.spellcastingAbility])
         : spellMod;
@@ -237,8 +244,8 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                         <div className="flex gap-1">
                                                             {spell.concentration && (<span className="text-[8px] bg-blue-900/40 text-blue-400 border border-blue-800/60 px-1 rounded">C</span>)}
                                                             {spell.ritual && (<span className="text-[8px] bg-yellow-900/40 text-yellow-500 border border-yellow-800/60 px-1 rounded">R</span>)}
-                                                            {spell.isGranted && (<span className="text-[8px] bg-dnd-gold/10 text-dnd-gold border border-dnd-gold/40 px-1 rounded" title={spell.grantedBy}>Granted</span>)}
-                                                            {spell.freeCasts ? (<span className="text-[8px] bg-purple-900/40 text-purple-300 border border-purple-800/60 px-1 rounded">{freeCastRemaining(spell)}/{spell.freeCasts} {(spell.freeCastReset || 'long') === 'short' ? 'SR' : 'LR'}</span>) : null}
+                                                            {hasGrantBadge(spell) && (<span className="text-[8px] bg-dnd-gold/10 text-dnd-gold border border-dnd-gold/40 px-1 rounded" title={spell.grantedBy}>Granted</span>)}
+                                                            {freeCastTotal(spell) > 0 ? (<span className="text-[8px] bg-purple-900/40 text-purple-300 border border-purple-800/60 px-1 rounded">{freeCastRemaining(spell)}/{freeCastTotal(spell)} {(spell.freeCastReset || 'long') === 'short' ? 'SR' : 'LR'}</span>) : null}
                                                         </div>
                                                     </div>
                                                     <div className="text-[10px] text-gray-500 truncate">{spell.casting_time} • {spell.range} • {spell.duration}</div>
@@ -296,8 +303,8 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                     {ebCount > 0 && <span className="text-[10px] text-dnd-gold font-black">x{ebCount}</span>}
                                                     {spell.concentration && <span className="text-[8px] bg-blue-900/40 text-blue-400 border border-blue-800/60 px-1 rounded">C</span>}
                                                     {spell.ritual && <span className="text-[8px] bg-yellow-900/40 text-yellow-500 border border-yellow-800/60 px-1 rounded">R</span>}
-                                                    {spell.isGranted && <span className="text-[8px] bg-dnd-gold/10 text-dnd-gold border border-dnd-gold/40 px-1 rounded" title={spell.grantedBy}>Granted</span>}
-                                                    {spell.freeCasts ? <span className="text-[8px] bg-purple-900/40 text-purple-300 border border-purple-800/60 px-1 rounded">{freeCastRemaining(spell)}/{spell.freeCasts} {(spell.freeCastReset || 'long') === 'short' ? 'SR' : 'LR'}</span> : null}
+                                                    {hasGrantBadge(spell) && <span className="text-[8px] bg-dnd-gold/10 text-dnd-gold border border-dnd-gold/40 px-1 rounded" title={spell.grantedBy}>Granted</span>}
+                                                    {freeCastTotal(spell) > 0 ? <span className="text-[8px] bg-purple-900/40 text-purple-300 border border-purple-800/60 px-1 rounded">{freeCastRemaining(spell)}/{freeCastTotal(spell)} {(spell.freeCastReset || 'long') === 'short' ? 'SR' : 'LR'}</span> : null}
                                                 </div>
                                                 <div className="text-[10px] text-gray-500 truncate">{spell.casting_time} • {spell.range} • {spell.duration}</div>
                                                 {dmg && (
