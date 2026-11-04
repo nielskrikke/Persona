@@ -280,6 +280,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                             {spell.concentration && (<span className="text-[8px] bg-blue-900/40 text-blue-400 border border-blue-800/60 px-1 rounded">C</span>)}
                                                             {spell.ritual && (<span className="text-[8px] bg-yellow-900/40 text-yellow-500 border border-yellow-800/60 px-1 rounded">R</span>)}
                                                             {hasGrantBadge(spell) && (<span className="text-[8px] bg-dnd-gold/10 text-dnd-gold border border-dnd-gold/40 px-1 rounded" title={spell.grantedBy}>Granted</span>)}
+                                                            {spell.level > 0 && getSpellCastLevel(character, spell) > spell.level && (<span className="text-[8px] bg-blue-900/40 text-blue-300 border border-blue-800/60 px-1 rounded">Cast L{getSpellCastLevel(character, spell)}</span>)}
                                                             {freeCastTotal(spell) > 0 ? (<span className="text-[8px] bg-purple-900/40 text-purple-300 border border-purple-800/60 px-1 rounded">{freeCastRemaining(spell)}/{freeCastTotal(spell)} {(spell.freeCastReset || 'long') === 'short' ? 'SR' : 'LR'}</span>) : null}
                                                         </div>
                                                     </div>
@@ -339,6 +340,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                     {spell.concentration && <span className="text-[8px] bg-blue-900/40 text-blue-400 border border-blue-800/60 px-1 rounded">C</span>}
                                                     {spell.ritual && <span className="text-[8px] bg-yellow-900/40 text-yellow-500 border border-yellow-800/60 px-1 rounded">R</span>}
                                                     {hasGrantBadge(spell) && <span className="text-[8px] bg-dnd-gold/10 text-dnd-gold border border-dnd-gold/40 px-1 rounded" title={spell.grantedBy}>Granted</span>}
+                                                    {spell.level > 0 && getSpellCastLevel(character, spell) > spell.level && <span className="text-[8px] bg-blue-900/40 text-blue-300 border border-blue-800/60 px-1 rounded">Cast L{getSpellCastLevel(character, spell)}</span>}
                                                     {freeCastTotal(spell) > 0 ? <span className="text-[8px] bg-purple-900/40 text-purple-300 border border-purple-800/60 px-1 rounded">{freeCastRemaining(spell)}/{freeCastTotal(spell)} {(spell.freeCastReset || 'long') === 'short' ? 'SR' : 'LR'}</span> : null}
                                                 </div>
                                                 <div className="text-[10px] text-gray-500 truncate">{spell.casting_time} • {spell.range} • {spell.duration}</div>
