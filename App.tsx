@@ -724,8 +724,8 @@ const App: React.FC = () => {
         {phase === 'abilities' && <AbilityScoreStep race={character.race} initialScores={character.abilities} onSave={handleAbilitiesSave} onBack={handleBack} />}
         {phase === 'leveling' && <LevelingStep character={character} onComplete={handleLevelingComplete} onBack={handleBack} />}
         {phase === 'spells' && <SpellSelectionStep character={character} onComplete={handleSpellComplete} onBack={handleBack} />}
-        {phase === 'background' && <BackgroundStep onComplete={handleBackgroundComplete} onBack={handleBack} userId={currentUser?.id} />}
-        {phase === 'gear' && <EquipmentStep onComplete={handleEquipmentComplete} onBack={handleBack} userId={currentUser?.id} />}
+        {phase === 'background' && <BackgroundStep onComplete={handleBackgroundComplete} onBack={handleBack} userId={currentUser?.id} currentSkills={character.skills} />}
+        {phase === 'gear' && <EquipmentStep onComplete={handleEquipmentComplete} onBack={handleBack} userId={currentUser?.id} classes={character.classes} />}
         {phase === 'sheet' && (
             <ErrorBoundary>
                 <CharacterSheet

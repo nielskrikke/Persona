@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { EquipmentDetail, InventoryItem } from '../../types';
+import { CharacterClass, EquipmentDetail, InventoryItem } from '../../types';
 import { fetchEquipment, fetchEquipmentDetail } from '../../data/index';
 import ItemSearchModal from './ItemSearchModal';
 import { Search, Globe } from 'lucide-react';
@@ -9,14 +9,31 @@ interface EquipmentStepProps {
     onComplete: (equipment: InventoryItem[]) => void;
     onBack: () => void;
     userId?: string;
+    classes?: CharacterClass[];
 }
 
-const EquipmentStep: React.FC<EquipmentStepProps> = ({ onComplete, onBack, userId }) => {
+const CLASS_STARTING_KITS: Record<string, string[]> = {
+    barbarian: ['Greataxe', 'Handaxe', 'Handaxe', 'Handaxe', 'Handaxe', "Explorer's Pack"],
+    bard: ['Leather Armor', 'Dagger', 'Musical Instrument', "Entertainer's Pack"],
+    cleric: ['Chain Shirt', 'Shield', 'Mace', 'Holy Symbol', "Priest's Pack"],
+    druid: ['Leather Armor', 'Shield', 'Sickle', 'Quarterstaff', "Explorer's Pack", 'Herbalism Kit'],
+    fighter: ['Chain Mail', 'Greatsword', 'Flail', 'Javelin', 'Javelin', 'Javelin', 'Javelin', "Dungeoneer's Pack"],
+    monk: ['Spear', 'Dagger', 'Dagger', 'Dagger', 'Dagger', 'Dagger', "Explorer's Pack"],
+    paladin: ['Chain Mail', 'Shield', 'Longsword', 'Javelin', 'Javelin', 'Javelin', "Priest's Pack"],
+    ranger: ['Studded Leather', 'Scimitar', 'Shortsword', 'Longbow', 'Arrow', 'Arrow', 'Arrow', 'Quiver', "Explorer's Pack"],
+    rogue: ['Leather Armor', 'Dagger', 'Shortsword', 'Shortbow', 'Arrow', 'Arrow', 'Arrow', 'Quiver', "Burglar's Pack"],
+    sorcerer: ['Spear', 'Dagger', 'Dagger', 'Arcane Focus', "Dungeoneer's Pack"],
+    warlock: ['Leather Armor', 'Dagger', 'Dagger', 'Arcane Focus', "Scholar's Pack"],
+    wizard: ['Robe', 'Dagger', 'Dagger', 'Arcane Focus', "Scholar's Pack"],
+};
+
+const EquipmentStep: React.FC<EquipmentStepProps> = ({ onComplete, onBack, userId, classes = [] }) => {
     const [allEquipment, setAllEquipment] = useState<EquipmentDetail[]>([]);
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
     const [showSearchModal, setShowSearchModal] = useState(false);
+    const [selectedClassKit, setSelectedClassKit] = useState(0);
 
     const startingPacks = [
         { name: "Explorer's Pack", items: ["Backpack", "Bedroll", "Mess Kit", "Tinderbox", "Torch", "Rations (1 day)", "Waterskin", "Rope, Hempen (50 feet)"] },
@@ -49,11 +66,21 @@ const EquipmentStep: React.FC<EquipmentStepProps> = ({ onComplete, onBack, userI
         setSelectedItems(prev => [...prev, ...items]);
     };
 
+    const classKits = classes.map(entry => {
+        const definition: any = entry.definition;
+        const configured = definition.starting_equipment_options || definition.equipment_options || [];
+        const items = configured.length > 0
+            ? configured.flatMap((option: any) => option.equipment || option.items || []).map((item: any) => typeof item === 'string' ? item : item.item?.name || item.name).filter(Boolean)
+            : (CLASS_STARTING_KITS[definition.index] || []);
+        return { classIndex: definition.index, className: definition.name, items };
+    }).filter(kit => kit.items.length > 0);
+
     const handleNext = async () => {
         setProcessing(true);
         const finalInventory: InventoryItem[] = [];
         const counts: Record<string, number> = {};
-        selectedItems.forEach(i => { counts[i] = (counts[i] || 0) + 1; });
+        const kitItems = selectedItems.length === 0 ? (classKits[selectedClassKit]?.items || []) : [];
+        [...selectedItems, ...kitItems].forEach(i => { counts[i] = (counts[i] || 0) + 1; });
 
         for (const [name, qty] of Object.entries(counts)) {
             const match = allEquipment.find(eq => 
@@ -101,6 +128,22 @@ const EquipmentStep: React.FC<EquipmentStepProps> = ({ onComplete, onBack, userI
 
     return (
         <div className="flex flex-col h-full max-w-6xl mx-auto pb-24 md:pb-32 px-4 animate-in fade-in duration-500">
+            {classKits.length > 0 && (
+                <section className="bg-[#1b1c20] border border-gray-800 rounded-xl p-4 mb-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-[10px] font-black text-dnd-gold uppercase tracking-[0.2em]">Class Starting Equipment</h3>
+                        <span className="text-[9px] text-gray-500 uppercase font-bold">Used when no items are selected</span>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                        {classKits.map((kit, index) => (
+                            <button key={kit.classIndex} type="button" onClick={() => setSelectedClassKit(index)} className={`text-left p-3 rounded-xl border transition-all ${selectedClassKit === index ? 'bg-dnd-gold/10 border-dnd-gold text-white' : 'bg-black/30 border-gray-800 text-gray-400 hover:border-gray-600'}`}>
+                                <div className="text-xs font-bold">{kit.className}</div>
+                                <div className="text-[10px] mt-1 leading-relaxed">{kit.items.join(', ')}</div>
+                            </button>
+                        ))}
+                    </div>
+                </section>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
                 {/* Available Area */}
                 <div className="bg-[#1b1c20] border border-gray-800 rounded-xl flex flex-col overflow-hidden shadow-2xl h-full">

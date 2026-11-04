@@ -547,6 +547,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
     const activeModifiers = React.useMemo(() => {
         const mods: any[] = [];
+        const selectedChoiceOptions = new Set<string>();
 
         const processEffects = (effects: any[]) => {
             if (!effects) return;
@@ -578,6 +579,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         });
 
                         if (isSelectedInChoices || isSelectedInClassFeatures) {
+                            selectedChoiceOptions.add(optName.toLowerCase());
                             if (opt.effects && Array.isArray(opt.effects)) {
                                 opt.effects.forEach((subE: any) => mods.push(subE));
                             }
@@ -632,7 +634,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             }
         });
 
-        character.classFeatures?.forEach(f => processFeature(f, f.source || 'feature'));
+        character.classFeatures?.forEach(f => {
+            const featureName = String(f.name || '').toLowerCase();
+            if (featureName && Array.from(selectedChoiceOptions).some(option =>
+                featureName === option || featureName.endsWith(`: ${option}`)
+            )) return;
+            processFeature(f, f.source || 'feature');
+        });
 
         // Direct choices
         character.choices?.forEach((c: any) => {

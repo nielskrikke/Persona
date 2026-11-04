@@ -2491,9 +2491,6 @@ const ManageCharacterModal = ({
                                 </div>
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                                     {ABILITY_NAMES.map(stat => {
-                                        const total = abilities[stat] || 0;
-                                        const mod = calculateModifier(total);
-                                        
                                         const contributors = [];
                                         const statLabel = ABILITY_LABELS[stat].toLowerCase();
 
@@ -2520,7 +2517,9 @@ const ManageCharacterModal = ({
                                         });
 
                                         const bonusTotal = contributors.reduce((sum, c) => sum + c.bonus, 0);
-                                        const base = total - bonusTotal;
+                                        const base = abilities[stat] || 0;
+                                        const total = base + bonusTotal;
+                                        const mod = calculateModifier(total);
                                         
                                         // Add base to contributors for display
                                         const displayContributors = [

@@ -20,9 +20,10 @@ interface BackgroundStepProps {
     }) => void;
     onBack: () => void;
     userId?: string;
+    currentSkills?: string[];
 }
 
-const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, userId }) => {
+const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, userId, currentSkills = [] }) => {
     const [name, setName] = useState('');
     const [backgrounds, setBackgrounds] = useState<APIReference[]>([]);
     const [selectedBackground, setSelectedBackground] = useState<BackgroundDetail | null>(null);
@@ -40,6 +41,7 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
     const [genericSelections, setGenericSelections] = useState<Record<string, string[]>>({});
     const [asiMode, setAsiMode] = useState<'2/1' | '1/1/1'>('2/1');
     const [equipmentOptionIndex, setEquipmentOptionIndex] = useState(0);
+    const [skillReplacements, setSkillReplacements] = useState<Record<string, string>>({});
 
     useEffect(() => {
         const load = async () => {
@@ -66,6 +68,7 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
         setGenericSelections({});
         setAsiMode('2/1');
         setEquipmentOptionIndex(0);
+        setSkillReplacements({});
         setValidationError(null);
     };
 
@@ -209,6 +212,16 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
             }
         }
 
+        const duplicateSkills = (selectedBackground.skill_proficiencies || []).filter(skill =>
+            currentSkills.some(current => current.toLowerCase() === skill.toLowerCase())
+        );
+        for (const duplicate of duplicateSkills) {
+            if (!skillReplacements[duplicate]) {
+                setValidationError(`Choose a replacement skill for ${duplicate} (already granted by your class or species).`);
+                return;
+            }
+        }
+
         setValidationError(null);
         // Segregate choices into Skills and Tools based on item name heuristics
         const extraSkills: string[] = [];
@@ -306,7 +319,7 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
         onComplete(name, selectedBackground, {
             languages: [...chosenLanguages, ...extraPersonalLanguages, ...genericLanguages],
             tools: extraTools,
-            skills: extraSkills,
+            skills: Array.from(new Set([...extraSkills, ...duplicateSkills.map(skill => skillReplacements[skill]).filter(Boolean)])),
             choices: levelChoices,
             equipment: selectedBackground.equipment_options?.[equipmentOptionIndex]?.equipment || selectedBackground.equipment,
             currency: selectedBackground.equipment_options?.[equipmentOptionIndex]?.currency || selectedBackground.currency,
@@ -400,6 +413,34 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
                                                 {selectedBackground.skill_proficiencies.length === 0 && !selectedBackground.proficiency_choices && <span className="text-gray-600 italic text-xs">No starting skills.</span>}
                                             </div>
                                         </section>
+
+                                        {(() => {
+                                            const duplicateSkills = (selectedBackground.skill_proficiencies || []).filter(skill =>
+                                                currentSkills.some(current => current.toLowerCase() === skill.toLowerCase())
+                                            );
+                                            if (duplicateSkills.length === 0) return null;
+                                            const skillOptions = ['Acrobatics', 'Animal Handling', 'Arcana', 'Athletics', 'Deception', 'History', 'Insight', 'Intimidation', 'Investigation', 'Medicine', 'Nature', 'Perception', 'Performance', 'Persuasion', 'Religion', 'Sleight of Hand', 'Stealth', 'Survival']
+                                                .filter(skill => !currentSkills.includes(skill) && !duplicateSkills.includes(skill));
+                                            return (
+                                                <section className="bg-dnd-gold/5 border border-dnd-gold/30 rounded-xl p-4 space-y-3">
+                                                    <span className="text-[10px] font-black text-dnd-gold uppercase tracking-[0.2em] block border-b border-dnd-gold/20 pb-2">Duplicate Skill Replacement</span>
+                                                    <p className="text-[11px] text-gray-400">Your class or species already grants these skills. Choose a different skill for each duplicate.</p>
+                                                    {duplicateSkills.map(skill => (
+                                                        <div key={skill} className="flex items-center gap-3">
+                                                            <span className="text-xs font-bold text-white w-28">{skill}</span>
+                                                            <select
+                                                                value={skillReplacements[skill] || ''}
+                                                                onChange={e => setSkillReplacements(prev => ({ ...prev, [skill]: e.target.value }))}
+                                                                className="bg-black/40 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white"
+                                                            >
+                                                                <option value="">Choose replacement...</option>
+                                                                {skillOptions.map(option => <option key={option} value={option}>{option}</option>)}
+                                                            </select>
+                                                        </div>
+                                                    ))}
+                                                </section>
+                                            );
+                                        })()}
 
                                         {selectedBackground.proficiency_choices?.map((choice, cIdx) => (
                                             <section key={cIdx} className="bg-black/20 p-5 rounded-xl border border-gray-800">
