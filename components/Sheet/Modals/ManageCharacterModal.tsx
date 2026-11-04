@@ -656,7 +656,19 @@ const ManageCharacterModal = ({
     };
 
     // Global Save Helper
-    const getGlobalUpdates = (overrides: any = {}) => ({
+    const getGlobalUpdates = (overrides: any = {}) => {
+        const derivedSkills = new Set(skills);
+        const derivedTools = new Set(toolProficiencies);
+        localChoices.forEach((choice: any) => {
+            const values = Array.isArray(choice.value) ? choice.value : [choice.value];
+            values.forEach((value: any) => {
+                const name = typeof value === 'string' ? value : (value?.name || value?.label || '');
+                if (!name) return;
+                if (SKILL_LIST.some(skill => skill.name.toLowerCase() === name.toLowerCase())) derivedSkills.add(SKILL_LIST.find(skill => skill.name.toLowerCase() === name.toLowerCase())!.name);
+                else if (ARTISAN_TOOLS.some(tool => tool.toLowerCase() === name.toLowerCase())) derivedTools.add(ARTISAN_TOOLS.find(tool => tool.toLowerCase() === name.toLowerCase())!);
+            });
+        });
+        return {
         name,
         avatarUrl: avatar,
         xp: parseInt(xp) || 0, 
@@ -664,9 +676,9 @@ const ManageCharacterModal = ({
         languages: overrides.languages || languages,
         abilities: overrides.abilities || abilities,
         feats: overrides.feats || localFeats,
-        skills: overrides.skills || skills,
+        skills: overrides.skills || Array.from(derivedSkills),
         expertise: overrides.expertise || expertise,
-        toolProficiencies: overrides.toolProficiencies || toolProficiencies,
+        toolProficiencies: overrides.toolProficiencies || Array.from(derivedTools),
         savingThrowProficiencies: overrides.savingThrowProficiencies || savingThrowProficiencies,
         featureUsage: overrides.featureUsage || localFeatures,
         fontScale,
@@ -684,7 +696,8 @@ const ManageCharacterModal = ({
         maxHp: overrides.maxHp || localMaxHp,
         level: (overrides.classes || localClasses).reduce((sum: number, c: any) => sum + c.level, 0),
         spellSlots: mergeSpellSlotCurrents(getSpellSlots(overrides.classes || localClasses), character.spellSlots)
-    });
+        };
+    };
 
     const handleSave = (shouldClose: boolean = true, overrides: any = {}) => {
         onUpdate({
@@ -2588,8 +2601,8 @@ const ManageCharacterModal = ({
                                         });
 
                                         const bonusTotal = contributors.reduce((sum, c) => sum + c.bonus, 0);
-                                        const base = abilities[stat] || 0;
-                                        const total = base + bonusTotal;
+                                        const total = abilities[stat] || 0;
+                                        const base = total - bonusTotal;
                                         const mod = calculateModifier(total);
                                         
                                         // Add base to contributors for display

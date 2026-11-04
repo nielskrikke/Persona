@@ -597,6 +597,21 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
         });
     });
     spells = Array.from(deduped.values());
+    // A prepared copy must not shadow the granted copy; force the grant back
+    // onto the single spell row so its free cast survives.
+    spells = spells.map(spell => {
+        const granted = grantedByIndex.get(String(spell.index).toLowerCase())
+            || Array.from(grantedByIndex.values()).find(entry => String(entry.index).toLowerCase() === String(spell.index).toLowerCase());
+        if (!granted) return spell;
+        return {
+            ...spell,
+            ...granted,
+            isPrepared: true,
+            isGranted: true,
+            freeCasts: granted.freeCasts ?? spell.freeCasts,
+            freeCastReset: granted.freeCastReset ?? spell.freeCastReset,
+        };
+    });
 
     return { ...character, spells };
 };

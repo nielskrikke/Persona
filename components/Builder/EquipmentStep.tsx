@@ -27,9 +27,14 @@ const CLASS_STARTING_KITS: Record<string, string[]> = {
     wizard: ['Robe', 'Dagger', 'Dagger', 'Arcane Focus', "Scholar's Pack"],
 };
 
-const CLASS_STARTING_GOLD: Record<string, number> = {
+const CLASS_KIT_GOLD: Record<string, number> = {
     barbarian: 15, bard: 19, cleric: 7, druid: 9, fighter: 4, monk: 11,
     paladin: 9, ranger: 7, rogue: 8, sorcerer: 28, warlock: 15, wizard: 5,
+};
+
+const CLASS_OPTION_B_GOLD: Record<string, number> = {
+    barbarian: 75, bard: 90, cleric: 110, druid: 50, fighter: 155, monk: 50,
+    paladin: 150, ranger: 150, rogue: 100, sorcerer: 50, warlock: 100, wizard: 55,
 };
 
 const EquipmentStep: React.FC<EquipmentStepProps> = ({ onComplete, onBack, userId, classes = [] }) => {
@@ -78,7 +83,7 @@ const EquipmentStep: React.FC<EquipmentStepProps> = ({ onComplete, onBack, userI
         const items = configured.length > 0
             ? configured.flatMap((option: any) => option.equipment || option.items || []).map((item: any) => typeof item === 'string' ? item : item.item?.name || item.name).filter(Boolean)
             : (CLASS_STARTING_KITS[definition.index] || []);
-        return { classIndex: definition.index, className: definition.name, items, gold: CLASS_STARTING_GOLD[definition.index] || 0 };
+        return { classIndex: definition.index, className: definition.name, items, goldA: CLASS_KIT_GOLD[definition.index] || 0, goldB: CLASS_OPTION_B_GOLD[definition.index] || 0 };
     }).filter(kit => kit.items.length > 0);
 
     const handleNext = async () => {
@@ -122,7 +127,12 @@ const EquipmentStep: React.FC<EquipmentStepProps> = ({ onComplete, onBack, userI
                 finalInventory.push({ id: `custom-${name}`, name: name, quantity: qty, weight: 0, equipped: false });
             }
         }
-        onComplete(finalInventory, selectedKitMode === 'gold' && selectedItems.length === 0 ? { gp: classKits[selectedClassKit]?.gold || 0, sp: 0, cp: 0 } : undefined);
+        onComplete(
+            finalInventory,
+            selectedItems.length === 0
+                ? { gp: selectedKitMode === 'gold' ? (classKits[selectedClassKit]?.goldB || 0) : (classKits[selectedClassKit]?.goldA || 0), sp: 0, cp: 0 }
+                : undefined
+        );
     };
 
     if (loading || processing) return (
@@ -144,12 +154,12 @@ const EquipmentStep: React.FC<EquipmentStepProps> = ({ onComplete, onBack, userI
                         {classKits.map((kit, index) => (
                             <div key={kit.classIndex} className="space-y-1">
                                 <button type="button" onClick={() => { setSelectedClassKit(index); setSelectedKitMode('kit'); }} className={`w-full text-left p-3 rounded-xl border transition-all ${selectedClassKit === index && selectedKitMode === 'kit' ? 'bg-dnd-gold/10 border-dnd-gold text-white' : 'bg-black/30 border-gray-800 text-gray-400 hover:border-gray-600'}`}>
-                                    <div className="text-xs font-bold">{kit.className} Kit</div>
+                                    <div className="text-xs font-bold">{kit.className} Kit + {kit.goldA} GP</div>
                                     <div className="text-[10px] mt-1 leading-relaxed">{kit.items.join(', ')}</div>
                                 </button>
-                                {kit.gold > 0 && (
+                                {kit.goldB > 0 && (
                                     <button type="button" onClick={() => { setSelectedClassKit(index); setSelectedKitMode('gold'); }} className={`w-full text-left p-2 rounded-lg border text-[10px] font-bold transition-all ${selectedClassKit === index && selectedKitMode === 'gold' ? 'bg-dnd-gold/10 border-dnd-gold text-dnd-gold' : 'bg-black/30 border-gray-800 text-gray-500 hover:border-gray-600'}`}>
-                                        Option B: {kit.gold} GP instead
+                                        Option B: {kit.goldB} GP instead
                                     </button>
                                 )}
                             </div>
