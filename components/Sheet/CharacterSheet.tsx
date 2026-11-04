@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import Markdown from 'react-markdown';
 import { Sparkles, Plus, X, Maximize, Search, Info, Heart, Skull, AlertOctagon } from 'lucide-react';
 import { CharacterState, ABILITY_NAMES, ABILITY_LABELS, RollResult, AbilityName, SpellDetail, InventoryItem, Currency, RuleEntry, CreatureDetail, EldritchCannonDetail, SteelDefenderDetail, EquipmentDetail, ItemModifier, DiceCustomizationOptions } from '../../types';
-import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount, getSpellAbilityForClass, getResourceDefinitions, mergeSpellSlotCurrents, hasUiWidget, getClassWithUiWidget, resolveDamageFormula, appendMinDie } from '../../utils/rules';
+import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount, getSpellAbilityForClass, getResourceDefinitions, mergeSpellSlotCurrents, hasUiWidget, getClassWithUiWidget, resolveDamageFormula, appendMinDie, getWeaponMasteryEffect } from '../../utils/rules';
 import { rollDice } from '../../utils/dice';
 import CreatureManagerModal from './Modals/CreatureManagerModal';
 import { WIDGET_LABELS, DEFAULT_LAYOUT, STANDARD_CONDITIONS, STANDARD_ACTIONS, STATIC_RULES, WIDGET_BG } from '../../data/constants';
@@ -2589,6 +2589,18 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         if (modifiers.some((modifier: any) => modifier.name === 'Elemental Adept')) return;
                         modifiers.push({ name: 'Elemental Adept', desc: `Your ${m.damage_type} spells ignore Resistance, and 1s on ${m.damage_type} damage dice count as 2s.` });
                     });
+            }
+
+            if (isWeapon && source?.mastery) {
+                const masteryName = typeof source.mastery === 'string' ? source.mastery : source.mastery.name;
+                const masteredWeapons = (character.choices || [])
+                    .filter((choice: any) => choice.type === 'weapon_mastery')
+                    .flatMap((choice: any) => Array.isArray(choice.value) ? choice.value : [choice.value]);
+                const isMastered = masteredWeapons.some((name: any) => String(name).toLowerCase() === String(source.name || '').toLowerCase());
+                if (isMastered) {
+                    const masteryEffect = getWeaponMasteryEffect(masteryName, prof, strMod, dexMod);
+                    if (masteryEffect) modifiers.push({ name: `Mastery: ${masteryName}`, desc: masteryEffect });
+                }
             }
 
             // Attack riders come from feature data (Sneak Attack, Divine Smite,

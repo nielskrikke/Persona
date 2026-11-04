@@ -704,3 +704,19 @@ export const getChoiceCount = (choice: any, level: number): number => {
     }
     return Number(choice?.count || 1);
 };
+
+export const getWeaponMasteryEffect = (mastery: string, proficiency: number, strMod: number, dexMod: number): string => {
+    const key = String(mastery || '').toLowerCase();
+    const ability = Math.max(strMod, dexMod);
+    switch (key) {
+        case 'cleave': return 'On a hit, make one extra melee attack against a second creature within 5 feet (once per turn).';
+        case 'graze': return `On a miss, deal ${Math.max(0, ability)} damage of the weapon's type.`;
+        case 'nick': return 'Make the extra Light weapon attack as part of the Attack action instead of a Bonus Action (once per turn).';
+        case 'push': return 'On a hit, push the target up to 10 feet away.';
+        case 'sap': return 'On a hit, the target has Disadvantage on its next attack roll before your next turn.';
+        case 'slow': return 'On a hit, reduce the target’s Speed by 10 feet until your next turn.';
+        case 'topple': return `On a hit, CON save DC ${8 + proficiency + ability} or the target has the Prone condition.`;
+        case 'vex': return 'On a hit, you have Advantage on your next attack against that target before your next turn.';
+        default: return '';
+    }
+};
