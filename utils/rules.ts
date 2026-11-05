@@ -570,6 +570,10 @@ export const getResourceMax = (
     switch (descriptor.type) {
         case 'fixed':
             return Number(descriptor.value || 0);
+        case 'roll': {
+            const match = String(descriptor.value || '').match(/^(\d+)d(\d+)(?:\+(\d+))?$/i);
+            return match ? Number(match[1]) * Number(match[2]) + Number(match[3] || 0) : 0;
+        }
         case 'level':
             return classLevel * Number(descriptor.multiplier || 1);
         case 'ability': {
@@ -592,6 +596,7 @@ export interface CharacterResource {
     reset: 'short' | 'long';
     max: number;
     source?: string;
+    regain?: string;
 }
 
 /**
@@ -640,6 +645,7 @@ export const getResourceDefinitions = (character: CharacterState): CharacterReso
                 reset: resource.reset === 'short' ? 'short' : 'long',
                 max,
                 source: item.name,
+                regain: resource.regain,
             });
         });
     });

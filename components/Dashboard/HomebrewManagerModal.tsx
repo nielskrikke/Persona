@@ -990,6 +990,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     const [itemDmgDice, setItemDmgDice] = useState('');
     const [itemDmgType, setItemDmgType] = useState('Piercing');
     const [itemWeaponType, setItemWeaponType] = useState('Simple');
+    const [itemWeaponRange, setItemWeaponRange] = useState('Melee');
     const [itemArmorType, setItemArmorType] = useState('Light');
     const [itemAcBase, setItemAcBase] = useState(0);
     const [itemAcDexBonus, setItemAcDexBonus] = useState(false);
@@ -1307,6 +1308,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
             setItemDmgDice(item.damage?.damage_dice || '');
             setItemDmgType(item.damage?.damage_type?.name || 'Piercing');
             setItemWeaponType(item.weapon_category || 'Simple');
+            setItemWeaponRange(item.weapon_range || 'Melee');
             setItemArmorType(item.armor_category || 'Light');
             setItemAcBase(item.armor_class?.base || 0);
             setItemAcDexBonus(item.armor_class?.dex_bonus || false);
@@ -1546,6 +1548,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     thrownRange: itemThrownRange,
                     thrownDamage: itemThrownDamage,
                     weapon_category: itemCategory === 'Weapon' ? itemWeaponType : undefined,
+                    weapon_range: itemCategory === 'Weapon' ? itemWeaponRange : undefined,
                     armor_category: itemCategory === 'Armor' ? itemArmorType : undefined,
                     damage: itemDmgDice ? { damage_dice: itemDmgDice, damage_type: { name: itemDmgType, index: itemDmgType.toLowerCase() } } : undefined,
                     armor_class: itemAcBase > 0 ? { base: itemAcBase, dex_bonus: itemAcDexBonus, max_bonus: itemAcMaxBonus } : undefined,
@@ -2163,6 +2166,13 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                         <option value="Simple">Simple</option>
                                                         <option value="Martial">Martial</option>
                                                         <option value="Firearm">Firearm</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Weapon Range</label>
+                                                    <select value={itemWeaponRange} onChange={e => setItemWeaponRange(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-white">
+                                                        <option value="Melee">Melee</option>
+                                                        <option value="Ranged">Ranged</option>
                                                     </select>
                                                 </div>
                                                 <div>

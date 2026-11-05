@@ -138,6 +138,9 @@ export interface SpellDetail extends APIReference {
     itemName?: string;
     itemConsumable?: boolean;
     itemFree?: boolean;
+    itemMaxCost?: number;
+    itemUpcastPerCharge?: number;
+    itemBaseCost?: number;
 }
 
 export interface RaceDetail extends APIReference {

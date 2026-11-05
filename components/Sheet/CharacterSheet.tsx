@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import Markdown from 'react-markdown';
 import { Sparkles, Plus, X, Maximize, Search, Info, Heart, Skull, AlertOctagon } from 'lucide-react';
 import { CharacterState, ABILITY_NAMES, ABILITY_LABELS, RollResult, AbilityName, SpellDetail, InventoryItem, Currency, RuleEntry, CreatureDetail, EldritchCannonDetail, SteelDefenderDetail, EquipmentDetail, ItemModifier, DiceCustomizationOptions } from '../../types';
-import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount, getSpellAbilityForClass, getResourceDefinitions, mergeSpellSlotCurrents, hasUiWidget, getClassWithUiWidget, resolveDamageFormula, appendMinDie, getWeaponMasteryEffect, getWeaponMasteryData, getSpellCastLevel } from '../../utils/rules';
+import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount, getSpellAbilityForClass, getResourceDefinitions, mergeSpellSlotCurrents, hasUiWidget, getClassWithUiWidget, resolveDamageFormula, appendMinDie, getWeaponMasteryEffect, getWeaponMasteryData, getSpellCastLevel, calculateMaxHp } from '../../utils/rules';
 import { rollDice } from '../../utils/dice';
 import CreatureManagerModal from './Modals/CreatureManagerModal';
 import { WIDGET_LABELS, DEFAULT_LAYOUT, STANDARD_CONDITIONS, STANDARD_ACTIONS, STATIC_RULES, WIDGET_BG } from '../../data/constants';
@@ -1503,9 +1503,18 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const newSlots = {...prev.spellSlots};
             Object.keys(newSlots).forEach(lvl => { newSlots[parseInt(lvl)].current = newSlots[parseInt(lvl)].max; });
             const newFeatures = {...prev.featureUsage};
+            const resourceDefinitions = new Map(getResourceDefinitions(prev).map(resource => [resource.name, resource]));
             Object.keys(newFeatures).forEach(key => {
                 const resetRule = (newFeatures[key] as any).reset || 'long';
-                if (type === 'long' || resetRule === 'short') newFeatures[key].current = newFeatures[key].max;
+                const resource = resourceDefinitions.get(key);
+                if (type === 'long' || resetRule === 'short') {
+                    if (resource?.regain && type === 'long') {
+                        const regained = rollDice(resource.regain, key).total;
+                        newFeatures[key].current = Math.min(newFeatures[key].max, Number(newFeatures[key].current || 0) + regained);
+                    } else {
+                        newFeatures[key].current = newFeatures[key].max;
+                    }
+                }
             });
             const newHitDiceUsage = { ...prev.hitDiceUsage };
             const totalDicePerSize: Record<string, number> = {};
@@ -4152,6 +4161,24 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         if (action === 'useItem') {
                             const use = itm?.use;
                             const consumes = Number(use?.consumes || 1);
+                            if (itm?.on_use_grant) {
+                                const grant = itm.on_use_grant;
+                                setCharacter(prev => {
+                                    const nextAbilities = { ...prev.abilities };
+                                    const key = String(grant.target || '').toLowerCase() as keyof typeof nextAbilities;
+                                    if (key in nextAbilities) {
+                                        nextAbilities[key] = Math.min(Number(grant.max || 30), Number(nextAbilities[key]) + Number(grant.value || 0));
+                                    }
+                                    return {
+                                        ...prev,
+                                        abilities: nextAbilities,
+                                        maxHp: calculateMaxHp({ ...prev, abilities: nextAbilities }),
+                                        inventory: prev.inventory.map(entry => entry.id === itm.id ? { ...entry, quantity: Math.max(0, entry.quantity - consumes) } : entry).filter(entry => entry.quantity > 0),
+                                    };
+                                });
+                                setSelectedDetail(null);
+                                return;
+                            }
                             const tempEffect = (itm?.effects || []).find((effect: any) => String(effect.target || '').toLowerCase() === 'temp_hp');
                             if (tempEffect) {
                                 setCharacter(prev => ({
