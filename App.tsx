@@ -13,7 +13,7 @@ import { CharacterSheet } from './components/Sheet/CharacterSheet';
 import ErrorBoundary from './components/ErrorBoundary';
 import { getSpellSlots, SKILL_LIST, getCasterProfileFor, calculateMaxHp, mergeSpellSlotCurrents } from './utils/rules';
 import { STANDARD_LANGUAGES, ARTISAN_TOOLS } from './data/constants';
-import { hydrateCharacterClasses, fetchAllSpells, hydrateGrantedSpells } from './data/index';
+import { hydrateCharacterClasses, fetchAllSpells, hydrateGrantedSpells, fetchEquipment, fetchEquipmentDetail } from './data/index';
 import { saveCharacterToDb, loginUser } from './services/supabase';
 import AuthModal from './components/Auth/AuthModal';
 import CharacterDashboard from './components/Dashboard/CharacterDashboard';
@@ -539,14 +539,45 @@ const App: React.FC = () => {
     };
 
     const newInventory = [...character.inventory];
-    for (const itemStr of (extraData.equipment || background.equipment)) {
-        newInventory.push({
-            id: `bg-${itemStr}-${Date.now()}`,
-            name: itemStr,
-            quantity: 1,
-            weight: 0,
-            equipped: false
-        });
+    const allItems = await fetchEquipment(currentUser?.id);
+    const byName = new Map(allItems.map(item => [item.name.toLowerCase(), item]));
+    for (const rawItem of (extraData.equipment || background.equipment || [])) {
+        const itemStr = String(rawItem).trim();
+        if (!itemStr) continue;
+        if (/any of your choice/i.test(itemStr)) {
+            newChoices.push({
+                id: `background-equipment-choice-${itemStr.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+                level: 1,
+                source: background.name,
+                type: 'tool',
+                label: itemStr,
+                value: [],
+                options: ARTISAN_TOOLS,
+                count: 1,
+            });
+            continue;
+        }
+        const quantityMatch = itemStr.match(/\((\d+)\)\s*$/);
+        const quantity = quantityMatch ? Number(quantityMatch[1]) : 1;
+        const cleanName = itemStr.replace(/\s*\(\d+\)\s*$/, '').replace(/\s*\(any of your choice\)\s*$/i, '').trim();
+        const detail = await fetchEquipmentDetail(cleanName.toLowerCase().replace(/[^a-z0-9]+/g, '-'), currentUser?.id)
+            || byName.get(cleanName.toLowerCase());
+        if (detail) {
+            newInventory.push({
+                ...detail,
+                id: `bg-${detail.index}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                quantity,
+                equipped: false,
+            });
+        } else {
+            newInventory.push({
+                id: `bg-${cleanName}-${Date.now()}`,
+                name: cleanName,
+                quantity,
+                weight: 0,
+                equipped: false
+            });
+        }
     }
 
     const featChoices = (await Promise.all((extraData.feats || []).map(feat => buildFeatGrantChoices(feat, 'Background', 1)))).flat();

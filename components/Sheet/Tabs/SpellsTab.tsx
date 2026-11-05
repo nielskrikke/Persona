@@ -25,12 +25,16 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
     const [spellFilter, setSpellFilter] = useState<number | 'all'>('all');
     const effectiveAbilities = getEffectiveAbilities(character);
     const proficiency = calculateProficiency(character.level);
-    const spellAttackFor = (spell: SpellDetail) => spell.spellcastingAbility
-        ? formatModifier(proficiency + calculateModifier(effectiveAbilities[spell.spellcastingAbility]))
-        : spellAttackStr;
-    const spellSaveFor = (spell: SpellDetail) => spell.spellcastingAbility
-        ? 8 + proficiency + calculateModifier(effectiveAbilities[spell.spellcastingAbility])
-        : spellSave;
+    const spellAttackFor = (spell: SpellDetail) => (spell as any).itemAttackBonus !== undefined
+        ? formatModifier(Number((spell as any).itemAttackBonus))
+        : spell.spellcastingAbility
+            ? formatModifier(proficiency + calculateModifier(effectiveAbilities[spell.spellcastingAbility]))
+            : spellAttackStr;
+    const spellSaveFor = (spell: SpellDetail) => (spell as any).itemDc !== undefined
+        ? Number((spell as any).itemDc)
+        : spell.spellcastingAbility
+            ? 8 + proficiency + calculateModifier(effectiveAbilities[spell.spellcastingAbility])
+            : spellSave;
     const grantMetaFor = (spell: SpellDetail) => {
         const effects = [
             ...(character.classFeatures || []).flatMap((feature: any) => feature.effects || []),
@@ -96,6 +100,24 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
         });
     };
     const castSpell = (spell: SpellDetail) => {
+        if ((spell as any).itemSpell) {
+            const resourceName = String((spell as any).itemResourceName || '');
+            const cost = Number((spell as any).itemCost?.amount || 1);
+            const usage = character.featureUsage?.[resourceName];
+            if (!usage || Number(usage.current) < cost) {
+                alert(`${(spell as any).itemName || 'Item'} does not have enough charges.`);
+                return;
+            }
+            setCharacter(prev => ({
+                ...prev,
+                featureUsage: {
+                    ...prev.featureUsage,
+                    [resourceName]: { ...usage, current: Number(usage.current) - cost },
+                },
+                activeConcentration: spell.concentration ? spell : prev.activeConcentration,
+            }));
+            return;
+        }
         const remaining = freeCastRemaining(spell);
         if (remaining > 0) {
             setCharacter(prev => ({
@@ -286,6 +308,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                             {spell.level > 0 && getSpellCastLevel(character, spell) > spell.level && (<span className="text-[8px] bg-blue-900/40 text-blue-300 border border-blue-800/60 px-1 rounded">Cast L{getSpellCastLevel(character, spell)}</span>)}
                                                             {upcast && (upcast.count > upcast.base || /ray|dart/i.test(upcast.unit)) && (<span className="text-[8px] bg-emerald-900/40 text-emerald-300 border border-emerald-800/60 px-1 rounded">{upcast.count} {upcast.unit}</span>)}
                                                             {freeCastTotal(spell) > 0 ? (<span className="text-[8px] bg-purple-900/40 text-purple-300 border border-purple-800/60 px-1 rounded">{freeCastRemaining(spell)}/{freeCastTotal(spell)} {(spell.freeCastReset || 'long') === 'short' ? 'SR' : 'LR'}</span>) : null}
+                                                            {spell.itemSpell && (<span className="text-[8px] bg-orange-900/40 text-orange-300 border border-orange-800/60 px-1 rounded">{spell.itemCost?.amount || 1} charge</span>)}
                                                         </div>
                                                     </div>
                                                     <div className="text-[10px] text-gray-500 truncate">{spell.casting_time} • {spell.range} • {spell.duration}</div>
@@ -350,6 +373,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                     {spell.level > 0 && getSpellCastLevel(character, spell) > spell.level && <span className="text-[8px] bg-blue-900/40 text-blue-300 border border-blue-800/60 px-1 rounded">Cast L{getSpellCastLevel(character, spell)}</span>}
                                                     {upcast && (upcast.count > upcast.base || /ray|dart/i.test(upcast.unit)) && <span className="text-[8px] bg-emerald-900/40 text-emerald-300 border border-emerald-800/60 px-1 rounded">{upcast.count} {upcast.unit}</span>}
                                                     {freeCastTotal(spell) > 0 ? <span className="text-[8px] bg-purple-900/40 text-purple-300 border border-purple-800/60 px-1 rounded">{freeCastRemaining(spell)}/{freeCastTotal(spell)} {(spell.freeCastReset || 'long') === 'short' ? 'SR' : 'LR'}</span> : null}
+                                                    {spell.itemSpell && <span className="text-[8px] bg-orange-900/40 text-orange-300 border border-orange-800/60 px-1 rounded">{spell.itemCost?.amount || 1} charge</span>}
                                                 </div>
                                                 <div className="text-[10px] text-gray-500 truncate">{spell.casting_time} • {spell.range} • {spell.duration}</div>
                                                 {dmg && (

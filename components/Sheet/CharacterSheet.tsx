@@ -20,6 +20,7 @@ import HealthManagerModal from './Modals/HealthManagerModal';
 import ShortRestModal from './Modals/ShortRestModal';
 import CustomActionModal from './Modals/CustomActionModal';
 import ItemSearchModal from '../Builder/ItemSearchModal';
+import ItemCustomizationModal from './Modals/ItemCustomizationModal';
 import LayoutManagerModal from './Modals/LayoutManagerModal';
 import CustomSpellModal from './Modals/CustomSpellModal';
 import DiceCustomizerModal from './Modals/DiceCustomizerModal';
@@ -344,6 +345,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const [showItemSearchModal, setShowItemSearchModal] = useState(false);
     const [itemSearchMode, setItemSearchMode] = useState<'search' | 'custom'>('search');
     const [duplicateItem, setDuplicateItem] = useState<EquipmentDetail | null>(null);
+    const [customizingItem, setCustomizingItem] = useState<EquipmentDetail | null>(null);
     const [duplicateSpell, setDuplicateSpell] = useState<SpellDetail | null>(null);
     const [showLayoutManager, setShowLayoutManager] = useState(false);
     const [showCustomSpellModal, setShowCustomSpellModal] = useState(false);
@@ -660,8 +662,19 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         // 4. Equipped & Attuned Items
         character.inventory.forEach(item => {
             if (item.equipped && (!item.requires_attunement || item.attuned)) {
-                if (item.modifiers) item.modifiers.forEach(m => mods.push(m));
-                processEffects((item as any).effects);
+                const isWeaponItem = Boolean(item.damage || item.weapon_category);
+                (item.modifiers || []).forEach((modifier: any) => {
+                    const target = String(modifier.target || modifier.stat || '').toLowerCase();
+                    // Weapon-local attack/damage bonuses are applied on that weapon's row.
+                    if (isWeaponItem && ['attack', 'damage', 'weapon_attack', 'weapon_damage', 'melee_attack', 'ranged_attack', 'melee_damage', 'ranged_damage'].includes(target)) return;
+                    mods.push(modifier);
+                });
+                const itemEffects = ((item as any).effects || []).filter((effect: any) => {
+                    if (!effect) return false;
+                    if (effect.scope === 'this_weapon' || effect.requires_toggle || effect.on === 'natural_20' || effect.vs) return false;
+                    return true;
+                });
+                processEffects(itemEffects);
             }
         });
 
@@ -759,9 +772,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         const equippedItems = character.inventory.filter((i: any) => i.equipped);
 
         const hasArmorEquipped = equippedItems.some((i: any) => i.armor_class && !(i.armor_category?.toLowerCase().includes('shield') || i.name?.toLowerCase().includes('shield')));
-        const hasShieldEquipped = equippedItems.some((i: any) => (i.armor_category?.toLowerCase().includes('shield') || i.name?.toLowerCase().includes('shield')));
+        const hasShieldEquipped = equippedItems.some((i: any) => String(i.armor_category || '').toLowerCase().includes('shield'));
 
-        const heavyArmorEquipped = equippedItems.some((i: any) => i.armor_class && (i.armor_category?.toLowerCase().includes('heavy') || i.name?.toLowerCase().includes('plate')));
+        const heavyArmorEquipped = equippedItems.some((i: any) => i.armor_class && String(i.armor_category || '').toLowerCase().includes('heavy'));
         const mediumArmorEquipped = equippedItems.some((i: any) => i.armor_class && i.armor_category?.toLowerCase().includes('medium'));
         const lightArmorEquipped = equippedItems.some((i: any) => i.armor_class && i.armor_category?.toLowerCase().includes('light'));
 
@@ -843,8 +856,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     };
 
     const calculateAC = () => {
-        const armor = character.inventory.find(i => i.equipped && i.armor_class && !i.name.toLowerCase().includes('shield'));
-        const shield = character.inventory.find(i => i.equipped && i.armor_class && i.name.toLowerCase().includes('shield'));
+        const armor = character.inventory.find(i => i.equipped && i.armor_class && !String(i.armor_category || '').toLowerCase().includes('shield'));
+        const shield = character.inventory.find(i => i.equipped && i.armor_class && String(i.armor_category || '').toLowerCase().includes('shield'));
         const hasTwoHandedWeaponEquipped = character.inventory.some(i =>
             i.equipped && (
                 i.properties?.some(p => (typeof p === 'string' ? p : p.name) === 'Two-Handed') ||
@@ -921,8 +934,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     };
 
     const getACBreakdown = () => {
-        const armor = character.inventory.find(i => i.equipped && i.armor_class && !i.name.toLowerCase().includes('shield'));
-        const shield = character.inventory.find(i => i.equipped && i.armor_class && i.name.toLowerCase().includes('shield'));
+        const armor = character.inventory.find(i => i.equipped && i.armor_class && !String(i.armor_category || '').toLowerCase().includes('shield'));
+        const shield = character.inventory.find(i => i.equipped && i.armor_class && String(i.armor_category || '').toLowerCase().includes('shield'));
 
         const breakdown: { label: string, value: number }[] = [];
         let baseAC = 10;
@@ -1534,7 +1547,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         setShowHomebrewModal(true);
     };
 
-    const handleAddItem = async (item: EquipmentDetail) => {
+    const addItemNow = (item: EquipmentDetail) => {
         const newItem: InventoryItem = {
             ...item,
             id: `${item.index}-${Date.now()}`,
@@ -1547,6 +1560,15 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             inventory: [...prev.inventory, newItem]
         }));
         setShowItemSearchModal(false);
+        setCustomizingItem(null);
+    };
+
+    const handleAddItem = async (item: EquipmentDetail) => {
+        if ((item as any).template || (item as any).choice) {
+            setCustomizingItem(item);
+            return;
+        }
+        addItemNow(item);
     };
 
     const toggleAttunement = (id: string) => {
@@ -2102,7 +2124,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     return acc + v;
                                 }, 0);
 
-                             const mod = calculateModifier(getStat(stat)) + (isProf ? prof : 0) + globalSaveBonus + saveBonus;
+                             const mod = calculateModifier(getStat(stat)) + (isProf ? prof : 0) + saveBonus;
                              const hasFullAdv = activeModifiers.some(m => m.type === 'advantage' && (m.target === `${stat}_save` || (m.target === 'saves' && (!m.filter || m.filter.toLowerCase() === ABILITY_LABELS[stat].toLowerCase()))));
 
                              return <SavingThrowRow key={stat} label={ABILITY_LABELS[stat]} stat={stat} isProf={isProf} mod={mod} advantage={hasFullAdv} onRoll={roll} onContextMenu={triggerRollMenu} />;
@@ -2608,7 +2630,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 }
             }
             const isMonkWeapon = attack.notes?.includes('Monk Weapon') || attack.notes?.includes('Kensei Weapon');
-            const isMagic = source?.requires_attunement || (source?.modifiers && source.modifiers.length > 0) || source?.isInfusion || source?.isPactWeapon || (isMonkWeapon && activeModifiers.some((m: any) => m.type === 'attack_rider' && m.name === 'Empowered Strikes'));
+            const isMagic = Boolean(source?.is_magic || source?.requires_attunement || (source?.modifiers && source.modifiers.length > 0) || source?.isInfusion || source?.isPactWeapon || (isMonkWeapon && activeModifiers.some((m: any) => m.type === 'attack_rider' && m.name === 'Empowered Strikes')));
             if (isMagic && isWeapon && !isSpell) {
                 modifiers.push({ name: 'Magical Attack', desc: 'This attack counts as magical for the purpose of overcoming resistance and immunity to nonmagical attacks and damage.' });
             }
@@ -2628,7 +2650,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const masteredWeapons = (character.choices || [])
                     .filter((choice: any) => choice.type === 'weapon_mastery')
                     .flatMap((choice: any) => Array.isArray(choice.value) ? choice.value : [choice.value]);
-                const isMastered = masteredWeapons.some((name: any) => String(name).toLowerCase() === String(source.name || '').toLowerCase());
+                const baseItem = (source as any)?.base_item ? Library.getItem((source as any).base_item) : null;
+                const masteryKeys = [source?.base_item, source?.index, source?.name, baseItem?.name].filter(Boolean).map((value: any) => String(value).toLowerCase());
+                const isMastered = masteredWeapons.some((name: any) => masteryKeys.includes(String(name).toLowerCase()));
                 if (isMastered) {
                     const masteryEffect = getWeaponMasteryEffect(masteryName, prof, strMod, dexMod);
                     if (masteryEffect) modifiers.push({ name: `Mastery: ${masteryName}`, desc: masteryEffect });
@@ -2845,7 +2869,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const isMonkWeapon = item.isMonkWeapon || item.isKenseiWeapon || (monk && (item.equipment_category?.index === 'weapon' && (Library.getItem(item.index || '')?.properties?.some(p => (typeof p === 'string' ? p : p.index) === 'simple') || item.name === 'Shortsword')));
 
             // Special Attack Modifiers
-            const isMagic = item.requires_attunement || (item.modifiers && item.modifiers.length > 0) || item.isInfusion;
+            const isMagic = Boolean((item as any).is_magic || item.requires_attunement || (item.modifiers && item.modifiers.length > 0) || item.isInfusion);
             const canUseInt = item.isBattleReady && isMagic;
             const canUseCha = item.isHexWeapon || item.isPactWeapon;
             const canUseWis = item.isShillelagh;
@@ -2955,6 +2979,16 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     }
                 }
             });
+            (item.effects || []).forEach((effect: any) => {
+                if (effect?.type !== 'attack_rider') return;
+                if (effect.requires_toggle && !character.activeConditions?.[effect.requires_toggle]) return;
+                if (effect.on === 'natural_20') return;
+                if (effect.vs && character.combatTarget?.conditions && !character.combatTarget.conditions.includes(effect.vs)) return;
+                const parsed = parseDamageBonus(effect.damage || '0');
+                itemDamageBonus += parsed.flat;
+                itemExtraDamageDice.push(...parsed.dice);
+                if (effect.damage) notes.push(`${effect.name || 'Rider'} ${effect.damage}${effect.damage_type ? ` ${effect.damage_type}` : ''}`);
+            });
 
             const isTwoHanded = Boolean(item.wieldedTwoHanded || notes.includes('Two-Handed') || properties.some((p: any) => typeof p === 'string' ? p.toLowerCase().includes('two-handed') : (p?.name || '').toLowerCase().includes('two-handed')));
             const isOneHanded = !isTwoHanded;
@@ -3006,7 +3040,18 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 }
             });
 
-            const baseHit = prof + statMod + itemHitBonus + archeryBonus + extraAttackBonus;
+            const proficiencyNames = [
+                ...character.classes.flatMap(c => (c.definition.proficiencies || []).map((entry: any) => entry.name)),
+                ...(character.race?.starting_proficiencies || []).map((entry: any) => entry.name),
+                ...activeModifiers.filter((m: any) => m.type === 'proficiency' && m.category === 'weapon').map((m: any) => m.target),
+            ].map((name: any) => String(name || '').toLowerCase());
+            const weaponBaseName = String((item as any).base_item ? (Library.getItem((item as any).base_item)?.name || '') : item.name).toLowerCase();
+            const weaponCategory = String(item.weapon_category || '').toLowerCase();
+            const isWeaponProficient = Boolean(item.isMonkWeapon || item.isPactWeapon || item.isKenseiWeapon)
+                || proficiencyNames.some(name => name.includes(weaponCategory) && weaponCategory.length > 0)
+                || proficiencyNames.some(name => name.includes(String(item.name || '').toLowerCase()) || (weaponBaseName && name.includes(weaponBaseName)));
+            const baseHit = (isWeaponProficient ? prof : 0) + statMod + itemHitBonus + archeryBonus + extraAttackBonus;
+            if (!isWeaponProficient) notes.push('Not Proficient');
 
             const isWieldingTwoHanded = item.wieldedTwoHanded || notes.includes('Two-Handed');
 
@@ -3317,6 +3362,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
          // checks: any feature with a bonus_action/action effect, or descriptive
          // text saying "bonus action", is included.
          const featureSources = [
+             ...(character.inventory || []).filter((item: any) => item.equipped).flatMap((item: any) =>
+                 (item.effects || []).map((effect: any) => ({ ...effect, source: item.name, desc: effect.description || effect.desc || [], itemId: item.id }))
+             ),
              ...(character.classFeatures || []),
              ...character.classes.flatMap(c => ((c.definition as any).feature_details || [])
                  .filter((feature: any) => (feature.level || 0) <= c.level)
@@ -3572,6 +3620,14 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 currentUser={character?.user_id ? { id: character.user_id } : undefined}
                 onDuplicateToHomebrew={(item) => handleDuplicateToHomebrew('item', item)}
             />
+            {customizingItem && (
+                <ItemCustomizationModal
+                    item={customizingItem}
+                    allItems={allEquipment}
+                    onClose={() => setCustomizingItem(null)}
+                    onConfirm={addItemNow}
+                />
+            )}
             <LayoutManagerModal
                 isOpen={showLayoutManager}
                 onClose={() => setShowLayoutManager(false)}
@@ -3604,7 +3660,21 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
             <HomebrewManagerModal
                 isOpen={showHomebrewModal}
-                onClose={() => { setShowHomebrewModal(false); setHomebrewInitialData(null); }}
+                onClose={() => {
+                    setShowHomebrewModal(false);
+                    setHomebrewInitialData(null);
+                    fetchEquipment(currentUser?.id).then(items => {
+                        setAllEquipment(items);
+                        const byIndex = new Map(items.map(item => [String(item.index).toLowerCase(), item]));
+                        setCharacter(prev => ({
+                            ...prev,
+                            inventory: prev.inventory.map((item: any) => {
+                                const latest = byIndex.get(String(item.index || '').toLowerCase());
+                                return latest ? { ...latest, ...item } : item;
+                            }),
+                        }));
+                    });
+                }}
                 currentUser={{ id: character.user_id || 'anonymous' }}
                 initialTab={homebrewInitialTab}
                 initialData={homebrewInitialData}
@@ -4021,6 +4091,26 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     activeModifiers={activeModifiers}
                     onClose={() => setSelectedDetail(null)}
                     onAction={(action, itm) => {
+                        if (action === 'useItem') {
+                            const use = itm?.use;
+                            const consumes = Number(use?.consumes || 1);
+                            if (use?.heal) {
+                                roll(use.heal, `Heal: ${itm.name}`, undefined, (result) => {
+                                    setCharacter(prev => ({
+                                        ...prev,
+                                        currentHp: Math.min(prev.maxHp, prev.currentHp + result.total),
+                                        inventory: prev.inventory.map(entry => entry.id === itm.id ? { ...entry, quantity: Math.max(0, entry.quantity - consumes) } : entry).filter(entry => entry.quantity > 0),
+                                    }));
+                                });
+                            } else {
+                                setCharacter(prev => ({
+                                    ...prev,
+                                    inventory: prev.inventory.map(entry => entry.id === itm.id ? { ...entry, quantity: Math.max(0, entry.quantity - consumes) } : entry).filter(entry => entry.quantity > 0),
+                                }));
+                            }
+                            setSelectedDetail(null);
+                            return;
+                        }
                         if (action === 'toggleFeatureUsage') {
                             setCharacter(prev => {
                                 const newUsage = { ...prev.featureUsage };

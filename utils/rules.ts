@@ -315,7 +315,7 @@ export const getHpPerLevelBonus = (character: CharacterState): number => {
     };
     const collectFeature = (entry: any) => {
         if (Array.isArray(entry?.effects) && entry.effects.length > 0) collect(entry.effects);
-        else collect(entry?.modifiers || []);
+        if (Array.isArray(entry?.modifiers) && entry.modifiers.length > 0) collect(entry.modifiers);
     };
 
     character.race?.traits?.forEach(collectFeature);
@@ -333,7 +333,7 @@ export const getHpPerLevelBonus = (character: CharacterState): number => {
     character.inventory?.forEach(item => {
         if (item.equipped && (!item.requires_attunement || item.attuned)) {
             if (Array.isArray((item as any).effects) && (item as any).effects.length > 0) collect((item as any).effects);
-            else collect(item.modifiers || []);
+            if (Array.isArray(item.modifiers) && item.modifiers.length > 0) collect(item.modifiers);
         }
     });
     return bonus;
@@ -358,7 +358,7 @@ export const getFlatMaxHpBonus = (character: CharacterState): number => {
 
     const collectFeature = (entry: any) => {
         if (Array.isArray(entry?.effects) && entry.effects.length > 0) collect(entry.effects);
-        else collect(entry?.modifiers || []);
+        if (Array.isArray(entry?.modifiers) && entry.modifiers.length > 0) collect(entry.modifiers);
     };
     character.race?.traits?.forEach(collectFeature);
     character.subrace?.traits?.forEach(collectFeature);
@@ -375,7 +375,7 @@ export const getFlatMaxHpBonus = (character: CharacterState): number => {
     character.inventory?.forEach(item => {
         if (item.equipped && (!item.requires_attunement || item.attuned)) {
             if (Array.isArray((item as any).effects) && (item as any).effects.length > 0) collect((item as any).effects);
-            else collect(item.modifiers || []);
+            if (Array.isArray(item.modifiers) && item.modifiers.length > 0) collect(item.modifiers);
         }
     });
     return bonus;
@@ -616,6 +616,22 @@ export const getResourceDefinitions = (character: CharacterState): CharacterReso
         });
     });
 
+    character.inventory?.forEach(item => {
+        if (!item.equipped || (item.requires_attunement && !item.attuned)) return;
+        ((item as any).resources || []).forEach((resource: any) => {
+            const max = getResourceMax(resource, character.level, abilities, character.level);
+            if (max <= 0) return;
+            const name = `${item.name}: ${resource.name || resource.key}`;
+            resources.set(name, {
+                key: resource.key,
+                name,
+                reset: resource.reset === 'short' ? 'short' : 'long',
+                max,
+                source: item.name,
+            });
+        });
+    });
+
     character.classes?.forEach(characterClass => {
         const definitions: ResourceDefinition[] = [
             ...((characterClass.definition as any)?.resources || []),
@@ -676,6 +692,7 @@ export const getSpellUpcastCount = (spell: SpellDetail, castLevel: number): { co
 };
 
 export const getSpellCastLevel = (character: CharacterState, spell: SpellDetail): number => {
+    if ((spell as any)?.itemCastLevel) return Number((spell as any).itemCastLevel);
     if (!spell || Number(spell.level) === 0) return Math.max(1, Number(character.level) || 1);
     const available = Object.entries(character.spellSlots || {})
         .map(([level, slots]) => ({ level: Number(level), ...(slots as any) }))

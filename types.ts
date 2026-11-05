@@ -128,6 +128,14 @@ export interface SpellDetail extends APIReference {
     secondary_damage?: string;
     minLevel?: number;
     spellcastingAbility?: AbilityName;
+    itemId?: string;
+    itemSpell?: boolean;
+    itemCost?: { resource?: string; amount?: number };
+    itemResourceName?: string;
+    itemDc?: number;
+    itemAttackBonus?: number;
+    itemCastLevel?: number;
+    itemName?: string;
 }
 
 export interface RaceDetail extends APIReference {
@@ -294,6 +302,19 @@ export interface BaseEquipment extends APIReference {
     weapon_category?: string;
     weapon_range?: string;
     armor_category?: string;
+    is_magic?: boolean;
+    effects?: any[];
+    resources?: any[];
+    template?: any;
+    choice?: { label?: string; options?: string[] } | any;
+    use?: any;
+    contents?: string[];
+    item_spells?: any[];
+    attunement_classes?: string[];
+    stealth_disadvantage?: boolean;
+    str_minimum?: number;
+    source_book?: string;
+    legacy_indexes?: string[];
 }
 
 export interface InventoryItem extends Partial<BaseEquipment> {

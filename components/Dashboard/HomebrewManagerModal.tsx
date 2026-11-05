@@ -1357,7 +1357,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
             }
         }
 
-        const advancedKeys = ['resources', 'choices', 'spell_list', 'ui', 'options', 'rules'];
+        const advancedKeys = ['resources', 'choices', 'spell_list', 'ui', 'options', 'rules', 'effects', 'mastery', 'range', 'versatileDamage', 'template', 'choice', 'use', 'attunement_classes', 'is_magic', 'stealth_disadvantage', 'str_minimum', 'weapon_range', 'category_range', 'contents', 'spell_save_dc', 'spell_attack_bonus'];
         const advanced = Object.fromEntries(
             advancedKeys
                 .filter(key => item[key] !== undefined)

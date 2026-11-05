@@ -46,12 +46,14 @@ const EquipmentStep: React.FC<EquipmentStepProps> = ({ onComplete, onBack, userI
     const [selectedClassKit, setSelectedClassKit] = useState(0);
     const [selectedKitMode, setSelectedKitMode] = useState<'kit' | 'gold'>('kit');
 
-    const startingPacks = [
-        { name: "Explorer's Pack", items: ["Backpack", "Bedroll", "Mess Kit", "Tinderbox", "Torch", "Rations (1 day)", "Waterskin", "Rope, Hempen (50 feet)"] },
-        { name: "Dungeoneer's Pack", items: ["Backpack", "Crowbar", "Hammer", "Piton", "Torch", "Rations (1 day)", "Tinderbox", "Waterskin", "Rope, Hempen (50 feet)"] },
-        { name: "Diplomat's Pack", items: ["Chest", "Clothes, Fine", "Ink (1 ounce bottle)", "Ink Pen", "Lamp", "Oil (flask)", "Paper (one sheet)", "Perfume (vial)", "Sealing Wax", "Soap"] },
-        { name: "Burglar's Pack", items: ["Backpack", "Ball Bearings (bag of 1,000)", "String (10 feet)", "Bell", "Candle", "Crowbar", "Hammer", "Piton", "Lantern, Hooded", "Oil (flask)", "Rations (1 day)", "Tinderbox", "Waterskin", "Rope, Hempen (50 feet)"] }
-    ];
+    const startingPacks = allEquipment
+        .filter((item: any) => Array.isArray(item.contents) && item.contents.length > 0)
+        .map((item: any) => ({
+            name: item.name,
+            items: item.contents.flatMap((entry: any) =>
+                Array.from({ length: Math.max(1, Number(entry.quantity || 1)) }, () => entry.name)
+            ),
+        }));
 
     useEffect(() => {
         const load = async () => {
@@ -104,21 +106,10 @@ const EquipmentStep: React.FC<EquipmentStepProps> = ({ onComplete, onBack, userI
                 const detail = await fetchEquipmentDetail(match.index, userId);
                 if (detail) {
                     finalInventory.push({
-                        id: `start-item-${match.index}-${Date.now()}`,
-                        index: detail.index,
-                        name: detail.name,
+                        ...detail,
+                        id: `start-item-${detail.index}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
                         quantity: qty,
-                        weight: detail.weight || 0,
-                        cost: detail.cost,
-                        desc: detail.desc,
-                        equipped: /armor|shield/i.test(String(detail.equipment_category?.name || name)),
-                        damage: detail.damage,
-                        armor_class: detail.armor_class,
-                        properties: detail.properties?.map(p => typeof p === 'string' ? p : p.name),
-                        range: detail.range,
-                        equipment_category: detail.equipment_category,
-                        modifiers: detail.modifiers,
-                        requires_attunement: detail.requires_attunement
+                        equipped: /armor|shield|weapon/i.test(String(detail.equipment_category?.name || name)) && /armor|shield/i.test(String(detail.equipment_category?.name || '')) || /shield/i.test(String(detail.name || '')),
                     });
                 } else {
                     finalInventory.push({ id: `stub-${name}`, name: name, quantity: qty, weight: 0, equipped: false });

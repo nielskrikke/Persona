@@ -10,6 +10,8 @@ export const CLASSES: any[] = [];
 export const SUBCLASSES: any[] = [];
 export const FEATS: any[] = [];
 export const RACES: any[] = [];
+const itemCache = new Map<string, EquipmentDetail>();
+const cacheItems = (items: EquipmentDetail[]) => items.forEach(item => itemCache.set(String(item.index).toLowerCase(), item));
 
 import { APIReference, RaceDetail, ClassDetail, SubclassDetail, SubraceDetail, EquipmentDetail, SpellDetail, FeatDetail, TraitDetail, BackgroundDetail, CreatureDetail } from '../types';
 
@@ -42,7 +44,7 @@ export const Library = {
     },
 
     // Item APIs
-    getItem: (index: string): EquipmentDetail | undefined => getItem(index),
+    getItem: (index: string): EquipmentDetail | undefined => itemCache.get(String(index).toLowerCase()) || getItem(index),
 
     // Comprehensive Search
     search: (query: string) => {
@@ -53,7 +55,7 @@ export const Library = {
             subclasses: [],
             feats: [],
             backgrounds: [],
-            items: ALL_ITEMS.filter(i => i.name.toLowerCase().includes(q)),
+            items: (itemCache.size > 0 ? Array.from(itemCache.values()) : ALL_ITEMS).filter(i => i.name.toLowerCase().includes(q)),
             spells: [], 
             creatures: Library.getCreatures().filter(b => b.name.toLowerCase().includes(q))
         };
@@ -186,30 +188,29 @@ export const fetchSubclassDetail = async (index: string, userId?: string): Promi
 export const fetchEquipment = async (userId?: string): Promise<EquipmentDetail[]> => {
     try {
         const custom = await loadHomebrew('custom_equipment', userId);
-        const customMap = new Map(custom.map((i: any) => [(i.index || i.name || '').toLowerCase(), i]));
-        const mergedStandard = ALL_ITEMS.map(item => {
-            const key = item.index.toLowerCase();
-            if (customMap.has(key)) {
-                const override = customMap.get(key);
-                customMap.delete(key);
-                return override;
-            }
-            return item;
-        });
-        const remainingCustom = Array.from(customMap.values()).map((i: any) => ({
-            ...i,
-            name: i.is_homebrew === false ? i.name : (i.name.endsWith('(HB)') ? i.name : `${i.name} (HB)`)
-        }));
-        return [...mergedStandard, ...remainingCustom];
+        if (custom && custom.length > 0) {
+            const items = custom.map((i: any) => ({
+                ...i,
+                name: i.is_homebrew === false ? i.name : (i.name.endsWith('(HB)') ? i.name : `${i.name} (HB)`),
+            }));
+            cacheItems(items);
+            return items;
+        }
     } catch (e) {}
+    cacheItems(ALL_ITEMS);
     return ALL_ITEMS;
 };
 
 export const fetchEquipmentDetail = async (index: string, userId?: string): Promise<EquipmentDetail | null> => {
+    const key = String(index || '').toLowerCase();
+    if (itemCache.has(key)) return itemCache.get(key)!;
     try {
         const custom = await loadHomebrew('custom_equipment', userId);
         const foundCustom = custom.find((i: any) => i.index === index || (i.name && i.name.toLowerCase().replace(/\s+/g, '-') === index));
-        if (foundCustom) return foundCustom;
+        if (foundCustom) {
+            cacheItems([foundCustom]);
+            return foundCustom;
+        }
     } catch (e) {}
     return ALL_ITEMS.find(i => i.index === index) || null;
 };
@@ -497,7 +498,7 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
     const allSpells = await fetchAllSpells();
     if (!allSpells?.length) return character;
 
-    const grants: { effect: any; source: string; defaultMinLevel: number }[] = [];
+    const grants: { effect: any; source: string; defaultMinLevel: number; item?: any; itemResourceName?: string }[] = [];
     const collect = (effects: any[], source: string, defaultMinLevel: number = 0) => {
         (effects || []).forEach(effect => {
             if (effect?.type === 'spell_access' && effect.spell) grants.push({ effect, source, defaultMinLevel });
@@ -531,9 +532,24 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
         collectFeature(feature, feature.source || 'Feature', feature.level || 0);
     });
     (character.feats || []).forEach(feat => collectFeature(feat, feat.name || 'Feat', 1));
+    (character.inventory || []).forEach((item: any) => {
+        if (!item.equipped || (item.requires_attunement && !item.attuned)) return;
+        (item.effects || []).forEach((effect: any) => {
+            if (effect?.type !== 'spell_access' || !effect.spell) return;
+            const resource = (item.resources || []).find((entry: any) => entry.key === (effect.cost?.resource || 'charges'))
+                || (item.resources || [])[0];
+            grants.push({
+                effect,
+                source: item.name,
+                defaultMinLevel: effect.cast_level || item.level || 0,
+                item,
+                itemResourceName: resource ? `${item.name}: ${resource.name || resource.key}` : undefined,
+            });
+        });
+    });
 
     const grantedByIndex = new Map<string, any>();
-    grants.forEach(({ effect, source, defaultMinLevel }) => {
+    grants.forEach(({ effect, source, defaultMinLevel, item: grantItem, itemResourceName: grantResourceName }) => {
         const minLevel = Number(effect.min_level || defaultMinLevel || 0);
         if (minLevel > character.level) return;
         const spell = allSpells.find(candidate =>
@@ -552,6 +568,16 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
             freeCastReset: effect.free_cast_reset || effect.reset,
             minLevel,
             spellcastingAbility: effect.ability || character.spellcastingAbility,
+            ...(grantItem ? {
+                itemId: grantItem.id,
+                itemSpell: true,
+                itemName: grantItem.name,
+                itemCost: effect.cost,
+                itemResourceName: grantResourceName,
+                itemCastLevel: effect.cast_level,
+                itemDc: grantItem.spell_save_dc || grantItem.dc?.dc_value || grantItem.dc,
+                itemAttackBonus: grantItem.spell_attack_bonus || grantItem.attack_bonus,
+            } : {}),
         });
     });
 
@@ -758,12 +784,38 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         });
     });
 
+    let inventory = character.inventory || [];
+    try {
+        const allItems = await fetchEquipment(character.user_id);
+        const byIndex = new Map(allItems.map(item => [String(item.index).toLowerCase(), item]));
+        const byName = new Map(allItems.map(item => [String(item.name).toLowerCase(), item]));
+        inventory = inventory.map((item: any) => {
+            const key = String(item.index || item.name || '').toLowerCase();
+            const latest = byIndex.get(key) || byName.get(String(item.name || '').toLowerCase());
+            if (!latest) return item;
+            return {
+                ...latest,
+                ...item,
+                // Keep the live definition for everything the instance didn't override.
+                name: item.name || latest.name,
+                damage: item.damage || latest.damage,
+                armor_class: item.armor_class || latest.armor_class,
+                properties: item.properties?.length ? item.properties : latest.properties,
+                effects: item.effects?.length ? item.effects : latest.effects,
+                modifiers: item.modifiers?.length ? item.modifiers : latest.modifiers,
+                resources: item.resources?.length ? item.resources : latest.resources,
+                mastery: item.mastery || latest.mastery,
+            };
+        });
+    } catch (e) {}
+
     return hydrateGrantedSpells({
         ...character,
         race,
         subrace,
         classes,
         classFeatures,
+        inventory,
         skills: Array.from(derivedSkills),
         toolProficiencies: Array.from(derivedTools),
     });

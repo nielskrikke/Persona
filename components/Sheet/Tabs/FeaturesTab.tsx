@@ -25,14 +25,16 @@ const FeaturesTab: React.FC<FeaturesTabProps> = ({ character, setCharacter, getA
     const narrativeConditions = useMemo(() => {
         const conditions = new Set<string>();
         const mechanical = /armor|shield|weapon|unarmed|melee|ranged|two.hand|one.hand|finesse|dual|no_weapon|not:|wearing|using_shield|concentration|spell/i;
-        allFeatures.forEach((feature: any) => {
-            (feature.effects || []).forEach((effect: any) => {
+        const featureEffects = [
+            ...allFeatures.flatMap((feature: any) => feature.effects || []),
+            ...(character.inventory || []).filter((item: any) => item.equipped).flatMap((item: any) => item.effects || []),
+        ];
+        featureEffects.forEach((effect: any) => {
                 if (effect.type === 'spell_access') return;
-                const values = [effect.rule || effect.condition || '', ...(Array.isArray(effect.conditions) ? effect.conditions : [])]
+                const values = [effect.rule || effect.condition || '', effect.toggle || effect.requires_toggle || '', ...(Array.isArray(effect.conditions) ? effect.conditions : [])]
                     .map((value: any) => String(value || '').toLowerCase().trim())
                     .filter((value: string) => value && !mechanical.test(value));
                 values.forEach((value: string) => conditions.add(value));
-            });
         });
         return Array.from(conditions).sort();
     }, [allFeatures]);
