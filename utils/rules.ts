@@ -179,7 +179,10 @@ export const getEffectiveAbilities = (character: CharacterState): AbilityScores 
         }
 
         if (targetStat in abilities) {
-            abilities[targetStat as AbilityName] += Number(m.value || m.amount || 0);
+            const amount = Number(m.value || m.amount || 0);
+            const cap = m.max !== undefined ? Number(m.max) : (m.type === 'bonus' && /ioun/i.test(String(m.name || '')) ? 20 : undefined);
+            const next = abilities[targetStat as AbilityName] + amount;
+            abilities[targetStat as AbilityName] = cap !== undefined ? Math.min(cap, next) : next;
         }
     });
 

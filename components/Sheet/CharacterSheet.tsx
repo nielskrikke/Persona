@@ -1019,6 +1019,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 if (checkModifierRule(m)) {
                     if (m.type === 'bonus' || m.type === 'stat_bonus') total += resolveEffectValue(m);
                     else if (m.type === 'set') total = Math.max(total, resolveEffectValue(m));
+                    else if (m.type === 'speed_multiplier') total *= Number(m.value || 2);
                 }
             }
         });
@@ -1576,6 +1577,14 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const item = prev.inventory.find(i => i.id === id);
             if (!item) return prev;
             if (!item.attuned && prev.inventory.filter(i => i.attuned).length >= 3) { alert("Maximum attunement slots (3) reached."); return prev; }
+            const allowedClasses = (item as any).attunement_classes || [];
+            if (!item.attuned && allowedClasses.length > 0) {
+                const classNames = character.classes.map(entry => entry.definition.name.toLowerCase());
+                if (!allowedClasses.some((allowed: string) => classNames.includes(String(allowed).toLowerCase()))) {
+                    alert(`${item.name} can only be attuned by: ${allowedClasses.join(', ')}.`);
+                    return prev;
+                }
+            }
             return { ...prev, inventory: prev.inventory.map(i => i.id === id ? { ...i, attuned: !i.attuned } : i) };
         });
     };
@@ -2306,7 +2315,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const dvRange = activeModifiers
                     .filter((m: any) => m.type === 'set' && (m.target === 'darkvision' || m.stat === 'darkvision'))
                     .reduce((max: number, m: any) => Math.max(max, Number(m.value || 0)), 0);
-                const dv = dvRange > 0 ? `${dvRange} ft` : 'None';
+                const dvBonus = activeModifiers
+                    .filter((m: any) => (m.type === 'bonus' || m.type === 'stat_bonus') && (m.target === 'darkvision' || m.stat === 'darkvision'))
+                    .reduce((sum: number, m: any) => sum + Number(m.value || 0), 0);
+                const dv = dvRange + dvBonus > 0 ? `${dvRange + dvBonus} ft` : 'None';
                 return (
                     <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
                          <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest mb-2">Senses</h3>
@@ -4101,6 +4113,18 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                         currentHp: Math.min(prev.maxHp, prev.currentHp + result.total),
                                         inventory: prev.inventory.map(entry => entry.id === itm.id ? { ...entry, quantity: Math.max(0, entry.quantity - consumes) } : entry).filter(entry => entry.quantity > 0),
                                     }));
+                                });
+                            } else if (use?.damage) {
+                                roll(use.damage, `Use: ${itm.name}`, undefined, (result) => {
+                                    setCharacter(prev => {
+                                        const target = prev.combatTarget;
+                                        const applied = target?.hp !== undefined ? Math.max(0, target.hp - result.total) : target?.hp;
+                                        return {
+                                            ...prev,
+                                            combatTarget: target && applied !== undefined ? { ...target, hp: applied } : prev.combatTarget,
+                                            inventory: prev.inventory.map(entry => entry.id === itm.id ? { ...entry, quantity: Math.max(0, entry.quantity - consumes) } : entry).filter(entry => entry.quantity > 0),
+                                        };
+                                    });
                                 });
                             } else {
                                 setCharacter(prev => ({
