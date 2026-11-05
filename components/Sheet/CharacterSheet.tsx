@@ -3291,6 +3291,29 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             });
         });
 
+        character.inventory.forEach((item: any) => {
+            if (!item.equipped) return;
+            (item.effects || []).forEach((effect: any, index: number) => {
+                if (effect.type !== 'action' && effect.type !== 'reaction') return;
+                if (!effect.damage && !effect.save) return;
+                const dcMatch = String(effect.save?.dc || effect.dc || '').match(/\d+/);
+                const save = effect.save ? { type: effect.save.ability || effect.save.type || 'DEX', dc: dcMatch ? Number(dcMatch[0]) : 13 } : null;
+                const actionAttack = {
+                    id: `item-action-${item.id}-${index}`,
+                    name: effect.name || item.name,
+                    range: effect.range ? `${effect.range} ft.` : '-',
+                    hit: null,
+                    save,
+                    damage: effect.damage || '-',
+                    type: effect.damage_type || effect.damageType || 'Other',
+                    notes: [item.name],
+                    source: { ...effect, itemId: item.id, isItemAction: true },
+                };
+                (actionAttack as any).modifiers = getAttackModifiers(actionAttack);
+                attacks.push(actionAttack);
+            });
+        });
+
         return attacks;
     };
 

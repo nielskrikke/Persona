@@ -137,6 +137,7 @@ export interface SpellDetail extends APIReference {
     itemCastLevel?: number;
     itemName?: string;
     itemConsumable?: boolean;
+    itemFree?: boolean;
 }
 
 export interface RaceDetail extends APIReference {

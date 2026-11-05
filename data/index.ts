@@ -536,12 +536,15 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
             if (effect?.type !== 'spell_access' || !effect.spell) return;
             const resource = (item.resources || []).find((entry: any) => entry.key === (effect.cost?.resource || 'charges'))
                 || (item.resources || [])[0];
+            const uses = Number(effect.uses);
             grants.push({
                 effect,
                 source: item.name,
                 defaultMinLevel: effect.cast_level || item.level || 0,
                 item,
-                itemResourceName: resource ? `${item.name}: ${resource.name || resource.key}` : undefined,
+                itemResourceName: resource
+                    ? `${item.name}: ${resource.name || resource.key}`
+                    : (uses > 0 ? `${item.name}: ${effect.name || 'Uses'}` : undefined),
             });
         });
     });
@@ -570,9 +573,10 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
                 itemId: grantItem.id,
                 itemSpell: true,
                 itemName: grantItem.name,
-                itemCost: effect.cost || { amount: grantItem.use?.consumes || 1, resource: 'quantity' },
+                itemCost: effect.cost || (Number(effect.uses) > 0 ? { amount: 1, resource: 'uses' } : { amount: grantItem.use?.consumes || 1, resource: 'quantity' }),
                 itemResourceName: grantResourceName,
                 itemConsumable: Boolean(grantItem.consumable || grantItem.use),
+                itemFree: !effect.cost && !grantItem.consumable && !grantItem.use && !(Number(effect.uses) > 0),
                 itemCastLevel: effect.cast_level || grantItem.use?.spell_level,
                 itemDc: grantItem.spell_save_dc || grantItem.dc?.dc_value || grantItem.dc || grantItem.use?.save_dc,
                 itemAttackBonus: grantItem.spell_attack_bonus || grantItem.attack_bonus || grantItem.use?.attack_bonus,

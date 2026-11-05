@@ -101,6 +101,10 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
     };
     const castSpell = (spell: SpellDetail) => {
         if ((spell as any).itemSpell) {
+            if ((spell as any).itemFree) {
+                setCharacter(prev => ({ ...prev, activeConcentration: spell.concentration ? spell : prev.activeConcentration }));
+                return;
+            }
             const resourceName = String((spell as any).itemResourceName || '');
             const cost = Number((spell as any).itemCost?.amount || 1);
             if (!resourceName || (spell as any).itemConsumable) {
