@@ -103,6 +103,15 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
         if ((spell as any).itemSpell) {
             const resourceName = String((spell as any).itemResourceName || '');
             const cost = Number((spell as any).itemCost?.amount || 1);
+            if (!resourceName || (spell as any).itemConsumable) {
+                const item = character.inventory.find((entry: any) => entry.id === (spell as any).itemId);
+                if (!item || item.quantity < cost) { alert(`${spell.name} is no longer available.`); return; }
+                setCharacter(prev => ({
+                    ...prev,
+                    inventory: prev.inventory.map(entry => entry.id === item.id ? { ...entry, quantity: Math.max(0, entry.quantity - cost) } : entry).filter(entry => entry.quantity > 0),
+                }));
+                return;
+            }
             const usage = character.featureUsage?.[resourceName];
             if (!usage || Number(usage.current) < cost) {
                 alert(`${(spell as any).itemName || 'Item'} does not have enough charges.`);

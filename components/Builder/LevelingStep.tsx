@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CharacterState, FeatureEffect, FeatDetail, ABILITY_NAMES, ABILITY_LABELS, APIReference, SubclassDetail, AbilityScores, SkillDefinition, AbilityName, LevelChoice } from '../../types';
 import { fetchLevelFeatures, fetchFeatsList, fetchSubclasses, fetchSubclassDetail, fetchSubclassLevels, fetchAllSpells, fetchClassLevels } from '../../data/index';
 import { calculateModifier, SKILL_LIST, getSpellSlots, getSubclassLevel, getSubclassLabel, getResourceDefinitions } from '../../utils/rules';
-import { TOOLS } from '../../data/items/tools';
+import { ARTISAN_TOOLS } from '../../data/constants';
 import { STANDARD_LANGUAGES } from '../../data/constants';
 
 interface LevelingStepProps {
@@ -172,7 +172,7 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
                                         // If it has a desc, preserve the whole object but ensure it has name/index
                                         if (o.desc || o.effects) return { ...o, index: o.index || o.name, name: o.name || o.index };
                                         return (o.name || o.item?.name || o.index);
-                                    }) : (eff.category === 'tool' ? TOOLS.map(t => t.name) : (eff.category === 'language' ? STANDARD_LANGUAGES : SKILL_LIST.map(s => s.name))),
+                                    }) : (eff.category === 'tool' ? ARTISAN_TOOLS : (eff.category === 'language' ? STANDARD_LANGUAGES : SKILL_LIST.map(s => s.name))),
                                     count: eff.count || 1,
                                     revertData: { classIndex: item.classIndex }
                                 });

@@ -136,6 +136,7 @@ export interface SpellDetail extends APIReference {
     itemAttackBonus?: number;
     itemCastLevel?: number;
     itemName?: string;
+    itemConsumable?: boolean;
 }
 
 export interface RaceDetail extends APIReference {
@@ -315,6 +316,7 @@ export interface BaseEquipment extends APIReference {
     str_minimum?: number;
     source_book?: string;
     legacy_indexes?: string[];
+    cursed?: boolean;
 }
 
 export interface InventoryItem extends Partial<BaseEquipment> {

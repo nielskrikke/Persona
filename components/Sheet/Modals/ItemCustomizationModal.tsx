@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
-import { EquipmentDetail } from '../../../types';
+import React, { useEffect, useMemo, useState } from 'react';
+import { EquipmentDetail, SpellDetail } from '../../../types';
+import { fetchAllSpells } from '../../../data/index';
 
 interface ItemCustomizationModalProps {
     item: EquipmentDetail;
@@ -23,15 +24,29 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({ item, a
     const choiceConfig = (item as any).choice || template?.choice;
     const choiceOptions = choiceConfig?.options || [];
     const [choice, setChoice] = useState<string>(choiceOptions[0] || '');
+    const [spells, setSpells] = useState<SpellDetail[]>([]);
+    const [spellIndex, setSpellIndex] = useState('');
+    const isSpellTemplate = template?.type === 'spell';
+
+    useEffect(() => {
+        if (!isSpellTemplate) return;
+        fetchAllSpells().then(all => {
+            const filtered = all.filter(spell => template?.filter?.level === undefined || spell.level === Number(template.filter.level));
+            setSpells(filtered);
+            setSpellIndex(filtered[0]?.index || '');
+        });
+    }, [isSpellTemplate, template?.filter?.level]);
 
     const base = useMemo(() => allItems.find(entry => entry.index === baseIndex) || allItems.find(entry => entry.index === item.index) || item,
         [allItems, baseIndex, item]);
 
     const resolve = () => {
+        const selectedSpell = spells.find(spell => spell.index === spellIndex);
         const pattern = template?.name_pattern || (item as any).name_pattern || item.name;
         const resolvedName = String(pattern)
             .replaceAll('{base}', base.name)
-            .replaceAll('{choice}', choice || base.name);
+            .replaceAll('{choice}', choice || base.name)
+            .replaceAll('{spell}', selectedSpell?.name || 'Spell');
         const merged: any = replaceTokens({
             ...base,
             ...item,
@@ -39,6 +54,14 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({ item, a
             name: resolvedName,
             base_item: base.index,
             is_magic: true,
+            ...(selectedSpell ? {
+                spell_index: selectedSpell.index,
+                spell_name: selectedSpell.name,
+                effects: [
+                    ...(item.effects || []),
+                    { type: 'spell_access', spell: selectedSpell.index, spell_name: selectedSpell.name, cast_level: Number(template?.filter?.level || selectedSpell.level) },
+                ],
+            } : {}),
         }, base.name, choice || base.name);
         merged.id = `${merged.index || item.index}-${Date.now()}`;
         merged.quantity = 1;
@@ -61,6 +84,14 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({ item, a
                         <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">Base Item</span>
                         <select value={baseIndex} onChange={e => setBaseIndex(e.target.value)} className="w-full rounded-xl border border-gray-700 bg-black/40 px-3 py-2 text-sm text-white">
                             {baseOptions.map(option => <option key={option.index} value={option.index}>{option.name}</option>)}
+                        </select>
+                    </label>
+                )}
+                {isSpellTemplate && (
+                    <label className="block space-y-1">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">Scroll Spell</span>
+                        <select value={spellIndex} onChange={e => setSpellIndex(e.target.value)} className="w-full rounded-xl border border-gray-700 bg-black/40 px-3 py-2 text-sm text-white">
+                            {spells.map(spell => <option key={spell.index} value={spell.index}>{spell.name}</option>)}
                         </select>
                     </label>
                 )}

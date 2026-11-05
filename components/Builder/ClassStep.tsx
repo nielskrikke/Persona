@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { APIReference, ClassDetail, SubclassDetail, CharacterClass } from '../../types';
-import { fetchClasses, fetchClassDetail, fetchSubclasses, fetchSubclassDetail } from '../../data/index';
+import { fetchClasses, fetchClassDetail, fetchSubclasses, fetchSubclassDetail, fetchEquipment } from '../../data/index';
 import { SKILL_LIST, getChoiceCount } from '../../utils/rules';
 
 interface ClassStepProps {
@@ -40,6 +40,15 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
   const [featureChoices, setFeatureChoices] = useState<Record<string, Record<string, string[]>>>({});
   
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [masteryWeapons, setMasteryWeapons] = useState<{ name: string; index: string }[]>([]);
+
+  useEffect(() => {
+    fetchEquipment().then(items => {
+      setMasteryWeapons(items.filter((item: any) => item.mastery).map((item: any) => ({ name: item.name, index: item.index })));
+    });
+  }, []);
+
+  const choiceOptionsFor = (choice: any) => choice.kind === 'weapon_mastery' && masteryWeapons.length > 0 ? masteryWeapons : (choice.options || []);
 
   useEffect(() => {
     const load = async () => {
@@ -205,7 +214,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
           const draftLevel = draftClasses.find(draft => draft.index === classIndex)?.level || 1;
           if (choice.kind === 'weapon_mastery') {
               const weaponOptions = selected.map(name => {
-                  const option = (choice.options || []).find((item: any) => (typeof item === 'string' ? item : item.name) === name);
+                  const option = choiceOptionsFor(choice).find((item: any) => (typeof item === 'string' ? item : item.name) === name);
                   return typeof option === 'object' ? option : { name };
               });
               levelChoices.push({
@@ -221,7 +230,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
               return;
           }
           selected.forEach(name => {
-              const option = (choice.options || []).find((item: any) => (typeof item === 'string' ? item : item.name) === name);
+              const option = choiceOptionsFor(choice).find((item: any) => (typeof item === 'string' ? item : item.name) === name);
               const category = typeof option === 'object' ? option.category : 'skill';
               if (category === 'skill' || SKILL_LIST.some(skill => skill.name === name)) selectedSkills.add(name);
               else selectedTools.add(name);
@@ -233,7 +242,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
               type: 'other',
               label: `${cls.name}: ${choice.label || choice.kind}`,
               value: selected,
-              options: choice.options,
+              options: choiceOptionsFor(choice),
               count: getChoiceCount(choice, draftLevel),
           });
       });
@@ -366,7 +375,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
                                                 </span>
                                             </div>
                                             <div className="flex flex-wrap gap-2">
-                                                {(choice.options || []).map((option: any, optionIndex: number) => {
+                                                {choiceOptionsFor(choice).map((option: any, optionIndex: number) => {
                                                     const name = typeof option === 'string' ? option : option.name;
                                                     const isSelected = selected.includes(name);
                                                     return (

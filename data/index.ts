@@ -1,5 +1,4 @@
 import { CharacterState, ExtendedFeatDetail } from '../types';
-import { ALL_ITEMS, getItem } from './items/index';
 import { COMMON_CREATURES } from './beasts';
 import { STANDARD_FAMILIARS } from './familiars';
 import { loadHomebrew } from '../services/supabase';
@@ -44,7 +43,7 @@ export const Library = {
     },
 
     // Item APIs
-    getItem: (index: string): EquipmentDetail | undefined => itemCache.get(String(index).toLowerCase()) || getItem(index),
+    getItem: (index: string): EquipmentDetail | undefined => itemCache.get(String(index).toLowerCase()),
 
     // Comprehensive Search
     search: (query: string) => {
@@ -55,7 +54,7 @@ export const Library = {
             subclasses: [],
             feats: [],
             backgrounds: [],
-            items: (itemCache.size > 0 ? Array.from(itemCache.values()) : ALL_ITEMS).filter(i => i.name.toLowerCase().includes(q)),
+            items: Array.from(itemCache.values()).filter(i => i.name.toLowerCase().includes(q)),
             spells: [], 
             creatures: Library.getCreatures().filter(b => b.name.toLowerCase().includes(q))
         };
@@ -197,8 +196,7 @@ export const fetchEquipment = async (userId?: string): Promise<EquipmentDetail[]
             return items;
         }
     } catch (e) {}
-    cacheItems(ALL_ITEMS);
-    return ALL_ITEMS;
+    return [];
 };
 
 export const fetchEquipmentDetail = async (index: string, userId?: string): Promise<EquipmentDetail | null> => {
@@ -212,7 +210,7 @@ export const fetchEquipmentDetail = async (index: string, userId?: string): Prom
             return foundCustom;
         }
     } catch (e) {}
-    return ALL_ITEMS.find(i => i.index === index) || null;
+    return null;
 };
 
 export const fetchBackgrounds = async (userId?: string): Promise<APIReference[]> => {
@@ -572,11 +570,12 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
                 itemId: grantItem.id,
                 itemSpell: true,
                 itemName: grantItem.name,
-                itemCost: effect.cost,
+                itemCost: effect.cost || { amount: grantItem.use?.consumes || 1, resource: 'quantity' },
                 itemResourceName: grantResourceName,
-                itemCastLevel: effect.cast_level,
-                itemDc: grantItem.spell_save_dc || grantItem.dc?.dc_value || grantItem.dc,
-                itemAttackBonus: grantItem.spell_attack_bonus || grantItem.attack_bonus,
+                itemConsumable: Boolean(grantItem.consumable || grantItem.use),
+                itemCastLevel: effect.cast_level || grantItem.use?.spell_level,
+                itemDc: grantItem.spell_save_dc || grantItem.dc?.dc_value || grantItem.dc || grantItem.use?.save_dc,
+                itemAttackBonus: grantItem.spell_attack_bonus || grantItem.attack_bonus || grantItem.use?.attack_bonus,
             } : {}),
         });
     });
@@ -791,8 +790,49 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         const byName = new Map(allItems.map(item => [String(item.name).toLowerCase(), item]));
         inventory = inventory.map((item: any) => {
             const key = String(item.index || item.name || '').toLowerCase();
-            const latest = byIndex.get(key) || byName.get(String(item.name || '').toLowerCase());
+            let latest = byIndex.get(key) || byName.get(String(item.name || '').toLowerCase());
+            let migrated = false;
+            if (!latest) {
+                const legacy = allItems.find(entry => (entry as any).legacy_indexes?.includes(item.index));
+                if (legacy) {
+                    let resolved: any = legacy;
+                    if ((legacy as any).template) {
+                        const suffix = String(item.index).replace(`${legacy.index}-`, '').replace(/-plus-\d$/, '');
+                        const base = allItems.find(entry => entry.index === suffix)
+                            || allItems.find(entry => entry.index === `${suffix}-armor`)
+                            || allItems.find(entry => entry.name.toLowerCase() === suffix.replace(/-/g, ' '));
+                        if (base) {
+                            resolved = {
+                                ...base,
+                                ...legacy,
+                                ...((legacy as any).template.overrides || {}),
+                                name: String((legacy as any).template.name_pattern || legacy.name).replaceAll('{base}', base.name),
+                                base_item: base.index,
+                            };
+                        }
+                    }
+                    latest = resolved;
+                    migrated = true;
+                }
+            }
             if (!latest) return item;
+            if (migrated) {
+                return {
+                    ...latest,
+                    id: item.id,
+                    quantity: item.quantity,
+                    equipped: item.equipped,
+                    attuned: item.attuned,
+                    isMonkWeapon: item.isMonkWeapon,
+                    isPactWeapon: item.isPactWeapon,
+                    isKenseiWeapon: item.isKenseiWeapon,
+                    isHexWeapon: item.isHexWeapon,
+                    isInfusion: item.isInfusion,
+                    isShillelagh: item.isShillelagh,
+                    isBattleReady: item.isBattleReady,
+                    wieldedTwoHanded: item.wieldedTwoHanded,
+                };
+            }
             return {
                 ...latest,
                 ...item,

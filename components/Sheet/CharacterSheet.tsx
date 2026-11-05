@@ -545,7 +545,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         }
     }, [character?.classes, character?.abilities, character?.level]);
 
-    const prof = calculateProficiency(character.level);
+    let prof = calculateProficiency(character.level);
 
     const activeModifiers = React.useMemo(() => {
         const mods: any[] = [];
@@ -675,6 +675,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     return true;
                 });
                 processEffects(itemEffects);
+                itemEffects.forEach((effect: any) => {
+                    if (effect.toggle && character.activeConditions?.[effect.toggle] && Array.isArray(effect.while_active)) {
+                        processEffects(effect.while_active);
+                    }
+                });
             }
         });
 
@@ -686,6 +691,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
         return mods;
     }, [character]);
+
+    prof += activeModifiers
+        .filter((m: any) => (m.type === 'bonus' || m.type === 'stat_bonus') && String(m.target || m.stat || '').toLowerCase() === 'proficiency_bonus')
+        .reduce((sum: number, m: any) => sum + Number(m.value || 0), 0);
 
     const effectiveAbilities = useMemo(() => getEffectiveAbilities(character), [character]);
 
@@ -759,12 +768,25 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         itemContext?: { isOneHanded?: boolean; isTwoHanded?: boolean; isMeleeWeapon?: boolean; isRangedWeapon?: boolean; versatileDamage?: any; isUnarmed?: boolean; isMelee?: boolean; [key: string]: any }
     ) => {
         const ruleCond = (m.rule || m.condition || m.filter || '').toLowerCase().trim();
+        const filterCond = String(m.filter || '').toLowerCase().trim();
         const condList: string[] = Array.isArray(m.conditions) ? m.conditions.map((c: string) => String(c).toLowerCase().trim()) : [];
 
         if (!ruleCond && condList.length === 0) return true;
 
+        if (m.filter_class) {
+            const targetClass = String(m.filter_class).toLowerCase();
+            if (!character.classes.some(entry => entry.definition.name.toLowerCase().includes(targetClass) || entry.definition.index.toLowerCase() === targetClass)) return false;
+        }
+        if (filterCond && !m.rule && !m.condition) {
+            const weaponName = String(itemContext?.weaponName || '').toLowerCase();
+            const baseName = String(itemContext?.baseItemName || '').toLowerCase();
+            if (!weaponName) return false;
+            const filters = filterCond.split(',').map((part: string) => part.trim()).filter(Boolean);
+            if (!filters.some((part: string) => weaponName.includes(part) || baseName.includes(part))) return false;
+        }
+
         const mechanicalCondition = /armor|shield|weapon|unarmed|melee|ranged|two.hand|one.hand|finesse|dual|no_weapon|not:|wearing|using_shield|concentration|spell/i;
-        const narrativeConditions = [ruleCond, ...condList].filter(condition => condition && !mechanicalCondition.test(condition));
+        const narrativeConditions = [ruleCond, ...condList].filter(condition => condition && condition !== filterCond && !mechanicalCondition.test(condition));
         if (narrativeConditions.length > 0 && !narrativeConditions.every(condition => character.activeConditions?.[condition] === true)) {
             return false;
         }
@@ -1015,11 +1037,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
         activeModifiers.forEach(m => {
             const stat = (m.stat || m.target || '').toLowerCase();
-            if (stat === 'speed' || stat === 'walk_speed' || stat === 'walking_speed') {
+            if (stat === 'speed' || stat === 'walk_speed' || stat === 'walking_speed' || stat === 'speed_multiplier') {
                 if (checkModifierRule(m)) {
                     if (m.type === 'bonus' || m.type === 'stat_bonus') total += resolveEffectValue(m);
-                    else if (m.type === 'set') total = Math.max(total, resolveEffectValue(m));
-                    else if (m.type === 'speed_multiplier') total *= Number(m.value || 2);
+                    else if (m.type === 'set' && stat !== 'speed_multiplier') total = Math.max(total, resolveEffectValue(m));
+                    else if (m.type === 'set' || m.type === 'speed_multiplier') total *= Number(m.value || 2);
                 }
             }
         });
@@ -1576,6 +1598,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         setCharacter(prev => {
             const item = prev.inventory.find(i => i.id === id);
             if (!item) return prev;
+            if (item.attuned && (item as any).cursed) { alert(`${item.name} is cursed; you cannot end attunement.`); return prev; }
             if (!item.attuned && prev.inventory.filter(i => i.attuned).length >= 3) { alert("Maximum attunement slots (3) reached."); return prev; }
             const allowedClasses = (item as any).attunement_classes || [];
             if (!item.attuned && allowedClasses.length > 0) {
@@ -1588,7 +1611,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             return { ...prev, inventory: prev.inventory.map(i => i.id === id ? { ...i, attuned: !i.attuned } : i) };
         });
     };
-    const toggleEquipped = (id: string) => { setCharacter(prev => ({ ...prev, inventory: prev.inventory.map(i => i.id === id ? { ...i, equipped: !i.equipped } : i) })); };
+    const toggleEquipped = (id: string) => { setCharacter(prev => ({ ...prev, inventory: prev.inventory.map(i => { if (i.id !== id) return i; if (i.equipped && (i as any).cursed) { alert(`${i.name} is cursed; you cannot remove it.`); return i; } return { ...i, equipped: !i.equipped }; }) })); };
     const toggleItemFlag = (id: string, flag: keyof InventoryItem) => {
         setCharacter(prev => ({
             ...prev,
@@ -2172,7 +2195,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                                   (isTrustSkill && character.skills.includes(skill.name));
 
                                 const skillBonus = activeModifiers
-                                    .filter(m => m.type === 'bonus' && (m.target === skill.name || m.target === 'skills'))
+                                    .filter(m => m.type === 'bonus' && (m.target === skill.name || m.target === 'skills' || m.target === 'ability_checks'))
                                     .reduce((acc, m) => {
                                         let v = 0;
                                         if (m.value === 'wisMod') v = Math.max(m.min || 1, wisMod);
@@ -3014,7 +3037,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             activeModifiers.forEach(m => {
                 if (m.type === 'bonus' || m.type === 'stat_bonus') {
                     const stat = (m.stat || m.target || '').toLowerCase();
-                    const passesRule = checkModifierRule(m, { isOneHanded, isTwoHanded, isMeleeWeapon, isRangedWeapon, versatileDamage: item.versatileDamage });
+                    const passesRule = checkModifierRule(m, { isOneHanded, isTwoHanded, isMeleeWeapon, isRangedWeapon, versatileDamage: item.versatileDamage, weaponName: item.name, baseItemName: (item as any).base_item ? Library.getItem((item as any).base_item)?.name : '' });
 
                     if (passesRule) {
                         const valStr = m.value !== undefined ? m.value : (m.bonus !== undefined ? m.bonus : m.die);
@@ -4106,6 +4129,16 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         if (action === 'useItem') {
                             const use = itm?.use;
                             const consumes = Number(use?.consumes || 1);
+                            const tempEffect = (itm?.effects || []).find((effect: any) => String(effect.target || '').toLowerCase() === 'temp_hp');
+                            if (tempEffect) {
+                                setCharacter(prev => ({
+                                    ...prev,
+                                    tempHp: Math.max(prev.tempHp || 0, Number(tempEffect.value || 0)),
+                                    inventory: prev.inventory.map(entry => entry.id === itm.id ? { ...entry, quantity: Math.max(0, entry.quantity - consumes) } : entry).filter(entry => entry.quantity > 0),
+                                }));
+                                setSelectedDetail(null);
+                                return;
+                            }
                             if (use?.heal) {
                                 roll(use.heal, `Heal: ${itm.name}`, undefined, (result) => {
                                     setCharacter(prev => ({

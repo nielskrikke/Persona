@@ -999,6 +999,14 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     const [itemThrownDamage, setItemThrownDamage] = useState('');
     const [itemProperties, setItemProperties] = useState<string[]>([]);
     const [itemModifiers, setItemModifiers] = useState<any[]>([]);
+    const [itemMastery, setItemMastery] = useState('');
+    const [itemRangeNormal, setItemRangeNormal] = useState(0);
+    const [itemRangeLong, setItemRangeLong] = useState(0);
+    const [itemVersatileDice, setItemVersatileDice] = useState('');
+    const [itemIsMagic, setItemIsMagic] = useState(false);
+    const [itemStealth, setItemStealth] = useState(false);
+    const [itemStrMin, setItemStrMin] = useState(0);
+    const [itemExtraJson, setItemExtraJson] = useState('{}');
 
     // Spell Forge
     const [spellLevel, setSpellLevel] = useState(0);
@@ -1308,6 +1316,22 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
             setItemThrownDamage(item.thrownDamage || '');
             setItemProperties(item.properties?.map((p: any) => p.name) || []);
             setItemModifiers(item.modifiers || []);
+            setItemMastery(typeof item.mastery === 'string' ? item.mastery : item.mastery?.name || '');
+            setItemRangeNormal(typeof item.range === 'object' ? Number(item.range?.normal || 0) : 0);
+            setItemRangeLong(typeof item.range === 'object' ? Number(item.range?.long || 0) : 0);
+            setItemVersatileDice(item.versatileDamage?.damage_dice || '');
+            setItemIsMagic(Boolean(item.is_magic));
+            setItemStealth(Boolean(item.stealth_disadvantage));
+            setItemStrMin(Number(item.str_minimum || 0));
+            setItemExtraJson(JSON.stringify({
+                effects: item.effects || [],
+                resources: item.resources || [],
+                template: item.template,
+                choice: item.choice,
+                use: item.use,
+                attunement_classes: item.attunement_classes || [],
+                contents: item.contents || [],
+            }, null, 2));
         } else if (activeTab === 'background') {
             setBgSkills(item.skill_proficiencies || []);
             setBgTools(item.tool_proficiencies || []);
@@ -1516,7 +1540,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     is_wondrous: itemIsWondrous,
                     rarity: itemRarity,
                     weight: itemWeight,
-                    cost: { quantity: parseInt(itemCost) || 0, unit: itemCost.includes('gp') ? 'gp' : 'sp' },
+                    cost: { quantity: parseFloat(itemCost) || 0, unit: /cp/i.test(itemCost) ? 'cp' : /sp/i.test(itemCost) ? 'sp' : /ep/i.test(itemCost) ? 'ep' : /pp/i.test(itemCost) ? 'pp' : 'gp' },
                     requires_attunement: itemAttunement,
                     isThrown: itemIsThrown,
                     thrownRange: itemThrownRange,
@@ -1526,7 +1550,14 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     damage: itemDmgDice ? { damage_dice: itemDmgDice, damage_type: { name: itemDmgType, index: itemDmgType.toLowerCase() } } : undefined,
                     armor_class: itemAcBase > 0 ? { base: itemAcBase, dex_bonus: itemAcDexBonus, max_bonus: itemAcMaxBonus } : undefined,
                     properties: itemProperties.map(p => ({ name: p, index: p.toLowerCase() })),
-                    modifiers: itemModifiers
+                    modifiers: itemModifiers,
+                    mastery: itemMastery ? { name: itemMastery, index: itemMastery.toLowerCase() } : undefined,
+                    range: itemRangeNormal > 0 ? { normal: itemRangeNormal, long: itemRangeLong || null } : undefined,
+                    versatileDamage: itemVersatileDice ? { damage_dice: itemVersatileDice, damage_type: { name: itemDmgType, index: itemDmgType.toLowerCase() } } : undefined,
+                    is_magic: itemIsMagic,
+                    stealth_disadvantage: itemStealth,
+                    str_minimum: itemStrMin || undefined,
+                    ...(itemExtraJson.trim() ? JSON.parse(itemExtraJson) : {})
                 };
             } else if (activeTab === 'creature') {
                 payload = {
@@ -2101,6 +2132,25 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                             <label className="flex items-center gap-3 cursor-pointer">
                                                 <input type="checkbox" checked={itemAttunement} onChange={e => setItemAttunement(e.target.checked)} className="accent-dnd-gold" />
                                                 <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Requires Attunement</span>
+                                            </label>
+                                        </section>
+
+                                        <section className="space-y-4 bg-black/20 p-6 rounded-2xl border border-gray-800">
+                                            <h4 className="text-[10px] uppercase font-black text-dnd-gold tracking-[0.2em]">Item Mechanics</h4>
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                <label className="space-y-1"><span className="text-[9px] uppercase text-gray-500 font-bold">Mastery</span><input value={itemMastery} onChange={e => setItemMastery(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-white" placeholder="Nick" /></label>
+                                                <label className="space-y-1"><span className="text-[9px] uppercase text-gray-500 font-bold">Range Normal</span><input type="number" value={itemRangeNormal} onChange={e => setItemRangeNormal(Number(e.target.value))} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-white" /></label>
+                                                <label className="space-y-1"><span className="text-[9px] uppercase text-gray-500 font-bold">Range Long</span><input type="number" value={itemRangeLong} onChange={e => setItemRangeLong(Number(e.target.value))} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-white" /></label>
+                                                <label className="space-y-1"><span className="text-[9px] uppercase text-gray-500 font-bold">Versatile Dice</span><input value={itemVersatileDice} onChange={e => setItemVersatileDice(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-white" placeholder="1d10" /></label>
+                                                <label className="space-y-1"><span className="text-[9px] uppercase text-gray-500 font-bold">Strength Min</span><input type="number" value={itemStrMin} onChange={e => setItemStrMin(Number(e.target.value))} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-white" /></label>
+                                            </div>
+                                            <div className="flex flex-wrap gap-4">
+                                                <label className="flex items-center gap-2 text-xs text-gray-400"><input type="checkbox" checked={itemIsMagic} onChange={e => setItemIsMagic(e.target.checked)} className="accent-dnd-gold" /> Magical</label>
+                                                <label className="flex items-center gap-2 text-xs text-gray-400"><input type="checkbox" checked={itemStealth} onChange={e => setItemStealth(e.target.checked)} className="accent-dnd-gold" /> Stealth Disadvantage</label>
+                                            </div>
+                                            <label className="block space-y-1">
+                                                <span className="text-[9px] uppercase text-gray-500 font-bold">Effects / Resources / Template / Choice / Use (JSON)</span>
+                                                <textarea value={itemExtraJson} onChange={e => setItemExtraJson(e.target.value)} rows={8} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 font-mono text-[11px] text-gray-300" />
                                             </label>
                                         </section>
 

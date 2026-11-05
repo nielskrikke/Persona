@@ -540,7 +540,7 @@ const DetailSidePanel = ({
                                 </button>
                             )
                         )}
-                        {isItemLike(fullDetail) && (fullDetail as any).use && (
+                        {isItemLike(fullDetail) && ((fullDetail as any).use || ((fullDetail as any).effects || []).some((effect: any) => String(effect.target || '').toLowerCase() === 'temp_hp')) && (
                             <button
                                 onClick={() => onAction('useItem', fullDetail)}
                                 className="flex-1 py-1.5 bg-emerald-900/40 text-emerald-300 hover:bg-emerald-800/60 rounded font-bold uppercase text-[10px] tracking-wider transition-colors"

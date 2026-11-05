@@ -3,7 +3,6 @@ import { createServer as createViteServer } from "vite";
 import { createServer as createHttpServer } from "http";
 import path from "path";
 import { createClient } from '@supabase/supabase-js';
-import { ALL_ITEMS } from './data/items';
 import { COMMON_CREATURES } from './data/beasts';
 import { STANDARD_FAMILIARS } from './data/familiars';
 import { mountBuilder } from './builder/builderServer';
@@ -23,8 +22,7 @@ async function startServer() {
   app.get("/api/export-csv/:table", (req, res) => {
     const { table } = req.params;
     let items: any[] = [];
-    if (table === 'custom_equipment') items = ALL_ITEMS;
-    else if (table === 'custom_beasts') items = COMMON_CREATURES;
+    if (table === 'custom_beasts') items = COMMON_CREATURES;
     else if (table === 'custom_familiars') items = STANDARD_FAMILIARS;
     else return res.status(404).json({ error: "Table not found or already imported" });
 
