@@ -2293,7 +2293,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 );
             case 'proficiencies':
                 const charLanguages = Array.from(new Set([...(character.languages || []), ...(character.race?.languages?.map(l => l.name) || [])]));
-                const charTools = Array.from(new Set([...(character.toolProficiencies || []), ...activeModifiers.filter(m => m.type === 'proficiency' && m.category === 'tool').map(m => m.target)]));
+                const toolMap = new Map<string, string>();
+                [...(character.toolProficiencies || []), ...activeModifiers.filter(m => m.type === 'proficiency' && m.category === 'tool').map(m => m.target)].forEach(tool => toolMap.set(String(tool).toLowerCase(), tool));
+                const charTools = Array.from(toolMap.values());
                 const allProfs = Array.from(new Set([
                     ...character.classes.flatMap(c => c.definition.proficiencies.map(p => p.name)),
                     ...(character.race?.starting_proficiencies?.map(p => p.name) || []),
@@ -2384,9 +2386,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             case 'rules':
                 return (<div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}><div className="flex justify-between items-center mb-2 cursor-pointer hover:text-dnd-gold" onClick={() => setActiveTab('rules')}><h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Rules</h3><span className="text-[10px] text-gray-500">View All &rarr;</span></div><div className="grid grid-cols-2 gap-2"><button onClick={() => setActiveTab('rules')} className="bg-gray-800/60 border border-gray-600 rounded p-1 text-[10px] hover:border-dnd-gold">Conditions</button><button onClick={() => setActiveTab('rules')} className="bg-gray-800/60 border border-gray-600 rounded p-1 text-[10px] hover:border-dnd-gold">General</button></div></div>);
             case 'senses':
-                const passPerc = 10 + calculateModifier(getStat('wis')) + (character.skills.includes('Perception') ? prof : 0) + (character.expertise?.includes('Perception') ? prof : 0);
-                const passInv = 10 + calculateModifier(getStat('int')) + (character.skills.includes('Investigation') ? prof : 0) + (character.expertise?.includes('Investigation') ? prof : 0);
-                const passIns = 10 + calculateModifier(getStat('wis')) + (character.skills.includes('Insight') ? prof : 0) + (character.expertise?.includes('Insight') ? prof : 0);
+                const hasSkillProficiency = (skillName: string) => character.skills.includes(skillName)
+                    || activeModifiers.some((m: any) => m.type === 'proficiency' && m.category === 'skill' && String(m.target).toLowerCase() === skillName.toLowerCase());
+                const passPerc = 10 + calculateModifier(getStat('wis')) + (hasSkillProficiency('Perception') ? prof : 0) + (character.expertise?.includes('Perception') ? prof : 0);
+                const passInv = 10 + calculateModifier(getStat('int')) + (hasSkillProficiency('Investigation') ? prof : 0) + (character.expertise?.includes('Investigation') ? prof : 0);
+                const passIns = 10 + calculateModifier(getStat('wis')) + (hasSkillProficiency('Insight') ? prof : 0) + (character.expertise?.includes('Insight') ? prof : 0);
                 const dvRange = activeModifiers
                     .filter((m: any) => m.type === 'set' && (m.target === 'darkvision' || m.stat === 'darkvision'))
                     .reduce((max: number, m: any) => Math.max(max, Number(m.value || 0)), 0);
@@ -3645,10 +3649,18 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         });
 
         character.feats.forEach((feat, idx) => list.push({ ...enrichFeature(feat), type: 'Feat', source: 'Feat', level: '-', uniqueId: `feat-${feat.index}-${idx}` }));
-        character.race?.traits.forEach((trait, idx) => list.push({ ...enrichFeature(trait), type: 'Race', source: character.race?.name, level: '-', uniqueId: `race-${trait.index}-${idx}` }));
-        character.subrace?.traits.forEach((trait, idx) => list.push({ ...enrichFeature(trait), type: 'Race', source: character.subrace?.name, level: '-', uniqueId: `subrace-${trait.index}-${idx}` }));
+        character.race?.traits.filter((trait: any) => !/ability score increase/i.test(trait.name || '')).forEach((trait, idx) => list.push({ ...enrichFeature(trait), type: 'Race', source: character.race?.name, level: '-', uniqueId: `race-${trait.index}-${idx}` }));
+        character.subrace?.traits.filter((trait: any) => !/ability score increase/i.test(trait.name || '')).forEach((trait, idx) => list.push({ ...enrichFeature(trait), type: 'Race', source: character.subrace?.name, level: '-', uniqueId: `subrace-${trait.index}-${idx}` }));
 
-        return list.sort((a,b) => {
+        const deduped: any[] = [];
+        const seenFeatureKeys = new Set<string>();
+        list.forEach(feature => {
+            const key = `${feature.type}:${String(feature.name).trim().toLowerCase()}`;
+            if (seenFeatureKeys.has(key)) return;
+            seenFeatureKeys.add(key);
+            deduped.push(feature);
+        });
+        return deduped.sort((a,b) => {
              if (a.type !== b.type) return a.type.localeCompare(b.type);
              const la = parseInt(a.level) || 0;
              const lb = parseInt(b.level) || 0;

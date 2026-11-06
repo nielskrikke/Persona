@@ -35,7 +35,7 @@ const LevelStep: React.FC<LevelStepProps> = ({ onSelect, onBack }) => {
                         onClick={onBack}
                         className="px-10 py-4 bg-gray-800 hover:bg-gray-700 text-gray-300 font-black uppercase text-xs tracking-widest rounded-lg shadow-lg transition-all pointer-events-auto"
                     >
-                        &larr; Back to Landing
+                        &larr; Close
                     </button>
                 )}
             </div>

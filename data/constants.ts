@@ -87,6 +87,10 @@ export const ARTISAN_TOOLS = [
     "Woodcarver's tools"
 ];
 
+export const MUSICAL_INSTRUMENTS = [
+    "Bagpipes", "Drum", "Dulcimer", "Flute", "Horn", "Lute", "Lyre", "Pan Flute", "Shawm", "Viol"
+];
+
 export const GAMING_SETS = [
     "Dice Set",
     "Dragonchess Set",

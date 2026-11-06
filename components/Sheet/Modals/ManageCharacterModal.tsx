@@ -357,6 +357,36 @@ const ManageCharacterModal = ({
                             revertData: { classIndex, isClassChoice: true },
                         });
                     });
+
+                    if (cls.subclass?.index) {
+                        const liveSubclass = await fetchSubclassDetail(cls.subclass.index);
+                        (liveSubclass?.feature_details || [])
+                            .filter((feature: any) => (feature.level || 0) <= cls.level)
+                            .forEach((feature: any) => {
+                                (feature.effects || []).forEach((effect: any) => {
+                                    if (!['feature_choice', 'expertise_choice', 'proficiency_choice'].includes(effect.type)) return;
+                                    const choiceId = `${feature.index}-${effect.type}-${cls.level}`;
+                                    if (backfilled.some(existing => existing.id === choiceId)) return;
+                                    const stored = character.choices.find((existing: any) => existing.id === choiceId);
+                                    const proficientSkills = Array.from(new Set([...character.skills, ...(character.toolProficiencies || [])]))
+                                        .filter(skill => SKILL_LIST.some(entry => entry.name.toLowerCase() === String(skill).toLowerCase()));
+                                    backfilled.push({
+                                        id: choiceId,
+                                        level: cls.level,
+                                        source: liveSubclass.name,
+                                        type: effect.type === 'expertise_choice' ? 'expertise'
+                                            : effect.type === 'feature_choice' ? 'feature_choice'
+                                            : effect.category === 'language' ? 'language'
+                                            : effect.category === 'skill' ? 'skill' : 'other',
+                                        label: effect.name || feature.name,
+                                        value: stored?.value || (getChoiceCount(effect, cls.level) > 1 ? [] : null),
+                                        options: effect.options || (effect.type === 'expertise_choice' ? proficientSkills : effect.category === 'language' ? STANDARD_LANGUAGES : effect.category === 'tool' ? ARTISAN_TOOLS : effect.category === 'skill' ? SKILL_LIST.map(entry => entry.name) : []),
+                                        count: getChoiceCount(effect, cls.level),
+                                        revertData: { classIndex, subclassIndex: liveSubclass.index },
+                                    });
+                                });
+                            });
+                    }
                 }
 
                 // Feats
@@ -598,6 +628,50 @@ const ManageCharacterModal = ({
         });
 
         setLocalClassFeatures(updatedFeatures);
+
+        // Subclass features that declare choices (Battle Master maneuvers,
+        // Deft Explorer expertise, Student of War, etc.) need choice cards.
+        const newSubChoices: LevelChoice[] = [];
+        newFeats.forEach((feature: any) => {
+            (feature.effects || []).forEach((effect: any) => {
+                if (!['feature_choice', 'expertise_choice', 'proficiency_choice'].includes(effect.type)) return;
+                const choiceId = `${feature.index}-${effect.type}-${clsDef.level}`;
+                if (localChoices.some(choice => choice.id === choiceId)) return;
+                const proficientSkills = Array.from(new Set([...skills, ...(character.skills || [])]))
+                    .filter(skill => SKILL_LIST.some(entry => entry.name.toLowerCase() === String(skill).toLowerCase()));
+                const options = effect.options
+                    || (effect.type === 'expertise_choice'
+                        ? proficientSkills
+                        : effect.category === 'language'
+                            ? STANDARD_LANGUAGES
+                            : effect.category === 'tool'
+                                ? ARTISAN_TOOLS
+                                : effect.category === 'skill'
+                                    ? SKILL_LIST.map(skill => skill.name)
+                                    : []);
+                newSubChoices.push({
+                    id: choiceId,
+                    level: clsDef.level,
+                    source: newSubclass.name,
+                    type: effect.type === 'expertise_choice' ? 'expertise'
+                        : effect.type === 'feature_choice' ? 'feature_choice'
+                        : effect.category === 'language' ? 'language'
+                        : effect.category === 'skill' ? 'skill' : 'other',
+                    label: effect.name || feature.name,
+                    value: getChoiceCount(effect, clsDef.level) > 1 ? [] : null,
+                    options,
+                    count: getChoiceCount(effect, clsDef.level),
+                    revertData: { classIndex, subclassIndex },
+                });
+            });
+        });
+        if (newSubChoices.length > 0) {
+            setLocalChoices(prev => {
+                const merged = [...prev];
+                newSubChoices.forEach(choice => { if (!merged.some(existing => existing.id === choice.id)) merged.push(choice); });
+                return merged;
+            });
+        }
 
         // Apply named spell grants from the newly selected subclass immediately,
         // rather than waiting for a reload.
@@ -2583,6 +2657,13 @@ const ManageCharacterModal = ({
                                             );
                                             if (subraceBonus) contributors.push({ name: character.subrace.name, bonus: subraceBonus.bonus });
                                         }
+                                        localFeats.forEach(feat => {
+                                            (feat.effects || []).forEach((effect: any) => {
+                                                if (effect.type === 'asi' && (effect.attributes || []).map((value: string) => String(value).toLowerCase()).includes(stat)) {
+                                                    contributors.push({ name: feat.name, bonus: Number(effect.amount || 1), unapplied: true });
+                                                }
+                                            });
+                                        });
                                         localChoices.forEach(c => {
                                             const mode = c.revertData?.mode || c.type;
                                             if ((mode === 'asi' || c.type === 'asi') && c.revertData?.abilities?.[stat]) {
@@ -2618,7 +2699,8 @@ const ManageCharacterModal = ({
                                             ))
                                         );
                                         const bonusTotal = dedupedContributors.reduce((sum, c) => sum + c.bonus, 0);
-                                        const total = abilities[stat] || 0;
+                                        const unappliedBonus = dedupedContributors.filter(c => (c as any).unapplied).reduce((sum, c) => sum + c.bonus, 0);
+                                        const total = (abilities[stat] || 0) + unappliedBonus;
                                         const base = total - bonusTotal;
                                         const mod = calculateModifier(total);
                                         

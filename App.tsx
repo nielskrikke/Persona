@@ -802,6 +802,7 @@ const App: React.FC = () => {
                         currentSkills={character.skills}
                         currentTools={character.toolProficiencies}
                         userId={currentUser?.id}
+                        initialChoices={character.choices}
                     />
                 )}
                 {phase === 'abilities' && <AbilityScoreStep race={character.race} initialScores={character.abilities} onSave={handleAbilitiesSave} onBack={handleBack} />}

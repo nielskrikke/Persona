@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { APIReference, ClassDetail, SubclassDetail, CharacterClass } from '../../types';
 import { fetchClasses, fetchClassDetail, fetchSubclasses, fetchSubclassDetail, fetchEquipment } from '../../data/index';
 import { SKILL_LIST, getChoiceCount } from '../../utils/rules';
+import { ARTISAN_TOOLS, MUSICAL_INSTRUMENTS } from '../../data/constants';
 
 interface ClassStepProps {
   onSelect: (classes: CharacterClass[], skills: string[], tools: string[], choices: any[]) => void;
@@ -12,6 +13,7 @@ interface ClassStepProps {
   currentSkills: string[];
   currentTools: string[];
   userId?: string;
+  initialChoices?: any[];
 }
 
 interface DraftClass {
@@ -22,7 +24,7 @@ interface DraftClass {
     subclass?: SubclassDetail; 
 }
 
-const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLevel, onBack, currentSkills, currentTools, userId }) => {
+const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLevel, onBack, currentSkills, currentTools, userId, initialChoices = [] }) => {
   const [availableClasses, setAvailableClasses] = useState<APIReference[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -48,7 +50,15 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
     });
   }, []);
 
-  const choiceOptionsFor = (choice: any) => choice.kind === 'weapon_mastery' && masteryWeapons.length > 0 ? masteryWeapons : (choice.options || []);
+  const choiceOptionsFor = (choice: any) => {
+      if (choice.kind === 'weapon_mastery' && masteryWeapons.length > 0) return masteryWeapons;
+      return (choice.options || []).flatMap((option: any) => {
+          const name = typeof option === 'string' ? option : (option.name || option.index || '');
+          if (name === "Artisan's Tools") return ARTISAN_TOOLS;
+          if (name === 'Musical Instrument') return MUSICAL_INSTRUMENTS;
+          return [option];
+      });
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -184,6 +194,24 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
       return Array.from(new Set([...raceSkills, ...classSkills]));
   };
 
+  useEffect(() => {
+    if (!initialChoices.length || Object.keys(classDetails).length === 0) return;
+    setClassChoices(prev => {
+        const next = { ...prev };
+        initialClasses.forEach(cls => {
+            const classIndex = cls.definition.index;
+            const definition = classDetails[classIndex];
+            (definition?.choices || []).forEach((choice: any) => {
+                const key = `${classIndex}:${choice.id}`;
+                if (next[key]) return;
+                const stored = initialChoices.find((entry: any) => entry.id === `class-${classIndex}-${choice.id}`);
+                if (stored?.value) next[key] = Array.isArray(stored.value) ? stored.value : [stored.value];
+            });
+        });
+        return next;
+    });
+  }, [initialChoices, classDetails, initialClasses]);
+
   const handleConfirm = () => {
       if (draftClasses.length === 0) return;
       const finalClasses: CharacterClass[] = draftClasses.map(d => ({
@@ -199,6 +227,18 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
           return;
       }
       
+      for (const draft of draftClasses) {
+          const definition = classDetails[draft.index];
+          for (const choice of (definition?.choices || [])) {
+              const selected = classChoices[`${draft.index}:${choice.id}`] || [];
+              const required = getChoiceCount(choice, draft.level);
+              if (selected.length !== required) {
+                  setValidationError(`Choose ${required} option(s) for ${choice.label || choice.kind}.`);
+                  return;
+              }
+          }
+      }
+
       setValidationError(null);
 
       const levelChoices: any[] = [];
