@@ -2938,7 +2938,7 @@ const ManageCharacterModal = ({
                                                                         const hasDescriptions = options.some((opt: any) => typeof opt !== 'string' && opt.desc);
                                                                         
                                                                         return (
-                                                                            <div className={`grid gap-3 ${hasDescriptions ? 'grid-cols-1' : 'flex flex-wrap gap-2'}`}>
+                                                                            <div className={hasDescriptions ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2'}>
                                                                                 {options.map((opt: any, idx: number) => {
                                                                                     const val = opt.index || opt.name || opt;
                                                                                     const name = opt.name || opt;
@@ -2952,7 +2952,7 @@ const ManageCharacterModal = ({
                                                                                             <button
                                                                                                 key={typeof val === 'string' || typeof val === 'number' ? val : idx}
                                                                                                 onClick={() => handleChoiceChange(choice.id, val)}
-                                                                                                className={`px-4 py-2.5 rounded-lg text-[10px] sm:text-xs font-bold border transition-all ${
+                                                                                                className={`px-2.5 py-2 rounded-lg text-[10px] sm:text-[11px] font-bold border transition-all truncate ${
                                                                                                     isSelected 
                                                                                                         ? 'bg-dnd-gold border-dnd-gold text-black shadow-lg shadow-dnd-gold/20' 
                                                                                                         : 'bg-black/40 border-gray-800 text-gray-400 hover:border-gray-600'
@@ -3334,7 +3334,7 @@ const ManageCharacterModal = ({
                                                                                                     const hasDescriptions = options.some((opt: any) => typeof opt !== 'string' && opt.desc);
 
                                                                                                     return (
-                                                                                                        <div className={`grid gap-3 ${hasDescriptions ? 'grid-cols-1' : 'flex flex-wrap gap-2'}`}>
+                                                                                                        <div className={hasDescriptions ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2'}>
                                                                                                             {options.map((opt: any, idx: number) => {
                                                                                                                 const val = opt.index || opt.name || opt;
                                                                                                                 const name = opt.name || opt;
@@ -3348,7 +3348,7 @@ const ManageCharacterModal = ({
                                                                                                                         <button
                                                                                                                             key={typeof val === 'string' || typeof val === 'number' ? val : idx}
                                                                                                                             onClick={() => handleChoiceChange(choice.id, val)}
-                                                                                                                            className={`px-4 py-2.5 rounded-lg text-[10px] sm:text-xs font-bold border transition-all ${
+                                                                                                                            className={`px-2.5 py-2 rounded-lg text-[10px] sm:text-[11px] font-bold border transition-all truncate ${
                                                                                                                                 isSelected 
                                                                                                                                     ? 'bg-dnd-gold border-dnd-gold text-black shadow-lg shadow-dnd-gold/20' 
                                                                                                                                     : 'bg-black/40 border-gray-800 text-gray-400 hover:border-gray-600'
