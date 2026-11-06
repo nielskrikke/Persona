@@ -293,11 +293,21 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const [saving, setSaving] = useState(false);
     const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
     const lastSavedState = useRef<string>(JSON.stringify(character));
+    const initialLoadRef = useRef(true);
+
+    useEffect(() => {
+        const settleTimer = setTimeout(() => { initialLoadRef.current = false; }, 2500);
+        return () => clearTimeout(settleTimer);
+    }, []);
 
     useEffect(() => {
         if (saveTimeout.current) clearTimeout(saveTimeout.current);
         const curStateStr = JSON.stringify(character);
         if (curStateStr === lastSavedState.current) return;
+        if (initialLoadRef.current) {
+            lastSavedState.current = curStateStr;
+            return;
+        }
         saveTimeout.current = setTimeout(async () => {
              if (currentUser) {
                  setSaving(true);
@@ -525,7 +535,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     }, [currentUser?.id]);
 
     const inventoryEquipKey = (character.inventory || [])
-        .map((item: any) => `${item.id}:${item.equipped ? 1 : 0}:${item.attuned ? 1 : 0}:${item.quantity}`)
+        .map((item: any) => `${item.id}:${item.equipped ? 1 : 0}:${item.attuned ? 1 : 0}:${item.quantity}:${item.customized ? 1 : 0}:${JSON.stringify(item.resources || [])}`)
         .join('|');
     useEffect(() => {
         if (!inventoryEquipKey) return;
@@ -3064,9 +3074,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     if (effect.damage) notes.push(`${effect.damage} ${effect.damage_type || ''} on a natural 20`.trim());
                     return;
                 }
-                if (effect.vs && character.combatTarget?.conditions && !character.combatTarget.conditions.includes(effect.vs)) {
-                    if (effect.damage) notes.push(`${effect.damage} ${effect.damage_type || ''} vs ${effect.vs}`.trim());
-                    return;
+                if (effect.vs) {
+                    const targetConditions = character.combatTarget?.conditions || [];
+                    const matchesCondition = targetConditions.includes(effect.vs) || String((character.combatTarget as any)?.type || '').toLowerCase() === String(effect.vs).toLowerCase();
+                    if (!matchesCondition) {
+                        if (effect.damage) notes.push(`${effect.damage} ${effect.damage_type || ''} vs ${effect.vs}`.trim());
+                        return;
+                    }
                 }
                 const parsed = parseDamageBonus(effect.damage || '0');
                 itemDamageBonus += parsed.flat;

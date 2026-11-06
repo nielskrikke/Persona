@@ -46,7 +46,12 @@ const ItemCustomizeModal: React.FC<ItemCustomizeModalProps> = ({ item, allItems,
     })) : []);
 
     const updateRider = (index: number, patch: Partial<ExtraDamage>) => setRiders(prev => prev.map((rider, i) => i === index ? { ...rider, ...patch } : rider));
-    const baseItems = allItems.filter(entry => !entry.is_magic && (entry.weapon_category || entry.armor_category));
+    const isWeaponItem = Boolean(item.weapon_category);
+    const baseItems = allItems.filter(entry => {
+        if (entry.is_magic) return false;
+        if (isWeaponItem) return Boolean(entry.weapon_category) && !/firearm/i.test(String((entry as any).category_range || ''));
+        return Boolean(entry.armor_category);
+    });
 
     const build = (): ItemOverrides => {
         const modifiers: any[] = [];
@@ -84,7 +89,7 @@ const ItemCustomizeModal: React.FC<ItemCustomizeModalProps> = ({ item, allItems,
             <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-gray-700 bg-[#1b1c20] p-6 space-y-5" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between">
                     <h3 className="font-serif text-xl text-dnd-gold">Customize Item</h3>
-                    <span className="text-[9px] font-black uppercase tracking-widest text-dnd-gold bg-dnd-gold/10 border border-dnd-gold/30 rounded-full px-2 py-1">Customized</span>
+                    {item.customized && <span className="text-[9px] font-black uppercase tracking-widest text-dnd-gold bg-dnd-gold/10 border border-dnd-gold/30 rounded-full px-2 py-1">Customized</span>}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <label className="space-y-1"><span className="text-[9px] uppercase text-gray-500 font-bold">Name</span><input value={name} onChange={e => setName(e.target.value)} className="w-full rounded-lg border border-gray-700 bg-black/40 px-3 py-2 text-sm text-white" /></label>

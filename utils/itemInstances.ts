@@ -64,7 +64,8 @@ export const mergeInventoryItem = (
         merged.armor_class = base.armor_class || merged.armor_class;
         merged.armor_category = base.armor_category || merged.armor_category;
         merged.weight = Number(overrides.weight ?? base.weight ?? dbRecord.weight ?? 0) || 0;
-        const keepCustomName = overrides.name && overrides.name !== dbRecord.name && overrides.name !== entry.name;
+        merged.cost = base.cost || merged.cost;
+        const keepCustomName = Boolean(overrides.name && overrides.name !== dbRecord.name);
         merged.name = keepCustomName
             ? overrides.name!
             : String(template?.name_pattern || base.name).replaceAll('{base}', base.name).replaceAll('{choice}', overrides.choice_value || '');
