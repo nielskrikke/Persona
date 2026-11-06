@@ -792,6 +792,26 @@ export const resolveDamageFormula = (formula: string, modifier: number = 0, hitD
 };
 
 
+
+export const formatResourceName = (name: string, level: number): string => {
+    const bardicSteps: [number, string][] = [[1, 'd6'], [5, 'd8'], [10, 'd10'], [15, 'd12']];
+    if (/^bardic inspiration/i.test(name)) {
+        const die = [...bardicSteps].reverse().find(([threshold]) => level >= threshold)?.[1] || 'd6';
+        return `Bardic Inspiration (${die})`;
+    }
+    const progression = String(name).match(/\((.*?)\)/);
+    if (progression && /d\d+/i.test(progression[1])) {
+        const baseDie = progression[1].match(/d\d+/i)?.[0] || '';
+        let current = baseDie.toLowerCase();
+        Array.from(progression[1].matchAll(/d(\d+)\s+at\s+(\d+)/gi)).forEach(match => {
+            if (level >= Number(match[2])) current = `d${match[1]}`;
+        });
+        return `${String(name).slice(0, progression.index).trim()} (${current})`;
+    }
+    if (progression && /→/.test(progression[1])) return String(name).slice(0, progression.index).trim();
+    return name;
+};
+
 export const getChoiceCount = (choice: any, level: number): number => {
     const byLevel = choice?.count_by_level;
     if (byLevel && typeof byLevel === 'object') {

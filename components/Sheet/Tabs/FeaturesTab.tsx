@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { CharacterState } from '@/types';
 import { WIDGET_BG } from '../../../data/constants';
+import { formatResourceName } from '../../../utils/rules';
 import { Maximize, X, Search, Filter } from 'lucide-react';
 
 interface FeaturesTabProps {
@@ -13,28 +14,6 @@ interface FeaturesTabProps {
     setShowCardOptionsModal?: (val: boolean) => void;
     onShowFullScreen: () => void;
 }
-
-const formatResourceName = (name: string, level: number): string => {
-    const bardicSteps: [number, string][] = [[1, 'd6'], [5, 'd8'], [10, 'd10'], [15, 'd12']];
-    if (/^bardic inspiration/i.test(name)) {
-        const die = [...bardicSteps].reverse().find(([threshold]) => level >= threshold)?.[1] || 'd6';
-        return `Bardic Inspiration (${die})`;
-    }
-    const progression = name.match(/\((.*?)\)/);
-    if (progression && /d\d+/i.test(progression[1])) {
-        const baseDie = progression[1].match(/d\d+/i)?.[0] || '';
-        let current = baseDie.toLowerCase();
-        const upgrades = Array.from(progression[1].matchAll(/d(\d+)\s+at\s+(\d+)/gi));
-        upgrades.forEach(match => {
-            if (level >= Number(match[2])) current = `d${match[1]}`;
-        });
-        return `${name.slice(0, progression.index).trim()} (${current})`;
-    }
-    if (progression && /→/.test(progression[1])) {
-        return name.slice(0, progression.index).trim();
-    }
-    return name;
-};
 
 const FeaturesTab: React.FC<FeaturesTabProps> = ({ character, setCharacter, getAllFeatures, setSelectedDetail, onTabChange, setShowHomebrewModal, setShowCardOptionsModal, onShowFullScreen }) => {
     const [featureFilter, setFeatureFilter] = useState('All');

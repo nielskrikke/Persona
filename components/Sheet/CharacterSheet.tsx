@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import Markdown from 'react-markdown';
 import { Sparkles, Plus, X, Maximize, Search, Info, Heart, Skull, AlertOctagon } from 'lucide-react';
 import { CharacterState, ABILITY_NAMES, ABILITY_LABELS, RollResult, AbilityName, SpellDetail, InventoryItem, Currency, RuleEntry, CreatureDetail, EldritchCannonDetail, SteelDefenderDetail, EquipmentDetail, ItemModifier, DiceCustomizationOptions } from '../../types';
-import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount, getSpellAbilityForClass, getResourceDefinitions, mergeSpellSlotCurrents, hasUiWidget, getClassWithUiWidget, resolveDamageFormula, appendMinDie, getWeaponMasteryData, getSpellCastLevel, calculateMaxHp } from '../../utils/rules';
+import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount, getSpellAbilityForClass, getResourceDefinitions, mergeSpellSlotCurrents, hasUiWidget, getClassWithUiWidget, resolveDamageFormula, appendMinDie, getWeaponMasteryData, getSpellCastLevel, calculateMaxHp, formatResourceName } from '../../utils/rules';
 import { rollDice } from '../../utils/dice';
 import CreatureManagerModal from './Modals/CreatureManagerModal';
 import { WIDGET_LABELS, DEFAULT_LAYOUT, STANDARD_CONDITIONS, STANDARD_ACTIONS, STATIC_RULES, WIDGET_BG } from '../../data/constants';
@@ -2042,8 +2042,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             const usedCount = usage.max - usage.current;
                             return (
                             <div key={name} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
-                                <div className="flex justify-between items-center mb-2"><h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">{name}</h3><span className="text-[10px] text-gray-500">Reset: {usage.reset || 'Long'}</span></div>
-                                <div className="flex gap-1.5 justify-start">{Array.from({length: usage.max}).map((_, i) => { const isUsed = i < usedCount; return (<div key={i} className={`w-4 h-4 cursor-pointer transition-colors border rounded-full ${isUsed ? 'bg-dnd-red border-dnd-red' : 'bg-transparent border-gray-600 hover:border-gray-300'}`} onClick={() => { let used = i + 1; if (usedCount === used) used = i; setCharacter(prev => ({...prev, featureUsage: {...prev.featureUsage, [name]: {...usage, current: usage.max - used}}})); }}></div>); })}</div>
+                                <div className="flex justify-between items-center mb-2"><h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">{formatResourceName(name, character.level)}</h3><span className="text-[10px] text-gray-500">Reset: {usage.reset === 'short' ? 'Short' : 'Long'}</span></div>
+                                <div className="flex gap-1.5 justify-start">{Array.from({length: usage.max}).map((_, i) => { const isUsed = i < usedCount; return (<button type="button" key={i} aria-label={`${formatResourceName(name, character.level)} use ${i + 1}`} className={`h-4 w-4 cursor-pointer transition-colors border rounded-full ${isUsed ? 'bg-dnd-red border-dnd-red' : 'bg-transparent border-gray-600 hover:border-dnd-gold hover:bg-dnd-gold/10'}`} onClick={() => { let used = i + 1; if (usedCount === used) used = i; setCharacter(prev => ({...prev, featureUsage: {...prev.featureUsage, [name]: {...usage, current: usage.max - used}}})); }}></button>); })}</div>
                                 {name === 'Arrow Crafting' && (
                                     <button
                                         onClick={() => setActiveTab('inventory')}
