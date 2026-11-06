@@ -542,6 +542,7 @@ export interface CharacterState {
     spellcastingAbility?: AbilityName;
     freeCastUsage?: Record<string, number>;
     activeConditions?: Record<string, boolean>;
+    abilitySource?: 'background' | 'race';
     combatTarget?: CombatTarget | null;
     masteryUsage?: Record<string, boolean>;
     alignment: string;

@@ -44,15 +44,18 @@ export const getPointBuyCost = (score: number): number => {
 export const getEffectiveAbilities = (character: CharacterState): AbilityScores => {
     const abilities = { ...character.abilities };
     
-    // 1. Racial bonuses (direct)
-    character.race?.ability_bonuses?.forEach(b => {
-        const stat = b.ability_score.index as AbilityName;
-        if (abilities[stat] !== undefined) abilities[stat] += b.bonus;
-    });
-    character.subrace?.ability_bonuses?.forEach(b => {
-        const stat = b.ability_score.index as AbilityName;
-        if (abilities[stat] !== undefined) abilities[stat] += b.bonus;
-    });
+    // 1. Racial bonuses. 2024 characters take ASIs from their background,
+    // which are already folded into the stored base scores.
+    if (character.abilitySource !== 'background') {
+        character.race?.ability_bonuses?.forEach(b => {
+            const stat = b.ability_score.index as AbilityName;
+            if (abilities[stat] !== undefined) abilities[stat] += b.bonus;
+        });
+        character.subrace?.ability_bonuses?.forEach(b => {
+            const stat = b.ability_score.index as AbilityName;
+            if (abilities[stat] !== undefined) abilities[stat] += b.bonus;
+        });
+    }
 
     // 2. Modifiers from traits and items
     const mods: any[] = [];

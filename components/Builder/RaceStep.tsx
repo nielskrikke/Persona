@@ -137,7 +137,7 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
   const handleConfirm = () => {
     if (!previewRace) return;
 
-    const raceChoices = getRaceChoices();
+    const raceChoices = getRaceChoices().filter((choice: any) => choice.kind !== 'ability');
 
     // Validation for Custom Origin
     if (isCustomizingOrigin) {
@@ -267,7 +267,7 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
     onSelect(previewRace, selectedSubrace, extraData);
   };
 
-  const allRaceChoices = getRaceChoices();
+  const allRaceChoices = getRaceChoices().filter((choice: any) => choice.kind !== 'ability');
   const allAbilityChoiceOptions = allRaceChoices.filter((choice: any) => choice.kind === 'ability');
   const hasAsiAlternative = allAbilityChoiceOptions.some((choice: any) => Number(choice.amount) === 2)
       && allAbilityChoiceOptions.some((choice: any) => Number(choice.amount) === 1);
@@ -520,14 +520,8 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
                         </div>
                         
                         <section>
-                  <h4 className="text-xs font-black text-gray-500 uppercase tracking-[0.2em] mb-4 border-b border-gray-800 pb-2">Ability Bonuses</h4>
-                  <div className="flex flex-wrap gap-3">
-                    {previewRace.ability_bonuses.map((b: any, i: number) => (
-                      <div key={i} className="bg-gray-800/50 border border-gray-700 px-4 py-2 rounded-lg text-sm font-bold text-white">
-                        {ABILITY_LABELS[b.ability_score.index as AbilityName] || b.ability_score.name}: <span className="text-green-400">+{b.bonus}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <h4 className="text-xs font-black text-gray-500 uppercase tracking-[0.2em] mb-4 border-b border-gray-800 pb-2">Ability Score Increases</h4>
+                  <p className="text-xs text-gray-500 italic">2024 rules: ability score increases come from your background, not your species.</p>
                 </section>
 
                 <section>

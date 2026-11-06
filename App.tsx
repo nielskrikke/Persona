@@ -129,6 +129,7 @@ const INITIAL_CHARACTER: CharacterState = {
     customCreatures: [],
     creatures: [],
     activePolymorph: null,
+    abilitySource: 'background',
     choices: [],
     customTrackers: []
 };
@@ -685,7 +686,7 @@ const App: React.FC = () => {
       <div className="min-h-screen">
 
         {phase === 'welcome' && (
-          <div className="h-full flex flex-col items-center relative bg-[#0b0c0e] overflow-y-auto">
+          <div className="h-screen min-h-screen w-full flex flex-col items-center relative bg-[#0b0c0e] overflow-y-auto">
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#c9ad6a]/5 rounded-full blur-[120px] pointer-events-none"></div>
 
             <div className="relative z-10 my-auto flex flex-col items-center animate-in fade-in zoom-in duration-1000 w-full max-w-md px-6 py-10">
