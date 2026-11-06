@@ -2700,22 +2700,6 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const spellName = isSpell ? attack.name : '';
 
             const source = attack.source;
-            const target = character.combatTarget;
-            const targetDamageType = String(
-                (isSpell ? (source as any)?.damage?.damage_type?.name : attack.type) || ''
-            ).toLowerCase();
-            const ignoresTargetResistance = activeModifiers.some((effect: any) =>
-                effect.type === 'ignore_resistance'
-                && String(effect.damage_type || '').toLowerCase() === targetDamageType
-            );
-            if (target && targetDamageType && !ignoresTargetResistance) {
-                if ((target.resistances || []).some(type => type.toLowerCase() === targetDamageType)) {
-                    modifiers.push({ name: 'Target: Resistant', desc: `The target resists ${targetDamageType}; damage is halved.` });
-                }
-                if ((target.immunities || []).some(type => type.toLowerCase() === targetDamageType)) {
-                    modifiers.push({ name: 'Target: Immune', desc: `The target is immune to ${targetDamageType}; no damage.` });
-                }
-            }
             const isMonkWeapon = attack.notes?.includes('Monk Weapon') || attack.notes?.includes('Kensei Weapon');
             const isMagic = Boolean(source?.is_magic || source?.requires_attunement || (source?.modifiers && source.modifiers.length > 0) || source?.isInfusion || source?.isPactWeapon || (isMonkWeapon && activeModifiers.some((m: any) => m.type === 'attack_rider' && m.name === 'Empowered Strikes')));
             if (isMagic && isWeapon && !isSpell) {
@@ -3075,12 +3059,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     return;
                 }
                 if (effect.vs) {
-                    const targetConditions = character.combatTarget?.conditions || [];
-                    const matchesCondition = targetConditions.includes(effect.vs) || String((character.combatTarget as any)?.type || '').toLowerCase() === String(effect.vs).toLowerCase();
-                    if (!matchesCondition) {
-                        if (effect.damage) notes.push(`${effect.damage} ${effect.damage_type || ''} vs ${effect.vs}`.trim());
-                        return;
-                    }
+                    if (effect.damage) notes.push(`${effect.damage} ${effect.damage_type || ''} vs ${effect.vs}`.trim());
+                    return;
                 }
                 const parsed = parseDamageBonus(effect.damage || '0');
                 itemDamageBonus += parsed.flat;
@@ -4317,15 +4297,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 });
                             } else if (use?.damage) {
                                 roll(use.damage, `Use: ${itm.name}`, undefined, (result) => {
-                                    setCharacter(prev => {
-                                        const target = prev.combatTarget;
-                                        const applied = target?.hp !== undefined ? Math.max(0, target.hp - result.total) : target?.hp;
-                                        return {
-                                            ...prev,
-                                            combatTarget: target && applied !== undefined ? { ...target, hp: applied } : prev.combatTarget,
-                                            inventory: prev.inventory.map(entry => entry.id === itm.id ? { ...entry, quantity: Math.max(0, entry.quantity - consumes) } : entry).filter(entry => entry.quantity > 0),
-                                        };
-                                    });
+                                    setCharacter(prev => ({
+                                        ...prev,
+                                        inventory: prev.inventory.map(entry => entry.id === itm.id ? { ...entry, quantity: Math.max(0, entry.quantity - consumes) } : entry).filter(entry => entry.quantity > 0),
+                                    }));
                                 });
                             } else {
                                 setCharacter(prev => ({

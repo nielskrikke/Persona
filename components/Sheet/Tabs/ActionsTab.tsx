@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CharacterState, SpellDetail, CreatureDetail } from '../../../types';
-import { STANDARD_ACTIONS, WIDGET_BG, MASTERY_DESCRIPTIONS, STANDARD_CONDITIONS } from '../../../data/constants';
+import { STANDARD_ACTIONS, WIDGET_BG, MASTERY_DESCRIPTIONS } from '../../../data/constants';
 import { formatModifier, getSpellDamageString, getSpellCastLevel, hasUiWidget } from '../../../utils/rules';
 
 interface ActionsTabProps {
@@ -41,32 +41,6 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
     character, roll, triggerRollMenu, setSelectedDetail, getAttacks, bonusActionList, setShowCustomActionModal, setShowHomebrewModal, spellSave, spellMod, setCharacter
 }) => {
     const [actionFilter, setActionFilter] = useState('ALL');
-
-    const recordAttackRoll = (total: number) => {
-        const target = character.combatTarget;
-        if (!target || target.ac === undefined) return;
-        setCharacter(prev => ({ ...prev, combatTarget: { ...(prev.combatTarget || target), lastAttack: total, lastHit: total >= Number(target.ac) } }));
-    };
-    const applyTargetDamage = (amount: number, damageType: string) => {
-        const target = character.combatTarget;
-        if (!target || target.hp === undefined) return;
-        const type = String(damageType || '').toLowerCase();
-        const effects = [
-            ...(character.classFeatures || []).flatMap((feature: any) => feature.effects || []),
-            ...(character.feats || []).flatMap((feat: any) => feat.effects || []),
-            ...(character.race?.traits || []).flatMap((trait: any) => trait.effects || []),
-        ];
-        const ignores = effects.some((effect: any) => effect.type === 'ignore_resistance' && String(effect.damage_type || '').toLowerCase() === type);
-        const immune = !ignores && (target.immunities || []).some(value => value.toLowerCase() === type);
-        const resistant = !ignores && (target.resistances || []).some(value => value.toLowerCase() === type);
-        const applied = immune ? 0 : resistant ? Math.floor(amount / 2) : amount;
-        setCharacter(prev => {
-            if (!prev.combatTarget || prev.combatTarget.hp === undefined) return prev;
-            return { ...prev, combatTarget: { ...prev.combatTarget, hp: Math.max(0, prev.combatTarget.hp - applied) } };
-        });
-    };
-
-    const isCardMaster = hasUiWidget(character, 'activeCards');
 
     const allAttacks = getAttacks();
     
@@ -136,82 +110,10 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                     ))}
                 </div>
                 <div className="flex gap-2">
+                    <button onClick={() => setCharacter(prev => ({ ...prev, masteryUsage: {} }))} className="text-[10px] text-gray-400 font-bold uppercase border border-gray-700 bg-black/40 px-3 py-1.5 rounded hover:border-dnd-gold hover:text-dnd-gold transition-colors">New Turn</button>
                     <button onClick={() => setShowCustomActionModal(true)} className="text-[10px] text-dnd-red font-bold uppercase border border-dnd-red bg-black/40 px-3 py-1.5 rounded hover:bg-dnd-red hover:text-white transition-colors">Manage Custom</button>
                 </div>
             </div>
-
-            <section className={`${WIDGET_BG} border border-gray-700 rounded-xl p-4 space-y-3`}>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-dnd-gold">Combat Target</span>
-                        <input
-                            value={character.combatTarget?.name || ''}
-                            onChange={e => setCharacter(prev => ({
-                                ...prev,
-                                combatTarget: { name: e.target.value, resistances: [], immunities: [], conditions: [], ...(prev.combatTarget || {}) },
-                            }))}
-                            placeholder="Target name"
-                            className="bg-black/30 border border-gray-700 rounded-lg px-2 py-1 text-xs text-white outline-none focus:border-dnd-gold"
-                        />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                        <label className="text-[9px] uppercase text-gray-500 font-bold">AC</label>
-                        <input type="number" value={character.combatTarget?.ac ?? ''} onChange={e => setCharacter(prev => ({ ...prev, combatTarget: { name: '', resistances: [], immunities: [], conditions: [], ...(prev.combatTarget || {}), ac: e.target.value ? Number(e.target.value) : undefined } }))} className="w-16 bg-black/30 border border-gray-700 rounded px-2 py-1 text-xs text-white" />
-                        <label className="text-[9px] uppercase text-gray-500 font-bold">HP</label>
-                        <input type="number" value={character.combatTarget?.hp ?? ''} onChange={e => setCharacter(prev => ({ ...prev, combatTarget: { name: '', resistances: [], immunities: [], conditions: [], ...(prev.combatTarget || {}), hp: e.target.value ? Number(e.target.value) : undefined } }))} className="w-16 bg-black/30 border border-gray-700 rounded px-2 py-1 text-xs text-white" />
-                        {character.combatTarget?.lastAttack !== undefined && (
-                            <span className={`text-[9px] font-black uppercase ${character.combatTarget.lastHit ? 'text-emerald-400' : 'text-red-400'}`}>
-                                Last: {character.combatTarget.lastAttack} {character.combatTarget.lastHit ? 'HIT' : 'MISS'}
-                            </span>
-                        )}
-                        <button type="button" onClick={() => setCharacter(prev => ({ ...prev, masteryUsage: {} }))} className="text-[9px] uppercase font-bold text-gray-500 hover:text-dnd-gold">New Turn</button>
-                        <button type="button" onClick={() => setCharacter(prev => ({ ...prev, combatTarget: null }))} className="text-[9px] uppercase font-bold text-gray-500 hover:text-red-400">Clear</button>
-                    </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {(['resistances', 'immunities'] as const).map(kind => (
-                        <div key={kind} className="flex items-center gap-2">
-                            <span className="text-[9px] uppercase text-gray-500 font-bold w-20">{kind}</span>
-                            <select
-                                value=""
-                                onChange={e => {
-                                    if (!e.target.value) return;
-                                    setCharacter(prev => {
-                                        const current = prev.combatTarget || { name: '', resistances: [], immunities: [], conditions: [] };
-                                        const list = Array.from(new Set([...(current[kind] || []), e.target.value]));
-                                        return { ...prev, combatTarget: { ...current, [kind]: list } };
-                                    });
-                                }}
-                                className="bg-black/30 border border-gray-700 rounded px-2 py-1 text-[10px] text-white"
-                            >
-                                <option value="">Add...</option>
-                                {['Acid','Cold','Fire','Force','Lightning','Necrotic','Poison','Psychic','Radiant','Thunder','Bludgeoning','Piercing','Slashing'].map(type => <option key={type} value={type}>{type}</option>)}
-                            </select>
-                            <div className="flex flex-wrap gap-1">
-                                {(character.combatTarget?.[kind] || []).map((type: string) => (
-                                    <button key={type} type="button" onClick={() => setCharacter(prev => ({ ...prev, combatTarget: { ...(prev.combatTarget || { name: '', resistances: [], immunities: [], conditions: [] }), [kind]: (prev.combatTarget?.[kind] || []).filter((value: string) => value !== type) } }))} className="text-[9px] bg-gray-800 border border-gray-700 rounded-full px-2 py-0.5 text-gray-300">{type} ×</button>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[9px] uppercase text-gray-500 font-bold">Conditions</span>
-                    <select value="" onChange={e => {
-                        if (!e.target.value) return;
-                        setCharacter(prev => {
-                            const current = prev.combatTarget || { name: '', resistances: [], immunities: [], conditions: [] };
-                            return { ...prev, combatTarget: { ...current, conditions: Array.from(new Set([...(current.conditions || []), e.target.value])) } };
-                        });
-                    }} className="bg-black/30 border border-gray-700 rounded px-2 py-1 text-[10px] text-white">
-                        <option value="">Add condition...</option>
-                        {STANDARD_CONDITIONS.map((condition: any) => <option key={condition.name} value={condition.name}>{condition.name}</option>)}
-                    </select>
-                    {(character.combatTarget?.conditions || []).map((condition: string) => (
-                        <button key={condition} type="button" onClick={() => setCharacter(prev => ({ ...prev, combatTarget: { ...(prev.combatTarget || { name: '', resistances: [], immunities: [], conditions: [] }), conditions: (prev.combatTarget?.conditions || []).filter((value: string) => value !== condition) } }))} className="text-[9px] bg-purple-900/30 border border-purple-700/50 rounded-full px-2 py-0.5 text-purple-200">{condition} ×</button>
-                    ))}
-                </div>
-            </section>
 
             {hasFavorites && (
                 <div className={`${WIDGET_BG} border border-dnd-gold/50 rounded-xl overflow-hidden shadow-sm mb-6`}>
@@ -270,29 +172,6 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                                     </button>
                                                 );
                                             })()}
-                                            {['topple','push','sap','slow','vex'].includes(String(attack.mastery.name).toLowerCase()) && (
-                                                <button onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    const label = String(attack.mastery.name);
-                                                    setCharacter(prev => {
-                                                        const current = prev.combatTarget || { name: '', resistances: [], immunities: [], conditions: [] };
-                                                        return { ...prev, combatTarget: { ...current, conditions: Array.from(new Set([...(current.conditions || []), label])) } };
-                                                    });
-                                                }} className="text-[9px] bg-amber-900/30 text-amber-200 border border-amber-700/50 px-1.5 py-0.5 rounded font-bold">
-                                                    Apply {attack.mastery.name}
-                                                </button>
-                                            )}
-                                            {attack.mastery.missDamage !== undefined && character.combatTarget?.hp !== undefined && (
-                                                <button onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setCharacter(prev => {
-                                                        if (!prev.combatTarget || prev.combatTarget.hp === undefined) return prev;
-                                                        return { ...prev, combatTarget: { ...prev.combatTarget, hp: Math.max(0, prev.combatTarget.hp - Number(attack.mastery.missDamage || 0)) } };
-                                                    });
-                                                }} className="text-[9px] bg-red-900/30 text-red-200 border border-red-700/50 px-1.5 py-0.5 rounded font-bold">
-                                                    Apply Miss Damage
-                                                </button>
-                                            )}
                                         </div>
                                     )}
                                     {attack.modifiers && attack.modifiers.length > 0 && (
@@ -316,8 +195,8 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                             )}
                                         </div>
                                         <div className="text-center text-[10px] text-gray-400 font-bold">{attack.range}</div>
-                                        <div className="flex justify-center"><button onClick={(e) => { e.stopPropagation(); roll(attack.damage, `Damage ${attack.name}`, undefined, (result) => applyTargetDamage(result.total, attack.type)); }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex flex-col items-center justify-center text-center"><span className="text-sm font-bold text-white">{attack.damage}</span><span className="text-[8px] text-gray-500 uppercase">{attack.type}</span></button></div>
-                                        <div className="flex justify-center"><button onClick={(e) => { if (attack.hit !== null) { e.stopPropagation(); roll(`1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`, undefined, (result) => recordAttackRoll(result.total)); } }} onContextMenu={(e) => { if (attack.hit !== null) { e.preventDefault(); e.stopPropagation(); triggerRollMenu(e, `1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); } }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex flex-col items-center justify-center text-center">{attack.hit !== null ? (<span className="text-sm font-bold text-white">{formatModifier(attack.hit)}</span>) : attack.save ? (<div className="flex flex-col items-center leading-none"><span className="text-[8px] font-bold text-gray-500 mb-0.5">{attack.save.type}</span><span className="text-sm font-bold text-white">DC {attack.save.dc}</span></div>) : ('-')}</button></div>
+                                        <div className="flex justify-center"><button onClick={(e) => { e.stopPropagation(); roll(attack.damage, `Damage ${attack.name}`); }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex flex-col items-center justify-center text-center"><span className="text-sm font-bold text-white">{attack.damage}</span><span className="text-[8px] text-gray-500 uppercase">{attack.type}</span></button></div>
+                                        <div className="flex justify-center"><button onClick={(e) => { if (attack.hit !== null) { e.stopPropagation(); roll(`1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); } }} onContextMenu={(e) => { if (attack.hit !== null) { e.preventDefault(); e.stopPropagation(); triggerRollMenu(e, `1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); } }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex flex-col items-center justify-center text-center">{attack.hit !== null ? (<span className="text-sm font-bold text-white">{formatModifier(attack.hit)}</span>) : attack.save ? (<div className="flex flex-col items-center leading-none"><span className="text-[8px] font-bold text-gray-500 mb-0.5">{attack.save.type}</span><span className="text-sm font-bold text-white">DC {attack.save.dc}</span></div>) : ('-')}</button></div>
                                     </div>
                                 ))}
                             </div>
@@ -337,8 +216,8 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                         <div className="text-[10px] text-gray-500 truncate">{attack.type}{attack.notes?.length ? ` • ${attack.notes.join(' • ')}` : ''}</div>
                                     </div>
                                     <div className="flex items-center gap-1.5 shrink-0">
-                                        <button onClick={(e) => { e.stopPropagation(); roll(attack.damage, `Damage ${attack.name}`, undefined, (result) => applyTargetDamage(result.total, attack.type)); }} className="px-2.5 py-2 bg-black/40 border border-gray-600/50 rounded-lg text-xs font-bold text-white min-w-[52px]">{attack.damage}</button>
-                                        <button onClick={(e) => { e.stopPropagation(); if (attack.hit !== null) roll(`1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`, undefined, (result) => recordAttackRoll(result.total)); }} className="px-2.5 py-2 bg-black/40 border border-gray-600/50 rounded-lg text-xs font-bold text-gray-300 min-w-[52px]">{attack.hit !== null ? formatModifier(attack.hit) : attack.save ? `DC ${attack.save.dc}` : '-'}</button>
+                                        <button onClick={(e) => { e.stopPropagation(); roll(attack.damage, `Damage ${attack.name}`); }} className="px-2.5 py-2 bg-black/40 border border-gray-600/50 rounded-lg text-xs font-bold text-white min-w-[52px]">{attack.damage}</button>
+                                        <button onClick={(e) => { e.stopPropagation(); if (attack.hit !== null) roll(`1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); }} className="px-2.5 py-2 bg-black/40 border border-gray-600/50 rounded-lg text-xs font-bold text-gray-300 min-w-[52px]">{attack.hit !== null ? formatModifier(attack.hit) : attack.save ? `DC ${attack.save.dc}` : '-'}</button>
                                     </div>
                                 </div>
                             ))}
@@ -452,29 +331,6 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                                     </button>
                                                 );
                                             })()}
-                                            {['topple','push','sap','slow','vex'].includes(String(attack.mastery.name).toLowerCase()) && (
-                                                <button onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    const label = String(attack.mastery.name);
-                                                    setCharacter(prev => {
-                                                        const current = prev.combatTarget || { name: '', resistances: [], immunities: [], conditions: [] };
-                                                        return { ...prev, combatTarget: { ...current, conditions: Array.from(new Set([...(current.conditions || []), label])) } };
-                                                    });
-                                                }} className="text-[9px] bg-amber-900/30 text-amber-200 border border-amber-700/50 px-1.5 py-0.5 rounded font-bold">
-                                                    Apply {attack.mastery.name}
-                                                </button>
-                                            )}
-                                            {attack.mastery.missDamage !== undefined && character.combatTarget?.hp !== undefined && (
-                                                <button onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setCharacter(prev => {
-                                                        if (!prev.combatTarget || prev.combatTarget.hp === undefined) return prev;
-                                                        return { ...prev, combatTarget: { ...prev.combatTarget, hp: Math.max(0, prev.combatTarget.hp - Number(attack.mastery.missDamage || 0)) } };
-                                                    });
-                                                }} className="text-[9px] bg-red-900/30 text-red-200 border border-red-700/50 px-1.5 py-0.5 rounded font-bold">
-                                                    Apply Miss Damage
-                                                </button>
-                                            )}
                                         </div>
                                     )}
                                     {attack.modifiers && attack.modifiers.length > 0 && (
@@ -494,8 +350,8 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                     )}
                                  </div>
                                  <div className="text-center text-[10px] text-gray-400 font-bold">{attack.range}</div>
-                                 <div className="flex justify-center"><button onClick={(e) => { e.stopPropagation(); roll(attack.damage, `Damage ${attack.name}`, undefined, (result) => applyTargetDamage(result.total, attack.type)); }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex flex-col items-center justify-center text-center"><span className="text-sm font-bold text-white">{attack.damage}</span><span className="text-[8px] text-gray-500 uppercase">{attack.type}</span></button></div>
-                                 <div className="flex justify-center"><button onClick={(e) => { if (attack.hit !== null) { e.stopPropagation(); roll(`1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`, undefined, (result) => recordAttackRoll(result.total)); } }} onContextMenu={(e) => { if (attack.hit !== null) { e.preventDefault(); e.stopPropagation(); triggerRollMenu(e, `1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); } }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex flex-col items-center justify-center text-center">{attack.hit !== null ? (<span className="text-sm font-bold text-white">{formatModifier(attack.hit)}</span>) : attack.save ? (<div className="flex flex-col items-center leading-none"><span className="text-[8px] font-bold text-gray-500 mb-0.5">{attack.save.type}</span><span className="text-sm font-bold text-white">DC {attack.save.dc}</span></div>) : ('-')}</button></div>
+                                 <div className="flex justify-center"><button onClick={(e) => { e.stopPropagation(); roll(attack.damage, `Damage ${attack.name}`); }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex flex-col items-center justify-center text-center"><span className="text-sm font-bold text-white">{attack.damage}</span><span className="text-[8px] text-gray-500 uppercase">{attack.type}</span></button></div>
+                                 <div className="flex justify-center"><button onClick={(e) => { if (attack.hit !== null) { e.stopPropagation(); roll(`1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); } }} onContextMenu={(e) => { if (attack.hit !== null) { e.preventDefault(); e.stopPropagation(); triggerRollMenu(e, `1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); } }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex flex-col items-center justify-center text-center">{attack.hit !== null ? (<span className="text-sm font-bold text-white">{formatModifier(attack.hit)}</span>) : attack.save ? (<div className="flex flex-col items-center leading-none"><span className="text-[8px] font-bold text-gray-500 mb-0.5">{attack.save.type}</span><span className="text-sm font-bold text-white">DC {attack.save.dc}</span></div>) : ('-')}</button></div>
                              </div>
                          ))}
                      </div>
@@ -521,8 +377,8 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                  <div className="text-[10px] text-gray-500 truncate">{attack.type}{attack.notes?.length ? ` • ${attack.notes.join(' • ')}` : ''}</div>
                              </div>
                              <div className="flex items-center gap-1.5 shrink-0">
-                                 <button onClick={(e) => { e.stopPropagation(); roll(attack.damage, `Damage ${attack.name}`, undefined, (result) => applyTargetDamage(result.total, attack.type)); }} className="px-2.5 py-2 bg-black/40 border border-gray-600/50 rounded-lg text-xs font-bold text-white min-w-[52px]">{attack.damage}</button>
-                                 <button onClick={(e) => { e.stopPropagation(); if (attack.hit !== null) roll(`1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`, undefined, (result) => recordAttackRoll(result.total)); }} className="px-2.5 py-2 bg-black/40 border border-gray-600/50 rounded-lg text-xs font-bold text-gray-300 min-w-[52px]">{attack.hit !== null ? formatModifier(attack.hit) : attack.save ? `DC ${attack.save.dc}` : '-'}</button>
+                                 <button onClick={(e) => { e.stopPropagation(); roll(attack.damage, `Damage ${attack.name}`); }} className="px-2.5 py-2 bg-black/40 border border-gray-600/50 rounded-lg text-xs font-bold text-white min-w-[52px]">{attack.damage}</button>
+                                 <button onClick={(e) => { e.stopPropagation(); if (attack.hit !== null) roll(`1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); }} className="px-2.5 py-2 bg-black/40 border border-gray-600/50 rounded-lg text-xs font-bold text-gray-300 min-w-[52px]">{attack.hit !== null ? formatModifier(attack.hit) : attack.save ? `DC ${attack.save.dc}` : '-'}</button>
                              </div>
                          </div>
                      ))}

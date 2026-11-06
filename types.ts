@@ -515,19 +515,6 @@ export interface DiceCustomizationOptions {
     soundEnabled?: boolean;
 }
 
-export interface CombatTarget {
-    name: string;
-    ac?: number;
-    hp?: number;
-    maxHp?: number;
-    resistances: string[];
-    immunities: string[];
-    conditions: string[];
-    notes?: string[];
-    lastAttack?: number;
-    lastHit?: boolean;
-}
-
 export interface CharacterState {
     id?: string;
     user_id?: string;
@@ -543,7 +530,6 @@ export interface CharacterState {
     freeCastUsage?: Record<string, number>;
     activeConditions?: Record<string, boolean>;
     abilitySource?: 'background' | 'race';
-    combatTarget?: CombatTarget | null;
     masteryUsage?: Record<string, boolean>;
     alignment: string;
     skills: string[];
