@@ -532,7 +532,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                  </div>
             </div>
             <div className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-xl overflow-hidden shadow-sm`}><div className="bg-[#121316]/80 px-6 py-2"><h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Actions in Combat</h3></div><div className="px-6 py-3 flex flex-wrap gap-2">{STANDARD_ACTIONS.map(act => (<div key={act.name} className="relative group"><button onClick={() => setSelectedDetail({ ...act, id: `action-${act.name}` })} className="px-2 py-1 bg-gray-800/80 border border-gray-600/50 rounded hover:border-white text-[10px] text-gray-300 font-bold transition-colors">{act.name}</button></div>))}</div></div>
-            <div className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-xl overflow-hidden shadow-sm`}><div className="bg-[#121316]/80 px-6 py-2 flex justify-between"><h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Bonus Actions</h3></div><div className="px-6 py-3 flex flex-wrap gap-2">{bonusActionList.length > 0 ? bonusActionList.map((act, i) => (
+            <div className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-xl overflow-hidden shadow-sm`}><div className="bg-[#121316]/80 px-6 py-2 flex justify-between"><h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Actions, Bonus Actions & Reactions</h3></div><div className="px-6 py-3 flex flex-wrap gap-2">{bonusActionList.length > 0 ? bonusActionList.map((act, i) => (
                 <div key={i} className="relative group">
                     <button 
                         onClick={() => setSelectedDetail(act.source && typeof act.source === 'object' ? { ...act.source, id: act.id } : act)} 
@@ -540,6 +540,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                     >
                         <span className="text-gray-500 scale-75">{renderActionIcon(act)}</span>
                         {act.name}
+                        {act.category && <span className="text-[8px] text-gray-500 uppercase">{act.category}</span>}
                     </button>
                     {act.source?.toggle && (
                         <button
