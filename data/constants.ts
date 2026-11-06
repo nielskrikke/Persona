@@ -87,6 +87,13 @@ export const ARTISAN_TOOLS = [
     "Woodcarver's tools"
 ];
 
+export const GAMING_SETS = [
+    "Dice Set",
+    "Dragonchess Set",
+    "Playing Card Set",
+    "Three-Dragon Ante Set"
+];
+
 export const STANDARD_ACTIONS = [
     { name: 'Attack', desc: 'Perform one attack with a weapon or unarmed strike. If you have the Extra Attack feature, you can attack more than once.' },
     { name: 'Dash', desc: 'Gain extra movement equal to your speed for the current turn.' },

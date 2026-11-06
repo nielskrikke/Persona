@@ -279,7 +279,7 @@ export const loadHomebrew = async (
         const key = getItemKey(item);
         if (!key) return;
         const existing = itemMap.get(key);
-        if (!existing || contentQualityScore(table, item) >= contentQualityScore(table, existing)) {
+        if (!existing || contentQualityScore(table, item) > contentQualityScore(table, existing)) {
             itemMap.set(key, {
                 ...item,
                 is_homebrew: item.is_homebrew ?? item.homebrew ?? true
@@ -291,7 +291,7 @@ export const loadHomebrew = async (
         const key = getItemKey(item);
         if (!key) return;
         const existing = itemMap.get(key);
-        if (!existing || contentQualityScore(table, item) >= contentQualityScore(table, existing)) {
+        if (!existing || contentQualityScore(table, item) > contentQualityScore(table, existing)) {
             itemMap.set(key, {
                 ...existing,
                 ...item,

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { CharacterClass, EquipmentDetail, InventoryItem } from '../../types';
 import { fetchEquipment, fetchEquipmentDetail } from '../../data/index';
 import ItemSearchModal from './ItemSearchModal';
+import ItemCustomizationModal from '../Sheet/Modals/ItemCustomizationModal';
 import { Search, Globe } from 'lucide-react';
 
 interface EquipmentStepProps {
@@ -45,6 +46,7 @@ const EquipmentStep: React.FC<EquipmentStepProps> = ({ onComplete, onBack, userI
     const [showSearchModal, setShowSearchModal] = useState(false);
     const [selectedClassKit, setSelectedClassKit] = useState(0);
     const [selectedKitMode, setSelectedKitMode] = useState<'kit' | 'gold'>('kit');
+    const [customizingItem, setCustomizingItem] = useState<EquipmentDetail | null>(null);
 
     const startingPacks = allEquipment
         .filter((item: any) => Array.isArray(item.contents) && item.contents.length > 0)
@@ -96,11 +98,12 @@ const EquipmentStep: React.FC<EquipmentStepProps> = ({ onComplete, onBack, userI
         [...selectedItems, ...kitItems].forEach(i => { counts[i] = (counts[i] || 0) + 1; });
 
         for (const [name, qty] of Object.entries(counts)) {
-            const match = allEquipment.find(eq => 
-                eq.name === name || 
-                name.includes(eq.name) || 
-                eq.name.includes(name.split(' (')[0])
-            );
+            const normalized = (value: string) => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+            const normalizedName = normalized(name);
+            const reversedName = normalizedName.split(' ').reverse().join(' ');
+            const match = allEquipment.find(eq => normalized(eq.name) === normalizedName)
+                || allEquipment.find(eq => !eq.is_magic && (normalized(eq.name) === reversedName || normalizedName.includes(normalized(eq.name))))
+                || allEquipment.find(eq => !eq.is_magic && normalized(eq.name).includes(normalizedName));
 
             if (match) {
                 const detail = await fetchEquipmentDetail(match.index, userId);
@@ -206,10 +209,27 @@ const EquipmentStep: React.FC<EquipmentStepProps> = ({ onComplete, onBack, userI
                             onClose={() => setShowSearchModal(false)}
                             items={allEquipment}
                             onSelectItem={(item) => {
+                                if ((item as any).template || (item as any).choice) {
+                                    setCustomizingItem(item);
+                                    return;
+                                }
                                 toggleItem(item.name);
                                 setShowSearchModal(false);
                             }}
                         />
+                        {customizingItem && (
+                            <ItemCustomizationModal
+                                item={customizingItem}
+                                allItems={allEquipment}
+                                onClose={() => setCustomizingItem(null)}
+                                onConfirm={(resolved) => {
+                                    setAllEquipment(prev => [...prev, resolved]);
+                                    toggleItem(resolved.name);
+                                    setCustomizingItem(null);
+                                    setShowSearchModal(false);
+                                }}
+                            />
+                        )}
                     </div>
                 </div>
 

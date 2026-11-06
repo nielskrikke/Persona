@@ -12,7 +12,7 @@ import SpellSelectionStep from './components/Builder/SpellSelectionStep';
 import { CharacterSheet } from './components/Sheet/CharacterSheet';
 import ErrorBoundary from './components/ErrorBoundary';
 import { getSpellSlots, SKILL_LIST, getCasterProfileFor, calculateMaxHp, mergeSpellSlotCurrents } from './utils/rules';
-import { STANDARD_LANGUAGES, ARTISAN_TOOLS } from './data/constants';
+import { STANDARD_LANGUAGES, ARTISAN_TOOLS, GAMING_SETS } from './data/constants';
 import { hydrateCharacterClasses, fetchAllSpells, hydrateGrantedSpells, fetchEquipment, fetchEquipmentDetail } from './data/index';
 import { saveCharacterToDb, loginUser } from './services/supabase';
 import AuthModal from './components/Auth/AuthModal';
@@ -552,7 +552,7 @@ const App: React.FC = () => {
                 type: 'tool',
                 label: itemStr,
                 value: [],
-                options: ARTISAN_TOOLS,
+                options: /gaming set/i.test(itemStr) ? GAMING_SETS : ARTISAN_TOOLS,
                 count: 1,
             });
             continue;
@@ -560,7 +560,12 @@ const App: React.FC = () => {
         const quantityMatch = itemStr.match(/\((\d+)\)\s*$/);
         const quantity = quantityMatch ? Number(quantityMatch[1]) : 1;
         const cleanName = itemStr.replace(/\s*\(\d+\)\s*$/, '').replace(/\s*\(any of your choice\)\s*$/i, '').trim();
+        const normalized = (value: string) => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+        const normalizedName = normalized(cleanName);
+        const reversedName = normalizedName.split(' ').reverse().join(' ');
         const detail = await fetchEquipmentDetail(cleanName.toLowerCase().replace(/[^a-z0-9]+/g, '-'), currentUser?.id)
+            || allItems.find(item => normalized(item.name) === normalizedName)
+            || allItems.find(item => !item.is_magic && (normalized(item.name) === reversedName || normalizedName.includes(normalized(item.name))))
             || byName.get(cleanName.toLowerCase());
         if (detail) {
             newInventory.push({

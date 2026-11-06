@@ -44,7 +44,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
 
   useEffect(() => {
     fetchEquipment().then(items => {
-      setMasteryWeapons(items.filter((item: any) => item.mastery).map((item: any) => ({ name: item.name, index: item.index })));
+      setMasteryWeapons(items.filter((item: any) => item.mastery && !item.is_magic && !item.base_item).map((item: any) => ({ name: item.name, index: item.index })));
     });
   }, []);
 

@@ -541,6 +541,19 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                         <span className="text-gray-500 scale-75">{renderActionIcon(act)}</span>
                         {act.name}
                     </button>
+                    {act.source?.toggle && (
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const key = act.source.toggle;
+                                setCharacter(prev => ({ ...prev, activeConditions: { ...(prev.activeConditions || {}), [key]: !prev.activeConditions?.[key] } }));
+                            }}
+                            className={`ml-1 px-2 py-1 rounded text-[9px] font-black uppercase border ${character.activeConditions?.[act.source.toggle] ? 'bg-dnd-gold text-black border-dnd-gold' : 'bg-black/40 text-gray-400 border-gray-600'}`}
+                        >
+                            {character.activeConditions?.[act.source.toggle] ? 'On' : 'Off'}
+                        </button>
+                    )}
                 </div>
             )) : (<div className="text-[10px] text-gray-500 italic">No bonus actions available.</div>)}</div></div>
         </div>

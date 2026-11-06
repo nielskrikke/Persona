@@ -3009,7 +3009,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     .flatMap((choice: any) => Array.isArray(choice.value) ? choice.value : [choice.value]);
                 const hasWeaponMastery = character.classFeatures.some(f => f.name.toLowerCase().includes('weapon mastery'))
                     || masteredWeapons.some((name: any) => String(name).toLowerCase() === item.name.toLowerCase());
-                if (hasWeaponMastery) notes.push(mastery);
+                if (hasWeaponMastery) { /* shown as a mastery modifier below */ }
             }
 
             let itemHitBonus = 0; let itemDamageBonus = 0; let itemExtraDamageDice: string[] = [];
@@ -3349,9 +3349,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             };
         }
 
-        const isChoice = f_item.name.includes(': ');
-        const baseName = isChoice ? f_item.name.split(': ')[0] : f_item.name.replace(/\s*\(.*?\)/, '').trim();
-        const selection = isChoice ? f_item.name.split(': ')[1] : null;
+        const featureName = String(f_item?.name || f_item?.spell_name || 'Feature');
+        const isChoice = featureName.includes(': ');
+        const baseName = isChoice ? featureName.split(': ')[0] : featureName.replace(/\s*\(.*?\)/, '').trim();
+        const selection = isChoice ? featureName.split(': ')[1] : null;
 
         if (isChoice) {
             for(const c_item of Library.getClasses()) {
@@ -3430,7 +3431,15 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
          // text saying "bonus action", is included.
          const featureSources = [
              ...(character.inventory || []).filter((item: any) => item.equipped).flatMap((item: any) =>
-                 (item.effects || []).map((effect: any) => ({ ...effect, source: item.name, desc: effect.description || effect.desc || [], itemId: item.id }))
+                 (item.effects || [])
+                     .filter((effect: any) => ['action', 'bonus_action', 'reaction'].includes(effect?.type))
+                     .map((effect: any) => ({
+                         ...effect,
+                         name: effect.name || effect.spell_name || item.name,
+                         source: item.name,
+                         desc: effect.description || effect.desc || [],
+                         itemId: item.id,
+                     }))
              ),
              ...(character.classFeatures || []),
              ...character.classes.flatMap(c => ((c.definition as any).feature_details || [])
@@ -3457,13 +3466,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
              (enriched.effects || []).forEach((eff: any) => {
                  if (eff.type !== 'bonus_action') return;
-                 if (!eff.name || list.some(item => item.name === eff.name)) return;
+                 const effectName = eff.name || eff.spell_name || feat.name; if (!effectName || list.some(item => item.name === effectName)) return;
                  list.push({
-                     id: `effect-${eff.name.toLowerCase().replace(/\s+/g, '-')}`,
-                     name: eff.name,
+                     id: `effect-${String(eff.name || eff.spell_name || 'effect').toLowerCase().replace(/\s+/g, '-')}`,
+                     name: effectName,
                      category: 'Action',
                      desc: [eff.description || eff.desc || (Array.isArray(enriched.desc) ? enriched.desc[0] : enriched.desc) || ''],
-                     source: { ...enriched, name: eff.name, desc: [eff.description || eff.desc || (Array.isArray(enriched.desc) ? enriched.desc[0] : enriched.desc) || ''] }
+                     source: { ...enriched, name: effectName, desc: [eff.description || eff.desc || (Array.isArray(enriched.desc) ? enriched.desc[0] : enriched.desc) || ''] }
                  });
              });
          });
