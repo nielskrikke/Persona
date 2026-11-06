@@ -49,6 +49,7 @@ const ItemCustomizeModal: React.FC<ItemCustomizeModalProps> = ({ item, allItems,
     const isWeaponItem = Boolean(item.weapon_category);
     const baseItems = allItems.filter(entry => {
         if (entry.is_magic) return false;
+        if (String((entry as any).source || '').toLowerCase() === 'legacy') return false;
         if (isWeaponItem) return Boolean(entry.weapon_category) && !/firearm/i.test(String((entry as any).category_range || ''));
         return Boolean(entry.armor_category);
     });
