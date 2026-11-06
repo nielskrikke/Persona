@@ -394,7 +394,7 @@ const InventoryTab: React.FC<InventoryTabProps> = ({
                                     return (
                                         <div key={item.id} onClick={() => setSelectedDetail({ ...item, isPartyItem: false })} className="grid grid-cols-[1fr_50px_80px_60px_40px] gap-2 items-center px-6 py-4 hover:bg-[#2e3036]/50 cursor-pointer group">
                                             <div className="min-w-0">
-                                                <div className={`font-bold text-sm truncate ${isWondrous ? 'text-purple-400' : isMagical ? 'text-sky-300' : 'text-gray-200'}`}>{item.name}</div>
+                                                <div className={`font-bold text-sm truncate ${isWondrous ? 'text-purple-400' : isMagical ? 'text-sky-300' : 'text-gray-200'}`}>{item.name}{(item as any).customized && <span className="ml-2 text-[8px] font-black uppercase tracking-widest text-dnd-gold bg-dnd-gold/10 border border-dnd-gold/30 rounded-full px-1.5 py-0.5">Customized</span>}</div>
                                             </div>
                                             <div className="text-center text-xs text-gray-400">{item.weight}</div>
                                             <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
@@ -423,7 +423,7 @@ const InventoryTab: React.FC<InventoryTabProps> = ({
                                 return (
                                     <div key={item.id} onClick={() => setSelectedDetail({ ...item, isPartyItem: false })} className="flex items-center gap-3 px-4 py-3 active:bg-[#2e3036]/60 transition-colors cursor-pointer">
                                         <div className="flex-1 min-w-0">
-                                            <div className={`font-bold text-sm truncate ${isWondrous ? 'text-purple-400' : isMagical ? 'text-sky-300' : 'text-gray-200'}`}>{item.name}</div>
+                                            <div className={`font-bold text-sm truncate ${isWondrous ? 'text-purple-400' : isMagical ? 'text-sky-300' : 'text-gray-200'}`}>{item.name}{(item as any).customized && <span className="ml-2 text-[8px] font-black uppercase tracking-widest text-dnd-gold bg-dnd-gold/10 border border-dnd-gold/30 rounded-full px-1.5 py-0.5">Customized</span>}</div>
                                             <div className="text-[10px] text-gray-500 truncate">
                                                 {item.weight} lb{item.requires_attunement ? ' • Requires Attunement' : ''}
                                             </div>

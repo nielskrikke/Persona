@@ -540,6 +540,14 @@ const DetailSidePanel = ({
                                 </button>
                             )
                         )}
+                        {isItemLike(fullDetail) && (
+                            <button
+                                onClick={() => onAction('customizeItem', fullDetail)}
+                                className="flex-1 py-1.5 bg-dnd-gold/20 text-dnd-gold hover:bg-dnd-gold/30 rounded font-bold uppercase text-[10px] tracking-wider transition-colors"
+                            >
+                                Customize
+                            </button>
+                        )}
                         {isItemLike(fullDetail) && ((fullDetail as any).use || (fullDetail as any).on_use_grant || ((fullDetail as any).effects || []).some((effect: any) => String(effect.target || '').toLowerCase() === 'temp_hp')) && (
                             <button
                                 onClick={() => onAction('useItem', fullDetail)}
@@ -640,6 +648,12 @@ const DetailSidePanel = ({
                         <div className="prose prose-invert prose-sm max-w-none text-gray-300">
                             {renderDescription(fullDetail.desc)}
                         </div>
+                        {(fullDetail as any).customNotes && (
+                            <div className="mt-3 rounded-lg border border-dnd-gold/20 bg-dnd-gold/5 p-3 text-xs text-gray-300">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-dnd-gold block mb-1">Custom Notes</span>
+                                {renderDescription((fullDetail as any).customNotes)}
+                            </div>
+                        )}
 
 
                         {fullDetail.higher_level && fullDetail.higher_level.length > 0 && (

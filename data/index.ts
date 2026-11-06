@@ -4,6 +4,7 @@ import { STANDARD_FAMILIARS } from './familiars';
 import { loadHomebrew } from '../services/supabase';
 import { ARTISAN_TOOLS } from './constants';
 import { SKILL_LIST } from '../utils/rules';
+import { mergeInventoryItem } from '../utils/itemInstances';
 
 export const CLASSES: any[] = [];
 export const SUBCLASSES: any[] = [];
@@ -824,35 +825,18 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
             }
             if (!latest) return item;
             if (migrated) {
-                return {
+                return mergeInventoryItem(latest, {
+                    ...item,
                     ...latest,
                     id: item.id,
                     quantity: item.quantity,
                     equipped: item.equipped,
                     attuned: item.attuned,
-                    isMonkWeapon: item.isMonkWeapon,
-                    isPactWeapon: item.isPactWeapon,
-                    isKenseiWeapon: item.isKenseiWeapon,
-                    isHexWeapon: item.isHexWeapon,
-                    isInfusion: item.isInfusion,
-                    isShillelagh: item.isShillelagh,
-                    isBattleReady: item.isBattleReady,
-                    wieldedTwoHanded: item.wieldedTwoHanded,
-                };
+                    overrides: item.overrides,
+                    customized: item.customized,
+                } as any, byIndex);
             }
-            return {
-                ...latest,
-                ...item,
-                // Keep the live definition for everything the instance didn't override.
-                name: item.name || latest.name,
-                damage: item.damage || latest.damage,
-                armor_class: item.armor_class || latest.armor_class,
-                properties: item.properties?.length ? item.properties : latest.properties,
-                effects: item.effects?.length ? item.effects : latest.effects,
-                modifiers: item.modifiers?.length ? item.modifiers : latest.modifiers,
-                resources: item.resources?.length ? item.resources : latest.resources,
-                mastery: item.mastery || latest.mastery,
-            };
+            return mergeInventoryItem(latest, item, byIndex);
         });
     } catch (e) {}
 

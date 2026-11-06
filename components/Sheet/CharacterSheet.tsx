@@ -21,6 +21,8 @@ import ShortRestModal from './Modals/ShortRestModal';
 import CustomActionModal from './Modals/CustomActionModal';
 import ItemSearchModal from '../Builder/ItemSearchModal';
 import ItemCustomizationModal from './Modals/ItemCustomizationModal';
+import ItemCustomizeModal from './Modals/ItemCustomizeModal';
+import { mergeInventoryItem } from '../../utils/itemInstances';
 import LayoutManagerModal from './Modals/LayoutManagerModal';
 import CustomSpellModal from './Modals/CustomSpellModal';
 import DiceCustomizerModal from './Modals/DiceCustomizerModal';
@@ -346,6 +348,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const [itemSearchMode, setItemSearchMode] = useState<'search' | 'custom'>('search');
     const [duplicateItem, setDuplicateItem] = useState<EquipmentDetail | null>(null);
     const [customizingItem, setCustomizingItem] = useState<EquipmentDetail | null>(null);
+    const [instanceCustomizingItem, setInstanceCustomizingItem] = useState<InventoryItem | null>(null);
     const [duplicateSpell, setDuplicateSpell] = useState<SpellDetail | null>(null);
     const [showLayoutManager, setShowLayoutManager] = useState(false);
     const [showCustomSpellModal, setShowCustomSpellModal] = useState(false);
@@ -3057,8 +3060,14 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             (item.effects || []).forEach((effect: any) => {
                 if (effect?.type !== 'attack_rider') return;
                 if (effect.requires_toggle && !character.activeConditions?.[effect.requires_toggle]) return;
-                if (effect.on === 'natural_20') return;
-                if (effect.vs && character.combatTarget?.conditions && !character.combatTarget.conditions.includes(effect.vs)) return;
+                if (effect.on === 'natural_20') {
+                    if (effect.damage) notes.push(`${effect.damage} ${effect.damage_type || ''} on a natural 20`.trim());
+                    return;
+                }
+                if (effect.vs && character.combatTarget?.conditions && !character.combatTarget.conditions.includes(effect.vs)) {
+                    if (effect.damage) notes.push(`${effect.damage} ${effect.damage_type || ''} vs ${effect.vs}`.trim());
+                    return;
+                }
                 const parsed = parseDamageBonus(effect.damage || '0');
                 itemDamageBonus += parsed.flat;
                 itemExtraDamageDice.push(...parsed.dice);
@@ -3751,6 +3760,44 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     onConfirm={addItemNow}
                 />
             )}
+            {instanceCustomizingItem && (
+                <ItemCustomizeModal
+                    item={instanceCustomizingItem}
+                    allItems={allEquipment}
+                    onClose={() => setInstanceCustomizingItem(null)}
+                    onSave={async (overrides) => {
+                        const original = await fetchEquipmentDetail(instanceCustomizingItem.index, currentUser?.id)
+                            || allEquipment.find(entry => entry.index === instanceCustomizingItem.index);
+                        const lookup = new Map(allEquipment.map(entry => [String(entry.index).toLowerCase(), entry]));
+                        const merged = mergeInventoryItem(original, { ...instanceCustomizingItem, overrides, customized: true }, lookup);
+                        setCharacter(prev => ({ ...prev, inventory: prev.inventory.map(entry => entry.id === instanceCustomizingItem.id ? merged : entry) }));
+                        setInstanceCustomizingItem(null);
+                    }}
+                    onReset={async () => {
+                        const original = await fetchEquipmentDetail(instanceCustomizingItem.index, currentUser?.id)
+                            || allEquipment.find(entry => entry.index === instanceCustomizingItem.index);
+                        if (!original) return;
+                        setCharacter(prev => ({ ...prev, inventory: prev.inventory.map(entry => entry.id === instanceCustomizingItem.id ? {
+                            ...original, id: entry.id, quantity: entry.quantity, equipped: entry.equipped, attuned: entry.attuned,
+                            overrides: undefined, customized: false, customNotes: undefined,
+                        } : entry) }));
+                        setInstanceCustomizingItem(null);
+                    }}
+                    onSaveHomebrew={async (name, isPublic) => {
+                        const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                        const { saveHomebrew } = await import('../../services/supabase');
+                        await saveHomebrew('custom_equipment', currentUser?.id, {
+                            ...instanceCustomizingItem,
+                            index: `${slug}-${Date.now()}`,
+                            name,
+                            is_magic: true,
+                            is_public: isPublic,
+                            is_homebrew: true,
+                        }, isPublic);
+                        alert('Saved to the Forge. The sheet item is unchanged.');
+                    }}
+                />
+            )}
             <LayoutManagerModal
                 isOpen={showLayoutManager}
                 onClose={() => setShowLayoutManager(false)}
@@ -3791,10 +3838,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         const byIndex = new Map(items.map(item => [String(item.index).toLowerCase(), item]));
                         setCharacter(prev => ({
                             ...prev,
-                            inventory: prev.inventory.map((item: any) => {
-                                const latest = byIndex.get(String(item.index || '').toLowerCase());
-                                return latest ? { ...latest, ...item } : item;
-                            }),
+                            inventory: prev.inventory.map((item: any) => mergeInventoryItem(byIndex.get(String(item.index || '').toLowerCase()), item, byIndex)),
                         }));
                     });
                 }}
@@ -4213,7 +4257,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     character={character}
                     activeModifiers={activeModifiers}
                     onClose={() => setSelectedDetail(null)}
-                    onAction={(action, itm) => {
+                    onAction={async (action, itm) => {
+                        if (action === 'customizeItem') {
+                            setInstanceCustomizingItem(itm);
+                            return;
+                        }
                         if (action === 'useItem') {
                             const use = itm?.use;
                             const consumes = Number(use?.consumes || 1);

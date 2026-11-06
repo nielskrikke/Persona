@@ -321,6 +321,21 @@ export interface BaseEquipment extends APIReference {
     source_book?: string;
     legacy_indexes?: string[];
     cursed?: boolean;
+    base_item?: string;
+    notes?: string;
+}
+
+export interface ItemOverrides {
+    name?: string;
+    notes?: string;
+    base_item?: string;
+    modifiers?: ItemModifier[];
+    effects?: any[];
+    resources?: any[];
+    requires_attunement?: boolean;
+    rarity?: string;
+    weight?: number;
+    choice_value?: string;
 }
 
 export interface InventoryItem extends Partial<BaseEquipment> {
@@ -340,6 +355,11 @@ export interface InventoryItem extends Partial<BaseEquipment> {
     thrownRange?: string;
     thrownDamage?: string;
     wieldedTwoHanded?: boolean;
+    overrides?: ItemOverrides;
+    customized?: boolean;
+    choice_value?: string;
+    base_item?: string;
+    customNotes?: string;
 }
 
 export interface EquipmentDetail extends BaseEquipment {
