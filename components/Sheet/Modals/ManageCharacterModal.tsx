@@ -2938,7 +2938,7 @@ const ManageCharacterModal = ({
                                                                         const hasDescriptions = options.some((opt: any) => typeof opt !== 'string' && opt.desc);
                                                                         
                                                                         return (
-                                                                            <div className={hasDescriptions ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2'}>
+                                                                            <div className={hasDescriptions ? 'grid grid-cols-1 xl:grid-cols-2 gap-3' : 'grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2'}>
                                                                                 {options.map((opt: any, idx: number) => {
                                                                                     const val = opt.index || opt.name || opt;
                                                                                     const name = opt.name || opt;
@@ -3002,7 +3002,7 @@ const ManageCharacterModal = ({
                                                                                 const selectedValues = Array.isArray(choice.value) ? choice.value : [choice.value];
                                                                                 const details = selectedValues.map((val, idx) => {
                                                                                     const opt = choice.options?.find((o: any) => (o.index || o.name || o) === val);
-                                                                                    const desc = opt?.desc || opt?.feature?.desc;
+                                                                                    const desc = opt?.desc || opt?.feature?.desc || opt?.description;
                                                                                     if (!desc) return null;
                                                                                     return (
                                                                                         <div key={idx} className={idx > 0 ? 'mt-2 pt-2 border-t border-gray-800/50' : ''}>
@@ -3334,7 +3334,7 @@ const ManageCharacterModal = ({
                                                                                                     const hasDescriptions = options.some((opt: any) => typeof opt !== 'string' && opt.desc);
 
                                                                                                     return (
-                                                                                                        <div className={hasDescriptions ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2'}>
+                                                                                                        <div className={hasDescriptions ? 'grid grid-cols-1 xl:grid-cols-2 gap-3' : 'grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2'}>
                                                                                                             {options.map((opt: any, idx: number) => {
                                                                                                                 const val = opt.index || opt.name || opt;
                                                                                                                 const name = opt.name || opt;
