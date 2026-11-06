@@ -44,6 +44,7 @@ const ManageCharacterModal = ({
     const [levelDownConfirm, setLevelDownConfirm] = useState<number | null>(null);
     const isChoiceComplete = (choice: any) => {
         if (!choice) return false;
+        if (choice.revertData?.pendingConfirm) return false;
         if (Array.isArray(choice.value)) return choice.value.length >= (choice.count || 1);
         return choice.value !== null && choice.value !== undefined && choice.value !== '';
     };
@@ -1265,6 +1266,7 @@ const ManageCharacterModal = ({
     const handleChoiceChange = async (choiceId: string, newValue: any) => {
         const choice = localChoices.find(c => c.id === choiceId);
         if (!choice) return;
+        setLocalChoices(prev => prev.map(c => c.id === choiceId ? { ...c, revertData: { ...c.revertData, pendingConfirm: true } } : c));
 
         if (choice.revertData?.isClassChoice) {
             setLocalChoices(prev => prev.map(currentChoice => {
@@ -1908,8 +1910,8 @@ const ManageCharacterModal = ({
         }
 
         if (finalValue) {
-            setLocalChoices(prev => prev.map(c => 
-                c.id === choiceId ? { ...c, value: finalValue } : c
+            setLocalChoices(prev => prev.map(c =>
+                c.id === choiceId ? { ...c, value: finalValue, revertData: { ...c.revertData, pendingConfirm: false } } : c
             ));
         }
     };
