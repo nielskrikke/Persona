@@ -2332,14 +2332,14 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     </div>
                 );
             case 'actions': {
-                const topAttacks = getAttacks().slice(0, 3);
+                const topAttacks = getAttacks().filter((att: any) => att.type !== 'Maneuver').slice(0, 3);
                 return (
                     <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
                         <div className="flex justify-between items-center mb-2 cursor-pointer hover:text-dnd-gold" onClick={() => setActiveTab('actions')}>
                             <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Actions</h3>
                             <span className="text-[10px] text-gray-500">View All &rarr;</span>
                         </div>
-                        <div className="space-y-1">{topAttacks.map((att, i) => (<div key={i} className="flex justify-between items-center text-xs text-gray-300"><span className="truncate w-24">{att.name}</span><span className="font-bold text-gray-400">+{att.hit || 0}</span></div>))}</div>
+                        <div className="space-y-1">{topAttacks.map((att, i) => (<div key={i} className="flex justify-between items-center text-xs text-gray-300"><span className="truncate w-24">{att.name}</span><span className="font-bold text-gray-400">{att.hit !== null && att.hit !== undefined ? formatModifier(att.hit) : att.save ? `DC ${att.save.dc}` : '-'}</span></div>))}</div>
                     </div>
                 );
             }

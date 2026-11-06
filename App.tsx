@@ -812,7 +812,7 @@ const App: React.FC = () => {
                 {phase === 'abilities' && <AbilityScoreStep race={character.race} initialScores={character.abilities} onSave={handleAbilitiesSave} onBack={handleBack} />}
                 {phase === 'leveling' && <LevelingStep character={character} onComplete={handleLevelingComplete} onBack={handleBack} />}
                 {phase === 'spells' && <SpellSelectionStep character={character} onComplete={handleSpellComplete} onBack={handleBack} />}
-                {phase === 'background' && <BackgroundStep onComplete={handleBackgroundComplete} onBack={handleBack} userId={currentUser?.id} currentSkills={character.skills} />}
+                {phase === 'background' && <BackgroundStep onComplete={handleBackgroundComplete} onBack={handleBack} userId={currentUser?.id} currentSkills={Array.from(new Set([...character.skills, ...((character.race as any)?.traits || []).flatMap((trait: any) => (trait.effects || []).filter((effect: any) => effect.type === 'proficiency' && effect.category === 'skill').map((effect: any) => effect.target || effect.value)), ...((character.subrace as any)?.traits || []).flatMap((trait: any) => (trait.effects || []).filter((effect: any) => effect.type === 'proficiency' && effect.category === 'skill').map((effect: any) => effect.target || effect.value))]))} />}
                 {phase === 'gear' && <EquipmentStep onComplete={handleEquipmentComplete} onBack={handleBack} userId={currentUser?.id} classes={character.classes} />}
               </div>
             </div>

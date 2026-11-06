@@ -378,6 +378,8 @@ const ManageCharacterModal = ({
                                     if (backfilled.some(existing => existing.id === choiceId)) return;
                                     const proficientSkills = Array.from(new Set([...character.skills, ...(character.toolProficiencies || [])]))
                                         .filter(skill => SKILL_LIST.some(entry => entry.name.toLowerCase() === String(skill).toLowerCase()));
+                                    const knownSkills = new Set([...character.skills, ...(character.toolProficiencies || [])].map(skill => String(skill).toLowerCase()));
+                                    const rawOptions = effect.options || (effect.type === 'expertise_choice' ? proficientSkills : effect.category === 'language' ? STANDARD_LANGUAGES : effect.category === 'tool' ? ARTISAN_TOOLS : effect.category === 'skill' ? SKILL_LIST.map(entry => entry.name) : []);
                                     backfilled.push({
                                         id: choiceId,
                                         level: cls.level,
@@ -388,7 +390,7 @@ const ManageCharacterModal = ({
                                             : effect.category === 'skill' ? 'skill' : 'other',
                                         label: effect.name || feature.name,
                                         value: stored?.value || (getChoiceCount(effect, cls.level) > 1 ? [] : null),
-                                        options: effect.options || (effect.type === 'expertise_choice' ? proficientSkills : effect.category === 'language' ? STANDARD_LANGUAGES : effect.category === 'tool' ? ARTISAN_TOOLS : effect.category === 'skill' ? SKILL_LIST.map(entry => entry.name) : []),
+                                        options: effect.category === 'skill' && effect.type === 'proficiency_choice' ? rawOptions.filter((option: any) => !knownSkills.has(String(option).toLowerCase())) : rawOptions,
                                         count: getChoiceCount(effect, cls.level),
                                         revertData: { classIndex, subclassIndex: liveSubclass.index },
                                     });
@@ -650,7 +652,8 @@ const ManageCharacterModal = ({
                 if (localChoices.some(choice => choice.id === choiceId)) return;
                 const proficientSkills = Array.from(new Set([...skills, ...(character.skills || [])]))
                     .filter(skill => SKILL_LIST.some(entry => entry.name.toLowerCase() === String(skill).toLowerCase()));
-                const options = effect.options
+                const knownSkills = new Set([...skills, ...(character.skills || [])].map(skill => String(skill).toLowerCase()));
+                const rawOptions = effect.options
                     || (effect.type === 'expertise_choice'
                         ? proficientSkills
                         : effect.category === 'language'
@@ -660,6 +663,9 @@ const ManageCharacterModal = ({
                                 : effect.category === 'skill'
                                     ? SKILL_LIST.map(skill => skill.name)
                                     : []);
+                const options = effect.category === 'skill' && effect.type === 'proficiency_choice'
+                    ? rawOptions.filter((option: any) => !knownSkills.has(String(option).toLowerCase()))
+                    : rawOptions;
                 newSubChoices.push({
                     id: choiceId,
                     level: clsDef.level,
