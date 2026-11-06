@@ -541,15 +541,31 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
         let hasChanges = false;
         const newUsage = { ...character.featureUsage };
+        const resources = getResourceDefinitions(character);
+        const activeNames = new Set(resources.map(resource => resource.name));
 
-        getResourceDefinitions(character).forEach(resource => {
+        resources.forEach(resource => {
             const existing = newUsage[resource.name];
-            if (!existing || existing.max !== resource.max) {
+            if (!existing || existing.max !== resource.max || existing.itemId !== resource.itemId) {
                 newUsage[resource.name] = {
                     max: resource.max,
                     current: existing ? Math.min(existing.current, resource.max) : resource.max,
-                    reset: resource.reset
+                    reset: resource.reset,
+                    itemId: resource.itemId,
+                    sourceType: resource.sourceType,
                 };
+                hasChanges = true;
+            }
+        });
+
+        Object.keys(newUsage).forEach(key => {
+            const entry = newUsage[key];
+            const isItemResource = entry?.sourceType === 'item' || Boolean(entry?.itemId) || /: (Charges?|Uses)$/i.test(key);
+            const matchesUnequippedItem = (character.inventory || []).some((item: any) =>
+                !item.equipped && (key.startsWith(`${item.name}: `) || key.startsWith(`${item.name} `))
+            );
+            if ((isItemResource && !activeNames.has(key)) || matchesUnequippedItem) {
+                delete newUsage[key];
                 hasChanges = true;
             }
         });

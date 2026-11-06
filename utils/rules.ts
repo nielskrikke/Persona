@@ -597,6 +597,8 @@ export interface CharacterResource {
     max: number;
     source?: string;
     regain?: string;
+    itemId?: string;
+    sourceType?: 'item';
 }
 
 /**
@@ -646,6 +648,8 @@ export const getResourceDefinitions = (character: CharacterState): CharacterReso
                 max,
                 source: item.name,
                 regain: resource.regain,
+                itemId: item.id,
+                sourceType: 'item',
             });
         });
     });

@@ -51,6 +51,7 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({ item, a
             ...base,
             ...item,
             ...(template?.overrides || {}),
+            weight: Number(item.weight) || Number((template?.overrides || {}).weight) || Number(base.weight) || 0,
             name: resolvedName,
             base_item: base.index,
             is_magic: true,
