@@ -365,9 +365,17 @@ const ManageCharacterModal = ({
                             .forEach((feature: any) => {
                                 (feature.effects || []).forEach((effect: any) => {
                                     if (!['feature_choice', 'expertise_choice', 'proficiency_choice'].includes(effect.type)) return;
-                                    const choiceId = `${feature.index}-${effect.type}-${cls.level}`;
+                                    const sameTypeCount = (feature.effects || []).filter((entry: any) => entry.type === effect.type).length;
+                                    const suffix = sameTypeCount > 1 ? `-${effect.category || (feature.effects || []).indexOf(effect)}` : '';
+                                    const generatedId = `${feature.index}-${effect.type}${suffix}-${cls.level}`;
+                                    const stored = character.choices.find((existing: any) => {
+                                        if (existing.id === generatedId) return true;
+                                        if (existing.label !== feature.name) return false;
+                                        const values = Array.isArray(existing.value) ? existing.value : [existing.value];
+                                        return values.some((value: any) => (effect.options || []).includes(value));
+                                    });
+                                    const choiceId = stored?.id || generatedId;
                                     if (backfilled.some(existing => existing.id === choiceId)) return;
-                                    const stored = character.choices.find((existing: any) => existing.id === choiceId);
                                     const proficientSkills = Array.from(new Set([...character.skills, ...(character.toolProficiencies || [])]))
                                         .filter(skill => SKILL_LIST.some(entry => entry.name.toLowerCase() === String(skill).toLowerCase()));
                                     backfilled.push({
@@ -633,9 +641,12 @@ const ManageCharacterModal = ({
         // Deft Explorer expertise, Student of War, etc.) need choice cards.
         const newSubChoices: LevelChoice[] = [];
         newFeats.forEach((feature: any) => {
-            (feature.effects || []).forEach((effect: any) => {
+            const effects = feature.effects || [];
+            effects.forEach((effect: any) => {
                 if (!['feature_choice', 'expertise_choice', 'proficiency_choice'].includes(effect.type)) return;
-                const choiceId = `${feature.index}-${effect.type}-${clsDef.level}`;
+                const sameTypeCount = effects.filter((entry: any) => entry.type === effect.type).length;
+                const suffix = sameTypeCount > 1 ? `-${effect.category || effects.indexOf(effect)}` : '';
+                const choiceId = `${feature.index}-${effect.type}${suffix}-${clsDef.level}`;
                 if (localChoices.some(choice => choice.id === choiceId)) return;
                 const proficientSkills = Array.from(new Set([...skills, ...(character.skills || [])]))
                     .filter(skill => SKILL_LIST.some(entry => entry.name.toLowerCase() === String(skill).toLowerCase()));

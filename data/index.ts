@@ -840,6 +840,12 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         });
     } catch (e) {}
 
+    const choices = (character.choices || []).map((choice: any) =>
+        choice.type === 'expertise'
+            ? { ...choice, options: Array.from(new Set([...(choice.options || []), ...Array.from(derivedSkills)])) }
+            : choice
+    );
+
     return hydrateGrantedSpells({
         ...character,
         race,
@@ -847,6 +853,7 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         classes,
         classFeatures,
         inventory,
+        choices,
         skills: Array.from(derivedSkills),
         toolProficiencies: Array.from(derivedTools),
     });

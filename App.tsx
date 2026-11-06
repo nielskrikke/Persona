@@ -591,7 +591,11 @@ const App: React.FC = () => {
     }
 
     const featChoices = (await Promise.all((extraData.feats || []).map(feat => buildFeatGrantChoices(feat, 'Background', 1)))).flat();
-    const finalChoices = mergeChoices(newChoices, featChoices);
+    const finalChoices = mergeChoices(newChoices, featChoices).map((choice: any) =>
+        choice.type === 'expertise'
+            ? { ...choice, options: Array.from(new Set([...(choice.options || []), ...newSkills])) }
+            : choice
+    );
     const nextMaxHp = calculateMaxHp({ ...character, abilities: newAbilities, feats: newFeats });
     const grantedSpells = await hydrateGrantedSpells({
         ...character,

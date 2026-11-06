@@ -527,7 +527,7 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
                 <section>
                   <h4 className="text-xs font-black text-gray-500 uppercase tracking-[0.2em] mb-4 border-b border-gray-800 pb-2">Traits</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {previewRace.traits.map((t: any) => (
+                    {previewRace.traits.filter((t: any) => !/ability score increase/i.test(t.name || '')).map((t: any) => (
                       <div key={t.index} className="bg-gray-800/30 border border-gray-700/50 p-3 rounded-lg group">
                         <div className="font-bold text-white text-sm mb-1 group-hover:text-dnd-gold transition-colors">{t.name}</div>
                         <p className="text-[10px] text-gray-500 leading-relaxed font-serif">{t.desc[0]}</p>

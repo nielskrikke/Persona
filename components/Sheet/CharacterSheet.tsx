@@ -3325,6 +3325,21 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             });
         });
 
+        character.choices.filter((choice: any) => /maneuver/i.test(choice.label || '') && Array.isArray(choice.value)).forEach((choice: any) => {
+            choice.value.forEach((maneuver: string, index: number) => {
+                attacks.push({
+                    id: `maneuver-${choice.id}-${index}`,
+                    name: maneuver,
+                    range: '-',
+                    hit: null,
+                    damage: '-',
+                    type: 'Maneuver',
+                    notes: ['Superiority Die'],
+                    source: { name: maneuver, desc: ['Battle Master maneuver. Expend a Superiority Die to use it.'] },
+                });
+            });
+        });
+
         character.inventory.forEach((item: any) => {
             if (!item.equipped) return;
             (item.effects || []).forEach((effect: any, index: number) => {
@@ -3651,6 +3666,17 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         character.feats.forEach((feat, idx) => list.push({ ...enrichFeature(feat), type: 'Feat', source: 'Feat', level: '-', uniqueId: `feat-${feat.index}-${idx}` }));
         character.race?.traits.filter((trait: any) => !/ability score increase/i.test(trait.name || '')).forEach((trait, idx) => list.push({ ...enrichFeature(trait), type: 'Race', source: character.race?.name, level: '-', uniqueId: `race-${trait.index}-${idx}` }));
         character.subrace?.traits.filter((trait: any) => !/ability score increase/i.test(trait.name || '')).forEach((trait, idx) => list.push({ ...enrichFeature(trait), type: 'Race', source: character.subrace?.name, level: '-', uniqueId: `subrace-${trait.index}-${idx}` }));
+
+        character.choices.filter((choice: any) => choice.type === 'feature_choice' && Array.isArray(choice.value) && choice.value.length > 0).forEach((choice: any, idx: number) => {
+            list.push({
+                name: choice.label || 'Feature Choice',
+                desc: [`Selected: ${choice.value.join(', ')}`],
+                type: 'Class',
+                source: choice.source || 'Class',
+                level: choice.level || '-',
+                uniqueId: `choice-feature-${idx}`,
+            });
+        });
 
         const deduped: any[] = [];
         const seenFeatureKeys = new Set<string>();
