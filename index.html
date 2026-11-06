@@ -120,6 +120,20 @@
       .markdown-body p {
         margin-bottom: 1rem;
       }
+
+      /* Builder modal: keep each step's action bar inside the modal instead of the viewport */
+      .builder-modal-content > div { height: 100%; min-height: 0; }
+      .builder-modal-content .fixed.bottom-0 {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 40;
+        padding: 12px 18px;
+        background: linear-gradient(to top, #121316 55%, rgba(18,19,22,0.9) 80%, transparent);
+      }
+      .builder-modal-content .pb-24, .builder-modal-content .pb-32 { padding-bottom: 5.5rem; }
+      .builder-modal-content .h-screen { height: 100%; }
     </style>
   <script type="importmap">
 {

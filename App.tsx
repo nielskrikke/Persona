@@ -639,6 +639,32 @@ const App: React.FC = () => {
   };
 
   const hasSpells = hasCasterClass(character.classes);
+  const builderSteps = [
+      { key: 'level', label: 'Level' },
+      { key: 'race', label: 'Race' },
+      { key: 'class', label: 'Class' },
+      { key: 'abilities', label: 'Stats' },
+      { key: 'leveling', label: 'Features' },
+      ...(hasSpells ? [{ key: 'spells', label: 'Spells' }] : []),
+      { key: 'background', label: 'Origin' },
+      { key: 'gear', label: 'Gear' },
+  ];
+  const builderStepIndex = Math.max(0, builderSteps.findIndex(step => step.key === phase));
+  const closeBuilder = () => {
+      if (window.confirm('Discard this character draft and close the forge?')) {
+          setPhase('welcome');
+          setShowDashboard(false);
+      }
+  };
+
+  useEffect(() => {
+      if (phase === 'welcome' || phase === 'sheet') return;
+      const handleKey = (event: KeyboardEvent) => {
+          if (event.key === 'Escape') closeBuilder();
+      };
+      window.addEventListener('keydown', handleKey);
+      return () => window.removeEventListener('keydown', handleKey);
+  }, [phase]);
 
   return (
     <div className="min-h-screen bg-[#0b0c0e] text-dnd-text font-sans selection:bg-dnd-gold selection:text-black">
@@ -656,31 +682,7 @@ const App: React.FC = () => {
           />
       )}
 
-      {phase !== 'welcome' && phase !== 'sheet' && (
-        <div className="fixed top-0 left-0 right-0 bg-[#121316] border-b border-[#3e4149] z-[100] shadow-xl pt-safe">
-           <div className="max-w-6xl mx-auto flex items-center h-16 px-6 overflow-x-auto whitespace-nowrap no-scrollbar">
-              {[
-                { key: 'level', label: 'Level' },
-                { key: 'race', label: 'Race' },
-                { key: 'class', label: 'Class' },
-                { key: 'abilities', label: 'Stats' },
-                { key: 'leveling', label: 'Features' },
-                ...(hasSpells ? [{ key: 'spells', label: 'Spells' }] : []),
-                { key: 'background', label: 'Origin' },
-                { key: 'gear', label: 'Gear' }
-              ].map((step, idx, arr) => (
-                <React.Fragment key={step.key}>
-                   <span className={`text-[10px] md:text-xs font-black uppercase tracking-widest transition-colors ${phase === step.key ? 'text-dnd-gold' : 'text-gray-600'}`}>
-                    {step.label}
-                   </span>
-                   {idx < arr.length - 1 && <span className="mx-3 text-gray-800 text-xs font-light">/</span>}
-                </React.Fragment>
-              ))}
-           </div>
-        </div>
-      )}
-
-      <div className={`h-screen ${phase !== 'welcome' && phase !== 'sheet' ? 'pt-safe-16 pb-0' : ''}`}>
+      <div className="min-h-screen">
 
         {phase === 'welcome' && (
           <div className="h-full flex flex-col items-center relative bg-[#0b0c0e] overflow-y-auto">
@@ -752,24 +754,63 @@ const App: React.FC = () => {
         </div>
         )}
 
-        {phase === 'level' && <LevelStep onSelect={handleLevelSelect} onBack={handleBack} />}
-        {phase === 'race' && <RaceStep onSelect={handleRaceSelect} selectedRace={character.race} onBack={handleBack} userId={currentUser?.id} />}
-        {phase === 'class' && (
-            <ClassStep
-                onSelect={handleClassSelect}
-                initialClasses={character.classes}
-                totalLevel={character.level}
-                onBack={handleBack}
-                currentSkills={character.skills}
-                currentTools={character.toolProficiencies}
-                userId={currentUser?.id}
-            />
+        {phase !== 'welcome' && phase !== 'sheet' && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 backdrop-blur-sm p-2 sm:p-5">
+            <div className="flex h-[94dvh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-[#3e4149] bg-[#121316] shadow-2xl">
+              <div className="flex shrink-0 items-center justify-between gap-4 border-b border-[#2e3036] px-4 py-3 sm:px-6">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-serif text-lg font-black tracking-tight text-dnd-gold">Character Forge</span>
+                    <span className="rounded-full border border-gray-700 bg-black/30 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-gray-500">
+                      Step {builderStepIndex + 1} / {builderSteps.length}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center gap-1 overflow-x-auto no-scrollbar">
+                    {builderSteps.map((step, index) => (
+                      <React.Fragment key={step.key}>
+                        <button
+                          type="button"
+                          disabled={index >= builderStepIndex}
+                          onClick={() => index < builderStepIndex && setPhase(step.key as BuilderPhase)}
+                          className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-widest transition-colors ${phase === step.key ? 'border-dnd-gold bg-dnd-gold/15 text-dnd-gold' : index < builderStepIndex ? 'border-gray-700 bg-black/30 text-gray-400 hover:border-gray-500' : 'border-transparent text-gray-700'}`}
+                        >
+                          {step.label}
+                        </button>
+                      </React.Fragment>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="hidden h-1.5 w-24 overflow-hidden rounded-full bg-gray-800 sm:block">
+                    <div className="h-full rounded-full bg-dnd-gold transition-all duration-300" style={{ width: `${((builderStepIndex + 1) / builderSteps.length) * 100}%` }} />
+                  </div>
+                  <button onClick={closeBuilder} className="rounded-lg border border-gray-700 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:border-red-700 hover:text-red-300">Close</button>
+                </div>
+              </div>
+              <div className="builder-modal-content relative min-h-0 flex-1 overflow-hidden">
+                {phase === 'level' && <LevelStep onSelect={handleLevelSelect} onBack={handleBack} />}
+                {phase === 'race' && <RaceStep onSelect={handleRaceSelect} selectedRace={character.race} onBack={handleBack} userId={currentUser?.id} />}
+                {phase === 'class' && (
+                    <ClassStep
+                        onSelect={handleClassSelect}
+                        initialClasses={character.classes}
+                        totalLevel={character.level}
+                        onBack={handleBack}
+                        currentSkills={character.skills}
+                        currentTools={character.toolProficiencies}
+                        userId={currentUser?.id}
+                    />
+                )}
+                {phase === 'abilities' && <AbilityScoreStep race={character.race} initialScores={character.abilities} onSave={handleAbilitiesSave} onBack={handleBack} />}
+                {phase === 'leveling' && <LevelingStep character={character} onComplete={handleLevelingComplete} onBack={handleBack} />}
+                {phase === 'spells' && <SpellSelectionStep character={character} onComplete={handleSpellComplete} onBack={handleBack} />}
+                {phase === 'background' && <BackgroundStep onComplete={handleBackgroundComplete} onBack={handleBack} userId={currentUser?.id} currentSkills={character.skills} />}
+                {phase === 'gear' && <EquipmentStep onComplete={handleEquipmentComplete} onBack={handleBack} userId={currentUser?.id} classes={character.classes} />}
+              </div>
+            </div>
+          </div>
         )}
-        {phase === 'abilities' && <AbilityScoreStep race={character.race} initialScores={character.abilities} onSave={handleAbilitiesSave} onBack={handleBack} />}
-        {phase === 'leveling' && <LevelingStep character={character} onComplete={handleLevelingComplete} onBack={handleBack} />}
-        {phase === 'spells' && <SpellSelectionStep character={character} onComplete={handleSpellComplete} onBack={handleBack} />}
-        {phase === 'background' && <BackgroundStep onComplete={handleBackgroundComplete} onBack={handleBack} userId={currentUser?.id} currentSkills={character.skills} />}
-        {phase === 'gear' && <EquipmentStep onComplete={handleEquipmentComplete} onBack={handleBack} userId={currentUser?.id} classes={character.classes} />}
+
         {phase === 'sheet' && (
             <ErrorBoundary>
                 <CharacterSheet
