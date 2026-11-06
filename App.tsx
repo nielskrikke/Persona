@@ -229,6 +229,7 @@ const App: React.FC = () => {
       } catch (e) {
           console.warn('Could not hydrate class definitions from the content library', e);
       }
+      if (!hydrated.abilitySource) hydrated = { ...hydrated, abilitySource: 'race' };
       hydrated = {
           ...hydrated,
           spellSlots: mergeSpellSlotCurrents(getSpellSlots(hydrated.classes), hydrated.spellSlots),
@@ -282,6 +283,7 @@ const App: React.FC = () => {
             } catch (e) {
                 console.warn('Could not hydrate imported class definitions', e);
             }
+            if (!hydrated.abilitySource) hydrated = { ...hydrated, abilitySource: 'race' };
             setCharacter({ ...freshStart, ...hydrated });
             setPhase('sheet');
         } else {
