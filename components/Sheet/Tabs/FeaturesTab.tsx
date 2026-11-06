@@ -14,6 +14,28 @@ interface FeaturesTabProps {
     onShowFullScreen: () => void;
 }
 
+const formatResourceName = (name: string, level: number): string => {
+    const bardicSteps: [number, string][] = [[1, 'd6'], [5, 'd8'], [10, 'd10'], [15, 'd12']];
+    if (/^bardic inspiration/i.test(name)) {
+        const die = [...bardicSteps].reverse().find(([threshold]) => level >= threshold)?.[1] || 'd6';
+        return `Bardic Inspiration (${die})`;
+    }
+    const progression = name.match(/\((.*?)\)/);
+    if (progression && /d\d+/i.test(progression[1])) {
+        const baseDie = progression[1].match(/d\d+/i)?.[0] || '';
+        let current = baseDie.toLowerCase();
+        const upgrades = Array.from(progression[1].matchAll(/d(\d+)\s+at\s+(\d+)/gi));
+        upgrades.forEach(match => {
+            if (level >= Number(match[2])) current = `d${match[1]}`;
+        });
+        return `${name.slice(0, progression.index).trim()} (${current})`;
+    }
+    if (progression && /→/.test(progression[1])) {
+        return name.slice(0, progression.index).trim();
+    }
+    return name;
+};
+
 const FeaturesTab: React.FC<FeaturesTabProps> = ({ character, setCharacter, getAllFeatures, setSelectedDetail, onTabChange, setShowHomebrewModal, setShowCardOptionsModal, onShowFullScreen }) => {
     const [featureFilter, setFeatureFilter] = useState('All');
     const [featureSearch, setFeatureSearch] = useState('');
@@ -92,8 +114,8 @@ const FeaturesTab: React.FC<FeaturesTabProps> = ({ character, setCharacter, getA
                                 <div key={name} className={`${WIDGET_BG} border border-[#3e4149]/50 hover:border-gray-600 rounded-xl p-4 shadow-xl transition-all group`}>
                                     <div className="flex justify-between items-start mb-3">
                                         <div className="overflow-hidden">
-                                            <h4 className="font-bold text-white text-sm truncate group-hover:text-dnd-gold transition-colors">{name}</h4>
-                                            <div className="text-[9px] text-gray-500 font-bold tracking-tight">Resets on {usage.reset || 'long'} rest</div>
+                                            <h4 className="font-bold text-white text-sm truncate group-hover:text-dnd-gold transition-colors">{formatResourceName(name, character.level)}</h4>
+                                            <div className="text-[9px] text-gray-500 font-bold tracking-tight">Resets on {usage.reset === 'short' ? 'Short' : 'Long'} Rest</div>
                                         </div>
                                         <div className="bg-black/40 px-2 py-0.5 rounded border border-gray-800 text-[10px] font-bold text-gray-400">
                                             {usage.current} / {usage.max}
@@ -101,17 +123,19 @@ const FeaturesTab: React.FC<FeaturesTabProps> = ({ character, setCharacter, getA
                                     </div>
                                     <div className="flex flex-wrap gap-1.5">
                                         {Array.from({ length: usage.max }).map((_, i) => (
-                                            <div 
-                                                key={i} 
+                                            <button
+                                                type="button"
+                                                key={i}
+                                                aria-label={`${formatResourceName(name, character.level)} use ${i + 1}`}
                                                 onClick={() => {
                                                     const targetUsed = i + 1;
                                                     const finalUsed = usedCount === targetUsed ? i : targetUsed;
                                                     updateFeatureUsage(name, finalUsed);
                                                 }}
-                                                className={`w-4 h-4 rounded-full border transition-all ${
-                                                    i < usedCount 
-                                                    ? 'bg-dnd-red border-dnd-red shadow-[inset_0_0_5px_rgba(0,0,0,0.5)]' 
-                                                    : 'bg-transparent border-gray-600 hover:border-gray-500'
+                                                className={`h-4 w-4 cursor-pointer rounded-full border transition-all ${
+                                                    i < usedCount
+                                                    ? 'bg-dnd-red border-dnd-red shadow-[inset_0_0_5px_rgba(0,0,0,0.5)]'
+                                                    : 'bg-transparent border-gray-600 hover:border-dnd-gold hover:bg-dnd-gold/10'
                                                 }`}
                                             />
                                         ))}
