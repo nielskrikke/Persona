@@ -6,7 +6,7 @@ import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, ge
 import { rollDice } from '../../utils/dice';
 import CreatureManagerModal from './Modals/CreatureManagerModal';
 import { WIDGET_LABELS, DEFAULT_LAYOUT, STANDARD_CONDITIONS, STANDARD_ACTIONS, STATIC_RULES, WIDGET_BG } from '../../data/constants';
-import { Library, fetchEquipment, fetchEquipmentDetail } from '../../data/index';
+import { Library, fetchEquipment, fetchEquipmentDetail, hydrateGrantedSpells } from '../../data/index';
 import DiceRoller3D, { DiceBoxRollRequest } from './Shared/DiceRoller3D';
 import { DiceBoxGroupResult } from '@3d-dice/dice-box';
 import { parseRollFormula, evaluateParsedFormula, evaluateFallbackRoll, ParsedRollFormula } from '../../utils/diceNotation';
@@ -520,6 +520,20 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         };
         loadEquipment();
     }, [currentUser?.id]);
+
+    const inventoryEquipKey = (character.inventory || [])
+        .map((item: any) => `${item.id}:${item.equipped ? 1 : 0}:${item.attuned ? 1 : 0}:${item.quantity}`)
+        .join('|');
+    useEffect(() => {
+        if (!inventoryEquipKey) return;
+        let cancelled = false;
+        hydrateGrantedSpells(character).then(hydrated => {
+            if (cancelled) return;
+            if (JSON.stringify(hydrated.spells) === JSON.stringify(character.spells)) return;
+            setCharacter(prev => ({ ...prev, spells: hydrated.spells }));
+        });
+        return () => { cancelled = true; };
+    }, [inventoryEquipKey]);
 
     // Sync featureUsage with the class/subclass resources from the content library
     useEffect(() => {
@@ -3013,6 +3027,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             }
 
             let itemHitBonus = 0; let itemDamageBonus = 0; let itemExtraDamageDice: string[] = [];
+            const riderDamageTypes = new Set<string>();
             item.modifiers?.forEach(mod => {
                 if (mod.type === 'bonus') {
                     if (mod.target === 'attack') itemHitBonus += Number(mod.value) || 0;
@@ -3031,6 +3046,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const parsed = parseDamageBonus(effect.damage || '0');
                 itemDamageBonus += parsed.flat;
                 itemExtraDamageDice.push(...parsed.dice);
+                if (effect.damage_type) riderDamageTypes.add(String(effect.damage_type));
                 if (effect.damage) notes.push(`${effect.name || 'Rider'} ${effect.damage}${effect.damage_type ? ` ${effect.damage_type}` : ''}`);
             });
 
@@ -3136,7 +3152,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 range: rangeStr,
                 hit: finalHit,
                 damage: displayDamage,
-                type: damageType,
+                type: [damageType, ...Array.from(riderDamageTypes)].join(' + '),
                 attackCount,
                 notes: finalNotes,
                 source: item
@@ -3439,6 +3455,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                          source: item.name,
                          desc: effect.description || effect.desc || [],
                          itemId: item.id,
+                         itemName: item.name,
+                         isItemEffect: true,
+                         effectType: effect.type,
                      }))
              ),
              ...(character.classFeatures || []),
@@ -3451,6 +3470,18 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
          ];
 
          featureSources.forEach(feat => {
+             if (feat.isItemEffect) {
+                 const effectName = feat.name || feat.spell_name || feat.itemName;
+                 if (!effectName || list.some(item => item.name === effectName)) return;
+                 list.push({
+                     id: `item-effect-${feat.itemId}-${String(effectName).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+                     name: effectName,
+                     category: feat.effectType === 'reaction' ? 'Reaction' : feat.effectType === 'action' ? 'Action' : 'Bonus Action',
+                     desc: [feat.description || feat.desc || ''],
+                     source: feat,
+                 });
+                 return;
+             }
              const enriched = enrichFeature(feat);
              const descStr = Array.isArray(enriched.desc)
                  ? enriched.desc.join(' ').toLowerCase()

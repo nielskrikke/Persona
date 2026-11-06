@@ -563,7 +563,9 @@ const App: React.FC = () => {
         const normalized = (value: string) => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
         const normalizedName = normalized(cleanName);
         const reversedName = normalizedName.split(' ').reverse().join(' ');
-        const detail = await fetchEquipmentDetail(cleanName.toLowerCase().replace(/[^a-z0-9]+/g, '-'), currentUser?.id)
+        const aliasIndex = normalizedName.includes('traveler') && normalizedName.includes('clothes') ? 'clothes-traveler' : '';
+        const detail = (aliasIndex ? allItems.find(item => item.index === aliasIndex) : null)
+            || await fetchEquipmentDetail(cleanName.toLowerCase().replace(/[^a-z0-9]+/g, '-'), currentUser?.id)
             || allItems.find(item => normalized(item.name) === normalizedName)
             || allItems.find(item => !item.is_magic && (normalized(item.name) === reversedName || normalizedName.includes(normalized(item.name))))
             || byName.get(cleanName.toLowerCase());

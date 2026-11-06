@@ -547,6 +547,26 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                             onClick={(e) => {
                                 e.stopPropagation();
                                 const key = act.source.toggle;
+                                const cost = act.source.cost;
+                                if (cost && !character.activeConditions?.[key]) {
+                                    const item = character.inventory.find((entry: any) => entry.id === act.source.itemId);
+                                    const resource = (item?.resources || []).find((entry: any) => entry.key === cost.resource);
+                                    const resourceName = item && resource ? `${item.name}: ${resource.name || resource.key}` : '';
+                                    const usage = character.featureUsage?.[resourceName];
+                                    if (!item || !usage || Number(usage.current) < Number(cost.amount || 1)) {
+                                        alert(`${act.name} does not have enough charges.`);
+                                        return;
+                                    }
+                                    setCharacter(prev => ({
+                                        ...prev,
+                                        activeConditions: { ...(prev.activeConditions || {}), [key]: true },
+                                        featureUsage: {
+                                            ...prev.featureUsage,
+                                            [resourceName]: { ...usage, current: Number(usage.current) - Number(cost.amount || 1) },
+                                        },
+                                    }));
+                                    return;
+                                }
                                 setCharacter(prev => ({ ...prev, activeConditions: { ...(prev.activeConditions || {}), [key]: !prev.activeConditions?.[key] } }));
                             }}
                             className={`ml-1 px-2 py-1 rounded text-[9px] font-black uppercase border ${character.activeConditions?.[act.source.toggle] ? 'bg-dnd-gold text-black border-dnd-gold' : 'bg-black/40 text-gray-400 border-gray-600'}`}
