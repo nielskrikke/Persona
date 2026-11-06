@@ -110,7 +110,6 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                     ))}
                 </div>
                 <div className="flex gap-2">
-                    <button onClick={() => setCharacter(prev => ({ ...prev, masteryUsage: {} }))} className="text-[10px] text-gray-400 font-bold uppercase border border-gray-700 bg-black/40 px-3 py-1.5 rounded hover:border-dnd-gold hover:text-dnd-gold transition-colors">New Turn</button>
                     <button onClick={() => setShowCustomActionModal(true)} className="text-[10px] text-dnd-red font-bold uppercase border border-dnd-red bg-black/40 px-3 py-1.5 rounded hover:bg-dnd-red hover:text-white transition-colors">Manage Custom</button>
                 </div>
             </div>
@@ -157,21 +156,15 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                                     Miss: {attack.mastery.missDamage}
                                                 </button>
                                             )}
-                                            {attack.mastery.extraAttack && (() => {
-                                                const masteryKey = `${attack.mastery.name}-${attack.id}`;
-                                                const used = !!character.masteryUsage?.[masteryKey];
-                                                return (
-                                                    <button disabled={used} onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (used) return;
-                                                        if (attack.mastery.hit !== null) roll(`1d20${formatModifier(attack.mastery.hit)}`, `Extra Attack ${attack.name}`);
-                                                        if (attack.mastery.damage) roll(attack.mastery.damage, `Extra Damage ${attack.name}`);
-                                                        setCharacter(prev => ({ ...prev, masteryUsage: { ...(prev.masteryUsage || {}), [masteryKey]: true } }));
-                                                    }} className={`text-[9px] border px-1.5 py-0.5 rounded font-bold ${used ? 'bg-gray-800/50 text-gray-600 border-gray-700 cursor-not-allowed' : 'bg-emerald-900/30 text-emerald-200 border-emerald-700/50'}`}>
-                                                        {used ? 'Extra Attack Used' : 'Extra Attack'}
-                                                    </button>
-                                                );
-                                            })()}
+                                            {attack.mastery.extraAttack && (
+                                                <button onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (attack.mastery.hit !== null) roll(`1d20${formatModifier(attack.mastery.hit)}`, `Extra Attack ${attack.name}`);
+                                                    if (attack.mastery.damage) roll(attack.mastery.damage, `Extra Damage ${attack.name}`);
+                                                }} className="text-[9px] border px-1.5 py-0.5 rounded font-bold bg-emerald-900/30 text-emerald-200 border-emerald-700/50">
+                                                    Extra Attack
+                                                </button>
+                                            )}
                                         </div>
                                     )}
                                     {attack.modifiers && attack.modifiers.length > 0 && (
@@ -316,21 +309,15 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                                     Miss: {attack.mastery.missDamage}
                                                 </button>
                                             )}
-                                            {attack.mastery.extraAttack && (() => {
-                                                const masteryKey = `${attack.mastery.name}-${attack.id}`;
-                                                const used = !!character.masteryUsage?.[masteryKey];
-                                                return (
-                                                    <button disabled={used} onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (used) return;
-                                                        if (attack.mastery.hit !== null) roll(`1d20${formatModifier(attack.mastery.hit)}`, `Extra Attack ${attack.name}`);
-                                                        if (attack.mastery.damage) roll(attack.mastery.damage, `Extra Damage ${attack.name}`);
-                                                        setCharacter(prev => ({ ...prev, masteryUsage: { ...(prev.masteryUsage || {}), [masteryKey]: true } }));
-                                                    }} className={`text-[9px] border px-1.5 py-0.5 rounded font-bold ${used ? 'bg-gray-800/50 text-gray-600 border-gray-700 cursor-not-allowed' : 'bg-emerald-900/30 text-emerald-200 border-emerald-700/50'}`}>
-                                                        {used ? 'Extra Attack Used' : 'Extra Attack'}
-                                                    </button>
-                                                );
-                                            })()}
+                                            {attack.mastery.extraAttack && (
+                                                <button onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (attack.mastery.hit !== null) roll(`1d20${formatModifier(attack.mastery.hit)}`, `Extra Attack ${attack.name}`);
+                                                    if (attack.mastery.damage) roll(attack.mastery.damage, `Extra Damage ${attack.name}`);
+                                                }} className="text-[9px] border px-1.5 py-0.5 rounded font-bold bg-emerald-900/30 text-emerald-200 border-emerald-700/50">
+                                                    Extra Attack
+                                                </button>
+                                            )}
                                         </div>
                                     )}
                                     {attack.modifiers && attack.modifiers.length > 0 && (

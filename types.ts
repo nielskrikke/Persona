@@ -530,7 +530,6 @@ export interface CharacterState {
     freeCastUsage?: Record<string, number>;
     activeConditions?: Record<string, boolean>;
     abilitySource?: 'background' | 'race';
-    masteryUsage?: Record<string, boolean>;
     alignment: string;
     skills: string[];
     expertise: string[];
