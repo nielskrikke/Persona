@@ -557,7 +557,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         if (hasChanges) {
             setCharacter(prev => ({ ...prev, featureUsage: newUsage }));
         }
-    }, [character?.classes, character?.abilities, character?.level]);
+    }, [character?.classes, character?.abilities, character?.level, inventoryEquipKey]);
 
     let prof = calculateProficiency(character.level);
 
@@ -3435,7 +3435,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                  list.push({
                      id: spell.index,
                      name: spell.name,
-                     category: 'Action',
+                     category: 'Bonus Action',
                      desc: `Cast ${spell.name} as a bonus action.`,
                      source: spell
                  });
@@ -3491,7 +3491,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                  list.push({
                      ...enriched,
                      id: enriched.id || `feature-${enriched.index || enriched.name.toLowerCase().replace(/\s+/g, '-')}`,
-                     category: 'Action'
+                     category: 'Bonus Action'
                  });
              }
 
@@ -3501,7 +3501,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                  list.push({
                      id: `effect-${String(eff.name || eff.spell_name || 'effect').toLowerCase().replace(/\s+/g, '-')}`,
                      name: effectName,
-                     category: 'Action',
+                     category: eff.type === 'reaction' ? 'Reaction' : eff.type === 'action' ? 'Action' : 'Bonus Action',
                      desc: [eff.description || eff.desc || (Array.isArray(enriched.desc) ? enriched.desc[0] : enriched.desc) || ''],
                      source: { ...enriched, name: effectName, desc: [eff.description || eff.desc || (Array.isArray(enriched.desc) ? enriched.desc[0] : enriched.desc) || ''] }
                  });

@@ -108,7 +108,8 @@ const EquipmentStep: React.FC<EquipmentStepProps> = ({ onComplete, onBack, userI
                 || searchPool.find(eq => !eq.is_magic && normalized(eq.name).includes(normalizedName));
 
             if (match) {
-                const detail = await fetchEquipmentDetail(match.index, userId);
+                const isResolvedCopy = resolvedItemsRef.current.includes(match) || Boolean((match as any).base_item && (match as any).damage);
+                const detail = isResolvedCopy ? match : await fetchEquipmentDetail(match.index, userId);
                 if (detail) {
                     finalInventory.push({
                         ...detail,
