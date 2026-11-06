@@ -644,7 +644,7 @@ const App: React.FC = () => {
       { key: 'race', label: 'Race' },
       { key: 'class', label: 'Class' },
       { key: 'abilities', label: 'Stats' },
-      { key: 'leveling', label: 'Features' },
+      { key: 'leveling', label: 'Build' },
       ...(hasSpells ? [{ key: 'spells', label: 'Spells' }] : []),
       { key: 'background', label: 'Origin' },
       { key: 'gear', label: 'Gear' },

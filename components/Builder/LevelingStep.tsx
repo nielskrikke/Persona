@@ -130,9 +130,6 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
             const item = q[i];
             setStatus(`Processing ${item.className} Level ${item.level}...`);
             
-            // Small delay for visual feedback
-            await new Promise(resolve => setTimeout(resolve, 300));
-
             const features = await fetchLevelFeatures(item.classIndex, item.level);
             
             // Add non-choice features directly
@@ -217,7 +214,6 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
         }
 
         setStatus("Finalizing character...");
-        await new Promise(resolve => setTimeout(resolve, 500));
         finish();
     };
 
