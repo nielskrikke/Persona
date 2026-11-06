@@ -840,11 +840,15 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         });
     } catch (e) {}
 
-    const choices = (character.choices || []).map((choice: any) =>
-        choice.type === 'expertise'
-            ? { ...choice, options: Array.from(new Set([...(choice.options || []), ...Array.from(derivedSkills)])) }
-            : choice
-    );
+    const choices = (character.choices || []).map((choice: any) => {
+        if (choice.type === 'expertise') {
+            return { ...choice, options: Array.from(new Set([...(choice.options || []), ...Array.from(derivedSkills)])) };
+        }
+        if (choice.type === 'skill' && !choice.value) {
+            return { ...choice, options: (choice.options || []).filter((option: any) => !derivedSkills.has(String(option))) };
+        }
+        return choice;
+    });
 
     return hydrateGrantedSpells({
         ...character,
