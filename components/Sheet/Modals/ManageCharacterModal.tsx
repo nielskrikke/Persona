@@ -1977,14 +1977,14 @@ const ManageCharacterModal = ({
             onClick={onClose}
         >
             <div 
-                className="bg-[#1b1c20] border border-gray-800 w-full max-w-6xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300"
+                className="bg-[#1b1c20] border border-gray-800 w-full max-w-6xl max-h-[94dvh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="p-6 bg-[#121316] border-b border-gray-800 flex justify-between items-center">
+                <div className="shrink-0 p-4 sm:p-6 bg-[#121316] border-b border-gray-800 flex justify-between items-center">
                     <div>
-                        <h2 className="text-2xl font-serif text-white">Manage Character</h2>
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">
+                        <h2 className="text-xl sm:text-2xl font-serif text-white">Manage Character</h2>
+                        <p className="hidden sm:block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">
                             Refine your hero's identity, abilities, and appearance
                         </p>
                     </div>
@@ -1997,7 +1997,7 @@ const ManageCharacterModal = ({
                 </div>
 
                 {/* Tabs */}
-                <div className="px-3 sm:px-6 py-1 bg-[#16171a] border-b border-gray-800 flex gap-2 overflow-x-auto no-scrollbar whitespace-nowrap">
+                <div className="shrink-0 min-h-[44px] px-3 sm:px-6 py-1 bg-[#16171a] border-b border-gray-800 flex items-center gap-2 overflow-x-auto no-scrollbar whitespace-nowrap">
                     {[
                         { id: 'identity', label: 'Identity', icon: User },
                         { id: 'classes', label: 'Classes', icon: GraduationCap },
@@ -2029,7 +2029,7 @@ const ManageCharacterModal = ({
                     })}
                 </div>
 
-                <div className="flex-grow overflow-y-auto custom-scrollbar p-4 sm:p-8 bg-[#1b1c20]">
+                <div className="min-h-0 flex-grow overflow-y-auto custom-scrollbar p-4 sm:p-8 bg-[#1b1c20]">
                     
                     {/* IDENTITY TAB */}
                     {tab === 'identity' && (
@@ -2594,10 +2594,10 @@ const ManageCharacterModal = ({
 
                     {/* CHOICES TAB */}
                     {tab === 'choices' && (
-                        <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300 p-0">
-                            <div className="flex justify-between items-center mb-4">
+                        <div className="max-w-4xl mx-auto space-y-4 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300 p-0">
+                            <div className="flex justify-between items-center mb-2 sm:mb-4">
                                 <div>
-                                    <h3 className="text-xl font-serif text-white">Character Choices</h3>
+                                    <h3 className="text-lg sm:text-xl font-serif text-white">Character Choices</h3>
                                     <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Review and modify decisions made during character creation and leveling</p>
                                 </div>
                             </div>
