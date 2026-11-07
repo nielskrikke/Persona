@@ -6,6 +6,7 @@ import { SpellDetail, InventoryItem, APIReference, RuleEntry, CharacterState, Fe
 import { isSpell, getCasterProfileFor } from '../../../utils/rules';
 import { fetchEquipmentDetail, fetchFeatureDetail, fetchTraitDetail } from '../../../data/index';
 import { MASTERY_DESCRIPTIONS, WIDGET_BG } from '../../../data/constants';
+import { getItemWidgets, storedSpellLevels } from '../../../utils/itemWidgets';
 
 // Heuristic maps for proficiency checking
 const PROFICIENCY_MAP: Record<string, string[]> = {
@@ -648,6 +649,52 @@ const DetailSidePanel = ({
                         <div className="prose prose-invert prose-sm max-w-none text-gray-300">
                             {renderDescription(fullDetail.desc)}
                         </div>
+                        {isItemLike(fullDetail) && getItemWidgets(fullDetail).map((widget: any, widgetIndex: number) => (
+                            <div key={widgetIndex} className="mt-4 rounded-lg border border-gray-800 bg-black/30 p-3">
+                                <div className="flex items-center justify-between gap-2 mb-2">
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-dnd-gold">{widget.name || (widget.type === 'spell_storage' ? 'Stored Spells' : widget.type === 'patches' ? 'Patches' : 'Item Widget')}</span>
+                                    {widget.type === 'spell_storage' && <span className="text-[9px] text-gray-500">{storedSpellLevels(widget)} / {widget.capacity || 5} levels</span>}
+                                </div>
+                                {widget.type === 'spell_storage' && (
+                                    <div className="space-y-2">
+                                        {(widget.storedSpells || []).length === 0 ? <p className="text-[10px] text-gray-600 italic">No spells stored.</p> : (widget.storedSpells || []).map((stored: any, index: number) => (
+                                            <div key={`${stored.name}-${index}`} className="flex items-center justify-between gap-2 text-[10px] text-gray-300">
+                                                <span>{stored.name} <span className="text-gray-600">· level {stored.castLevel || stored.level}</span></span>
+                                                <button type="button" className="text-red-400 hover:text-red-300 font-bold" onClick={() => onAction?.('removeStoredItemSpell', { itemId: fullDetail.id, storedIndex: index })}>Remove</button>
+                                            </div>
+                                        ))}
+                                        {onAction && (
+                                            <div className="flex gap-1 pt-1 border-t border-gray-800">
+                                                <select id={`store-spell-${widgetIndex}`} className="min-w-0 flex-1 rounded border border-gray-700 bg-black/40 px-2 py-1 text-[10px] text-gray-200">
+                                                    <option value="">Store a known spell…</option>
+                                                    {Array.from(new Map((character?.spells || []).filter((spell: any) => spell.level >= 1 && spell.level <= 5).map((spell: any) => [spell.index, spell])).values()).map((spell: any) => (
+                                                        <option key={spell.index} value={spell.index}>{spell.name} (level {spell.level})</option>
+                                                    ))}
+                                                </select>
+                                                <button type="button" className="rounded bg-dnd-gold px-2 py-1 text-[9px] font-black uppercase text-black" onClick={() => {
+                                                    const select = document.getElementById(`store-spell-${widgetIndex}`) as HTMLSelectElement | null;
+                                                    if (select?.value) onAction('storeItemSpell', { itemId: fullDetail.id, spellIndex: select.value, widgetName: widget.name });
+                                                }}>Store</button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                {widget.type === 'patches' && (
+                                    <div className="space-y-1.5">
+                                        {(widget.patches || []).length === 0 ? <p className="text-[10px] text-gray-600 italic">No patches left.</p> : (widget.patches || []).map((patch: any, index: number) => (
+                                            <div key={`${patch.name}-${index}`} className="flex items-center justify-between gap-2 text-[10px] text-gray-300">
+                                                <span>{patch.name} <span className="text-gray-600">×{patch.quantity}</span></span>
+                                                {patch.quantity > 0 && <button type="button" className="text-dnd-gold hover:text-yellow-300 font-bold" onClick={() => onAction?.('useItemPatch', { itemId: fullDetail.id, patchName: patch.name })}>Use</button>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {widget.type === 'note' && <p className="text-[10px] text-gray-400 whitespace-pre-wrap">{widget.description}</p>}
+                                {widget.type === 'action' && <p className="text-[10px] text-gray-400"><strong className="text-gray-200">{widget.name}</strong>{widget.description ? `: ${widget.description}` : ''}</p>}
+                                {widget.type === 'toggle' && <p className="text-[10px] text-gray-400"><strong className="text-gray-200">{widget.name}</strong>{widget.description ? `: ${widget.description}` : ''}</p>}
+                                {widget.type === 'counter' && <p className="text-[10px] text-gray-400"><strong className="text-gray-200">{widget.name}</strong>{widget.description ? `: ${widget.description}` : ''}</p>}
+                            </div>
+                        ))}
                         {isItemLike(fullDetail) && (fullDetail as any).effects?.some((effect: any) => ['action', 'bonus_action', 'reaction', 'spell_access'].includes(effect.type)) && (
                             <div className="mt-4 rounded-lg border border-gray-800 bg-black/30 p-3">
                                 <span className="text-[9px] font-black uppercase tracking-widest text-dnd-gold block mb-2">Item Features</span>

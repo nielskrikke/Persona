@@ -92,6 +92,26 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
     };
     const castSpell = (spell: SpellDetail) => {
         if ((spell as any).itemSpell) {
+            if ((spell as any).itemStorageItemId) {
+                const storageId = (spell as any).itemStorageItemId;
+                const storageIndex = (spell as any).storageSpellIndex;
+                const storageName = (spell as any).storageSpellName;
+                setCharacter(prev => ({
+                    ...prev,
+                    inventory: prev.inventory.map(entry => entry.id !== storageId ? entry : {
+                        ...entry,
+                        widgets: (entry.widgets || []).map((widget: any) => widget.type !== 'spell_storage' ? widget : {
+                            ...widget,
+                            storedSpells: (widget.storedSpells || []).filter((stored: any) =>
+                                !(storageIndex && stored.index === storageIndex) && !(storageName && stored.name === storageName)
+                            ),
+                        }),
+                    }),
+                    activeConcentration: spell.concentration ? spell : prev.activeConcentration,
+                }));
+                setCharacter(prev => ({ ...prev, spells: prev.spells.filter(entry => entry.index !== spell.index) }));
+                return;
+            }
             if (freeCastTotal(spell) > 0) {
                 setCharacter(prev => ({
                     ...prev,

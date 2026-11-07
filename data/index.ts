@@ -2,9 +2,10 @@ import { CharacterState, ExtendedFeatDetail } from '../types';
 import { COMMON_CREATURES } from './beasts';
 import { STANDARD_FAMILIARS } from './familiars';
 import { loadHomebrew } from '../services/supabase';
-import { ARTISAN_TOOLS } from './constants';
+import { ARTISAN_TOOLS, MUSICAL_INSTRUMENTS, GAMING_SETS } from './constants';
 import { SKILL_LIST } from '../utils/rules';
 import { mergeInventoryItem } from '../utils/itemInstances';
+import { getItemWidgets } from '../utils/itemWidgets';
 
 export const CLASSES: any[] = [];
 export const SUBCLASSES: any[] = [];
@@ -497,7 +498,7 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
     const allSpells = await fetchAllSpells();
     if (!allSpells?.length) return character;
 
-    const grants: { effect: any; source: string; defaultMinLevel: number; item?: any; itemResourceName?: string }[] = [];
+    const grants: { effect: any; source: string; defaultMinLevel: number; item?: any; itemResourceName?: string; storage?: any }[] = [];
     const collect = (effects: any[], source: string, defaultMinLevel: number = 0) => {
         (effects || []).forEach(effect => {
             if (effect?.type === 'spell_access' && effect.spell) grants.push({ effect, source, defaultMinLevel });
@@ -545,10 +546,27 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
                 itemResourceName: resource ? `${item.name}: ${resource.name || resource.key}` : undefined,
             });
         });
+        getItemWidgets(item).filter((widget: any) => widget.type === 'spell_storage').forEach((widget: any) => {
+            (widget.storedSpells || []).forEach((stored: any) => {
+                grants.push({
+                    effect: {
+                        type: 'spell_access',
+                        spell: stored.index || stored.name,
+                        name: stored.name,
+                        cast_level: stored.castLevel || stored.level,
+                        free_casts: undefined,
+                    },
+                    source: item.name,
+                    defaultMinLevel: 0,
+                    item,
+                    storage: { itemId: item.id, widgetName: widget.name || 'Stored Spells', spell: stored },
+                });
+            });
+        });
     });
 
     const grantedByIndex = new Map<string, any>();
-    grants.forEach(({ effect, source, defaultMinLevel, item: grantItem, itemResourceName: grantResourceName }) => {
+    grants.forEach(({ effect, source, defaultMinLevel, item: grantItem, itemResourceName: grantResourceName, storage }) => {
         const minLevel = Number(effect.min_level || defaultMinLevel || 0);
         if (minLevel > character.level) return;
         const spell = allSpells.find(candidate =>
@@ -567,6 +585,19 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
             freeCastReset: effect.free_cast_reset || effect.reset,
             minLevel,
             spellcastingAbility: effect.ability || character.spellcastingAbility,
+            ...(storage ? {
+                itemStorageItemId: storage.itemId,
+                itemStorageWidgetName: storage.widgetName,
+                storageSpellIndex: storage.spell.index,
+                storageSpellName: storage.spell.name,
+                itemFree: true,
+                itemSpell: true,
+                itemName: grantItem?.name,
+                itemCastLevel: storage.spell.castLevel || storage.spell.level,
+                itemDc: storage.spell.dc,
+                itemAttackBonus: storage.spell.attackBonus,
+                spellcastingAbility: storage.spell.ability || character.spellcastingAbility,
+            } : {}),
             ...(grantItem ? {
                 itemId: grantItem.id,
                 itemSpell: true,
@@ -783,7 +814,7 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
             if (!name) return;
             const skill = SKILL_LIST.find(entry => entry.name.toLowerCase() === name.toLowerCase());
             if (skill) derivedSkills.add(skill.name);
-            const tool = ARTISAN_TOOLS.find(entry => entry.toLowerCase() === name.toLowerCase());
+            const tool = [...ARTISAN_TOOLS, ...MUSICAL_INSTRUMENTS, ...GAMING_SETS].find(entry => entry.toLowerCase() === name.toLowerCase());
             if (tool) derivedTools.add(tool);
         });
     });

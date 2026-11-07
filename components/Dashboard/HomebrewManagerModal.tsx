@@ -1361,6 +1361,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
             setItemExtraJson(JSON.stringify({
                 effects: item.effects || [],
                 resources: item.resources || [],
+                widgets: item.widgets || [],
                 template: item.template,
                 choice: item.choice,
                 use: item.use,
@@ -1416,7 +1417,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
             }
         }
 
-        const advancedKeys = ['resources', 'choices', 'spell_list', 'ui', 'options', 'rules', 'effects', 'mastery', 'range', 'versatileDamage', 'template', 'choice', 'use', 'attunement_classes', 'is_magic', 'stealth_disadvantage', 'str_minimum', 'weapon_range', 'category_range', 'contents', 'spell_save_dc', 'spell_attack_bonus'];
+        const advancedKeys = ['resources', 'choices', 'widgets', 'spell_list', 'ui', 'options', 'rules', 'effects', 'mastery', 'range', 'versatileDamage', 'template', 'choice', 'use', 'attunement_classes', 'is_magic', 'stealth_disadvantage', 'str_minimum', 'weapon_range', 'category_range', 'contents', 'spell_save_dc', 'spell_attack_bonus'];
         const advanced = Object.fromEntries(
             advancedKeys
                 .filter(key => item[key] !== undefined)

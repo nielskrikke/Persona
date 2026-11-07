@@ -323,6 +323,29 @@ export interface BaseEquipment extends APIReference {
     cursed?: boolean;
     base_item?: string;
     notes?: string;
+    widgets?: ItemWidget[];
+}
+
+export interface StoredItemSpell {
+    index?: string;
+    name: string;
+    level: number;
+    castLevel?: number;
+    ability?: string;
+    dc?: number;
+    attackBonus?: number;
+}
+
+export interface ItemWidget {
+    type: 'spell_storage' | 'patches' | 'note' | 'action' | 'toggle' | 'counter';
+    name?: string;
+    description?: string;
+    capacity?: number;
+    storedSpells?: StoredItemSpell[];
+    patches?: { name: string; quantity: number; description?: string }[];
+    toggle?: string;
+    max?: number;
+    reset?: string;
 }
 
 export interface ItemOverrides {
@@ -336,6 +359,7 @@ export interface ItemOverrides {
     rarity?: string;
     weight?: number;
     choice_value?: string;
+    widgets?: ItemWidget[];
 }
 
 export interface InventoryItem extends Partial<BaseEquipment> {
@@ -360,6 +384,7 @@ export interface InventoryItem extends Partial<BaseEquipment> {
     choice_value?: string;
     base_item?: string;
     customNotes?: string;
+    widgets?: ItemWidget[];
 }
 
 export interface EquipmentDetail extends BaseEquipment {
@@ -690,6 +715,7 @@ export interface EncounteredCreature {
     resistances?: string;
     immunities?: string;
     notes?: string;
+    widgets?: ItemWidget[];
 }
 
 export interface SessionNote {

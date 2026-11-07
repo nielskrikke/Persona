@@ -23,6 +23,7 @@ import ItemSearchModal from '../Builder/ItemSearchModal';
 import ItemCustomizationModal from './Modals/ItemCustomizationModal';
 import ItemCustomizeModal from './Modals/ItemCustomizeModal';
 import { mergeInventoryItem } from '../../utils/itemInstances';
+import { getItemWidgets, storedSpellLevels } from '../../utils/itemWidgets';
 import LayoutManagerModal from './Modals/LayoutManagerModal';
 import CustomSpellModal from './Modals/CustomSpellModal';
 import DiceCustomizerModal from './Modals/DiceCustomizerModal';
@@ -4320,6 +4321,55 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     activeModifiers={activeModifiers}
                     onClose={() => setSelectedDetail(null)}
                     onAction={async (action, itm) => {
+                        if (action === 'storeItemSpell' || action === 'removeStoredItemSpell' || action === 'useItemPatch') {
+                            const instance = character.inventory.find(entry => entry.id === itm?.itemId);
+                            if (!instance) return;
+                            if (action === 'storeItemSpell') {
+                                const spell = character.spells.find(entry => entry.index === itm.spellIndex);
+                                if (!spell) return;
+                                const widgets = getItemWidgets(instance);
+                                const widgetIndex = Math.max(0, widgets.findIndex(widget => widget.type === 'spell_storage' && (!itm.widgetName || widget.name === itm.widgetName)));
+                                const widget = widgets[widgetIndex];
+                                if (!widget || widget.type !== 'spell_storage') return;
+                                const level = Math.max(1, Number(spell.level || 1));
+                                if (storedSpellLevels(widget) + level > Number(widget.capacity || 5)) {
+                                    alert(`${instance.name} can store only ${widget.capacity || 5} levels of spells.`);
+                                    return;
+                                }
+                                const nextWidgets = widgets.map((entry, index) => index !== widgetIndex ? entry : {
+                                    ...entry,
+                                    storedSpells: [...(entry.storedSpells || []), { index: spell.index, name: spell.name, level, castLevel: level, ability: spell.spellcastingAbility || character.spellcastingAbility }],
+                                });
+                                setCharacter(prev => ({ ...prev, inventory: prev.inventory.map(entry => entry.id === instance.id ? { ...entry, widgets: nextWidgets } : entry) }));
+                                setSelectedDetail((prev: any) => prev ? { ...prev, widgets: nextWidgets } : prev);
+                                return;
+                            }
+                            if (action === 'removeStoredItemSpell') {
+                                const nextWidgets = getItemWidgets(instance).map(widget => widget.type !== 'spell_storage' ? widget : {
+                                    ...widget,
+                                    storedSpells: (widget.storedSpells || []).filter((_, index) => index !== Number(itm.storedIndex)),
+                                });
+                                setCharacter(prev => ({ ...prev, inventory: prev.inventory.map(entry => entry.id === instance.id ? { ...entry, widgets: nextWidgets } : entry) }));
+                                setSelectedDetail((prev: any) => prev ? { ...prev, widgets: nextWidgets } : prev);
+                                return;
+                            }
+                            if (action === 'useItemPatch') {
+                                const nextWidgets = getItemWidgets(instance).map(widget => widget.type !== 'patches' ? widget : {
+                                    ...widget,
+                                    patches: (widget.patches || []).map(patch => patch.name === itm.patchName ? { ...patch, quantity: Math.max(0, patch.quantity - 1) } : patch),
+                                });
+                                const baseWeight = Number((instance as any).weight || 0);
+                                setCharacter(prev => ({
+                                    ...prev,
+                                    inventory: [
+                                        ...prev.inventory.map(entry => entry.id === instance.id ? { ...entry, widgets: nextWidgets } : entry),
+                                        { id: `patch-${Date.now()}`, name: String(itm.patchName), quantity: 1, weight: 0, equipped: false, attuned: false } as any,
+                                    ],
+                                }));
+                                setSelectedDetail((prev: any) => prev ? { ...prev, widgets: nextWidgets } : prev);
+                                return;
+                            }
+                        }
                         if (action === 'customizeItem') {
                             setInstanceCustomizingItem(itm);
                             return;

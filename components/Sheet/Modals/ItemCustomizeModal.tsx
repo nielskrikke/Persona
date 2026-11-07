@@ -38,6 +38,7 @@ const ItemCustomizeModal: React.FC<ItemCustomizeModalProps> = ({ item, allItems,
     const [actionName, setActionName] = useState(initialAction?.name || '');
     const [actionType, setActionType] = useState(initialAction?.type || 'action');
     const [actionDesc, setActionDesc] = useState(initialAction?.description || initialAction?.desc || '');
+    const [widgetsJson, setWidgetsJson] = useState((overrides.widgets || item.widgets || []).length > 0 ? JSON.stringify(overrides.widgets || item.widgets, null, 2) : '');
     const initialRiders = (overrides.effects || []).filter((e: any) => e.type === 'attack_rider');
     const [riders, setRiders] = useState<ExtraDamage[]>(initialRiders.length > 0 ? initialRiders.map((e: any) => ({
         dice: e.damage || '', type: e.damage_type || 'Fire',
@@ -73,6 +74,15 @@ const ItemCustomizeModal: React.FC<ItemCustomizeModalProps> = ({ item, allItems,
         });
         if (actionName.trim()) effects.push({ type: actionType, name: actionName.trim(), description: actionDesc });
         const resources = chargeMax > 0 ? [{ key: 'charges', name: 'Charges', max: { type: 'fixed', value: chargeMax }, reset: chargeReset, regain: chargeRegain || undefined }] : [];
+        let widgets: any[] | undefined;
+        if (widgetsJson.trim()) {
+            try {
+                const parsed = JSON.parse(widgetsJson);
+                if (Array.isArray(parsed)) widgets = parsed;
+            } catch {
+                alert('Item widgets JSON is invalid; the widgets were not saved.');
+            }
+        }
         return {
             name: name.trim() || item.name,
             notes: notes.trim() || undefined,
@@ -82,6 +92,7 @@ const ItemCustomizeModal: React.FC<ItemCustomizeModalProps> = ({ item, allItems,
             resources,
             requires_attunement: attunement,
             choice_value: overrides.choice_value,
+            widgets,
         };
     };
 
@@ -131,6 +142,11 @@ const ItemCustomizeModal: React.FC<ItemCustomizeModalProps> = ({ item, allItems,
                     <label className="space-y-1"><span className="text-[9px] uppercase text-gray-500 font-bold">Action Type</span><select value={actionType} onChange={e => setActionType(e.target.value)} className="w-full rounded-lg border border-gray-700 bg-black/40 px-3 py-2 text-sm text-white"><option value="action">Action</option><option value="bonus_action">Bonus Action</option><option value="reaction">Reaction</option></select></label>
                     <label className="space-y-1"><span className="text-[9px] uppercase text-gray-500 font-bold">Action Description</span><input value={actionDesc} onChange={e => setActionDesc(e.target.value)} className="w-full rounded-lg border border-gray-700 bg-black/40 px-3 py-2 text-sm text-white" /></label>
                 </div>
+                <label className="space-y-1 block">
+                    <span className="text-[9px] uppercase text-gray-500 font-bold">Feature Widgets (JSON)</span>
+                    <textarea value={widgetsJson} onChange={e => setWidgetsJson(e.target.value)} rows={5} placeholder='[{"type":"spell_storage","name":"Stored Spells","capacity":5,"storedSpells":[]}]' className="w-full rounded-lg border border-gray-700 bg-black/40 px-3 py-2 font-mono text-[11px] text-white" />
+                    <span className="text-[9px] text-gray-600">Types: spell_storage, patches, note, action, toggle, counter.</span>
+                </label>
                 <div className="flex flex-wrap justify-between gap-2 pt-2">
                     <div className="flex gap-2">
                         <button type="button" onClick={onReset} className="rounded-lg border border-red-800 px-3 py-2 text-[10px] font-bold uppercase text-red-300">Reset to original</button>

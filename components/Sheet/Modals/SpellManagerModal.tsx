@@ -57,9 +57,13 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
         )), [character.classFeatures, character.classes]);
     
     // Calculate limits for the ACTIVE class
-    const limits = activeClass 
+    const baseLimits = activeClass
         ? getSpellsKnownCount(activeClass, effectiveAbilities, character.classFeatures)
         : { cantrips: 0, spells: 0 };
+    const magicalSecretsAllowance = activeClass && ((activeClass.definition.feature_details || []).some((feature: any) => feature.level <= activeClass.level && /magical (secrets|discoveries)/i.test(feature.name || '')))
+        ? (activeClass.level >= 18 ? 6 : activeClass.level >= 14 ? 4 : activeClass.level >= 10 ? 2 : 0)
+        : 0;
+    const limits = { ...baseLimits, spells: baseLimits.spells + magicalSecretsAllowance };
 
     // Calculate current usage for the ACTIVE class
     const knownSpells = character.spells.filter(s => s.sourceClassIndex === activeClassIndex);
@@ -182,6 +186,7 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
                         <h2 className="text-2xl font-serif text-white">Spell Manager</h2>
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">
                             Manage your {isPrepared ? 'prepared spells' : 'spellbook'}
+                            {magicalSecretsAllowance > 0 ? ` • ${magicalSecretsAllowance} Magical Secrets` : ''}
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
