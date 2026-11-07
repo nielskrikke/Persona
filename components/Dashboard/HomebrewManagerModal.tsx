@@ -190,6 +190,11 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                             if (!eff.count) updates.count = 1;
                                             if (!eff.name) updates.name = 'Choice Options';
                                         }
+                                        if (newType === 'set') {
+                                            if (!['darkvision', 'blindsight', 'tremorsense', 'truesight', 'speed'].includes(eff.target)) updates.target = 'darkvision';
+                                            updates.stat = updates.target || eff.target || 'darkvision';
+                                            if (eff.value === undefined) updates.value = 10;
+                                        }
                                         updateEffect(i, updates);
                                     }}
                                     className="bg-[#0b0c0e] border border-gray-700 rounded p-1 text-xs text-white font-bold"
@@ -826,7 +831,7 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                         <option value="truesight">Truesight</option>
                                         <option value="speed">Walking Speed</option>
                                     </select>
-                                    <input type="number" min={0} placeholder="Range in feet" value={eff.value ?? 10} onChange={e => updateEffect(i, { value: Number(e.target.value) })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" />
+                                    <input type="number" min={0} placeholder="Range in feet (e.g. 10)" value={eff.value ?? ''} onChange={e => updateEffect(i, { value: e.target.value === '' ? undefined : Number(e.target.value) })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" />
                                 </div>
                                 <input type="text" placeholder="Description (optional)" value={eff.description || eff.desc || ''} onChange={e => updateEffect(i, { description: e.target.value, desc: e.target.value })} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white" />
                             </div>
