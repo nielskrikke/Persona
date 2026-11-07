@@ -4236,7 +4236,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 </div>
             )}
 
-            <main className="flex-grow flex flex-col lg:flex-row overflow-hidden max-w-[1400px] mx-auto w-full relative font-scalable-text z-10 pt-safe-52 lg:pt-0 pb-safe-64 lg:pb-0">
+            <main className="flex-grow flex flex-col lg:flex-row overflow-hidden max-w-[1400px] mx-auto w-full relative font-scalable-text z-10 pt-safe-52 lg:pt-0 pb-[calc(10rem+env(safe-area-inset-bottom))] lg:pb-0">
                 <aside className={isSidePanelPinned && !!selectedDetail
                     ? "hidden lg:flex flex-col lg:w-[340px] xl:w-[320px] bg-[#121316]/85 border-r border-[#3e4149] p-4 gap-4 overflow-y-auto custom-scrollbar shrink-0"
                     : "hidden lg:flex lg:flex-col xl:grid xl:grid-cols-2 lg:w-[340px] xl:w-[600px] bg-[#121316]/85 border-r border-[#3e4149] p-4 gap-4 overflow-y-auto custom-scrollbar shrink-0"

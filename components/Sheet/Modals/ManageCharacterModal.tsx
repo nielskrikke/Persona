@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Markdown from 'react-markdown';
 import { X, User, GraduationCap, Activity, Shield, Settings, Plus, Trash2, Save, Languages, Palette, Type, Dice5, Eye, EyeOff, Info, Sparkles, AlertTriangle, RotateCcw, AlertCircle } from 'lucide-react';
 import { CharacterState, APIReference, RaceDetail, SubraceDetail, BackgroundDetail, FeatDetail, ABILITY_NAMES, ABILITY_LABELS, AbilityScores, SpellDetail, LevelChoice, AbilityName } from '@/types';
@@ -89,6 +89,7 @@ const ManageCharacterModal = ({
     const [raceDetail, setRaceDetail] = useState<any>(null);
     const [subraceDetail, setSubraceDetail] = useState<any>(null);
     const [subclassDescriptions, setSubclassDescriptions] = useState<Record<string, string[]>>({});
+    const tabsRef = useRef<HTMLDivElement>(null);
     const [selectedBackgroundIndex, setSelectedBackgroundIndex] = useState('');
 
     // Classes State
@@ -1968,6 +1969,12 @@ const ManageCharacterModal = ({
         }
     };
 
+    useEffect(() => {
+        if (!isOpen) return;
+        const activeTab = tabsRef.current?.querySelector('[data-active="true"]') as HTMLElement | null;
+        activeTab?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }, [tab, isOpen]);
+
     // Render Logic
     if (!isOpen) return null;
 
@@ -1997,7 +2004,7 @@ const ManageCharacterModal = ({
                 </div>
 
                 {/* Tabs */}
-                <div className="shrink-0 min-h-[44px] px-3 sm:px-6 py-1 bg-[#16171a] border-b border-gray-800 flex items-center gap-2 overflow-x-auto no-scrollbar whitespace-nowrap">
+                <div ref={tabsRef} className="shrink-0 min-h-[44px] px-3 sm:px-6 py-1 bg-[#16171a] border-b border-gray-800 flex items-center gap-2 overflow-x-auto no-scrollbar whitespace-nowrap">
                     {[
                         { id: 'identity', label: 'Identity', icon: User },
                         { id: 'classes', label: 'Classes', icon: GraduationCap },
@@ -2012,6 +2019,7 @@ const ManageCharacterModal = ({
                         return (
                             <button 
                                 key={t.id}
+                                data-active={tab === t.id}
                                 onClick={() => setTab(t.id as any)} 
                                 className={`flex shrink-0 items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all relative ${
                                     tab === t.id 
