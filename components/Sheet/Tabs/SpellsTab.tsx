@@ -92,12 +92,24 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
     };
     const castSpell = (spell: SpellDetail) => {
         if ((spell as any).itemSpell) {
+            if (freeCastTotal(spell) > 0) {
+                setCharacter(prev => ({
+                    ...prev,
+                    freeCastUsage: { ...(prev.freeCastUsage || {}), [spell.index]: Number(prev.freeCastUsage?.[spell.index] || 0) + 1 },
+                    activeConcentration: spell.concentration ? spell : prev.activeConcentration,
+                }));
+                return;
+            }
             if ((spell as any).itemFree) {
                 setCharacter(prev => ({ ...prev, activeConcentration: spell.concentration ? spell : prev.activeConcentration }));
                 return;
             }
             const resourceName = String((spell as any).itemResourceName || '');
             const cost = itemCostFor(spell);
+            if (!resourceName && !(spell as any).itemConsumable) {
+                alert(`${spell.name} has no uses remaining.`);
+                return;
+            }
             if (!resourceName || (spell as any).itemConsumable) {
                 const item = character.inventory.find((entry: any) => entry.id === (spell as any).itemId);
                 if (!item || item.quantity < cost) { alert(`${spell.name} is no longer available.`); return; }

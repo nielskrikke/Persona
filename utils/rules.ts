@@ -631,15 +631,6 @@ export const getResourceDefinitions = (character: CharacterState): CharacterReso
 
     character.inventory?.forEach(item => {
         if (!item.equipped || (item.requires_attunement && !item.attuned)) return;
-        ((item as any).effects || []).forEach((effect: any) => {
-            const uses = Number(effect?.uses);
-            if (effect?.type === 'spell_access' && uses > 0) {
-                const name = `${item.name}: ${effect.name || 'Uses'}`;
-                resources.set(name, {
-                    key: 'uses', name, reset: effect.reset === 'short' ? 'short' : 'long', max: uses, source: item.name,
-                });
-            }
-        });
         ((item as any).resources || []).forEach((resource: any) => {
             const max = getResourceMax(resource, character.level, abilities, character.level);
             if (max <= 0) return;
@@ -657,6 +648,21 @@ export const getResourceDefinitions = (character: CharacterState): CharacterReso
         });
     });
 
+    character.feats?.forEach(feat => {
+        ((feat as any).resources || []).forEach((resource: any) => {
+            const max = getResourceMax(resource, character.level, abilities, character.level);
+            if (max <= 0) return;
+            resources.set(resource.name, {
+                key: resource.key,
+                name: resource.name,
+                reset: resource.reset === 'short' ? 'short' : 'long',
+                max,
+                source: feat.name,
+                regain: resource.regain,
+            });
+        });
+    });
+
     character.classes?.forEach(characterClass => {
         const definitions: ResourceDefinition[] = [
             ...((characterClass.definition as any)?.resources || []),
@@ -666,10 +672,11 @@ export const getResourceDefinitions = (character: CharacterState): CharacterReso
             if (resource.level && characterClass.level < resource.level) return;
             const max = getResourceMax(resource, characterClass.level, abilities, character.level);
             if (max <= 0) return;
+            const reset = /bardic inspiration/i.test(resource.name) && character.level >= 5 ? 'short' : resource.reset;
             resources.set(resource.name, {
                 key: resource.key,
                 name: resource.name,
-                reset: resource.reset,
+                reset,
                 max,
                 source: resource.source,
             });

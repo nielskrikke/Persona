@@ -586,7 +586,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         if (hasChanges) {
             setCharacter(prev => ({ ...prev, featureUsage: newUsage }));
         }
-    }, [character?.classes, character?.abilities, character?.level, inventoryEquipKey]);
+    }, [character?.classes, character?.abilities, character?.level, character?.feats, character?.race, character?.subrace, inventoryEquipKey]);
 
     let prof = calculateProficiency(character.level);
 
@@ -3374,8 +3374,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         character.inventory.forEach((item: any) => {
             if (!item.equipped) return;
             (item.effects || []).forEach((effect: any, index: number) => {
-                if (effect.type !== 'action' && effect.type !== 'reaction') return;
-                if (!effect.damage && !effect.save) return;
+                if (effect.type !== 'action' && effect.type !== 'reaction' && effect.type !== 'bonus_action') return;
                 const dcMatch = String(effect.save?.dc || effect.dc || '').match(/\d+/);
                 const save = effect.save ? { type: effect.save.ability || effect.save.type || 'DEX', dc: dcMatch ? Number(dcMatch[0]) : 13 } : null;
                 const actionAttack = {
@@ -3743,7 +3742,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const cmLevel = cmClass ? cmClass.level : 0;
 
     return (
-        <div className="isolate flex flex-col h-full text-gray-200 overflow-hidden font-scalable relative" style={{ '--sheet-scale': character.fontScale || 1.0, backgroundColor: character.backgroundColor || '#151515' } as any}>
+        <div className="isolate flex flex-col h-screen text-gray-200 overflow-hidden font-scalable relative" style={{ '--sheet-scale': character.fontScale || 1.0, backgroundColor: character.backgroundColor || '#151515' } as any}>
             {saving && <div className="fixed top-2 left-1/2 transform -translate-x-1/2 z-[1000] bg-black/80 text-dnd-gold px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest border border-dnd-gold shadow-lg animate-pulse">Saving...</div>}
             {character.backgroundImageUrl && <div className="pointer-events-none fixed inset-0 z-0" style={{ backgroundImage: `url('${character.backgroundImageUrl}')`, backgroundSize: 'cover', backgroundPosition: 'center' }}/>}
 
@@ -4267,11 +4266,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 </div>
             )}
 
-            <main className="flex-grow flex flex-col lg:flex-row overflow-hidden max-w-[1400px] mx-auto w-full relative font-scalable-text z-10 pt-safe-52 lg:pt-0 pb-[calc(10rem+env(safe-area-inset-bottom))] lg:pb-0">
-                <aside className={isSidePanelPinned && !!selectedDetail
+            <main className="min-h-0 flex-grow flex flex-col lg:flex-row overflow-hidden max-w-[1400px] mx-auto w-full relative font-scalable-text z-10 pt-safe-52 lg:pt-0 pb-[calc(10rem+env(safe-area-inset-bottom))] lg:pb-0">
+                <aside className={`min-h-0 ${isSidePanelPinned && !!selectedDetail
                     ? "hidden lg:flex flex-col lg:w-[340px] xl:w-[320px] bg-[#121316]/85 border-r border-[#3e4149] p-4 gap-4 overflow-y-auto custom-scrollbar shrink-0"
                     : "hidden lg:flex lg:flex-col xl:grid xl:grid-cols-2 lg:w-[340px] xl:w-[600px] bg-[#121316]/85 border-r border-[#3e4149] p-4 gap-4 overflow-y-auto custom-scrollbar shrink-0"
-                }>
+                }`}>
                     <div className="flex flex-col gap-4">
                          {/* Active Form Widget removed */}
                         {layout.left.map((w, idx) => renderWidget(w, `left-${w}-${idx}`))}
@@ -4282,7 +4281,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     </div>
                 </aside>
 
-                <section className={`flex-grow flex flex-col ${character.backgroundImageUrl ? "bg-[#121316]/85" : "bg-transparent"} overflow-hidden`}>
+                <section className={`min-h-0 flex-grow flex flex-col ${character.backgroundImageUrl ? "bg-[#121316]/85" : "bg-transparent"} overflow-hidden`}>
                     <nav className="hidden lg:flex items-center gap-2 px-4 py-2 bg-[#121316]/50 shrink-0 overflow-x-auto custom-scrollbar border-b border-[#3e4149]/40">
             {['actions', 'spells', 'inventory', 'features', 'rules', 'log'].map(tab_key => (
                 <button
@@ -4299,7 +4298,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             ))}
         </nav>
 
-                    <div className="flex-grow overflow-y-auto custom-scrollbar p-4">
+                    <div className="min-h-0 flex-grow overflow-y-auto custom-scrollbar p-4">
                         {activeTab === 'stats' && <StatsTab character={character} roll={roll} triggerRollMenu={triggerRollMenu} layout={layout} renderWidget={renderWidget} setShowLayoutManager={setShowLayoutManager} />}
                         {activeTab === 'actions' && (
                             <ErrorBoundary>

@@ -648,6 +648,22 @@ const DetailSidePanel = ({
                         <div className="prose prose-invert prose-sm max-w-none text-gray-300">
                             {renderDescription(fullDetail.desc)}
                         </div>
+                        {isItemLike(fullDetail) && (fullDetail as any).effects?.some((effect: any) => ['action', 'bonus_action', 'reaction', 'spell_access'].includes(effect.type)) && (
+                            <div className="mt-4 rounded-lg border border-gray-800 bg-black/30 p-3">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-dnd-gold block mb-2">Item Features</span>
+                                <div className="space-y-2">
+                                    {(fullDetail as any).effects.filter((effect: any) => ['action', 'bonus_action', 'reaction', 'spell_access'].includes(effect.type)).map((effect: any, index: number) => (
+                                        <div key={index} className="rounded-md border border-gray-800 bg-black/30 px-2 py-1.5">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className="text-[11px] font-bold text-gray-200">{effect.name || effect.spell_name || (effect.type === 'spell_access' ? effect.spell : 'Item feature')}</span>
+                                                <span className="text-[8px] font-black uppercase tracking-widest text-gray-500">{effect.type === 'bonus_action' ? 'Bonus Action' : effect.type === 'reaction' ? 'Reaction' : effect.type === 'spell_access' ? 'Spell' : 'Action'}</span>
+                                            </div>
+                                            {(effect.description || effect.desc || effect.spell_name) && <div className="mt-0.5 text-[10px] text-gray-500">{effect.description || effect.desc || `Cast ${effect.spell_name || effect.spell}`}</div>}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                         {(fullDetail as any).customNotes && (
                             <div className="mt-3 rounded-lg border border-dnd-gold/20 bg-dnd-gold/5 p-3 text-xs text-gray-300">
                                 <span className="text-[9px] font-black uppercase tracking-widest text-dnd-gold block mb-1">Custom Notes</span>

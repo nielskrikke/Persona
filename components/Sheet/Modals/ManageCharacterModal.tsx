@@ -428,7 +428,7 @@ const ManageCharacterModal = ({
                                     const rawOptions = effect.options || (effect.type === 'expertise_choice' ? proficientSkills : effect.category === 'language' ? STANDARD_LANGUAGES : effect.category === 'tool' ? ARTISAN_TOOLS : effect.category === 'skill' ? SKILL_LIST.map(entry => entry.name) : []);
                                     backfilled.push({
                                         id: choiceId,
-                                        level: cls.level,
+                                        level: feature.level || cls.level,
                                         source: liveSubclass.name,
                                         type: effect.type === 'expertise_choice' ? 'expertise'
                                             : effect.type === 'feature_choice' ? 'feature_choice'
@@ -722,7 +722,7 @@ const ManageCharacterModal = ({
                         : rawOptions;
                 newSubChoices.push({
                     id: choiceId,
-                    level: clsDef.level,
+                    level: feature.level || clsDef.level,
                     source: newSubclass.name,
                     type: effect.type === 'expertise_choice' ? 'expertise'
                         : effect.type === 'feature_choice' ? 'feature_choice'
@@ -1154,7 +1154,7 @@ const ManageCharacterModal = ({
 
                 return {
                     ...c,
-                    revertData: { ...c.revertData, abilities: nextAbilities },
+                    revertData: { ...c.revertData, abilities: nextAbilities, pendingConfirm: true },
                     value: nextTotal >= max 
                         ? Object.entries(nextAbilities)
                             .filter(([_, a]) => (a as number) > 0)
@@ -1880,12 +1880,14 @@ const ManageCharacterModal = ({
                 setExpertise(prev => Array.from(new Set([...prev, ...alreadyProficient])));
             }
         } else if (choice.type === 'other' || choice.type === 'feature_choice') {
-            if (choice.label.toLowerCase().includes('tool')) {
-                const oldTools = Array.isArray(oldValue) ? oldValue : [oldValue];
-                const newTools = Array.isArray(finalValue) ? finalValue : [finalValue];
+            const oldTools = Array.isArray(oldValue) ? oldValue : [oldValue];
+            const newTools = Array.isArray(finalValue) ? finalValue : [finalValue];
+            const knownTools = newTools.filter((tool: any) => [...ARTISAN_TOOLS, ...MUSICAL_INSTRUMENTS, ...GAMING_SETS].some(entry => String(entry).toLowerCase() === String(tool).toLowerCase()));
+            if (knownTools.length > 0) {
+                const removeTools = oldTools.filter((tool: any) => [...ARTISAN_TOOLS, ...MUSICAL_INSTRUMENTS, ...GAMING_SETS].some(entry => String(entry).toLowerCase() === String(tool).toLowerCase()));
                 setToolProficiencies(prev => {
-                    const filtered = prev.filter(t => !oldTools.includes(t));
-                    return Array.from(new Set([...filtered, ...newTools]));
+                    const filtered = prev.filter(t => !removeTools.includes(t));
+                    return Array.from(new Set([...filtered, ...knownTools]));
                 });
             }
         } else if (choice.type === 'expertise') {

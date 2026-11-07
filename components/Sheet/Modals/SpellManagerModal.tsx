@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import Markdown from 'react-markdown';
 import { X, Search, Filter, Plus, Info, ChevronUp, ChevronDown, Sparkles, Book, Wand2, GraduationCap, Trash2 } from 'lucide-react';
 import { CharacterState, SpellDetail } from '../../../types';
-import { fetchSpellsByClass } from '../../../data/index';
+import { fetchSpellsByClass, fetchAllSpells } from '../../../data/index';
 import { getSpellsKnownCount, getEffectiveAbilities, isPreparedCaster, getMaxSpellLevelForClass, getCasterProfileFor } from '../../../utils/rules';
 
 interface SpellManagerModalProps {
@@ -50,6 +50,11 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
     const activeClass = casterClasses.find(c => c.definition.index === activeClassIndex);
     const effectiveAbilities = useMemo(() => getEffectiveAbilities(character), [character]);
     const isPrepared = activeClass ? isPreparedCaster(activeClass.definition) : false;
+    const hasMagicalSecrets = useMemo(() =>
+        (character.classFeatures || []).some((feature: any) => /magical (secrets|discoveries)/i.test(feature.name || ''))
+        || (character.classes || []).some(cls => (cls.definition.feature_details || []).some((feature: any) =>
+            feature.level <= cls.level && /magical (secrets|discoveries)/i.test(feature.name || '')
+        )), [character.classFeatures, character.classes]);
     
     // Calculate limits for the ACTIVE class
     const limits = activeClass 
@@ -67,13 +72,13 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
         
         const loadSpells = async () => {
             setLoading(true);
-            const spells = await fetchSpellsByClass(activeClassIndex, character.user_id);
+            const spells = hasMagicalSecrets ? await fetchAllSpells(character.user_id) : await fetchSpellsByClass(activeClassIndex, character.user_id);
             const sorted = spells.sort((a,b) => a.level - b.level || a.name.localeCompare(b.name));
             setAvailableSpells(sorted);
             setLoading(false);
         };
         loadSpells();
-    }, [isOpen, activeClassIndex]);
+    }, [isOpen, activeClassIndex, hasMagicalSecrets]);
 
     const isGranted = (spell: SpellDetail) => character.spells.some(s => s.index === spell.index && s.isGranted);
     const isKnown = (spell: SpellDetail) => {

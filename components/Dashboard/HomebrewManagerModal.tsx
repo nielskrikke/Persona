@@ -1616,7 +1616,9 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                 payload = {
                     ...payload,
                     prerequisite: featPrerequisite,
-                    effects: featEffects
+                    effects: featEffects,
+                    resources: contentResources.length > 0 ? contentResources : (Array.isArray(advancedData.resources) ? advancedData.resources : []),
+                    choices: contentChoices.length > 0 ? contentChoices : (Array.isArray(advancedData.choices) ? advancedData.choices : []),
                 };
             }
 
