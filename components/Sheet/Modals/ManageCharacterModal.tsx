@@ -4,8 +4,33 @@ import { X, User, GraduationCap, Activity, Shield, Settings, Plus, Trash2, Save,
 import { CharacterState, APIReference, RaceDetail, SubraceDetail, BackgroundDetail, FeatDetail, ABILITY_NAMES, ABILITY_LABELS, AbilityScores, SpellDetail, LevelChoice, AbilityName } from '@/types';
 import { fetchClasses, fetchRaces, fetchSubraces, fetchBackgrounds, fetchFeatsList, fetchRaceDetail, fetchSubraceDetail, fetchBackgroundDetail, fetchSubclasses, fetchSubclassDetail, fetchSubclassLevels, fetchClassLevels, fetchLevelFeatures, fetchClassDetail, fetchAllSpells, RACES, SUBCLASSES } from '@/data/index';
 import { getSpellSlots, calculateModifier, SKILL_LIST, getSubclassLevel, getResourceDefinitions, calculateMaxHp, mergeSpellSlotCurrents, isFeatAvailableForLevel, isFeatAvailableForCharacter, getChoiceCount } from '@/utils/rules';
-import { STANDARD_LANGUAGES, ARTISAN_TOOLS } from '../../../data/constants';
+import { STANDARD_LANGUAGES, ARTISAN_TOOLS, MUSICAL_INSTRUMENTS, GAMING_SETS, MASTERY_DESCRIPTIONS } from '../../../data/constants';
 import DiceRoller3D from '../Shared/DiceRoller3D';
+
+
+const choiceOptionDescription = (choice: any, option: any): string => {
+    const name = typeof option === 'string' ? option : (option?.name || option?.index || '');
+    if (!name) return '';
+    if (typeof option === 'object' && option?.description) return option.description;
+    if (SKILL_LIST.some(skill => skill.name.toLowerCase() === String(name).toLowerCase())) {
+        return `Proficiency in ${name}: add your Proficiency Bonus to ${name} checks.`;
+    }
+    if (ARTISAN_TOOLS.some(tool => tool.toLowerCase() === String(name).toLowerCase())) {
+        return `Tool proficiency for ${name}; add your Proficiency Bonus to ability checks made with these tools.`;
+    }
+    if (MUSICAL_INSTRUMENTS.some(tool => tool.toLowerCase() === String(name).toLowerCase())) {
+        return `Musical instrument proficiency for the ${name}; add your Proficiency Bonus to Performance checks made with it.`;
+    }
+    if (GAMING_SETS.some(tool => tool.toLowerCase() === String(name).toLowerCase())) {
+        return `Gaming set proficiency for the ${name}; add your Proficiency Bonus to checks made to play this game.`;
+    }
+    if (STANDARD_LANGUAGES.some(language => language.toLowerCase() === String(name).toLowerCase())) {
+        return `You can speak, read, and write ${name}.`;
+    }
+    if (MASTERY_DESCRIPTIONS[name]) return MASTERY_DESCRIPTIONS[name];
+    if (/mastery/i.test(String(choice?.label || ''))) return `Weapon Mastery option: ${name}.`;
+    return `Selected: ${name}.`;
+};
 
 const ManageCharacterModal = ({ 
     character, 
@@ -2809,7 +2834,12 @@ const ManageCharacterModal = ({
                                                                             </div>
                                                                         )}
                                                                     </div>
-                                                                    <h5 className="text-white font-bold text-lg">{choice.label}</h5>
+                                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                                        <h5 className="text-white font-bold text-lg">{choice.label}</h5>
+                                                                        {choice.revertData?.pendingConfirm && (
+                                                                            <span className="text-[8px] font-black uppercase tracking-widest text-dnd-gold bg-dnd-gold/10 border border-dnd-gold/40 rounded-full px-2 py-0.5">Needs Confirm</span>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
                                                                 <div className="text-[10px] font-black text-gray-500 bg-black/40 px-3 py-1 rounded-full border border-gray-800">
                                                                     LEVEL {choice.level}
@@ -3026,7 +3056,7 @@ const ManageCharacterModal = ({
                                                                                 const selectedValues = Array.isArray(choice.value) ? choice.value : [choice.value];
                                                                                 const details = selectedValues.map((val, idx) => {
                                                                                     const opt = choice.options?.find((o: any) => (o.index || o.name || o) === val);
-                                                                                    const desc = opt?.desc || opt?.feature?.desc || opt?.description;
+                                                                                    const desc = opt?.desc || opt?.feature?.desc || opt?.description || choiceOptionDescription(choice, opt || val);
                                                                                     if (!desc) return null;
                                                                                     return (
                                                                                         <div key={idx} className={idx > 0 ? 'mt-2 pt-2 border-t border-gray-800/50' : ''}>
@@ -3042,6 +3072,11 @@ const ManageCharacterModal = ({
                                                                 )}
 
                                                                 {/* Confirm Button */}
+                                                                {choice.revertData?.pendingConfirm && (
+                                                                    <div className="mt-4 rounded-lg border border-dnd-gold/30 bg-dnd-gold/5 px-3 py-2 text-[10px] text-dnd-gold">
+                                                                        Selection staged. Press <strong>Confirm Selection</strong> to apply it and move the card to History.
+                                                                    </div>
+                                                                )}
                                                                 <div className="mt-6 pt-6 border-t border-gray-800 flex justify-end">
                                                                     <button
                                                                         onClick={() => handleConfirmChoice(choice.id)}
