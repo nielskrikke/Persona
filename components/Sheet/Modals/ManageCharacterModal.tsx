@@ -63,6 +63,7 @@ const ManageCharacterModal = ({
     const [selectedSubraceIndex, setSelectedSubraceIndex] = useState('');
     const [raceDetail, setRaceDetail] = useState<any>(null);
     const [subraceDetail, setSubraceDetail] = useState<any>(null);
+    const [subclassDescriptions, setSubclassDescriptions] = useState<Record<string, string[]>>({});
     const [selectedBackgroundIndex, setSelectedBackgroundIndex] = useState('');
 
     // Classes State
@@ -216,6 +217,22 @@ const ManageCharacterModal = ({
             return Array.from(byIndex.values());
         });
     }, [localChoices]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        let cancelled = false;
+        Promise.all(localClasses.map(async cls => {
+            if (!cls.subclass?.index) return null;
+            const detail = await fetchSubclassDetail(cls.subclass.index);
+            return detail ? [cls.definition.index, detail.desc || []] as const : null;
+        })).then(results => {
+            if (cancelled) return;
+            const next: Record<string, string[]> = {};
+            results.filter(Boolean).forEach((entry: any) => { next[entry[0]] = entry[1]; });
+            setSubclassDescriptions(next);
+        });
+        return () => { cancelled = true; };
+    }, [isOpen, localClasses.map(cls => cls.subclass?.index || '').join('|')]);
 
     // Backfill logic for existing characters
     useEffect(() => {
@@ -379,7 +396,8 @@ const ManageCharacterModal = ({
                                     if (backfilled.some(existing => existing.id === choiceId)) return;
                                     const proficientSkills = Array.from(new Set([...character.skills, ...(character.toolProficiencies || [])]))
                                         .filter(skill => SKILL_LIST.some(entry => entry.name.toLowerCase() === String(skill).toLowerCase()));
-                                    const knownSkills = new Set([...character.skills, ...(character.toolProficiencies || [])].map(skill => String(skill).toLowerCase()));
+                                    const speciesSkills = [...(character.race?.traits || []), ...(character.subrace?.traits || [])].flatMap((trait: any) => (trait.effects || []).filter((effect: any) => effect.type === 'proficiency' && effect.category === 'skill').map((effect: any) => effect.target || effect.value));
+                                    const knownSkills = new Set([...character.skills, ...(character.toolProficiencies || []), ...speciesSkills].map(skill => String(skill).toLowerCase()));
                                     const rawOptions = effect.options || (effect.type === 'expertise_choice' ? proficientSkills : effect.category === 'language' ? STANDARD_LANGUAGES : effect.category === 'tool' ? ARTISAN_TOOLS : effect.category === 'skill' ? SKILL_LIST.map(entry => entry.name) : []);
                                     backfilled.push({
                                         id: choiceId,
@@ -653,7 +671,8 @@ const ManageCharacterModal = ({
                 if (localChoices.some(choice => choice.id === choiceId)) return;
                 const proficientSkills = Array.from(new Set([...skills, ...(character.skills || [])]))
                     .filter(skill => SKILL_LIST.some(entry => entry.name.toLowerCase() === String(skill).toLowerCase()));
-                const knownSkills = new Set([...skills, ...(character.skills || [])].map(skill => String(skill).toLowerCase()));
+                const speciesSkills = [...(character.race?.traits || []), ...(character.subrace?.traits || [])].flatMap((trait: any) => (trait.effects || []).filter((effect: any) => effect.type === 'proficiency' && effect.category === 'skill').map((effect: any) => effect.target || effect.value));
+                const knownSkills = new Set([...skills, ...(character.skills || []), ...speciesSkills].map(skill => String(skill).toLowerCase()));
                 const rawOptions = effect.options
                     || (effect.type === 'expertise_choice'
                         ? proficientSkills
@@ -2902,8 +2921,10 @@ const ManageCharacterModal = ({
                                                                                         const opt = choice.options?.find((o: any) => (o.index || o.name || o) === val);
                                                                                         if (opt?.desc) return <Markdown>{Array.isArray(opt.desc) ? opt.desc.join('\n\n') : opt.desc}</Markdown>;
                                                                                         // Fallback to SUBCLASSES data if needed
+                                                                                        const classIndex = choice.revertData?.classIndex || choice.id.replace(/^subclass-/, '').replace(/-\d+$/, '');
+                                                                                        const description = choice.revertData?.subclassDesc || subclassDescriptions[classIndex];
                                                                                         const fullSubclass = SUBCLASSES.find(s => s.index === val);
-                                                                                        return <Markdown>{fullSubclass?.desc.join('\n\n') || 'No description available.'}</Markdown>;
+                                                                                        return <Markdown>{description?.join('\n\n') || fullSubclass?.desc.join('\n\n') || 'No description available.'}</Markdown>;
                                                                                     })()}
                                                                                 </div>
                                                                             </div>
@@ -2993,14 +3014,15 @@ const ManageCharacterModal = ({
                                                                 )}
 
                                                                 {/* Description for other choices (spells, backgrounds, etc) */}
-                                                                {choice.value && choice.type !== 'asi' && choice.type !== 'asi-feat' && choice.type !== 'subclass' && choice.type !== 'feat-selection' && (
-                                                                    <div className="mt-4 p-3 bg-black/40 border border-gray-800 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300 max-w-md">
+                                                                {choice.type !== 'asi' && choice.type !== 'asi-feat' && choice.type !== 'subclass' && choice.type !== 'feat-selection' && (
+                                                                    <div className="mt-4 min-h-[72px] p-3 bg-black/40 border border-gray-800 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300 max-w-md">
                                                                         <div className="flex items-center gap-2 mb-1.5">
                                                                             <Info size={10} className="text-dnd-gold" />
                                                                             <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Selection Details</span>
                                                                         </div>
                                                                         <div className="text-[10px] text-gray-400 leading-relaxed">
                                                                             {(() => {
+                                                                                if (!choice.value || (Array.isArray(choice.value) && choice.value.length === 0)) return 'Select an option to preview details.';
                                                                                 const selectedValues = Array.isArray(choice.value) ? choice.value : [choice.value];
                                                                                 const details = selectedValues.map((val, idx) => {
                                                                                     const opt = choice.options?.find((o: any) => (o.index || o.name || o) === val);

@@ -791,6 +791,22 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         });
     });
 
+    const proficiencySkillSources = [
+        ...((character.race as any)?.traits || []),
+        ...((character.subrace as any)?.traits || []),
+        ...(character.classFeatures || []),
+        ...(character.feats || []),
+    ];
+    proficiencySkillSources.forEach((source: any) => {
+        (source.effects || []).forEach((effect: any) => {
+            if (effect.type === 'proficiency' && effect.category === 'skill') {
+                const name = effect.target || effect.value;
+                const skill = SKILL_LIST.find(entry => entry.name.toLowerCase() === String(name).toLowerCase());
+                if (skill) derivedSkills.add(skill.name);
+            }
+        });
+    });
+
     let inventory = character.inventory || [];
     try {
         const allItems = await fetchEquipment(character.user_id);
