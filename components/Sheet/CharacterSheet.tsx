@@ -3335,7 +3335,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     damage: '-',
                     type: 'Maneuver',
                     notes: ['Superiority Die'],
-                    source: { name: maneuver, desc: ['Battle Master maneuver. Expend a Superiority Die to use it.'] },
+                    source: { name: maneuver, desc: [maneuverDescriptions.get(String(maneuver).toLowerCase()) || 'Battle Master maneuver. Expend a Superiority Die to use it.'] },
                 });
             });
         });
@@ -3597,6 +3597,20 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         more: <svg xmlns="http://www.w3.org/2000/svg" width="18" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
     };
 
+    const maneuverDescriptions = React.useMemo(() => {
+        const map = new Map<string, string>();
+        character.classes.forEach(cls => {
+            [...(cls.subclass?.feature_details || []), ...(cls.definition.feature_details || [])].forEach((feature: any) => {
+                (feature.effects || []).forEach((effect: any) => {
+                    (effect.options || []).forEach((option: any) => {
+                        if (typeof option === 'object' && option?.name && option?.description) map.set(String(option.name).toLowerCase(), option.description);
+                    });
+                });
+            });
+        });
+        return map;
+    }, [character.classes]);
+
     const getAllFeaturesSorted = () => {
          const list: any[] = [];
 
@@ -3670,7 +3684,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         character.choices.filter((choice: any) => choice.type === 'feature_choice' && Array.isArray(choice.value) && choice.value.length > 0).forEach((choice: any, idx: number) => {
             list.push({
                 name: choice.label || 'Feature Choice',
-                desc: [`Selected: ${choice.value.join(', ')}`],
+                desc: [`Selected: ${choice.value.join(', ')}`, ...choice.value.map((name: string) => maneuverDescriptions.get(String(name).toLowerCase()) ? `${name}: ${maneuverDescriptions.get(String(name).toLowerCase())}` : name)],
                 type: 'Class',
                 source: choice.source || 'Class',
                 level: choice.level || '-',
