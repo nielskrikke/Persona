@@ -47,8 +47,8 @@ export const WIDGET_METADATA: Record<string, { icon: string, desc: string, color
 };
 
 export const DEFAULT_LAYOUT: { left: string[], right: string[], mobile: string[] } = {
-    left: [],
-    right: [],
+    left: ['senses', 'proficiencies', 'skills', 'saves'],
+    right: ['actions', 'features', 'inventory', 'movement', 'defenses'],
     mobile: ['actions', 'spells', 'inventory', 'saves', 'hitDice']
 };
 

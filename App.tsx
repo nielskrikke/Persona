@@ -114,7 +114,7 @@ const INITIAL_CHARACTER: CharacterState = {
     xp: 0,
     equipment: [],
     customActions: [],
-    layout: { left: [], right: [], mobile: ['actions', 'spells', 'inventory', 'saves', 'hitDice'] },
+    layout: { left: ['senses', 'proficiencies', 'skills', 'saves'], right: ['actions', 'features', 'inventory', 'movement', 'defenses'], mobile: ['actions', 'spells', 'inventory', 'saves', 'hitDice'] },
     favorites: [],
     backstory: '',
     lore: [],

@@ -278,7 +278,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             activeEldritchCannon: null,
             eldritchCannonFreebieUsed: false,
             activeSteelDefender: null,
-            layout: initialCharacter.layout || { left: [], right: [], mobile: ['actions', 'spells', 'inventory', 'saves', 'hitDice'] },
+            layout: initialCharacter.layout || { left: ['senses', 'proficiencies', 'skills', 'saves'], right: ['actions', 'features', 'inventory', 'movement', 'defenses'], mobile: ['actions', 'spells', 'inventory', 'saves', 'hitDice'] },
             favorites: initialCharacter.favorites || [],
             backgroundImageUrl: initialCharacter.backgroundImageUrl || '',
             backgroundColor: initialCharacter.backgroundColor || '#151515',
@@ -2391,17 +2391,28 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const passPerc = 10 + calculateModifier(getStat('wis')) + (hasSkillProficiency('Perception') ? prof : 0) + (character.expertise?.includes('Perception') ? prof : 0);
                 const passInv = 10 + calculateModifier(getStat('int')) + (hasSkillProficiency('Investigation') ? prof : 0) + (character.expertise?.includes('Investigation') ? prof : 0);
                 const passIns = 10 + calculateModifier(getStat('wis')) + (hasSkillProficiency('Insight') ? prof : 0) + (character.expertise?.includes('Insight') ? prof : 0);
-                const dvRange = activeModifiers
-                    .filter((m: any) => m.type === 'set' && (m.target === 'darkvision' || m.stat === 'darkvision'))
-                    .reduce((max: number, m: any) => Math.max(max, Number(m.value || 0)), 0);
-                const dvBonus = activeModifiers
-                    .filter((m: any) => (m.type === 'bonus' || m.type === 'stat_bonus') && (m.target === 'darkvision' || m.stat === 'darkvision'))
-                    .reduce((sum: number, m: any) => sum + Number(m.value || 0), 0);
-                const dv = dvRange + dvBonus > 0 ? `${dvRange + dvBonus} ft` : 'None';
+                const senseValue = (sense: string) => {
+                    const base = activeModifiers
+                        .filter((m: any) => m.type === 'set' && (m.target === sense || m.stat === sense))
+                        .reduce((max: number, m: any) => Math.max(max, Number(m.value || 0)), 0);
+                    const bonus = activeModifiers
+                        .filter((m: any) => (m.type === 'bonus' || m.type === 'stat_bonus') && (m.target === sense || m.stat === sense))
+                        .reduce((sum: number, m: any) => sum + Number(m.value || 0), 0);
+                    return base + bonus;
+                };
+                const dv = senseValue('darkvision');
+                const blindsight = senseValue('blindsight');
+                const tremorsense = senseValue('tremorsense');
+                const truesight = senseValue('truesight');
                 return (
                     <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
                          <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest mb-2">Senses</h3>
-                         <div className="grid grid-cols-2 gap-y-2 text-xs"><div className="flex items-center gap-2"><span className="bg-gray-800 w-6 h-6 flex items-center justify-center rounded font-bold text-white border border-gray-600">{passPerc}</span><span className="text-gray-400">Passive Percep.</span></div><div className="flex items-center gap-2"><span className="bg-gray-800 w-6 h-6 flex items-center justify-center rounded font-bold text-white border border-gray-600">{passIns}</span><span className="text-gray-400">Passive Insight</span></div><div className="flex items-center gap-2"><span className="bg-gray-800 w-6 h-6 flex items-center justify-center rounded font-bold text-white border border-gray-600">{passInv}</span><span className="text-gray-400">Passive Invest.</span></div><div className="flex items-center gap-2"><span className="bg-gray-800 w-6 h-6 flex items-center justify-center rounded text-[10px] font-bold text-white border border-gray-600 italic">DV</span><span className="text-gray-400">Darkvision: {dv}</span></div></div>
+                         <div className="grid grid-cols-2 gap-y-2 text-xs"><div className="flex items-center gap-2"><span className="bg-gray-800 w-6 h-6 flex items-center justify-center rounded font-bold text-white border border-gray-600">{passPerc}</span><span className="text-gray-400">Passive Percep.</span></div><div className="flex items-center gap-2"><span className="bg-gray-800 w-6 h-6 flex items-center justify-center rounded font-bold text-white border border-gray-600">{passIns}</span><span className="text-gray-400">Passive Insight</span></div><div className="flex items-center gap-2"><span className="bg-gray-800 w-6 h-6 flex items-center justify-center rounded font-bold text-white border border-gray-600">{passInv}</span><span className="text-gray-400">Passive Invest.</span></div><div className="col-span-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span className="flex items-center gap-1"><span className="bg-gray-800 w-6 h-6 flex items-center justify-center rounded text-[10px] font-bold text-white border border-gray-600 italic">DV</span><span className="text-gray-400">Darkvision: {dv > 0 ? `${dv} ft` : 'None'}</span></span>
+                        {blindsight > 0 && <span className="text-gray-400">Blindsight: {blindsight} ft</span>}
+                        {tremorsense > 0 && <span className="text-gray-400">Tremorsense: {tremorsense} ft</span>}
+                        {truesight > 0 && <span className="text-gray-400">Truesight: {truesight} ft</span>}
+                    </div></div>
                     </div>
                 );
             case 'movement':
@@ -3252,27 +3263,35 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 attacks.push(spellAttackObj);
             }
         });
-        // Feature-declared actions with damage (e.g. Dragonborn Breath Weapon).
-        character.classFeatures?.forEach(feature => {
+        // Feature, species and feat actions. These include non-damage actions
+        // such as Petrifying Gaze, Healing Hands or Draconic Cry.
+        const actionSources = [
+            ...((character.race as any)?.traits || []),
+            ...((character.subrace as any)?.traits || []),
+            ...(character.classFeatures || []),
+            ...(character.feats || []),
+        ];
+        actionSources.forEach((feature: any) => {
             (feature.effects || []).forEach((effect: any, idx: number) => {
-                if (effect.type !== 'action' && effect.type !== 'bonus_action') return;
-                if (!effect.damage) return;
+                if (!['action', 'bonus_action', 'reaction'].includes(effect.type)) return;
                 const scaling = effect.scaling?.values || effect.scaling;
                 const scaled = scaling && !Array.isArray(scaling)
                     ? Object.keys(scaling).map(Number).filter(level => level <= character.level).sort((a, b) => a - b).map(level => scaling[level]).pop()
                     : effect.damage;
                 const saveAbility = String(effect.save_ability || 'con').toLowerCase() as AbilityName;
                 const saveDC = 8 + prof + calculateModifier(getStat(saveAbility));
+                const actionName = effect.name || feature.name;
+                const usage = character.featureUsage?.[actionName];
                 attacks.push({
-                    id: `feature-action-${feature.index}-${idx}`,
-                    name: effect.name || feature.name,
-                    range: effect.range || '15 ft.',
+                    id: `feature-action-${feature.index || feature.name}-${idx}`,
+                    name: actionName,
+                    range: effect.range || (effect.type === 'action' ? '-' : '-'),
                     hit: null,
                     save: effect.save_ability ? { dc: saveDC, type: String(effect.save_ability).toUpperCase() } : null,
-                    damage: scaled || effect.damage,
-                    type: effect.damage_type || 'Damage',
-                    notes: ['Feature Action', ...(effect.description ? [effect.description] : [])],
-                    source: { ...feature, name: effect.name || feature.name, desc: [effect.description || ''] },
+                    damage: scaled || effect.damage || '-',
+                    type: effect.damage_type || (effect.type === 'action' ? 'Action' : effect.type === 'reaction' ? 'Reaction' : 'Bonus Action'),
+                    notes: [effect.type === 'action' ? 'Action' : effect.type === 'reaction' ? 'Reaction' : 'Bonus Action', ...(effect.description ? [effect.description] : [])],
+                    source: { ...feature, name: actionName, desc: [effect.description || ''], activationType: effect.type, maxUses: usage?.max },
                 });
             });
         });

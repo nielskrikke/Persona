@@ -1589,12 +1589,13 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
 
             payload = { ...payload, ...advancedData };
             if (activeTab === 'class' || activeTab === 'subclass') {
-                payload.resources = contentResources;
-                payload.resources = contentResources;
-                payload.choices = contentChoices;
+                payload.resources = contentResources.length > 0 ? contentResources : (Array.isArray(advancedData.resources) ? advancedData.resources : []);
+                payload.choices = contentChoices.length > 0 ? contentChoices : (Array.isArray(advancedData.choices) ? advancedData.choices : []);
             } else if (activeTab === 'race' || activeTab === 'background' || activeTab === 'feat') {
-                payload.choices = contentChoices;
-                if (activeTab === 'race') payload.resources = contentResources;
+                payload.choices = contentChoices.length > 0 ? contentChoices : (Array.isArray(advancedData.choices) ? advancedData.choices : []);
+                if (activeTab === 'race') {
+                    payload.resources = contentResources.length > 0 ? contentResources : (Array.isArray(advancedData.resources) ? advancedData.resources : []);
+                }
             }
 
             if (editingId) {

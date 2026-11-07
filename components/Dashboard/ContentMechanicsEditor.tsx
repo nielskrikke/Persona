@@ -50,7 +50,11 @@ const ResourceRow = ({ resource, onChange, onRemove }: { resource: ResourceDefin
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                     <label className={labelClass}>Resource Name</label>
-                    <input className={inputClass} value={resource.name} onChange={e => onChange({ ...resource, name: e.target.value })} placeholder="Rage" />
+                    <input className={inputClass} value={resource.name} onChange={e => {
+                        const name = e.target.value;
+                        const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || `resource_${Date.now()}`;
+                        onChange({ ...resource, name, key: String(resource.key).startsWith('resource-') ? slug : resource.key });
+                    }} placeholder="Rage" />
                 </div>
                 <div>
                     <label className={labelClass}>Unlocks at Level</label>
