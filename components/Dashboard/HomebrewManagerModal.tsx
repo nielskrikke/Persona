@@ -199,6 +199,7 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                     <option value="unarmed_strike">Unarmed Strike / Natural Weapon Override</option>
                                     <option value="extra_attack">Extra Attack / Additional Attack</option>
                                     <option value="stat_bonus">Stat Bonus (Flat)</option>
+                                    <option value="set">Sense / Set Value</option>
                                     <option value="resistance">Resistance</option>
                                     <option value="immunity">Immunity</option>
                                     <option value="proficiency">Proficiency</option>
@@ -215,6 +216,17 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                 Remove Effect
                             </button>
                         </div>
+
+                        {(eff.type === 'action' || eff.type === 'bonus_action' || eff.type === 'reaction') && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <select value={eff.save_ability || ''} onChange={e => updateEffect(i, { save_ability: e.target.value || undefined })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white">
+                                    <option value="">No saving throw</option>
+                                    <option value="str">STR save</option><option value="dex">DEX save</option><option value="con">CON save</option>
+                                    <option value="int">INT save</option><option value="wis">WIS save</option><option value="cha">CHA save</option>
+                                </select>
+                                <input type="text" placeholder="Save DC (optional, e.g. 8+con+pb)" value={eff.save_dc || ''} onChange={e => updateEffect(i, { save_dc: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white" />
+                            </div>
+                        )}
 
                         {/* General Feature */}
                         {eff.type === 'feature' && (
@@ -801,6 +813,22 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                     rule={eff.rule || eff.condition || ''}
                                     onChange={(newConditions, newRule) => updateEffect(i, { conditions: newConditions, rule: newRule, condition: newRule })}
                                 />
+                            </div>
+                        )}
+
+                        {eff.type === 'set' && (
+                            <div className="space-y-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <select value={eff.target || eff.stat || 'darkvision'} onChange={e => updateEffect(i, { target: e.target.value, stat: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white">
+                                        <option value="darkvision">Darkvision</option>
+                                        <option value="blindsight">Blindsight</option>
+                                        <option value="tremorsense">Tremorsense</option>
+                                        <option value="truesight">Truesight</option>
+                                        <option value="speed">Walking Speed</option>
+                                    </select>
+                                    <input type="number" min={0} placeholder="Range in feet" value={eff.value ?? 10} onChange={e => updateEffect(i, { value: Number(e.target.value) })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-bold" />
+                                </div>
+                                <input type="text" placeholder="Description (optional)" value={eff.description || eff.desc || ''} onChange={e => updateEffect(i, { description: e.target.value, desc: e.target.value })} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white" />
                             </div>
                         )}
 

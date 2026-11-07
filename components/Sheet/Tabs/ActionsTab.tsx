@@ -142,7 +142,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                                     <span className="text-[8px] bg-yellow-900/40 text-yellow-500 border border-yellow-800/60 px-1 rounded h-3 flex items-center">R</span>
                                                 )}
                                             </div>
-                                            <div className="text-[10px] text-gray-500 lowercase line-clamp-2 leading-tight">{attack.type}{attack.notes?.length ? ` • ${attack.notes.join(' • ')}` : ''}</div>
+                                            <div className="text-[10px] text-gray-500 line-clamp-2 leading-tight">{attack.type}{attack.notes?.length ? ` • ${attack.notes.join(' • ')}` : ''}</div>
                                             {attack.mastery && (
                                         <div className="flex flex-wrap gap-1 mt-1 items-center">
                                             <span className="text-[9px] uppercase font-black tracking-widest text-dnd-gold">Mastery: {attack.mastery.name}</span>
@@ -267,7 +267,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                             <span className="text-[8px] bg-yellow-900/40 text-yellow-500 border border-yellow-800/60 px-1 rounded h-3 flex items-center">R</span>
                                         )}
                                     </div>
-                                    <div className="text-[10px] text-gray-500 lowercase line-clamp-2 leading-tight">
+                                    <div className="text-[10px] text-gray-500 line-clamp-2 leading-tight">
                                         {attack.type}
                                         {attack.notes?.map((note: string, idx: number) => {
                                             const description = MASTERY_DESCRIPTIONS[note];

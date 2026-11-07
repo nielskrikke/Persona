@@ -3278,19 +3278,31 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const scaled = scaling && !Array.isArray(scaling)
                     ? Object.keys(scaling).map(Number).filter(level => level <= character.level).sort((a, b) => a - b).map(level => scaling[level]).pop()
                     : effect.damage;
-                const saveAbility = String(effect.save_ability || 'con').toLowerCase() as AbilityName;
-                const saveDC = 8 + prof + calculateModifier(getStat(saveAbility));
+                const saveAbility = String(effect.save_ability || effect.save?.ability || 'con').toLowerCase() as AbilityName;
+                let saveDC = 8 + prof + calculateModifier(getStat(saveAbility));
+                const rawDC = String(effect.save_dc ?? effect.save?.dc ?? '').trim();
+                if (/^\d+$/.test(rawDC)) saveDC = Number(rawDC);
+                else if (rawDC) {
+                    let computed = 0;
+                    rawDC.toLowerCase().split('+').map(part => part.trim()).forEach(part => {
+                        if (/^\d+$/.test(part)) computed += Number(part);
+                        else if (part === 'pb' || part === 'proficiency') computed += prof;
+                        else if (['str','dex','con','int','wis','cha'].includes(part)) computed += calculateModifier(getStat(part as AbilityName));
+                    });
+                    if (computed > 0) saveDC = computed;
+                }
+                const hasSave = Boolean(effect.save_ability || effect.save?.ability || rawDC);
                 const actionName = effect.name || feature.name;
                 const usage = character.featureUsage?.[actionName];
                 attacks.push({
                     id: `feature-action-${feature.index || feature.name}-${idx}`,
                     name: actionName,
-                    range: effect.range || (effect.type === 'action' ? '-' : '-'),
+                    range: effect.range || '-',
                     hit: null,
-                    save: effect.save_ability ? { dc: saveDC, type: String(effect.save_ability).toUpperCase() } : null,
+                    save: hasSave ? { dc: saveDC, type: String(effect.save_ability || effect.save?.ability || 'CON').toUpperCase() } : null,
                     damage: scaled || effect.damage || '-',
                     type: effect.damage_type || (effect.type === 'action' ? 'Action' : effect.type === 'reaction' ? 'Reaction' : 'Bonus Action'),
-                    notes: [effect.type === 'action' ? 'Action' : effect.type === 'reaction' ? 'Reaction' : 'Bonus Action', ...(effect.description ? [effect.description] : [])],
+                    notes: effect.description ? [effect.description] : [],
                     source: { ...feature, name: actionName, desc: [effect.description || ''], activationType: effect.type, maxUses: usage?.max },
                 });
             });
