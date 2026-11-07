@@ -863,6 +863,12 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         if (choice.type === 'skill' && !choice.value) {
             return { ...choice, options: (choice.options || []).filter((option: any) => !derivedSkills.has(String(option))) };
         }
+        if (!choice.value && (choice.type === 'other' || choice.label?.includes('Tool'))) {
+            const options = choice.options || [];
+            if (options.length > 0 && options.every((option: any) => ARTISAN_TOOLS.includes(typeof option === 'string' ? option : option.name))) {
+                return { ...choice, options: options.filter((option: any) => !derivedTools.has(String(typeof option === 'string' ? option : option.name))) };
+            }
+        }
         return choice;
     });
 

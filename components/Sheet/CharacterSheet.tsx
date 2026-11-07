@@ -5,7 +5,7 @@ import { CharacterState, ABILITY_NAMES, ABILITY_LABELS, RollResult, AbilityName,
 import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount, getSpellAbilityForClass, getResourceDefinitions, mergeSpellSlotCurrents, hasUiWidget, getClassWithUiWidget, resolveDamageFormula, appendMinDie, getWeaponMasteryData, getSpellCastLevel, calculateMaxHp, formatResourceName } from '../../utils/rules';
 import { rollDice } from '../../utils/dice';
 import CreatureManagerModal from './Modals/CreatureManagerModal';
-import { WIDGET_LABELS, DEFAULT_LAYOUT, STANDARD_CONDITIONS, STANDARD_ACTIONS, STATIC_RULES, WIDGET_BG } from '../../data/constants';
+import { WIDGET_LABELS, DEFAULT_LAYOUT, STANDARD_CONDITIONS, STANDARD_ACTIONS, STATIC_RULES, WIDGET_BG, MANEUVER_DESCRIPTIONS } from '../../data/constants';
 import { Library, fetchEquipment, fetchEquipmentDetail, hydrateGrantedSpells } from '../../data/index';
 import DiceRoller3D, { DiceBoxRollRequest } from './Shared/DiceRoller3D';
 import { DiceBoxGroupResult } from '@3d-dice/dice-box';
@@ -3335,7 +3335,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     damage: '-',
                     type: 'Maneuver',
                     notes: ['Superiority Die'],
-                    source: { name: maneuver, desc: [maneuverDescriptions.get(String(maneuver).toLowerCase()) || 'Battle Master maneuver. Expend a Superiority Die to use it.'] },
+                    source: { name: maneuver, desc: [maneuverDescriptions.get(String(maneuver).toLowerCase()) || MANEUVER_DESCRIPTIONS[maneuver] || 'Battle Master maneuver. Expend a Superiority Die to use it.'] },
                 });
             });
         });
@@ -3684,7 +3684,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         character.choices.filter((choice: any) => choice.type === 'feature_choice' && Array.isArray(choice.value) && choice.value.length > 0).forEach((choice: any, idx: number) => {
             list.push({
                 name: choice.label || 'Feature Choice',
-                desc: [`Selected: ${choice.value.join(', ')}`, ...choice.value.map((name: string) => maneuverDescriptions.get(String(name).toLowerCase()) ? `${name}: ${maneuverDescriptions.get(String(name).toLowerCase())}` : name)],
+                desc: [`Selected: ${choice.value.join(', ')}`, ...choice.value.map((name: string) => maneuverDescriptions.get(String(name).toLowerCase()) || MANEUVER_DESCRIPTIONS[name] ? `${name}: ${maneuverDescriptions.get(String(name).toLowerCase()) || MANEUVER_DESCRIPTIONS[name]}` : name)],
                 type: 'Class',
                 source: choice.source || 'Class',
                 level: choice.level || '-',

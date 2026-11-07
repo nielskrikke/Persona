@@ -423,6 +423,7 @@ const ManageCharacterModal = ({
                                         .filter(skill => SKILL_LIST.some(entry => entry.name.toLowerCase() === String(skill).toLowerCase()));
                                     const speciesSkills = [...(character.race?.traits || []), ...(character.subrace?.traits || [])].flatMap((trait: any) => (trait.effects || []).filter((effect: any) => effect.type === 'proficiency' && effect.category === 'skill').map((effect: any) => effect.target || effect.value));
                                     const knownSkills = new Set([...character.skills, ...(character.toolProficiencies || []), ...speciesSkills].map(skill => String(skill).toLowerCase()));
+                                    const knownTools = new Set((character.toolProficiencies || []).map(tool => String(tool).toLowerCase()));
                                     const rawOptions = effect.options || (effect.type === 'expertise_choice' ? proficientSkills : effect.category === 'language' ? STANDARD_LANGUAGES : effect.category === 'tool' ? ARTISAN_TOOLS : effect.category === 'skill' ? SKILL_LIST.map(entry => entry.name) : []);
                                     backfilled.push({
                                         id: choiceId,
@@ -434,7 +435,11 @@ const ManageCharacterModal = ({
                                             : effect.category === 'skill' ? 'skill' : 'other',
                                         label: effect.name || feature.name,
                                         value: stored?.value || (getChoiceCount(effect, cls.level) > 1 ? [] : null),
-                                        options: effect.category === 'skill' && effect.type === 'proficiency_choice' ? rawOptions.filter((option: any) => !knownSkills.has(String(option).toLowerCase())) : rawOptions,
+                                        options: effect.category === 'skill' && effect.type === 'proficiency_choice'
+                                            ? rawOptions.filter((option: any) => !knownSkills.has(String(option).toLowerCase()))
+                                            : effect.category === 'tool' && effect.type === 'proficiency_choice'
+                                                ? rawOptions.filter((option: any) => !knownTools.has(String(typeof option === 'string' ? option : option.name).toLowerCase()))
+                                                : rawOptions,
                                         count: getChoiceCount(effect, cls.level),
                                         revertData: { classIndex, subclassIndex: liveSubclass.index },
                                     });
@@ -698,6 +703,7 @@ const ManageCharacterModal = ({
                     .filter(skill => SKILL_LIST.some(entry => entry.name.toLowerCase() === String(skill).toLowerCase()));
                 const speciesSkills = [...(character.race?.traits || []), ...(character.subrace?.traits || [])].flatMap((trait: any) => (trait.effects || []).filter((effect: any) => effect.type === 'proficiency' && effect.category === 'skill').map((effect: any) => effect.target || effect.value));
                 const knownSkills = new Set([...skills, ...(character.skills || []), ...speciesSkills].map(skill => String(skill).toLowerCase()));
+                const knownTools = new Set([...toolProficiencies, ...(character.toolProficiencies || [])].map(tool => String(tool).toLowerCase()));
                 const rawOptions = effect.options
                     || (effect.type === 'expertise_choice'
                         ? proficientSkills
@@ -710,7 +716,9 @@ const ManageCharacterModal = ({
                                     : []);
                 const options = effect.category === 'skill' && effect.type === 'proficiency_choice'
                     ? rawOptions.filter((option: any) => !knownSkills.has(String(option).toLowerCase()))
-                    : rawOptions;
+                    : effect.category === 'tool' && effect.type === 'proficiency_choice'
+                        ? rawOptions.filter((option: any) => !knownTools.has(String(typeof option === 'string' ? option : option.name).toLowerCase()))
+                        : rawOptions;
                 newSubChoices.push({
                     id: choiceId,
                     level: clsDef.level,
@@ -2838,6 +2846,11 @@ const ManageCharacterModal = ({
                                                                         <h5 className="text-white font-bold text-lg">{choice.label}</h5>
                                                                         {choice.revertData?.pendingConfirm && (
                                                                             <span className="text-[8px] font-black uppercase tracking-widest text-dnd-gold bg-dnd-gold/10 border border-dnd-gold/40 rounded-full px-2 py-0.5">Needs Confirm</span>
+                                                                        )}
+                                                                        {Number(choice.count || 1) > 1 && (
+                                                                            <span className="text-[8px] font-black tracking-widest text-gray-400 bg-black/40 border border-gray-700 rounded-full px-2 py-0.5">
+                                                                                {Array.isArray(choice.value) ? choice.value.length : 0} / {choice.count}
+                                                                            </span>
                                                                         )}
                                                                     </div>
                                                                 </div>

@@ -117,6 +117,32 @@ export const SPELL_SCHOOLS = [
     "Abjuration", "Conjuration", "Divination", "Enchantment", "Evocation", "Illusion", "Necromancy", "Transmutation"
 ];
 
+export const MANEUVER_DESCRIPTIONS: Record<string, string> = {
+    'Ambush': 'When you make a Dexterity (Stealth) check, expend a Superiority Die and add the roll to the check.',
+    'Bait and Switch': 'Expend a Superiority Die; swap places with a willing ally within 5 feet and add the roll to your AC until your next turn.',
+    'Brace': 'When a creature enters your reach, expend a Superiority Die to make an opportunity attack and add the roll to its damage.',
+    "Commander's Strike": 'Expend a Superiority Die; an ally can use its reaction to make one weapon attack and add the roll to its damage.',
+    'Commanding Presence': 'When you make a Charisma (Intimidation, Performance, or Persuasion) check, expend a Superiority Die and add the roll.',
+    'Disarming Attack': 'On a hit, expend a Superiority Die; the target makes a Strength save or drops an item, and add the roll to damage.',
+    'Distracting Strike': 'On a hit, expend a Superiority Die; the next attack against the target has advantage, and add the roll to damage.',
+    'Evasive Footwork': 'When you move, expend a Superiority Die and add the roll to your AC until you stop moving.',
+    'Feinting Attack': 'As a bonus action, expend a Superiority Die to gain advantage on your next attack against a creature and add the roll to damage.',
+    'Goading Attack': 'On a hit, expend a Superiority Die; the target makes a Wisdom save or has disadvantage attacking others, and add the roll to damage.',
+    'Grappling Strike': 'On a hit, expend a Superiority Die; the target makes a Strength or Dexterity save or is grappled, and add the roll to damage.',
+    'Lunging Attack': 'On a hit, expend a Superiority Die to increase your reach by 5 feet and add the roll to damage.',
+    'Maneuvering Attack': 'On a hit, expend a Superiority Die; an ally can move half its speed without opportunity attacks, and add the roll to damage.',
+    'Menacing Attack': 'On a hit, expend a Superiority Die; the target makes a Wisdom save or is frightened, and add the roll to damage.',
+    'Parry': 'When hit by a melee attack, use your reaction and expend a Superiority Die to add the roll to your AC.',
+    'Precision Attack': 'When you make an attack roll, expend a Superiority Die and add the roll to the attack.',
+    'Pushing Attack': 'On a hit, expend a Superiority Die; the target makes a Strength save or is pushed up to 15 feet, and add the roll to damage.',
+    'Rally': 'As a bonus action, expend a Superiority Die; an ally gains temporary HP equal to the roll plus your Charisma modifier.',
+    'Riposte': 'When a creature misses you with a melee attack, use your reaction and expend a Superiority Die to make a melee attack, adding the roll to damage.',
+    'Seize the Initiative': 'When you roll initiative, expend a Superiority Die and add the roll to your initiative.',
+    'Sweeping Attack': 'On a hit, expend a Superiority Die; another creature within 5 feet of the target takes damage equal to the roll.',
+    'Tactical Assessment': 'When you make an Investigation, History, or Insight check, expend a Superiority Die and add the roll.',
+    'Trip Attack': 'On a hit, expend a Superiority Die; the target makes a Strength save or falls prone, and add the roll to damage.',
+};
+
 export const MASTERY_DESCRIPTIONS: Record<string, string> = {
     'Cleave': 'If you hit a creature with a melee attack roll using this weapon, you can make a melee attack roll with the weapon against a second creature within 5 feet of the first that is also within your reach. On a hit, the second creature takes the weapon’s damage, but don’t add your ability modifier to that damage unless that modifier is negative. You can make this extra attack only once per turn.',
     'Graze': 'If your attack roll with this weapon misses a creature, you can deal damage to that creature equal to the ability modifier you used to make the attack roll. This damage is the same type dealt by the weapon, and the damage can be increased only by increasing the ability modifier.',
