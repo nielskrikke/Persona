@@ -58,8 +58,8 @@ const DAMAGE_ICONS: Record<string, React.ComponentType<{ size?: number; classNam
 const DAMAGE_TYPE_NAMES = ['acid', 'cold', 'fire', 'force', 'lightning', 'necrotic', 'poison', 'psychic', 'radiant', 'thunder', 'bludgeoning', 'piercing', 'slashing', 'healing'];
 
 const parseDamageTypes = (type?: string, damage?: string): string[] => {
-    const text = `${type || ''} ${damage || ''}`.toLowerCase();
-    return DAMAGE_TYPE_NAMES.filter(name => new RegExp(`\b${name}\b`).test(text));
+    const words = new Set(`${type || ''} ${damage || ''}`.toLowerCase().split(/[^a-z]+/).filter(Boolean));
+    return DAMAGE_TYPE_NAMES.filter(name => words.has(name));
 };
 
 const DamageTypeIcon = ({ type }: { type?: string }) => {
