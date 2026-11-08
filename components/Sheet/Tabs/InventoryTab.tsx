@@ -402,7 +402,7 @@ const InventoryTab: React.FC<InventoryTabProps> = ({
                                                 <span className="w-8 text-center text-xs text-white">{item.quantity}</span>
                                                 <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-8 h-8 flex items-center justify-center rounded bg-gray-800 text-gray-400">+</button>
                                             </div>
-                                            <div className="text-center text-xs text-gray-400">{typeof item.cost === 'object' && item.cost ? `${item.cost.quantity}${item.cost.unit}` : (typeof item.cost === 'string' ? item.cost : '-')}</div>
+                                            <div className="text-center text-xs text-gray-400">{((item.cost as any) && typeof item.cost === 'object' && (item.cost as any).quantity !== undefined && (item.cost as any).unit) ? `${(item.cost as any).quantity} ${(item.cost as any).unit}` : (typeof (item.cost as any) === 'string' && (item.cost as any).trim() ? (item.cost as any) : '—')}</div>
                                             <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
                                                 {item.requires_attunement && (
                                                     <div onClick={() => toggleAttunement(item.id)} className={`w-6 h-6 rounded-full border-2 cursor-pointer flex items-center justify-center ${item.attuned ? 'bg-cyan-500 border-cyan-400' : 'bg-transparent border-gray-600'}`}>
