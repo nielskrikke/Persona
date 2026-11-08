@@ -43,8 +43,16 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
     const [actionFilter, setActionFilter] = useState('ALL');
 
     const allAttacks = getAttacks();
+    const attackTableItems = allAttacks.filter((attack: any) =>
+        attack.hit !== null
+        || Boolean(attack.save)
+        || (attack.damage && attack.damage !== '-' && attack.damage !== 'See Desc')
+        || Boolean(attack.attackCount)
+        || Boolean(attack.source?.weapon_category)
+        || Boolean(attack.source?.school)
+    );
     
-    const filteredAttacks = allAttacks.filter(attack => {
+    const filteredAttacks = attackTableItems.filter(attack => {
         if (actionFilter === 'ALL') return true;
         if (actionFilter === 'ATTACK') return true; // Attacks are always attacks
         
@@ -58,7 +66,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
         return false;
     });
 
-    const favAttacks = allAttacks.filter(a => character.favorites.includes(a.id));
+    const favAttacks = attackTableItems.filter(a => character.favorites.includes(a.id));
     const favOtherSpells = character.spells.filter(s => character.favorites.includes(s.index) && !favAttacks.some(a => a.id === s.index)).map(spell => {
         const notes = [spell.level === 0 ? 'Cantrip' : `Lvl ${spell.level}`];
         if(spell.casting_time.toLowerCase().includes('bonus')) notes.push('Bonus');

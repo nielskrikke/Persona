@@ -2337,7 +2337,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     </div>
                 );
             case 'actions': {
-                const topAttacks = getAttacks().filter((att: any) => att.type !== 'Maneuver').slice(0, 3);
+                const topAttacks = getAttacks().filter((att: any) => att.type !== 'Maneuver' && (att.hit !== null || att.save || (att.damage && att.damage !== '-' && att.damage !== 'See Desc'))).slice(0, 3);
                 return (
                     <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
                         <div className="flex justify-between items-center mb-2 cursor-pointer hover:text-dnd-gold" onClick={() => setActiveTab('actions')}>
