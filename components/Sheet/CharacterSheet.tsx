@@ -3384,7 +3384,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const save = effect.save ? { type: effect.save.ability || effect.save.type || 'DEX', dc: dcMatch ? Number(dcMatch[0]) : 13 } : null;
                 const actionAttack = {
                     id: `item-action-${item.id}-${index}`,
-                    name: effect.name ? `${item.name}: ${effect.name}` : item.name,
+                    name: effect.name || effect.spell_name || item.name,
                     range: effect.range ? `${effect.range} ft.` : '-',
                     hit: null,
                     save,
@@ -3510,7 +3510,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                      .filter((effect: any) => ['action', 'bonus_action', 'reaction'].includes(effect?.type))
                      .map((effect: any) => ({
                          ...effect,
-                         name: effect.name ? `${item.name}: ${effect.name}` : item.name,
+                         name: effect.name || effect.spell_name || item.name,
                          source: item.name,
                          desc: effect.description || effect.desc || [],
                          itemId: item.id,
@@ -4433,7 +4433,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             }
                         }
                         if (action === 'openItem') {
-                            const target = character.inventory.find(entry => entry.id === itm?.id);
+                            const target = character.inventory.find(entry => entry.id === itm?.id || (itm?.name && entry.name === itm.name));
                             if (target) setSelectedDetail(target);
                             return;
                         }

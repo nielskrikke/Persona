@@ -995,8 +995,8 @@ const DetailSidePanel = ({
                                 </div>
                             </div>
                         )}
-                        {(fullDetail as any).isItemAction && (fullDetail as any).itemId && (
-                            <button type="button" onClick={() => onAction?.('openItem', { id: (fullDetail as any).itemId })} className="mt-3 w-full rounded-lg border border-dnd-gold/40 bg-dnd-gold/10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-dnd-gold hover:bg-dnd-gold hover:text-black transition-colors">
+                        {(fullDetail as any).isItemAction && ((fullDetail as any).itemId || (fullDetail as any).itemName) && (
+                            <button type="button" onClick={() => onAction?.('openItem', { id: (fullDetail as any).itemId, name: (fullDetail as any).itemName })} className="mt-3 w-full rounded-lg border border-dnd-gold/40 bg-dnd-gold/10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-dnd-gold hover:bg-dnd-gold hover:text-black transition-colors">
                                 Open {(fullDetail as any).itemName || 'Item'}
                             </button>
                         )}
