@@ -50,6 +50,8 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
         || Boolean(attack.attackCount)
         || Boolean(attack.source?.weapon_category)
         || Boolean(attack.source?.school)
+        || attack.type === 'Maneuver'
+        || attack.source?.type === 'Maneuver'
     );
     
     const filteredAttacks = attackTableItems.filter(attack => {
@@ -130,10 +132,10 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                     {favTableItems.length > 0 && (
                         <>
                         <div className="hidden lg:block overflow-x-auto custom-scrollbar">
-                            <div className="grid grid-cols-[40px_1fr_120px_110px_110px] gap-2 px-6 py-2 bg-[#121316]/50 text-[10px] font-bold text-gray-500 uppercase tracking-wider items-center min-w-[600px]"><div>Type</div><div>Action</div><div className="text-center">Range</div><div className="text-center">Damage</div><div className="text-center">Hit / DC</div></div>
+                            <div className="grid grid-cols-[40px_1fr_90px_96px_76px_92px] gap-2 px-6 py-2 bg-[#121316]/50 text-[10px] font-bold text-gray-500 uppercase tracking-wider items-center min-w-[700px]"><div>Type</div><div>Action</div><div className="text-center">Range</div><div className="text-center">Damage</div><div className="text-center">Attack</div><div className="text-center">Save</div></div>
                             <div className="divide-y divide-[#2e3036]/60 min-w-[600px]">
                                 {favTableItems.map((attack, i) => (
-                                    <div key={i} className="grid grid-cols-[40px_1fr_120px_110px_110px] gap-2 items-center px-6 py-4 hover:bg-[#2e3036]/50 transition-colors group cursor-pointer" onClick={() => setSelectedDetail(attack.source && typeof attack.source === 'object' ? { ...attack.source, id: attack.id } : attack)}>
+                                    <div key={i} className="grid grid-cols-[40px_1fr_90px_96px_76px_92px] gap-2 items-center px-6 py-4 hover:bg-[#2e3036]/50 transition-colors group cursor-pointer" onClick={() => setSelectedDetail(attack.source && typeof attack.source === 'object' ? { ...attack.source, id: attack.id } : attack)}>
                                         <div className="w-8 h-8 flex items-center justify-center text-gray-500 shrink-0 border border-gray-600/50 rounded-md bg-gray-800 self-center">
                                             {renderActionIcon(attack)}
                                         </div>
@@ -196,8 +198,9 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                             )}
                                         </div>
                                         <div className="text-center text-[10px] text-gray-400 font-bold">{attack.range}</div>
-                                        <div className="flex justify-center"><button onClick={(e) => { e.stopPropagation(); roll(attack.damage, `Damage ${attack.name}`); }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex flex-col items-center justify-center text-center"><span className="text-sm font-bold text-white">{attack.damage}</span><span className="text-[8px] text-gray-500 uppercase">{attack.type}</span></button></div>
-                                        <div className="flex justify-center"><button onClick={(e) => { if (attack.hit !== null) { e.stopPropagation(); roll(`1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); } }} onContextMenu={(e) => { if (attack.hit !== null) { e.preventDefault(); e.stopPropagation(); triggerRollMenu(e, `1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); } }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex flex-col items-center justify-center text-center">{attack.hit !== null ? (<span className="text-sm font-bold text-white">{formatModifier(attack.hit)}</span>) : attack.save ? (<div className="flex flex-col items-center leading-none"><span className="text-[8px] font-bold text-gray-500 mb-0.5">{attack.save.type}</span><span className="text-sm font-bold text-white">DC {attack.save.dc}</span></div>) : ('-')}</button></div>
+                                        <div className="flex justify-center"><button onClick={(e) => { e.stopPropagation(); if (attack.damage && attack.damage !== '-') roll(attack.damage, `Damage ${attack.name}`); }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex items-center justify-center text-center"><span className="text-sm font-bold text-white">{attack.damage || '—'}</span></button></div>
+                                        <div className="flex justify-center"><button onClick={(e) => { if (attack.hit !== null) { e.stopPropagation(); roll(`1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); } }} onContextMenu={(e) => { if (attack.hit !== null) { e.preventDefault(); e.stopPropagation(); triggerRollMenu(e, `1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); } }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex items-center justify-center text-center">{attack.hit !== null ? (<span className="text-sm font-bold text-white">{formatModifier(attack.hit)} to hit</span>) : (<span className="text-gray-600">—</span>)}</button></div>
+                                 <div className="flex justify-center">{attack.save ? (<div className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 px-2 py-1.5 rounded w-full flex flex-col items-center justify-center text-center leading-none"><span className="text-[8px] text-gray-500 mb-0.5">{attack.save.type}</span><span className="text-xs font-bold text-white">DC {attack.save.dc}</span></div>) : (<span className="text-gray-600 text-xs">—</span>)}</div>
                                     </div>
                                 ))}
                             </div>
@@ -217,8 +220,9 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                         <div className="text-[10px] text-gray-500 truncate">{attack.type}{attack.notes?.length ? ` • ${attack.notes.join(' • ')}` : ''}</div>
                                     </div>
                                     <div className="flex items-center gap-1.5 shrink-0">
-                                        <button onClick={(e) => { e.stopPropagation(); roll(attack.damage, `Damage ${attack.name}`); }} className="px-2.5 py-2 bg-black/40 border border-gray-600/50 rounded-lg text-xs font-bold text-white min-w-[52px]">{attack.damage}</button>
-                                        <button onClick={(e) => { e.stopPropagation(); if (attack.hit !== null) roll(`1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); }} className="px-2.5 py-2 bg-black/40 border border-gray-600/50 rounded-lg text-xs font-bold text-gray-300 min-w-[52px]">{attack.hit !== null ? formatModifier(attack.hit) : attack.save ? `DC ${attack.save.dc}` : '-'}</button>
+                                        <button onClick={(e) => { e.stopPropagation(); if (attack.damage && attack.damage !== '-') roll(attack.damage, `Damage ${attack.name}`); }} className="px-2.5 py-2 bg-black/40 border border-gray-600/50 rounded-lg text-xs font-bold text-white min-w-[52px]">{attack.damage || '—'}</button>
+                                        <button onClick={(e) => { e.stopPropagation(); if (attack.hit !== null) roll(`1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); }} className="px-2.5 py-2 bg-black/40 border border-gray-600/50 rounded-lg text-xs font-bold text-gray-300 min-w-[52px]">{attack.hit !== null ? formatModifier(attack.hit) : '—'}</button>
+                                        <button onClick={(e) => { e.stopPropagation(); if (attack.save) roll('1d20', `${attack.save.type} Save vs ${attack.name}`); }} className="px-2.5 py-2 bg-black/40 border border-gray-600/50 rounded-lg text-xs font-bold text-gray-300 min-w-[62px]">{attack.save ? `DC ${attack.save.dc}` : '—'}</button>
                                     </div>
                                 </div>
                             ))}
@@ -255,10 +259,10 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
             <div className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-xl overflow-hidden shadow-sm`}>
                  <div className="bg-[#121316]/80 px-6 py-2 flex justify-between items-center"><h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Attack</h3></div>
                  <div className="hidden lg:block overflow-x-auto custom-scrollbar">
-                     <div className="grid grid-cols-[40px_1fr_120px_110px_110px] gap-2 px-6 py-2 bg-[#121316]/50 text-[10px] font-bold text-gray-500 uppercase tracking-wider items-center min-w-[600px]"><div>Type</div><div>Action</div><div className="text-center">Range</div><div className="text-center">Damage</div><div className="text-center">Hit / DC</div></div>
+                     <div className="grid grid-cols-[40px_1fr_90px_96px_76px_92px] gap-2 px-6 py-2 bg-[#121316]/50 text-[10px] font-bold text-gray-500 uppercase tracking-wider items-center min-w-[700px]"><div>Type</div><div>Action</div><div className="text-center">Range</div><div className="text-center">Damage</div><div className="text-center">Attack</div><div className="text-center">Save</div></div>
                      <div className="divide-y divide-[#2e3036]/60 min-w-[600px]">
                          {filteredAttacks.map((attack, i) => (
-                             <div key={i} className="grid grid-cols-[40px_1fr_120px_110px_110px] gap-2 items-center px-6 py-4 hover:bg-[#2e3036]/50 transition-colors group cursor-pointer" onClick={() => setSelectedDetail(attack.source && typeof attack.source === 'object' ? { ...attack.source, id: attack.id } : attack)}>
+                             <div key={i} className="grid grid-cols-[40px_1fr_90px_96px_76px_92px] gap-2 items-center px-6 py-4 hover:bg-[#2e3036]/50 transition-colors group cursor-pointer" onClick={() => setSelectedDetail(attack.source && typeof attack.source === 'object' ? { ...attack.source, id: attack.id } : attack)}>
                                  <div className="w-8 h-8 flex items-center justify-center text-gray-500 shrink-0 border border-gray-600/50 rounded-md bg-gray-800 self-center">
                                      {renderActionIcon(attack)}
                                  </div>
@@ -345,8 +349,9 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                     )}
                                  </div>
                                  <div className="text-center text-[10px] text-gray-400 font-bold">{attack.range}</div>
-                                 <div className="flex justify-center"><button onClick={(e) => { e.stopPropagation(); roll(attack.damage, `Damage ${attack.name}`); }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex flex-col items-center justify-center text-center"><span className="text-sm font-bold text-white">{attack.damage}</span><span className="text-[8px] text-gray-500 uppercase">{attack.type}</span></button></div>
-                                 <div className="flex justify-center"><button onClick={(e) => { if (attack.hit !== null) { e.stopPropagation(); roll(`1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); } }} onContextMenu={(e) => { if (attack.hit !== null) { e.preventDefault(); e.stopPropagation(); triggerRollMenu(e, `1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); } }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex flex-col items-center justify-center text-center">{attack.hit !== null ? (<span className="text-sm font-bold text-white">{formatModifier(attack.hit)}</span>) : attack.save ? (<div className="flex flex-col items-center leading-none"><span className="text-[8px] font-bold text-gray-500 mb-0.5">{attack.save.type}</span><span className="text-sm font-bold text-white">DC {attack.save.dc}</span></div>) : ('-')}</button></div>
+                                 <div className="flex justify-center"><button onClick={(e) => { e.stopPropagation(); if (attack.damage && attack.damage !== '-') roll(attack.damage, `Damage ${attack.name}`); }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex items-center justify-center text-center"><span className="text-sm font-bold text-white">{attack.damage || '—'}</span></button></div>
+                                 <div className="flex justify-center"><button onClick={(e) => { if (attack.hit !== null) { e.stopPropagation(); roll(`1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); } }} onContextMenu={(e) => { if (attack.hit !== null) { e.preventDefault(); e.stopPropagation(); triggerRollMenu(e, `1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); } }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex items-center justify-center text-center">{attack.hit !== null ? (<span className="text-sm font-bold text-white">{formatModifier(attack.hit)} to hit</span>) : (<span className="text-gray-600">—</span>)}</button></div>
+                                 <div className="flex justify-center">{attack.save ? (<div className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 px-2 py-1.5 rounded w-full flex flex-col items-center justify-center text-center leading-none"><span className="text-[8px] text-gray-500 mb-0.5">{attack.save.type}</span><span className="text-xs font-bold text-white">DC {attack.save.dc}</span></div>) : (<span className="text-gray-600 text-xs">—</span>)}</div>
                              </div>
                          ))}
                      </div>
@@ -372,8 +377,9 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                  <div className="text-[10px] text-gray-500 truncate">{attack.type}{attack.notes?.length ? ` • ${attack.notes.join(' • ')}` : ''}</div>
                              </div>
                              <div className="flex items-center gap-1.5 shrink-0">
-                                 <button onClick={(e) => { e.stopPropagation(); roll(attack.damage, `Damage ${attack.name}`); }} className="px-2.5 py-2 bg-black/40 border border-gray-600/50 rounded-lg text-xs font-bold text-white min-w-[52px]">{attack.damage}</button>
-                                 <button onClick={(e) => { e.stopPropagation(); if (attack.hit !== null) roll(`1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); }} className="px-2.5 py-2 bg-black/40 border border-gray-600/50 rounded-lg text-xs font-bold text-gray-300 min-w-[52px]">{attack.hit !== null ? formatModifier(attack.hit) : attack.save ? `DC ${attack.save.dc}` : '-'}</button>
+                                 <button onClick={(e) => { e.stopPropagation(); if (attack.damage && attack.damage !== '-') roll(attack.damage, `Damage ${attack.name}`); }} className="px-2.5 py-2 bg-black/40 border border-gray-600/50 rounded-lg text-xs font-bold text-white min-w-[52px]">{attack.damage || '—'}</button>
+                                 <button onClick={(e) => { e.stopPropagation(); if (attack.hit !== null) roll(`1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); }} className="px-2.5 py-2 bg-black/40 border border-gray-600/50 rounded-lg text-xs font-bold text-gray-300 min-w-[52px]">{attack.hit !== null ? formatModifier(attack.hit) : '—'}</button>
+                                        <button onClick={(e) => { e.stopPropagation(); if (attack.save) roll('1d20', `${attack.save.type} Save vs ${attack.name}`); }} className="px-2.5 py-2 bg-black/40 border border-gray-600/50 rounded-lg text-xs font-bold text-gray-300 min-w-[62px]">{attack.save ? `DC ${attack.save.dc}` : '—'}</button>
                              </div>
                          </div>
                      ))}
