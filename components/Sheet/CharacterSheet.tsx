@@ -3510,12 +3510,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                      .filter((effect: any) => ['action', 'bonus_action', 'reaction'].includes(effect?.type))
                      .map((effect: any) => ({
                          ...effect,
-                         name: effect.name || effect.spell_name || item.name,
+                         name: effect.name ? `${item.name}: ${effect.name}` : item.name,
                          source: item.name,
                          desc: effect.description || effect.desc || [],
                          itemId: item.id,
                          itemName: item.name,
                          isItemEffect: true,
+                         isItemAction: true,
                          effectType: effect.type,
                      }))
              ),
