@@ -51,6 +51,7 @@ const DetailSidePanel = ({
     const [transferQtyPopover, setTransferQtyPopover] = useState<{ mode: 'claimToPersonal' | 'transferToParty'; maxQty: number; qty: number } | null>(null);
     const [allSpells, setAllSpells] = useState<any[]>([]);
     const [spellQuery, setSpellQuery] = useState('');
+    const [storageMessage, setStorageMessage] = useState('');
 
     useEffect(() => {
         setTransferQtyPopover(null);
@@ -874,15 +875,24 @@ const DetailSidePanel = ({
                                                     <select id={`store-spell-${widgetIndex}`} className="w-full rounded border border-gray-700 bg-black/40 px-2 py-1 text-[10px] text-gray-200">
                                                         <option value="">Store any spell (level 1–5)…</option>
                                                         {(allSpells.length > 0 ? allSpells : character?.spells || []).filter((spell: any) => spell.level >= 1 && spell.level <= 5 && (!spellQuery || spell.name.toLowerCase().includes(spellQuery.toLowerCase()))).map((spell: any) => (
-                                                            <option key={spell.index} value={spell.index}>{spell.name} (level {spell.level})</option>
+                                                            <option key={spell.index} value={spell.index} data-level={spell.level}>{spell.name} (level {spell.level})</option>
                                                         ))}
                                                     </select>
+                                                    {storageMessage && <p className="text-[9px] text-red-400">{storageMessage}</p>}
                                                 </div>
                                                 <button type="button" className="self-end rounded bg-dnd-gold px-2 py-1 text-[9px] font-black uppercase text-black" onClick={() => {
                                                     const select = document.getElementById(`store-spell-${widgetIndex}`) as HTMLSelectElement | null;
                                                     const dc = document.getElementById(`store-dc-${widgetIndex}`) as HTMLInputElement | null;
                                                     const attack = document.getElementById(`store-attack-${widgetIndex}`) as HTMLInputElement | null;
-                                                    if (select?.value) onAction('storeItemSpell', { itemId: fullDetail.id, spellIndex: select.value, widgetName: widget.name, dc: dc?.value ? Number(dc.value) : undefined, attackBonus: attack?.value ? Number(attack.value) : undefined });
+                                                    if (!select?.value) return;
+                                                    const level = Number(select.selectedOptions?.[0]?.dataset.level || 1);
+                                                    const free = Number(widget.capacity || 5) - storedSpellLevels(widget);
+                                                    if (level > free) {
+                                                        setStorageMessage(`Not enough space: ${select.selectedOptions?.[0]?.textContent} needs ${level}, ${free} free.`);
+                                                        return;
+                                                    }
+                                                    setStorageMessage('');
+                                                    onAction('storeItemSpell', { itemId: fullDetail.id, spellIndex: select.value, widgetName: widget.name, dc: dc?.value ? Number(dc.value) : undefined, attackBonus: attack?.value ? Number(attack.value) : undefined });
                                                 }}>Store</button>
                                             </div>
                                         )}

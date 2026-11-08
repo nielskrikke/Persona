@@ -4372,7 +4372,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     ...entry,
                                     storedSpells: [...(entry.storedSpells || []), { index: spell.index, name: spell.name, level, castLevel: level, ability: spell.spellcastingAbility || character.spellcastingAbility, dc: itm.dc, attackBonus: itm.attackBonus }],
                                 });
-                                setCharacter(prev => ({ ...prev, inventory: prev.inventory.map(entry => entry.id === instance.id ? { ...entry, widgets: nextWidgets } : entry) }));
+                                const nextInventory = character.inventory.map(entry => entry.id === instance.id ? { ...entry, widgets: nextWidgets } : entry);
+                                setCharacter(await hydrateGrantedSpells({ ...character, inventory: nextInventory }));
                                 setSelectedDetail((prev: any) => prev ? { ...prev, widgets: nextWidgets } : prev);
                                 return;
                             }
@@ -4381,7 +4382,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     ...widget,
                                     storedSpells: (widget.storedSpells || []).filter((_, index) => index !== Number(itm.storedIndex)),
                                 });
-                                setCharacter(prev => ({ ...prev, inventory: prev.inventory.map(entry => entry.id === instance.id ? { ...entry, widgets: nextWidgets } : entry) }));
+                                const nextInventory = character.inventory.map(entry => entry.id === instance.id ? { ...entry, widgets: nextWidgets } : entry);
+                                setCharacter(await hydrateGrantedSpells({ ...character, inventory: nextInventory }));
                                 setSelectedDetail((prev: any) => prev ? { ...prev, widgets: nextWidgets } : prev);
                                 return;
                             }
@@ -4391,7 +4393,14 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     patches: (widget.patches || []).map(patch => patch.name === itm.patchName ? { ...patch, quantity: Math.max(0, patch.quantity - 1) } : patch),
                                 });
                                 const patch = getItemWidgets(instance).flatMap(widget => widget.patches || []).find(patch => patch.name === itm.patchName);
-                                const detail = patch?.itemIndex ? await fetchEquipmentDetail(patch.itemIndex) : undefined;
+                                let detail = patch?.itemIndex ? await fetchEquipmentDetail(patch.itemIndex) : undefined;
+                                if (!detail && patch?.name) {
+                                    const allEquipment = await fetchEquipment();
+                                    const baseName = String(patch.name).replace(/\s*\([^)]*\)\s*/g, '').trim().toLowerCase();
+                                    const aliases: Record<string, string> = { 'bullseye lantern': 'lantern-bullseye', 'mirror': 'mirror-steel', 'rope': 'rope-hempen', 'pole': 'pole', 'sack': 'sack', 'dagger': 'dagger' };
+                                    const wantedIndex = patch?.itemIndex || aliases[baseName] || baseName.replace(/[^a-z0-9]+/g, '-');
+                                    detail = allEquipment.find((entry: any) => String(entry.name).toLowerCase() === baseName || String(entry.index).toLowerCase() === wantedIndex);
+                                }
                                 const created = detail
                                     ? { ...detail, id: `patch-${Date.now()}`, quantity: 1, equipped: false, attuned: false }
                                     : { id: `patch-${Date.now()}`, name: String(itm.patchName), quantity: 1, weight: 0, equipped: false, attuned: false } as any;
