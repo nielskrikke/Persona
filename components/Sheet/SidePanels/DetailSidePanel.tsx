@@ -676,6 +676,10 @@ const DetailSidePanel = ({
                                             <div className="flex gap-1 pt-1 border-t border-gray-800">
                                                 <div className="flex-1 space-y-1">
                                                     <input value={spellQuery} onChange={e => setSpellQuery(e.target.value)} placeholder="Filter spells…" className="w-full rounded border border-gray-700 bg-black/40 px-2 py-1 text-[10px] text-gray-200" />
+                                                    <div className="flex gap-1">
+                                                        <input id={`store-dc-${widgetIndex}`} type="number" placeholder="Original DC" className="w-1/2 rounded border border-gray-700 bg-black/40 px-2 py-1 text-[10px] text-gray-200" />
+                                                        <input id={`store-attack-${widgetIndex}`} type="number" placeholder="Attack +" className="w-1/2 rounded border border-gray-700 bg-black/40 px-2 py-1 text-[10px] text-gray-200" />
+                                                    </div>
                                                     <select id={`store-spell-${widgetIndex}`} className="w-full rounded border border-gray-700 bg-black/40 px-2 py-1 text-[10px] text-gray-200">
                                                         <option value="">Store any spell (level 1–5)…</option>
                                                         {(allSpells.length > 0 ? allSpells : character?.spells || []).filter((spell: any) => spell.level >= 1 && spell.level <= 5 && (!spellQuery || spell.name.toLowerCase().includes(spellQuery.toLowerCase()))).map((spell: any) => (
@@ -685,7 +689,9 @@ const DetailSidePanel = ({
                                                 </div>
                                                 <button type="button" className="self-end rounded bg-dnd-gold px-2 py-1 text-[9px] font-black uppercase text-black" onClick={() => {
                                                     const select = document.getElementById(`store-spell-${widgetIndex}`) as HTMLSelectElement | null;
-                                                    if (select?.value) onAction('storeItemSpell', { itemId: fullDetail.id, spellIndex: select.value, widgetName: widget.name });
+                                                    const dc = document.getElementById(`store-dc-${widgetIndex}`) as HTMLInputElement | null;
+                                                    const attack = document.getElementById(`store-attack-${widgetIndex}`) as HTMLInputElement | null;
+                                                    if (select?.value) onAction('storeItemSpell', { itemId: fullDetail.id, spellIndex: select.value, widgetName: widget.name, dc: dc?.value ? Number(dc.value) : undefined, attackBonus: attack?.value ? Number(attack.value) : undefined });
                                                 }}>Store</button>
                                             </div>
                                         )}

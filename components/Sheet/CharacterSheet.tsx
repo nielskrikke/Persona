@@ -4367,7 +4367,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 }
                                 const nextWidgets = widgets.map((entry, index) => index !== widgetIndex ? entry : {
                                     ...entry,
-                                    storedSpells: [...(entry.storedSpells || []), { index: spell.index, name: spell.name, level, castLevel: level, ability: spell.spellcastingAbility || character.spellcastingAbility }],
+                                    storedSpells: [...(entry.storedSpells || []), { index: spell.index, name: spell.name, level, castLevel: level, ability: spell.spellcastingAbility || character.spellcastingAbility, dc: itm.dc, attackBonus: itm.attackBonus }],
                                 });
                                 setCharacter(prev => ({ ...prev, inventory: prev.inventory.map(entry => entry.id === instance.id ? { ...entry, widgets: nextWidgets } : entry) }));
                                 setSelectedDetail((prev: any) => prev ? { ...prev, widgets: nextWidgets } : prev);
