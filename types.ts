@@ -342,10 +342,16 @@ export interface ItemWidget {
     description?: string;
     capacity?: number;
     storedSpells?: StoredItemSpell[];
-    patches?: { name: string; quantity: number; description?: string }[];
+    patches?: { name: string; quantity: number; description?: string; itemIndex?: string; currency?: { unit: string; amount: number } }[];
     toggle?: string;
+    active?: boolean;
     max?: number;
+    current?: number;
     reset?: string;
+    damage?: string;
+    heal?: string;
+    save?: { ability?: string; dc?: number };
+    consumes?: number;
 }
 
 export interface ItemOverrides {

@@ -4,12 +4,12 @@ const ROBE_PATCHES: ItemWidget = {
     type: 'patches',
     name: 'Robe Patches',
     patches: [
-        { name: 'Bullseye Lantern (filled and lit)', quantity: 2 },
-        { name: 'Dagger', quantity: 2 },
-        { name: 'Mirror', quantity: 2 },
-        { name: 'Pole (10 ft.)', quantity: 2 },
-        { name: 'Rope (coiled, 50 ft.)', quantity: 2 },
-        { name: 'Sack', quantity: 2 },
+        { name: 'Bullseye Lantern (filled and lit)', quantity: 2, itemIndex: 'bullseye-lantern' },
+        { name: 'Dagger', quantity: 2, itemIndex: 'dagger' },
+        { name: 'Mirror', quantity: 2, itemIndex: 'mirror' },
+        { name: 'Pole (10 ft.)', quantity: 2, itemIndex: 'pole' },
+        { name: 'Rope (coiled, 50 ft.)', quantity: 2, itemIndex: 'rope' },
+        { name: 'Sack', quantity: 2, itemIndex: 'sack' },
     ],
 };
 

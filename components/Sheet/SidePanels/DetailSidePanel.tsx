@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import SidePanelLayout from '../Shared/SidePanelLayout';
 import { SpellDetail, InventoryItem, APIReference, RuleEntry, CharacterState, FeatureEffect } from '../../../types';
 import { isSpell, getCasterProfileFor } from '../../../utils/rules';
-import { fetchEquipmentDetail, fetchFeatureDetail, fetchTraitDetail } from '../../../data/index';
+import { fetchEquipmentDetail, fetchFeatureDetail, fetchTraitDetail, fetchAllSpells } from '../../../data/index';
 import { MASTERY_DESCRIPTIONS, WIDGET_BG } from '../../../data/constants';
 import { getItemWidgets, storedSpellLevels } from '../../../utils/itemWidgets';
 
@@ -49,10 +49,19 @@ const DetailSidePanel = ({
     const [fullDetail, setFullDetail] = useState<any>(null);
     const [loading, setLoading] = useState(false);
     const [transferQtyPopover, setTransferQtyPopover] = useState<{ mode: 'claimToPersonal' | 'transferToParty'; maxQty: number; qty: number } | null>(null);
+    const [allSpells, setAllSpells] = useState<any[]>([]);
+    const [spellQuery, setSpellQuery] = useState('');
 
     useEffect(() => {
         setTransferQtyPopover(null);
     }, [item?.id, item?.name]);
+
+    useEffect(() => {
+        if (!fullDetail || !getItemWidgets(fullDetail).some((widget: any) => widget.type === 'spell_storage')) return;
+        let cancelled = false;
+        fetchAllSpells().then(spells => { if (!cancelled) setAllSpells(spells); });
+        return () => { cancelled = true; };
+    }, [fullDetail?.id]);
 
     const handleTransferClick = (mode: 'claimToPersonal' | 'transferToParty') => {
         const maxQty = typeof fullDetail?.quantity === 'number' ? fullDetail.quantity : (typeof item?.quantity === 'number' ? item.quantity : 1);
@@ -665,13 +674,16 @@ const DetailSidePanel = ({
                                         ))}
                                         {onAction && (
                                             <div className="flex gap-1 pt-1 border-t border-gray-800">
-                                                <select id={`store-spell-${widgetIndex}`} className="min-w-0 flex-1 rounded border border-gray-700 bg-black/40 px-2 py-1 text-[10px] text-gray-200">
-                                                    <option value="">Store a known spell…</option>
-                                                    {Array.from(new Map((character?.spells || []).filter((spell: any) => spell.level >= 1 && spell.level <= 5).map((spell: any) => [spell.index, spell])).values()).map((spell: any) => (
-                                                        <option key={spell.index} value={spell.index}>{spell.name} (level {spell.level})</option>
-                                                    ))}
-                                                </select>
-                                                <button type="button" className="rounded bg-dnd-gold px-2 py-1 text-[9px] font-black uppercase text-black" onClick={() => {
+                                                <div className="flex-1 space-y-1">
+                                                    <input value={spellQuery} onChange={e => setSpellQuery(e.target.value)} placeholder="Filter spells…" className="w-full rounded border border-gray-700 bg-black/40 px-2 py-1 text-[10px] text-gray-200" />
+                                                    <select id={`store-spell-${widgetIndex}`} className="w-full rounded border border-gray-700 bg-black/40 px-2 py-1 text-[10px] text-gray-200">
+                                                        <option value="">Store any spell (level 1–5)…</option>
+                                                        {(allSpells.length > 0 ? allSpells : character?.spells || []).filter((spell: any) => spell.level >= 1 && spell.level <= 5 && (!spellQuery || spell.name.toLowerCase().includes(spellQuery.toLowerCase()))).map((spell: any) => (
+                                                            <option key={spell.index} value={spell.index}>{spell.name} (level {spell.level})</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <button type="button" className="self-end rounded bg-dnd-gold px-2 py-1 text-[9px] font-black uppercase text-black" onClick={() => {
                                                     const select = document.getElementById(`store-spell-${widgetIndex}`) as HTMLSelectElement | null;
                                                     if (select?.value) onAction('storeItemSpell', { itemId: fullDetail.id, spellIndex: select.value, widgetName: widget.name });
                                                 }}>Store</button>
@@ -690,9 +702,28 @@ const DetailSidePanel = ({
                                     </div>
                                 )}
                                 {widget.type === 'note' && <p className="text-[10px] text-gray-400 whitespace-pre-wrap">{widget.description}</p>}
-                                {widget.type === 'action' && <p className="text-[10px] text-gray-400"><strong className="text-gray-200">{widget.name}</strong>{widget.description ? `: ${widget.description}` : ''}</p>}
-                                {widget.type === 'toggle' && <p className="text-[10px] text-gray-400"><strong className="text-gray-200">{widget.name}</strong>{widget.description ? `: ${widget.description}` : ''}</p>}
-                                {widget.type === 'counter' && <p className="text-[10px] text-gray-400"><strong className="text-gray-200">{widget.name}</strong>{widget.description ? `: ${widget.description}` : ''}</p>}
+                                {widget.type === 'action' && (
+                                    <div className="flex items-center justify-between gap-2">
+                                        <p className="text-[10px] text-gray-400"><strong className="text-gray-200">{widget.name}</strong>{widget.description ? `: ${widget.description}` : ''}</p>
+                                        <button type="button" className="shrink-0 rounded bg-dnd-gold px-2 py-1 text-[9px] font-black uppercase text-black" onClick={() => onAction?.('useItemWidget', { itemId: fullDetail.id, widgetIndex })}>Use</button>
+                                    </div>
+                                )}
+                                {widget.type === 'toggle' && (
+                                    <div className="flex items-center justify-between gap-2">
+                                        <p className="text-[10px] text-gray-400"><strong className="text-gray-200">{widget.name}</strong>{widget.description ? `: ${widget.description}` : ''}</p>
+                                        <button type="button" className={`shrink-0 rounded border px-2 py-1 text-[9px] font-black uppercase ${widget.active ? 'border-dnd-gold bg-dnd-gold text-black' : 'border-gray-700 text-gray-400'}`} onClick={() => onAction?.('toggleItemWidget', { itemId: fullDetail.id, widgetIndex })}>{widget.active ? 'Active' : 'Inactive'}</button>
+                                    </div>
+                                )}
+                                {widget.type === 'counter' && (
+                                    <div className="flex items-center justify-between gap-2">
+                                        <p className="text-[10px] text-gray-400"><strong className="text-gray-200">{widget.name}</strong>{widget.description ? `: ${widget.description}` : ''}</p>
+                                        <div className="flex items-center gap-1">
+                                            <button type="button" className="rounded border border-gray-700 px-1.5 text-[10px] text-gray-300" onClick={() => onAction?.('updateItemWidgetCounter', { itemId: fullDetail.id, widgetIndex, delta: -1 })}>−</button>
+                                            <span className="text-[10px] text-gray-200 min-w-[36px] text-center">{widget.current ?? 0} / {widget.max ?? 0}</span>
+                                            <button type="button" className="rounded border border-gray-700 px-1.5 text-[10px] text-gray-300" onClick={() => onAction?.('updateItemWidgetCounter', { itemId: fullDetail.id, widgetIndex, delta: 1 })}>+</button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         ))}
                         {isItemLike(fullDetail) && (fullDetail as any).effects?.some((effect: any) => ['action', 'bonus_action', 'reaction', 'spell_access'].includes(effect.type)) && (

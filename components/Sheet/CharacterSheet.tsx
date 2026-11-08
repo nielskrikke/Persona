@@ -23,6 +23,7 @@ import ItemSearchModal from '../Builder/ItemSearchModal';
 import ItemCustomizationModal from './Modals/ItemCustomizationModal';
 import ItemCustomizeModal from './Modals/ItemCustomizeModal';
 import { mergeInventoryItem } from '../../utils/itemInstances';
+import { fetchAllSpells } from '../../data/index';
 import { getItemWidgets, storedSpellLevels } from '../../utils/itemWidgets';
 import LayoutManagerModal from './Modals/LayoutManagerModal';
 import CustomSpellModal from './Modals/CustomSpellModal';
@@ -4321,11 +4322,39 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     activeModifiers={activeModifiers}
                     onClose={() => setSelectedDetail(null)}
                     onAction={async (action, itm) => {
+                        if (action === 'useItemWidget' || action === 'toggleItemWidget' || action === 'updateItemWidgetCounter') {
+                            const instance = character.inventory.find(entry => entry.id === itm?.itemId);
+                            if (!instance) return;
+                            const widgets = getItemWidgets(instance);
+                            const index = Number(itm.widgetIndex);
+                            const widget = widgets[index];
+                            if (!widget) return;
+                            if (action === 'useItemWidget') {
+                                if (widget.heal) roll(String(widget.heal), `Heal: ${widget.name || instance.name}`, undefined, result => {
+                                    setCharacter(prev => ({ ...prev, currentHp: Math.min(prev.maxHp, prev.currentHp + result.total) }));
+                                });
+                                else if (widget.damage) roll(String(widget.damage), `Use: ${widget.name || instance.name}`);
+                                else if (widget.save) roll(`1d20`, `DC ${widget.save.dc || 10} ${String(widget.save.ability || '').toUpperCase()} Save`);
+                                return;
+                            }
+                            const nextWidgets = widgets.map((entry, i) => {
+                                if (i !== index) return entry;
+                                if (action === 'toggleItemWidget') return { ...entry, active: !entry.active };
+                                const max = Number(entry.max || 0);
+                                const current = Number(entry.current ?? max);
+                                const delta = Number(itm.delta || 0);
+                                return { ...entry, current: Math.max(0, Math.min(max, current + delta)) };
+                            });
+                            setCharacter(prev => ({ ...prev, inventory: prev.inventory.map(entry => entry.id === instance.id ? { ...entry, widgets: nextWidgets } : entry) }));
+                            setSelectedDetail((prev: any) => prev ? { ...prev, widgets: nextWidgets } : prev);
+                            return;
+                        }
                         if (action === 'storeItemSpell' || action === 'removeStoredItemSpell' || action === 'useItemPatch') {
                             const instance = character.inventory.find(entry => entry.id === itm?.itemId);
                             if (!instance) return;
                             if (action === 'storeItemSpell') {
-                                const spell = character.spells.find(entry => entry.index === itm.spellIndex);
+                                const spell = character.spells.find(entry => entry.index === itm.spellIndex)
+                                    || (await fetchAllSpells()).find(entry => entry.index === itm.spellIndex);
                                 if (!spell) return;
                                 const widgets = getItemWidgets(instance);
                                 const widgetIndex = Math.max(0, widgets.findIndex(widget => widget.type === 'spell_storage' && (!itm.widgetName || widget.name === itm.widgetName)));
@@ -4358,12 +4387,20 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     ...widget,
                                     patches: (widget.patches || []).map(patch => patch.name === itm.patchName ? { ...patch, quantity: Math.max(0, patch.quantity - 1) } : patch),
                                 });
-                                const baseWeight = Number((instance as any).weight || 0);
+                                const patch = getItemWidgets(instance).flatMap(widget => widget.patches || []).find(patch => patch.name === itm.patchName);
+                                const detail = patch?.itemIndex ? await fetchEquipmentDetail(patch.itemIndex) : undefined;
+                                const created = detail
+                                    ? { ...detail, id: `patch-${Date.now()}`, quantity: 1, equipped: false, attuned: false }
+                                    : { id: `patch-${Date.now()}`, name: String(itm.patchName), quantity: 1, weight: 0, equipped: false, attuned: false } as any;
                                 setCharacter(prev => ({
                                     ...prev,
+                                    currency: patch?.currency ? {
+                                        ...prev.currency,
+                                        [patch.currency.unit]: Number((prev.currency as any)?.[patch.currency.unit] || 0) + Number(patch.currency.amount || 0),
+                                    } : prev.currency,
                                     inventory: [
                                         ...prev.inventory.map(entry => entry.id === instance.id ? { ...entry, widgets: nextWidgets } : entry),
-                                        { id: `patch-${Date.now()}`, name: String(itm.patchName), quantity: 1, weight: 0, equipped: false, attuned: false } as any,
+                                        ...(patch?.currency ? [] : [created as any]),
                                     ],
                                 }));
                                 setSelectedDetail((prev: any) => prev ? { ...prev, widgets: nextWidgets } : prev);
