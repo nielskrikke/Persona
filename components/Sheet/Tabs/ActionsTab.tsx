@@ -55,11 +55,28 @@ const DAMAGE_ICONS: Record<string, React.ComponentType<{ size?: number; classNam
     healing: Heart,
 };
 
+const DAMAGE_TYPE_NAMES = ['acid', 'cold', 'fire', 'force', 'lightning', 'necrotic', 'poison', 'psychic', 'radiant', 'thunder', 'bludgeoning', 'piercing', 'slashing', 'healing'];
+
+const parseDamageTypes = (type?: string, damage?: string): string[] => {
+    const text = `${type || ''} ${damage || ''}`.toLowerCase();
+    return DAMAGE_TYPE_NAMES.filter(name => new RegExp(`\b${name}\b`).test(text));
+};
+
 const DamageTypeIcon = ({ type }: { type?: string }) => {
     const key = String(type || '').toLowerCase().trim();
     const Icon = DAMAGE_ICONS[key];
     if (!Icon) return null;
     return <Icon size={13} className="inline-block shrink-0 opacity-60" aria-hidden />;
+};
+
+const DamageTypeIcons = ({ type, damage }: { type?: string; damage?: string }) => {
+    const types = parseDamageTypes(type, damage);
+    if (types.length === 0) return null;
+    return (
+        <span className="inline-flex items-center gap-0.5" title={types.join(' + ')}>
+            {types.map(name => <DamageTypeIcon key={name} type={name} />)}
+        </span>
+    );
 };
 
 const ActionsTab: React.FC<ActionsTabProps> = ({ 
@@ -223,7 +240,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                             )}
                                         </div>
                                         <div className="text-center text-[10px] text-gray-400 font-bold">{attack.range}</div>
-                                        <div className="flex justify-center"><button onClick={(e) => { e.stopPropagation(); if (attack.damage && attack.damage !== '-') roll(attack.damage, `Damage ${attack.name}`); }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex items-center justify-center text-center"><span className="flex items-center justify-center gap-1.5"><span className="text-sm font-bold text-white">{attack.damage || '—'}</span><span title={attack.type}><DamageTypeIcon type={attack.type} /></span></span></button></div>
+                                        <div className="flex justify-center"><button onClick={(e) => { e.stopPropagation(); if (attack.damage && attack.damage !== '-') roll(attack.damage, `Damage ${attack.name}`); }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex items-center justify-center text-center"><span className="flex items-center justify-center gap-1.5"><span className="text-sm font-bold text-white">{attack.damage || '—'}</span><DamageTypeIcons type={attack.type} damage={attack.damage} /></span></button></div>
                                         <div className="flex justify-center">{attack.save ? (<button onClick={(e) => { e.stopPropagation(); roll('1d20', `${attack.save.type} Save vs ${attack.name}`); }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex flex-col items-center justify-center text-center leading-none"><span className="text-[8px] text-gray-500 mb-0.5">{attack.save.type} save</span><span className="text-sm font-bold text-white">DC {attack.save.dc}</span></button>) : attack.hit !== null ? (<button onClick={(e) => { e.stopPropagation(); roll(`1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); }} onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); triggerRollMenu(e, `1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex flex-col items-center justify-center text-center leading-none"><span className="text-[8px] text-gray-500 mb-0.5">To Hit</span><span className="text-sm font-bold text-white">{formatModifier(attack.hit)}</span></button>) : (<span className="text-[10px] text-gray-600 uppercase">{attack.type === 'Maneuver' ? 'Maneuver' : '—'}</span>)}</div>
                                     </div>
                                 ))}
@@ -244,7 +261,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                         <div className="text-[10px] text-gray-500 truncate">{attack.type}{attack.notes?.length ? ` • ${attack.notes.join(' • ')}` : ''}</div>
                                     </div>
                                     <div className="flex items-center gap-1.5 shrink-0">
-                                        <button onClick={(e) => { e.stopPropagation(); if (attack.damage && attack.damage !== '-') roll(attack.damage, `Damage ${attack.name}`); }} className="px-2.5 py-2 bg-black/40 border border-gray-600/50 rounded-lg text-xs font-bold text-white min-w-[52px] flex items-center justify-center gap-1">{attack.damage || '—'}<span title={attack.type}><DamageTypeIcon type={attack.type} /></span></button>
+                                        <button onClick={(e) => { e.stopPropagation(); if (attack.damage && attack.damage !== '-') roll(attack.damage, `Damage ${attack.name}`); }} className="px-2.5 py-2 bg-black/40 border border-gray-600/50 rounded-lg text-xs font-bold text-white min-w-[52px] flex items-center justify-center gap-1">{attack.damage || '—'}<DamageTypeIcons type={attack.type} damage={attack.damage} /></button>
                                         <button onClick={(e) => { e.stopPropagation(); if (attack.save) roll('1d20', `${attack.save.type} Save vs ${attack.name}`); else if (attack.hit !== null) roll(`1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); }} className="px-2.5 py-2 bg-black/40 border border-gray-600/50 rounded-lg text-xs font-bold text-gray-300 min-w-[68px]">{attack.save ? `DC ${attack.save.dc}` : attack.hit !== null ? formatModifier(attack.hit) : '—'}</button>
                                     </div>
                                 </div>
@@ -372,7 +389,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                     )}
                                  </div>
                                  <div className="text-center text-[10px] text-gray-400 font-bold">{attack.range}</div>
-                                 <div className="flex justify-center"><button onClick={(e) => { e.stopPropagation(); if (attack.damage && attack.damage !== '-') roll(attack.damage, `Damage ${attack.name}`); }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex items-center justify-center text-center"><span className="flex items-center justify-center gap-1.5"><span className="text-sm font-bold text-white">{attack.damage || '—'}</span><span title={attack.type}><DamageTypeIcon type={attack.type} /></span></span></button></div>
+                                 <div className="flex justify-center"><button onClick={(e) => { e.stopPropagation(); if (attack.damage && attack.damage !== '-') roll(attack.damage, `Damage ${attack.name}`); }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex items-center justify-center text-center"><span className="flex items-center justify-center gap-1.5"><span className="text-sm font-bold text-white">{attack.damage || '—'}</span><DamageTypeIcons type={attack.type} damage={attack.damage} /></span></button></div>
                                  <div className="flex justify-center">{attack.save ? (<button onClick={(e) => { e.stopPropagation(); roll('1d20', `${attack.save.type} Save vs ${attack.name}`); }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex flex-col items-center justify-center text-center leading-none"><span className="text-[8px] text-gray-500 mb-0.5">{attack.save.type} save</span><span className="text-sm font-bold text-white">DC {attack.save.dc}</span></button>) : attack.hit !== null ? (<button onClick={(e) => { e.stopPropagation(); roll(`1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); }} onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); triggerRollMenu(e, `1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); }} className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full flex flex-col items-center justify-center text-center leading-none"><span className="text-[8px] text-gray-500 mb-0.5">To Hit</span><span className="text-sm font-bold text-white">{formatModifier(attack.hit)}</span></button>) : (<span className="text-[10px] text-gray-600 uppercase">{attack.type === 'Maneuver' ? 'Maneuver' : '—'}</span>)}</div>
                              </div>
                          ))}
@@ -399,7 +416,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                  <div className="text-[10px] text-gray-500 truncate">{attack.type}{attack.notes?.length ? ` • ${attack.notes.join(' • ')}` : ''}</div>
                              </div>
                              <div className="flex items-center gap-1.5 shrink-0">
-                                 <button onClick={(e) => { e.stopPropagation(); if (attack.damage && attack.damage !== '-') roll(attack.damage, `Damage ${attack.name}`); }} className="px-2.5 py-2 bg-black/40 border border-gray-600/50 rounded-lg text-xs font-bold text-white min-w-[52px] flex items-center justify-center gap-1">{attack.damage || '—'}<span title={attack.type}><DamageTypeIcon type={attack.type} /></span></button>
+                                 <button onClick={(e) => { e.stopPropagation(); if (attack.damage && attack.damage !== '-') roll(attack.damage, `Damage ${attack.name}`); }} className="px-2.5 py-2 bg-black/40 border border-gray-600/50 rounded-lg text-xs font-bold text-white min-w-[52px] flex items-center justify-center gap-1">{attack.damage || '—'}<DamageTypeIcons type={attack.type} damage={attack.damage} /></button>
                                  <button onClick={(e) => { e.stopPropagation(); if (attack.save) roll('1d20', `${attack.save.type} Save vs ${attack.name}`); else if (attack.hit !== null) roll(`1d20${formatModifier(attack.hit)}`, `Attack ${attack.name}`); }} className="px-2.5 py-2 bg-black/40 border border-gray-600/50 rounded-lg text-xs font-bold text-gray-300 min-w-[68px]">{attack.save ? `DC ${attack.save.dc}` : attack.hit !== null ? formatModifier(attack.hit) : '—'}</button>
                              </div>
                          </div>
