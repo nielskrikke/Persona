@@ -234,7 +234,7 @@ const InventoryTab: React.FC<InventoryTabProps> = ({
                                     type="number" 
                                     value={character.currency[curr as keyof Currency]} 
                                     onChange={(e) => updateCurrency(curr as keyof Currency, e.target.value)} 
-                                    className="w-12 bg-transparent text-center font-bold text-white outline-none focus:border-b border-dnd-gold" 
+                                    style={{ width: `${Math.max(3, String(character.currency[curr as keyof Currency] ?? '').length + 1)}ch` }} className="min-w-[3rem] bg-transparent text-center font-bold text-white outline-none focus:border-b border-dnd-gold" 
                                 />
                             </div>
                         ))}
@@ -265,7 +265,7 @@ const InventoryTab: React.FC<InventoryTabProps> = ({
                                     type="number" 
                                     value={partyCurrency[curr as keyof Currency]} 
                                     onChange={(e) => updatePartyCurrency(curr as keyof Currency, e.target.value)} 
-                                    className="w-12 bg-transparent text-center font-bold text-white outline-none focus:border-b border-purple-400" 
+                                    style={{ width: `${Math.max(3, String(partyCurrency[curr as keyof Currency] ?? '').length + 1)}ch` }} className="min-w-[3rem] bg-transparent text-center font-bold text-white outline-none focus:border-b border-purple-400" 
                                 />
                             </div>
                         ))}
