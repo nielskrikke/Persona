@@ -4404,17 +4404,29 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 const created = detail
                                     ? { ...detail, id: `patch-${Date.now()}`, quantity: 1, equipped: false, attuned: false }
                                     : { id: `patch-${Date.now()}`, name: String(itm.patchName), quantity: 1, weight: 0, equipped: false, attuned: false } as any;
-                                setCharacter(prev => ({
-                                    ...prev,
-                                    currency: patch?.currency ? {
-                                        ...prev.currency,
-                                        [patch.currency.unit]: Number((prev.currency as any)?.[patch.currency.unit] || 0) + Number(patch.currency.amount || 0),
-                                    } : prev.currency,
-                                    inventory: [
-                                        ...prev.inventory.map(entry => entry.id === instance.id ? { ...entry, widgets: nextWidgets } : entry),
-                                        ...(patch?.currency ? [] : [created as any]),
-                                    ],
-                                }));
+                                setCharacter(prev => {
+                                    if (patch?.currency) {
+                                        return {
+                                            ...prev,
+                                            currency: {
+                                                ...prev.currency,
+                                                [patch.currency.unit]: Number((prev.currency as any)?.[patch.currency.unit] || 0) + Number(patch.currency.amount || 0),
+                                            },
+                                            inventory: prev.inventory.map(entry => entry.id === instance.id ? { ...entry, widgets: nextWidgets } : entry),
+                                        };
+                                    }
+                                    const existing = prev.inventory.find(entry =>
+                                        entry.id !== instance.id
+                                        && !entry.customized
+                                        && ((created as any).index ? entry.index === (created as any).index : entry.name === created.name)
+                                    );
+                                    return {
+                                        ...prev,
+                                        inventory: existing
+                                            ? prev.inventory.map(entry => entry.id === existing.id ? { ...entry, quantity: Number(entry.quantity || 1) + 1 } : entry.id === instance.id ? { ...entry, widgets: nextWidgets } : entry)
+                                            : [...prev.inventory.map(entry => entry.id === instance.id ? { ...entry, widgets: nextWidgets } : entry), created as any],
+                                    };
+                                });
                                 setSelectedDetail((prev: any) => prev ? { ...prev, widgets: nextWidgets } : prev);
                                 return;
                             }
