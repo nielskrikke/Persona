@@ -317,8 +317,8 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                 </div>
                             </div>
                             <div className="hidden lg:block overflow-x-auto custom-scrollbar">
-                                <div className={`grid gap-2 px-6 py-2 bg-[#121316]/50 text-[10px] font-bold text-gray-500 uppercase tracking-wider grid-cols-[1fr_60px_80px_60px] md:grid-cols-[1fr_80px_120px_80px] min-w-[500px]`}>
-                                    <div>Spell</div><div className="text-center">DC</div><div className="text-center">Damage</div><div className="text-center">Cast</div>
+                                <div className={`grid gap-2 px-6 py-2 bg-[#121316]/50 text-[10px] font-bold text-gray-500 uppercase tracking-wider grid-cols-[1fr_70px_80px_60px] md:grid-cols-[1fr_110px_120px_80px] min-w-[500px]`}>
+                                    <div>Spell</div><div className="text-center">Roll</div><div className="text-center">Damage</div><div className="text-center">Cast</div>
                                 </div>
                                 <div className="divide-y divide-[#2e3036]/60 min-w-[500px]">
                                     {spells.map(spell => {
@@ -329,7 +329,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                         const displayDmg = dmg;
                                         const dcType = getDcType(spell);
                                         return (
-                                            <div key={spell.index} onClick={() => setSelectedDetail(spell)} className={`grid gap-2 items-center px-6 py-4 hover:bg-[#2e3036]/50 cursor-pointer group transition-colors grid-cols-[1fr_60px_80px_60px] md:grid-cols-[1fr_80px_120px_80px]`}>
+                                            <div key={spell.index} onClick={() => setSelectedDetail(spell)} className={`grid gap-2 items-center px-6 py-4 hover:bg-[#2e3036]/50 cursor-pointer group transition-colors grid-cols-[1fr_70px_80px_60px] md:grid-cols-[1fr_110px_120px_80px]`}>
                                                 <div className="min-w-0">
                                                     <div className="font-bold text-gray-200 text-sm group-hover:text-white truncate flex items-center gap-1.5">
                                                         {spell.name}
@@ -354,11 +354,16 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                 <div className="text-center">
                                                     {dcType ? (
                                                         <div className="flex flex-col items-center leading-none">
-                                                            <span className="text-[10px] font-bold text-gray-500 mb-0.5">{dcType}</span>
-                                                            <span className="text-sm font-bold text-white">{spellSaveFor(spell)}</span>
+                                                            <span className="text-[8px] font-bold text-gray-500 mb-0.5">{dcType} SAVE</span>
+                                                            <span className="text-sm font-bold text-white">DC {spellSaveFor(spell)}</span>
+                                                        </div>
+                                                    ) : (spell as any).attack_type ? (
+                                                        <div className="flex flex-col items-center leading-none">
+                                                            <span className="text-[8px] font-bold text-gray-500 mb-0.5">TO HIT</span>
+                                                            <span className="text-sm font-bold text-white">{spellAttackFor(spell)}</span>
                                                         </div>
                                                     ) : (
-                                                        <span className="text-gray-600 text-[10px]">-</span>
+                                                        <span className="text-gray-600 text-[10px]">—</span>
                                                     )}
                                                 </div>
                                                 <div className="text-center flex justify-center">
@@ -416,7 +421,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                 </div>
                                                 <div className="text-[10px] text-gray-500 truncate">{spell.casting_time} • {spell.range} • {spell.duration}</div>
                                                 {dmg && (
-                                                    <div className="text-[10px] text-gray-400 truncate">Dmg: <span className="text-white font-bold">{displayDmg}</span>{dcType ? ` • ${dcType} ${spellSaveFor(spell)}` : ''}</div>
+                                                    <div className="text-[10px] text-gray-400 truncate">Dmg: <span className="text-white font-bold">{displayDmg}</span>{dcType ? ` • ${dcType} ${spellSaveFor(spell)}` : (spell as any).attack_type ? ` • ${spellAttackFor(spell)} to hit` : ''}</div>
                                                 )}
                                             </div>
                                             <button

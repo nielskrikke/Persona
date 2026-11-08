@@ -3945,7 +3945,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             </div>
 
             <header className="hidden lg:block shrink-0 z-[100] shadow-xl relative">
-                <div className="bg-[#121316]/80 backdrop-blur-md border-b border-[#3e4149] relative z-40">
+                <div className="bg-[#121316]/95 border-b border-[#3e4149] relative z-40">
                      <div className="max-w-[1400px] mx-auto px-4 py-4 flex flex-col lg:flex-row justify-between items-center gap-4 relative z-50">
                         <div className="flex items-center gap-6 w-full lg:w-auto">
                             <div className={`w-20 h-20 bg-cover bg-center rounded-full border-2 shadow-[0_0_15px_rgba(201,173,106,0.3)] shrink-0 border-dnd-gold`} style={{backgroundImage: `url('${character.avatarUrl || 'https://www.dndbeyond.com/content/skins/waterdeep/images/character-placeholder.jpg'}')`}}>
@@ -4058,7 +4058,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         <div className="flex gap-4 w-full lg:w-auto overflow-x-auto pb-1"><button onClick={() => handleRest('short')} className="flex items-center gap-2 px-4 py-2 bg-[#1b1c20]/80 border border-gray-600 hover:border-dnd-gold text-gray-300 hover:text-white rounded transition-colors group shrink-0"><div className="text-left"><div className="text-[10px] font-bold uppercase leading-none">Short</div><div className="text-xs font-bold uppercase leading-none">Rest</div></div></button><button onClick={() => handleRest('long')} className="flex items-center gap-2 px-4 py-2 bg-[#1b1c20]/80 border border-gray-600 hover:border-dnd-gold text-gray-300 hover:text-white rounded transition-colors group shrink-0"><div className="text-left"><div className="text-[10px] font-bold uppercase leading-none">Long</div><div className="text-xs font-bold uppercase leading-none">Rest</div></div></button></div>
                      </div>
                 </div>
-                <div className="bg-[#121316]/80 backdrop-blur-md border-b border-[#3e4149]/40 py-3 overflow-x-auto custom-scrollbar relative z-10">
+                <div className="bg-[#121316]/95 border-b border-[#3e4149]/40 py-3 overflow-x-auto custom-scrollbar relative z-10">
                     <div className="max-w-[1400px] mx-auto px-4 flex justify-between items-center min-w-max">
                         <div className="flex gap-3">{ABILITY_NAMES.map(stat => (<HeaderStatBox key={stat} label={stat} value={getStat(stat)} modifier={calculateModifier(getStat(stat))} onRoll={roll} onContextMenu={triggerRollMenu} />))}</div>
                         <div className="flex gap-3 border-l border-gray-700/50 pl-4 lg:pl-8">
