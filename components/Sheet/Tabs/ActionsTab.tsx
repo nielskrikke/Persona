@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CharacterState, SpellDetail, CreatureDetail } from '../../../types';
 import { STANDARD_ACTIONS, WIDGET_BG, MASTERY_DESCRIPTIONS } from '../../../data/constants';
-import { formatModifier, getSpellDamageString, getSpellCastLevel, hasUiWidget } from '../../../utils/rules';
+import { formatModifier, getSpellDamageString, getSpellCastLevel, hasUiWidget, getConditionLabelsFromText } from '../../../utils/rules';
 import { Flame, Snowflake, Zap, Skull, FlaskConical, Sparkles, Sun, Wind, Hammer, Sword, Target, Brain, Droplet, Heart } from 'lucide-react';
 
 interface ActionsTabProps {
@@ -79,8 +79,6 @@ const DamageTypeIcons = ({ type, damage }: { type?: string; damage?: string }) =
     );
 };
 
-const CONDITION_LABELS = ['Blinded', 'Charmed', 'Deafened', 'Exhaustion', 'Frightened', 'Grappled', 'Incapacitated', 'Invisible', 'Paralyzed', 'Petrified', 'Poisoned', 'Prone', 'Restrained', 'Stunned', 'Unconscious'];
-
 const getEffectLabel = (attack: any): string | null => {
     if (String(attack.damage ?? '').trim() !== '0') return null;
     const source = attack.source || {};
@@ -90,8 +88,7 @@ const getEffectLabel = (attack: any): string | null => {
         source.specialDescription,
         ...(Array.isArray(attack.notes) ? attack.notes : []),
     ].filter(Boolean).join(' ').toLowerCase();
-    const words = new Set(text.split(/[^a-z]+/).filter(Boolean));
-    const matches = CONDITION_LABELS.filter(label => words.has(label.toLowerCase()));
+    const matches = getConditionLabelsFromText(text);
     return matches.length > 0 ? matches.join(', ') : null;
 };
 

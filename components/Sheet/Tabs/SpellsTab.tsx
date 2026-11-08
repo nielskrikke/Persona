@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { CharacterState, SpellDetail } from '../../../types';
 import { WIDGET_BG } from '../../../data/constants';
-import { getSpellDamageString, getSpellSecondaryDamageString, calculateModifier, calculateProficiency, formatModifier, getEffectiveAbilities, resolveDamageFormula, appendMinDie, getSpellCastLevel, getSpellUpcastCount } from '../../../utils/rules';
+import { getSpellDamageString, getSpellSecondaryDamageString, calculateModifier, calculateProficiency, formatModifier, getEffectiveAbilities, resolveDamageFormula, appendMinDie, getSpellCastLevel, getSpellUpcastCount, getConditionLabelsFromText } from '../../../utils/rules';
 
 interface SpellsTabProps {
     character: CharacterState;
@@ -35,6 +35,13 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
         : spell.spellcastingAbility
             ? 8 + proficiency + calculateModifier(effectiveAbilities[spell.spellcastingAbility])
             : spellSave;
+    const isHealingSpell = (spell: SpellDetail) => /healing/i.test(String(spell.damage?.damage_type?.name || ''));
+    const spellModifierText = (value: number) => value === 0 ? '' : value > 0 ? ` + ${value}` : ` - ${Math.abs(value)}`;
+    const healingResult = (damage: string, spell: SpellDetail) => isHealingSpell(spell) ? `${damage}${spellModifierText(spellMod)}` : damage;
+    const damageTypeSuffix = (spell: SpellDetail) => {
+        const type = spell.damage?.damage_type?.name;
+        return type && !/healing/i.test(type) ? ` ${String(type).toLowerCase()}` : '';
+    };
     const itemBaseCost = (spell: SpellDetail) => Number((spell as any).itemBaseCost || (spell as any).itemCost?.amount || 1);
     const itemCostFor = (spell: SpellDetail) => itemCostSelections[spell.index] ?? itemBaseCost(spell);
     const castLevelFor = (spell: SpellDetail) => {
@@ -194,11 +201,9 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
     const [concentrationOnly, setConcentrationOnly] = useState(false);
 
     const getDcType = (spell: SpellDetail) => spell.dc?.dc_type?.name?.substring(0, 3).toUpperCase() || null;
-    const SPELL_CONDITIONS = ['Blinded', 'Charmed', 'Deafened', 'Exhaustion', 'Frightened', 'Grappled', 'Incapacitated', 'Invisible', 'Paralyzed', 'Petrified', 'Poisoned', 'Prone', 'Restrained', 'Stunned', 'Unconscious'];
     const getSpellEffectLabel = (spell: SpellDetail, damage: string) => {
         if (damage && String(damage).trim() !== '0') return null;
-        const words = new Set((spell.desc || []).join(' ').toLowerCase().split(/[^a-z]+/).filter(Boolean));
-        const matches = SPELL_CONDITIONS.filter(condition => words.has(condition.toLowerCase()));
+        const matches = getConditionLabelsFromText((spell.desc || []).join(' '));
         return matches.length > 0 ? matches.join(', ') : null;
     };
 
@@ -336,6 +341,8 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                         const displayDmg = dmg;
                                         const dcType = getDcType(spell);
                                         const effectLabel = getSpellEffectLabel(spell, displayDmg);
+                                        const healing = isHealingSpell(spell);
+                                        const resultDmg = displayDmg ? `${healingResult(displayDmg, spell)}${damageTypeSuffix(spell)}` : '';
                                         return (
                                             <div key={spell.index} onClick={() => setSelectedDetail(spell)} className={`grid gap-2 items-center px-6 py-4 hover:bg-[#2e3036]/50 cursor-pointer group transition-colors grid-cols-[1fr_70px_80px_60px] md:grid-cols-[1fr_110px_120px_80px]`}>
                                                 <div className="min-w-0">
@@ -377,7 +384,8 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                 <div className="text-center flex justify-center">
                                                     {displayDmg ? (
                                                         <div className="flex flex-col gap-1 items-center">
-                                                            <button onClick={(e) => { e.stopPropagation(); roll(displayDmg, `Damage ${spell.name}`); }} className="text-xs font-bold text-white bg-black/40 hover:bg-gray-700 border border-gray-600/50 rounded px-2 py-1 transition-colors truncate max-w-full">{displayDmg}</button>
+                                                            {healing && <span className="text-[8px] font-bold text-gray-500 uppercase">Healing</span>}
+                                                            <button onClick={(e) => { e.stopPropagation(); roll(healing ? `${displayDmg}${spellModifierText(spellMod)}` : displayDmg, `${healing ? 'Healing' : 'Damage'} ${spell.name}`); }} className="text-xs font-bold text-white bg-black/40 hover:bg-gray-700 border border-gray-600/50 rounded px-2 py-1 transition-colors truncate max-w-full">{resultDmg}</button>
                                                             {secondaryDmg && <button onClick={(e) => { e.stopPropagation(); roll(secondaryDmg, `Secondary Damage ${spell.name}`); }} className="text-[9px] font-bold text-dnd-gold bg-dnd-gold/10 hover:bg-dnd-gold/20 border border-dnd-gold/30 rounded px-2 py-0.5 transition-colors">{secondaryDmg}</button>}
                                                         </div>
                                                     ) : effectLabel ? (
@@ -417,6 +425,8 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                     const displayDmg = dmg;
                                     const dcType = getDcType(spell);
                                     const effectLabel = getSpellEffectLabel(spell, displayDmg);
+                                    const healing = isHealingSpell(spell);
+                                    const resultDmg = displayDmg ? `${healingResult(displayDmg, spell)}${damageTypeSuffix(spell)}` : '';
                                     const ebCount = spell.name === 'Eldritch Blast' ? (character.level >= 17 ? 4 : character.level >= 11 ? 3 : character.level >= 5 ? 2 : 1) : 0;
                                     return (
                                         <div key={spell.index} onClick={() => setSelectedDetail(spell)} className="flex items-center gap-3 px-4 py-3 active:bg-[#2e3036]/60 transition-colors cursor-pointer">
@@ -435,7 +445,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                 </div>
                                                 <div className="text-[10px] text-gray-500 truncate">{spell.casting_time} • {spell.range} • {spell.duration}</div>
                                                 {dmg && (
-                                                    <div className="text-[10px] text-gray-400 truncate">Result: <span className="text-white font-bold">{displayDmg}</span>{dcType ? ` • ${dcType} ${spellSaveFor(spell)}` : (spell as any).attack_type ? ` • ${spellAttackFor(spell)} to hit` : ''}</div>
+                                                    <div className="text-[10px] text-gray-400 truncate">{healing ? 'Healing' : 'Result'}: <span className="text-white font-bold">{resultDmg}</span>{dcType ? ` • ${dcType} ${spellSaveFor(spell)}` : (spell as any).attack_type ? ` • ${spellAttackFor(spell)} to hit` : ''}</div>
                                                 )}
                                                 {!dmg && effectLabel && (
                                                     <div className="text-[10px] text-gray-400 truncate">Effect: <span className="text-white font-bold">{effectLabel}</span></div>

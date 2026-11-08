@@ -3361,6 +3361,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             });
         });
 
+        const battleMasterLevel = character.classes.reduce((level, cls) => /battle master/i.test(cls.subclass?.name || '') ? Math.max(level, cls.level) : level, 0);
+        const superiorityDie = battleMasterLevel >= 18 ? '1d12' : battleMasterLevel >= 10 ? '1d10' : '1d8';
         character.choices.filter((choice: any) => /maneuver/i.test(choice.label || '') && Array.isArray(choice.value)).forEach((choice: any) => {
             choice.value.forEach((maneuver: string, index: number) => {
                 attacks.push({
@@ -3368,7 +3370,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     name: maneuver,
                     range: '-',
                     hit: null,
-                    damage: '-',
+                    damage: superiorityDie,
                     type: 'Maneuver',
                     notes: ['Superiority Die'],
                     source: { name: maneuver, desc: [maneuverDescriptions.get(String(maneuver).toLowerCase()) || MANEUVER_DESCRIPTIONS[maneuver] || 'Battle Master maneuver. Expend a Superiority Die to use it.'] },
@@ -3583,7 +3585,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     list.push({
                         id: `feat-effect-${enriched.index || enriched.name}-${effectName}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
                         name: effectName,
-                        category: 'Feat',
+                        category: effect.type === 'reaction' ? 'Reaction' : effect.type === 'action' ? 'Action' : 'Bonus Action',
                         desc: [effect.description || effect.desc || (Array.isArray(enriched.desc) ? enriched.desc[0] : enriched.desc) || ''],
                         source: { ...enriched, name: effectName },
                     });
