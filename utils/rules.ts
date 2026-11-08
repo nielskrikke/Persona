@@ -741,12 +741,12 @@ export const getConditionLabelsFromText = (text: string): string[] => {
     if (!clean) return [];
     // Protection, immunity, removal, and object-state text should not assign
     // a condition to the target (e.g. Protection from Evil and Good, Forcecage).
-    if (/(?:can(?:'|no)t|can not|cannot)\s+be\s+(?:charmed|frightened|poisoned|prone|restrained|stunned|paralyzed|petrified|blinded|deafened|invisible|incapacitated|grappled)|protected against|protection from|immune to|no longer|ends? the .*condition|removes? the .*condition|suppress(?:es|ed)?|prevents? .*condition|cage is invisible|prison .*invisible/i.test(clean)) return [];
+    if (/(?:can(?:'|no)t|can not|cannot)\s+be\s+(?:charmed|frightened|poisoned|prone|restrained|stunned|paralyzed|petrified|blinded|deafened|invisible|incapacitated|grappled)|protected against|protection from|immune to|no longer|suppress(?:es|ed)?|prevents? .*condition|cage is invisible|prison .*invisible/i.test(clean)) return [];
     return CONDITION_LABELS.filter(label => {
         const lower = label.toLowerCase();
         const affected = new RegExp(`\\b(?:target|creature|it|they)\\b[^.!?]{0,140}\\b(?:is|are|becomes?|remains?|falls?|has|have)\\b[^.!?]{0,80}\\b${lower}\\b`, 'i');
         const save = new RegExp(`\\b(?:must|fails?|failing|failure)\\b[^.!?]{0,140}\\b(?:save|saving throw)\\b[^.!?]{0,140}\\b${lower}\\b`, 'i');
-        const condition = new RegExp(`\\b${lower}\\b[^.!?]{0,40}\\bcondition\\b`, 'i');
+        const condition = new RegExp(`\\b${lower}\\b[^.!?]{0,40}\\bconditions?\\b`, 'i');
         return affected.test(clean) || save.test(clean) || condition.test(clean);
     });
 };
