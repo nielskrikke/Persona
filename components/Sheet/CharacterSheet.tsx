@@ -3384,14 +3384,14 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const save = effect.save ? { type: effect.save.ability || effect.save.type || 'DEX', dc: dcMatch ? Number(dcMatch[0]) : 13 } : null;
                 const actionAttack = {
                     id: `item-action-${item.id}-${index}`,
-                    name: effect.name || item.name,
+                    name: effect.name ? `${item.name}: ${effect.name}` : item.name,
                     range: effect.range ? `${effect.range} ft.` : '-',
                     hit: null,
                     save,
                     damage: effect.damage || '-',
                     type: effect.damage_type || effect.damageType || 'Other',
                     notes: [item.name],
-                    source: { ...effect, itemId: item.id, isItemAction: true },
+                    source: { ...effect, itemId: item.id, itemName: item.name, isItemAction: true },
                 };
                 (actionAttack as any).modifiers = getAttackModifiers(actionAttack);
                 attacks.push(actionAttack);
@@ -4430,6 +4430,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 setSelectedDetail((prev: any) => prev ? { ...prev, widgets: nextWidgets } : prev);
                                 return;
                             }
+                        }
+                        if (action === 'openItem') {
+                            const target = character.inventory.find(entry => entry.id === itm?.id);
+                            if (target) setSelectedDetail(target);
+                            return;
                         }
                         if (action === 'customizeItem') {
                             setInstanceCustomizingItem(itm);

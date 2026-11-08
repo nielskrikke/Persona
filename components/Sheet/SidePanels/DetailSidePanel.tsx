@@ -244,11 +244,13 @@ const DetailSidePanel = ({
         }
         
         const catName = itm.equipment_category?.name || (typeof itm.type === 'object' ? itm.type.name : itm.type);
-        return catName ? catName.toUpperCase() : (itm.quantity ? 'Item' : 'Equipment');
+        return catName || (itm.quantity ? 'Item' : 'Equipment');
     };
 
     let subtitle = 'Detail';
-    if (fullDetail?.index?.includes('feature') || fullDetail?.type === 'Class') {
+    if (fullDetail?.isItemAction) {
+        subtitle = `Item Action • ${fullDetail.itemName || 'Item'}`;
+    } else if (fullDetail?.index?.includes('feature') || fullDetail?.type === 'Class') {
         const levelStr = fullDetail.level ? `Level ${fullDetail.level} ` : '';
         if (fullDetail.casting_time) {
             subtitle = `${levelStr}Spell Feature • ${fullDetail.school?.name || 'Class'}`;
@@ -294,9 +296,53 @@ const DetailSidePanel = ({
             markdown = desc;
         }
 
+        const lines = markdown.split('\n');
+        const blocks: React.ReactNode[] = [];
+        let buffer: string[] = [];
+        const flush = () => {
+            if (buffer.length === 0) return;
+            blocks.push(<ReactMarkdown key={`md-${blocks.length}`}>{buffer.join('\n')}</ReactMarkdown>);
+            buffer = [];
+        };
+        const isSeparator = (line: string) => /^\s*\|?[\s:|-]+\|?\s*$/.test(line) && line.includes('-');
+        const parseRow = (line: string) => line.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map(cell => cell.trim());
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            if (line.includes('|') && i + 1 < lines.length && isSeparator(lines[i + 1])) {
+                flush();
+                const headers = parseRow(line);
+                const rows: string[][] = [];
+                i += 2;
+                while (i < lines.length && lines[i].includes('|') && lines[i].trim() !== '') {
+                    rows.push(parseRow(lines[i]));
+                    i++;
+                }
+                i--;
+                blocks.push(
+                    <div key={`table-${blocks.length}`} className="my-3 overflow-x-auto rounded-lg border border-gray-700/70">
+                        <table className="w-full min-w-[320px] border-collapse text-left text-xs">
+                            <thead className="bg-black/30 text-gray-300">
+                                <tr>{headers.map((header, idx) => <th key={idx} className="border-b border-gray-700 px-2 py-1.5 font-bold">{header}</th>)}</tr>
+                            </thead>
+                            <tbody>
+                                {rows.map((row, rowIdx) => (
+                                    <tr key={rowIdx} className="even:bg-white/[0.02]">
+                                        {headers.map((_, cellIdx) => <td key={cellIdx} className="border-b border-gray-800/60 px-2 py-1.5 text-gray-400">{row[cellIdx] || ''}</td>)}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                );
+                continue;
+            }
+            buffer.push(line);
+        }
+        flush();
+
         return (
             <div className="markdown-body text-gray-400 text-sm leading-relaxed">
-                <ReactMarkdown>{markdown}</ReactMarkdown>
+                {blocks}
             </div>
         );
     };
@@ -554,7 +600,7 @@ const DetailSidePanel = ({
                         {isItemLike(fullDetail) && (
                             <button
                                 onClick={() => onAction('customizeItem', fullDetail)}
-                                className="flex-1 py-1.5 bg-dnd-gold/20 text-dnd-gold hover:bg-dnd-gold/30 rounded font-bold uppercase text-[10px] tracking-wider transition-colors"
+                                className="flex-1 py-1.5 bg-gray-800/40 text-gray-400 hover:text-white hover:bg-gray-700/60 rounded font-bold uppercase text-[10px] tracking-wider transition-colors"
                             >
                                 Customize
                             </button>
@@ -948,6 +994,11 @@ const DetailSidePanel = ({
                                     ))}
                                 </div>
                             </div>
+                        )}
+                        {(fullDetail as any).isItemAction && (fullDetail as any).itemId && (
+                            <button type="button" onClick={() => onAction?.('openItem', { id: (fullDetail as any).itemId })} className="mt-3 w-full rounded-lg border border-dnd-gold/40 bg-dnd-gold/10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-dnd-gold hover:bg-dnd-gold hover:text-black transition-colors">
+                                Open {(fullDetail as any).itemName || 'Item'}
+                            </button>
                         )}
                         {(fullDetail as any).customNotes && (
                             <div className="mt-3 rounded-lg border border-dnd-gold/20 bg-dnd-gold/5 p-3 text-xs text-gray-300">
