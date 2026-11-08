@@ -77,7 +77,11 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
         const loadSpells = async () => {
             setLoading(true);
             const spells = hasMagicalSecrets ? await fetchAllSpells(character.user_id) : await fetchSpellsByClass(activeClassIndex, character.user_id);
-            const sorted = spells.sort((a,b) => a.level - b.level || a.name.localeCompare(b.name));
+            const allowedSecretsLists = new Set(['bard', 'cleric', 'druid', 'wizard']);
+            const filtered = hasMagicalSecrets
+                ? spells.filter(spell => (spell as any).classes?.some((entry: any) => allowedSecretsLists.has(String(entry.index).toLowerCase())))
+                : spells;
+            const sorted = filtered.sort((a,b) => a.level - b.level || a.name.localeCompare(b.name));
             setAvailableSpells(sorted);
             setLoading(false);
         };

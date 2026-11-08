@@ -658,104 +658,6 @@ const DetailSidePanel = ({
                         <div className="prose prose-invert prose-sm max-w-none text-gray-300">
                             {renderDescription(fullDetail.desc)}
                         </div>
-                        {isItemLike(fullDetail) && getItemWidgets(fullDetail).map((widget: any, widgetIndex: number) => (
-                            <div key={widgetIndex} className="mt-4 rounded-lg border border-gray-800 bg-black/30 p-3">
-                                <div className="flex items-center justify-between gap-2 mb-2">
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-dnd-gold">{widget.name || (widget.type === 'spell_storage' ? 'Stored Spells' : widget.type === 'patches' ? 'Patches' : 'Item Widget')}</span>
-                                    {widget.type === 'spell_storage' && <span className="text-[9px] text-gray-500">{storedSpellLevels(widget)} / {widget.capacity || 5} levels</span>}
-                                </div>
-                                {widget.type === 'spell_storage' && (
-                                    <div className="space-y-2">
-                                        {(widget.storedSpells || []).length === 0 ? <p className="text-[10px] text-gray-600 italic">No spells stored.</p> : (widget.storedSpells || []).map((stored: any, index: number) => (
-                                            <div key={`${stored.name}-${index}`} className="flex items-center justify-between gap-2 text-[10px] text-gray-300">
-                                                <span>{stored.name} <span className="text-gray-600">· level {stored.castLevel || stored.level}</span></span>
-                                                <button type="button" className="text-red-400 hover:text-red-300 font-bold" onClick={() => onAction?.('removeStoredItemSpell', { itemId: fullDetail.id, storedIndex: index })}>Remove</button>
-                                            </div>
-                                        ))}
-                                        {onAction && (
-                                            <div className="flex gap-1 pt-1 border-t border-gray-800">
-                                                <div className="flex-1 space-y-1">
-                                                    <input value={spellQuery} onChange={e => setSpellQuery(e.target.value)} placeholder="Filter spells…" className="w-full rounded border border-gray-700 bg-black/40 px-2 py-1 text-[10px] text-gray-200" />
-                                                    <div className="flex gap-1">
-                                                        <input id={`store-dc-${widgetIndex}`} type="number" placeholder="Original DC" className="w-1/2 rounded border border-gray-700 bg-black/40 px-2 py-1 text-[10px] text-gray-200" />
-                                                        <input id={`store-attack-${widgetIndex}`} type="number" placeholder="Attack +" className="w-1/2 rounded border border-gray-700 bg-black/40 px-2 py-1 text-[10px] text-gray-200" />
-                                                    </div>
-                                                    <select id={`store-spell-${widgetIndex}`} className="w-full rounded border border-gray-700 bg-black/40 px-2 py-1 text-[10px] text-gray-200">
-                                                        <option value="">Store any spell (level 1–5)…</option>
-                                                        {(allSpells.length > 0 ? allSpells : character?.spells || []).filter((spell: any) => spell.level >= 1 && spell.level <= 5 && (!spellQuery || spell.name.toLowerCase().includes(spellQuery.toLowerCase()))).map((spell: any) => (
-                                                            <option key={spell.index} value={spell.index}>{spell.name} (level {spell.level})</option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-                                                <button type="button" className="self-end rounded bg-dnd-gold px-2 py-1 text-[9px] font-black uppercase text-black" onClick={() => {
-                                                    const select = document.getElementById(`store-spell-${widgetIndex}`) as HTMLSelectElement | null;
-                                                    const dc = document.getElementById(`store-dc-${widgetIndex}`) as HTMLInputElement | null;
-                                                    const attack = document.getElementById(`store-attack-${widgetIndex}`) as HTMLInputElement | null;
-                                                    if (select?.value) onAction('storeItemSpell', { itemId: fullDetail.id, spellIndex: select.value, widgetName: widget.name, dc: dc?.value ? Number(dc.value) : undefined, attackBonus: attack?.value ? Number(attack.value) : undefined });
-                                                }}>Store</button>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                                {widget.type === 'patches' && (
-                                    <div className="space-y-1.5">
-                                        {(widget.patches || []).length === 0 ? <p className="text-[10px] text-gray-600 italic">No patches left.</p> : (widget.patches || []).map((patch: any, index: number) => (
-                                            <div key={`${patch.name}-${index}`} className="flex items-center justify-between gap-2 text-[10px] text-gray-300">
-                                                <span>{patch.name} <span className="text-gray-600">×{patch.quantity}</span></span>
-                                                {patch.quantity > 0 && <button type="button" className="text-dnd-gold hover:text-yellow-300 font-bold" onClick={() => onAction?.('useItemPatch', { itemId: fullDetail.id, patchName: patch.name })}>Use</button>}
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                {widget.type === 'note' && <p className="text-[10px] text-gray-400 whitespace-pre-wrap">{widget.description}</p>}
-                                {widget.type === 'action' && (
-                                    <div className="flex items-center justify-between gap-2">
-                                        <p className="text-[10px] text-gray-400"><strong className="text-gray-200">{widget.name}</strong>{widget.description ? `: ${widget.description}` : ''}</p>
-                                        <button type="button" className="shrink-0 rounded bg-dnd-gold px-2 py-1 text-[9px] font-black uppercase text-black" onClick={() => onAction?.('useItemWidget', { itemId: fullDetail.id, widgetIndex })}>Use</button>
-                                    </div>
-                                )}
-                                {widget.type === 'toggle' && (
-                                    <div className="flex items-center justify-between gap-2">
-                                        <p className="text-[10px] text-gray-400"><strong className="text-gray-200">{widget.name}</strong>{widget.description ? `: ${widget.description}` : ''}</p>
-                                        <button type="button" className={`shrink-0 rounded border px-2 py-1 text-[9px] font-black uppercase ${widget.active ? 'border-dnd-gold bg-dnd-gold text-black' : 'border-gray-700 text-gray-400'}`} onClick={() => onAction?.('toggleItemWidget', { itemId: fullDetail.id, widgetIndex })}>{widget.active ? 'Active' : 'Inactive'}</button>
-                                    </div>
-                                )}
-                                {widget.type === 'counter' && (
-                                    <div className="flex items-center justify-between gap-2">
-                                        <p className="text-[10px] text-gray-400"><strong className="text-gray-200">{widget.name}</strong>{widget.description ? `: ${widget.description}` : ''}</p>
-                                        <div className="flex items-center gap-1">
-                                            <button type="button" className="rounded border border-gray-700 px-1.5 text-[10px] text-gray-300" onClick={() => onAction?.('updateItemWidgetCounter', { itemId: fullDetail.id, widgetIndex, delta: -1 })}>−</button>
-                                            <span className="text-[10px] text-gray-200 min-w-[36px] text-center">{widget.current ?? 0} / {widget.max ?? 0}</span>
-                                            <button type="button" className="rounded border border-gray-700 px-1.5 text-[10px] text-gray-300" onClick={() => onAction?.('updateItemWidgetCounter', { itemId: fullDetail.id, widgetIndex, delta: 1 })}>+</button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                        {isItemLike(fullDetail) && (fullDetail as any).effects?.some((effect: any) => ['action', 'bonus_action', 'reaction', 'spell_access'].includes(effect.type)) && (
-                            <div className="mt-4 rounded-lg border border-gray-800 bg-black/30 p-3">
-                                <span className="text-[9px] font-black uppercase tracking-widest text-dnd-gold block mb-2">Item Features</span>
-                                <div className="space-y-2">
-                                    {(fullDetail as any).effects.filter((effect: any) => ['action', 'bonus_action', 'reaction', 'spell_access'].includes(effect.type)).map((effect: any, index: number) => (
-                                        <div key={index} className="rounded-md border border-gray-800 bg-black/30 px-2 py-1.5">
-                                            <div className="flex items-center justify-between gap-2">
-                                                <span className="text-[11px] font-bold text-gray-200">{effect.name || effect.spell_name || (effect.type === 'spell_access' ? effect.spell : 'Item feature')}</span>
-                                                <span className="text-[8px] font-black uppercase tracking-widest text-gray-500">{effect.type === 'bonus_action' ? 'Bonus Action' : effect.type === 'reaction' ? 'Reaction' : effect.type === 'spell_access' ? 'Spell' : 'Action'}</span>
-                                            </div>
-                                            {(effect.description || effect.desc || effect.spell_name) && <div className="mt-0.5 text-[10px] text-gray-500">{effect.description || effect.desc || `Cast ${effect.spell_name || effect.spell}`}</div>}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                        {(fullDetail as any).customNotes && (
-                            <div className="mt-3 rounded-lg border border-dnd-gold/20 bg-dnd-gold/5 p-3 text-xs text-gray-300">
-                                <span className="text-[9px] font-black uppercase tracking-widest text-dnd-gold block mb-1">Custom Notes</span>
-                                {renderDescription((fullDetail as any).customNotes)}
-                            </div>
-                        )}
-
-
                         {fullDetail.higher_level && fullDetail.higher_level.length > 0 && (
                             <div className="mt-4 border-t border-gray-700 pt-3">
                                 <h4 className="text-dnd-gold font-bold uppercase text-xs mb-2">At Higher Levels</h4>
@@ -947,6 +849,104 @@ const DetailSidePanel = ({
                                 </div>
                             </div>
                         )}
+                        {isItemLike(fullDetail) && getItemWidgets(fullDetail).map((widget: any, widgetIndex: number) => (
+                            <div key={widgetIndex} className="mt-4 rounded-lg border border-gray-800 bg-black/30 p-3">
+                                <div className="flex items-center justify-between gap-2 mb-2">
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-dnd-gold">{widget.name || (widget.type === 'spell_storage' ? 'Stored Spells' : widget.type === 'patches' ? 'Patches' : 'Item Widget')}</span>
+                                    {widget.type === 'spell_storage' && <span className="text-[9px] text-gray-500">{storedSpellLevels(widget)} / {widget.capacity || 5} levels</span>}
+                                </div>
+                                {widget.type === 'spell_storage' && (
+                                    <div className="space-y-2">
+                                        {(widget.storedSpells || []).length === 0 ? <p className="text-[10px] text-gray-600 italic">No spells stored.</p> : (widget.storedSpells || []).map((stored: any, index: number) => (
+                                            <div key={`${stored.name}-${index}`} className="flex items-center justify-between gap-2 text-[10px] text-gray-300">
+                                                <span>{stored.name} <span className="text-gray-600">· level {stored.castLevel || stored.level}</span></span>
+                                                <button type="button" className="text-red-400 hover:text-red-300 font-bold" onClick={() => onAction?.('removeStoredItemSpell', { itemId: fullDetail.id, storedIndex: index })}>Remove</button>
+                                            </div>
+                                        ))}
+                                        {onAction && (
+                                            <div className="flex gap-1 pt-1 border-t border-gray-800">
+                                                <div className="flex-1 space-y-1">
+                                                    <input value={spellQuery} onChange={e => setSpellQuery(e.target.value)} placeholder="Filter spells…" className="w-full rounded border border-gray-700 bg-black/40 px-2 py-1 text-[10px] text-gray-200" />
+                                                    <div className="flex gap-1">
+                                                        <input id={`store-dc-${widgetIndex}`} type="number" placeholder="Original DC" className="w-1/2 rounded border border-gray-700 bg-black/40 px-2 py-1 text-[10px] text-gray-200" />
+                                                        <input id={`store-attack-${widgetIndex}`} type="number" placeholder="Attack +" className="w-1/2 rounded border border-gray-700 bg-black/40 px-2 py-1 text-[10px] text-gray-200" />
+                                                    </div>
+                                                    <select id={`store-spell-${widgetIndex}`} className="w-full rounded border border-gray-700 bg-black/40 px-2 py-1 text-[10px] text-gray-200">
+                                                        <option value="">Store any spell (level 1–5)…</option>
+                                                        {(allSpells.length > 0 ? allSpells : character?.spells || []).filter((spell: any) => spell.level >= 1 && spell.level <= 5 && (!spellQuery || spell.name.toLowerCase().includes(spellQuery.toLowerCase()))).map((spell: any) => (
+                                                            <option key={spell.index} value={spell.index}>{spell.name} (level {spell.level})</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <button type="button" className="self-end rounded bg-dnd-gold px-2 py-1 text-[9px] font-black uppercase text-black" onClick={() => {
+                                                    const select = document.getElementById(`store-spell-${widgetIndex}`) as HTMLSelectElement | null;
+                                                    const dc = document.getElementById(`store-dc-${widgetIndex}`) as HTMLInputElement | null;
+                                                    const attack = document.getElementById(`store-attack-${widgetIndex}`) as HTMLInputElement | null;
+                                                    if (select?.value) onAction('storeItemSpell', { itemId: fullDetail.id, spellIndex: select.value, widgetName: widget.name, dc: dc?.value ? Number(dc.value) : undefined, attackBonus: attack?.value ? Number(attack.value) : undefined });
+                                                }}>Store</button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                {widget.type === 'patches' && (
+                                    <div className="space-y-1.5">
+                                        {(widget.patches || []).length === 0 ? <p className="text-[10px] text-gray-600 italic">No patches left.</p> : (widget.patches || []).map((patch: any, index: number) => (
+                                            <div key={`${patch.name}-${index}`} className="flex items-center justify-between gap-2 text-[10px] text-gray-300">
+                                                <span>{patch.name} <span className="text-gray-600">×{patch.quantity}</span></span>
+                                                {patch.quantity > 0 && <button type="button" className="text-dnd-gold hover:text-yellow-300 font-bold" onClick={() => onAction?.('useItemPatch', { itemId: fullDetail.id, patchName: patch.name })}>Use</button>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {widget.type === 'note' && <p className="text-[10px] text-gray-400 whitespace-pre-wrap">{widget.description}</p>}
+                                {widget.type === 'action' && (
+                                    <div className="flex items-center justify-between gap-2">
+                                        <p className="text-[10px] text-gray-400"><strong className="text-gray-200">{widget.name}</strong>{widget.description ? `: ${widget.description}` : ''}</p>
+                                        <button type="button" className="shrink-0 rounded bg-dnd-gold px-2 py-1 text-[9px] font-black uppercase text-black" onClick={() => onAction?.('useItemWidget', { itemId: fullDetail.id, widgetIndex })}>Use</button>
+                                    </div>
+                                )}
+                                {widget.type === 'toggle' && (
+                                    <div className="flex items-center justify-between gap-2">
+                                        <p className="text-[10px] text-gray-400"><strong className="text-gray-200">{widget.name}</strong>{widget.description ? `: ${widget.description}` : ''}</p>
+                                        <button type="button" className={`shrink-0 rounded border px-2 py-1 text-[9px] font-black uppercase ${widget.active ? 'border-dnd-gold bg-dnd-gold text-black' : 'border-gray-700 text-gray-400'}`} onClick={() => onAction?.('toggleItemWidget', { itemId: fullDetail.id, widgetIndex })}>{widget.active ? 'Active' : 'Inactive'}</button>
+                                    </div>
+                                )}
+                                {widget.type === 'counter' && (
+                                    <div className="flex items-center justify-between gap-2">
+                                        <p className="text-[10px] text-gray-400"><strong className="text-gray-200">{widget.name}</strong>{widget.description ? `: ${widget.description}` : ''}</p>
+                                        <div className="flex items-center gap-1">
+                                            <button type="button" className="rounded border border-gray-700 px-1.5 text-[10px] text-gray-300" onClick={() => onAction?.('updateItemWidgetCounter', { itemId: fullDetail.id, widgetIndex, delta: -1 })}>−</button>
+                                            <span className="text-[10px] text-gray-200 min-w-[36px] text-center">{widget.current ?? 0} / {widget.max ?? 0}</span>
+                                            <button type="button" className="rounded border border-gray-700 px-1.5 text-[10px] text-gray-300" onClick={() => onAction?.('updateItemWidgetCounter', { itemId: fullDetail.id, widgetIndex, delta: 1 })}>+</button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                        {isItemLike(fullDetail) && (fullDetail as any).effects?.some((effect: any) => ['action', 'bonus_action', 'reaction', 'spell_access'].includes(effect.type)) && (
+                            <div className="mt-4 rounded-lg border border-gray-800 bg-black/30 p-3">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-dnd-gold block mb-2">Item Features</span>
+                                <div className="space-y-2">
+                                    {(fullDetail as any).effects.filter((effect: any) => ['action', 'bonus_action', 'reaction', 'spell_access'].includes(effect.type)).map((effect: any, index: number) => (
+                                        <div key={index} className="rounded-md border border-gray-800 bg-black/30 px-2 py-1.5">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className="text-[11px] font-bold text-gray-200">{effect.name || effect.spell_name || (effect.type === 'spell_access' ? effect.spell : 'Item feature')}</span>
+                                                <span className="text-[8px] font-black uppercase tracking-widest text-gray-500">{effect.type === 'bonus_action' ? 'Bonus Action' : effect.type === 'reaction' ? 'Reaction' : effect.type === 'spell_access' ? 'Spell' : 'Action'}</span>
+                                            </div>
+                                            {(effect.description || effect.desc || effect.spell_name) && <div className="mt-0.5 text-[10px] text-gray-500">{effect.description || effect.desc || `Cast ${effect.spell_name || effect.spell}`}</div>}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        {(fullDetail as any).customNotes && (
+                            <div className="mt-3 rounded-lg border border-dnd-gold/20 bg-dnd-gold/5 p-3 text-xs text-gray-300">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-dnd-gold block mb-1">Custom Notes</span>
+                                {renderDescription((fullDetail as any).customNotes)}
+                            </div>
+                        )}
+
+
                     </div>
                 )}
 

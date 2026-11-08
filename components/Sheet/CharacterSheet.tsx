@@ -561,7 +561,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
         resources.forEach(resource => {
             const existing = newUsage[resource.name];
-            if (!existing || existing.max !== resource.max || existing.itemId !== resource.itemId) {
+            if (!existing || existing.max !== resource.max || existing.itemId !== resource.itemId || existing.reset !== resource.reset) {
                 newUsage[resource.name] = {
                     max: resource.max,
                     current: existing ? Math.min(existing.current, resource.max) : resource.max,
@@ -575,7 +575,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
         Object.keys(newUsage).forEach(key => {
             const entry = newUsage[key];
-            const isItemResource = entry?.sourceType === 'item' || Boolean(entry?.itemId) || /: (Charges?|Uses)$/i.test(key);
+            const ownedItemPrefix = (character.inventory || []).some((item: any) =>
+                key.startsWith(`${item.name}: `) || key.startsWith(`${item.name} `)
+            );
+            const isItemResource = entry?.sourceType === 'item' || Boolean(entry?.itemId) || ownedItemPrefix || /: (Charges?|Uses)$/i.test(key);
             const matchesUnequippedItem = (character.inventory || []).some((item: any) =>
                 !item.equipped && (key.startsWith(`${item.name}: `) || key.startsWith(`${item.name} `))
             );

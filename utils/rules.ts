@@ -632,6 +632,7 @@ export const getResourceDefinitions = (character: CharacterState): CharacterReso
     character.inventory?.forEach(item => {
         if (!item.equipped || (item.requires_attunement && !item.attuned)) return;
         ((item as any).resources || []).forEach((resource: any) => {
+            if (/stored[- ]?spell[- ]?levels?/i.test(String(resource.name || resource.key || ''))) return;
             const max = getResourceMax(resource, character.level, abilities, character.level);
             if (max <= 0) return;
             const name = `${item.name}: ${resource.name || resource.key}`;
