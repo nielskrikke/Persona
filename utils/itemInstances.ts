@@ -7,6 +7,8 @@ const replaceTokens = (value: any, base: string, choice: string): any => {
 
 const withCustom = (entries: any[] | undefined) => (entries || []).map(entry => ({ ...entry, _custom: true }));
 
+const stripHomebrewSuffix = (name: any) => typeof name === 'string' ? name.replace(/\s*\(HB\)\s*$/i, '').trim() : name;
+
 export const hasItemOverrides = (item: InventoryItem): boolean => Boolean(item?.overrides && Object.keys(item.overrides).length > 0);
 
 export const mergeInventoryItem = (
@@ -30,9 +32,9 @@ export const mergeInventoryItem = (
         isBattleReady: entry.isBattleReady,
         wieldedTwoHanded: entry.wieldedTwoHanded,
     };
-    if (!dbRecord) return { ...entry, overrides: customized ? overrides : undefined, customized };
+    if (!dbRecord) return { ...entry, name: stripHomebrewSuffix(entry.name), overrides: customized ? overrides : undefined, customized };
     if (!customized) {
-        return { ...dbRecord, ...entry, customized: false };
+        return { ...dbRecord, ...entry, name: stripHomebrewSuffix(entry.name || dbRecord.name), customized: false };
     }
 
     const baseIndex = overrides.base_item || entry.base_item || (dbRecord as any).base_item;
@@ -53,6 +55,7 @@ export const mergeInventoryItem = (
         overrides,
         customized: true,
     };
+    merged.name = stripHomebrewSuffix(merged.name);
     if (base?.index && base.index !== dbRecord.index) {
         merged.damage = base.damage || merged.damage;
         merged.properties = base.properties?.length ? base.properties : merged.properties;
@@ -94,5 +97,7 @@ export const mergeInventoryItem = (
     if (overrides.weight !== undefined) merged.weight = Number(overrides.weight);
     if (overrides.rarity !== undefined) merged.rarity = overrides.rarity;
     if (overrides.requires_attunement !== undefined) merged.requires_attunement = overrides.requires_attunement;
-    return replaceTokens(merged, base?.name || '', overrides.choice_value || '');
+    const replaced = replaceTokens(merged, base?.name || '', overrides.choice_value || '');
+    replaced.name = stripHomebrewSuffix(replaced.name);
+    return replaced;
 };

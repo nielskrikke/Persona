@@ -192,7 +192,7 @@ export const fetchEquipment = async (userId?: string): Promise<EquipmentDetail[]
         if (custom && custom.length > 0) {
             const items = custom.map((i: any) => ({
                 ...i,
-                name: i.is_homebrew === false ? i.name : (i.name.endsWith('(HB)') ? i.name : `${i.name} (HB)`),
+                name: i.name,
             }));
             cacheItems(items);
             return items;
