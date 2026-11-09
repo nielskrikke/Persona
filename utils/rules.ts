@@ -752,15 +752,16 @@ export const getConditionLabelsFromText = (text: string): string[] => {
 };
 
 export const getSpellDamageString = (spell: SpellDetail, characterLevel: number = 1, slotLevel: number = 1): string => {
-    if (!spell.damage) return '';
-    const damage = spell.damage;
+    const damage: any = spell.damage || (spell as any).heal_at_slot_level;
+    if (!damage) return '';
     if (damage.damage_at_character_level) {
         const levels = Object.keys(damage.damage_at_character_level).map(Number).sort((a, b) => a - b).filter(lvl => lvl <= characterLevel);
         const highestLevel = levels[levels.length - 1];
         return primaryDamagePart(damage.damage_at_character_level[highestLevel] || '');
     }
-    if (damage.damage_at_slot_level) {
-        const base = primaryDamagePart(damage.damage_at_slot_level[slotLevel] || damage.damage_at_slot_level[spell.level] || '');
+    if (damage.damage_at_slot_level || (spell as any).heal_at_slot_level) {
+        const table = damage.damage_at_slot_level || (spell as any).heal_at_slot_level;
+        const base = primaryDamagePart(table[slotLevel] || table[spell.level] || '');
         if (String(spell.name).toLowerCase() === 'magic missile') {
             const info = getSpellUpcastCount(spell, slotLevel);
             const match = base.match(/^(\d+)d(\d+)(?:\s*\+\s*(\d+))?$/i);
@@ -769,6 +770,14 @@ export const getSpellDamageString = (spell: SpellDetail, characterLevel: number 
                 const flat = Number(match[3] || 0) * info.count;
                 return `${dice}d${match[2]}${flat ? `+${flat}` : ''}`;
             }
+        }
+        const perSlot = (spell as any).scaling?.per_slot || (spell as any).scaling;
+        const levelDelta = Math.max(0, Number(slotLevel) - Number(spell.level || 0));
+        if (perSlot && levelDelta > 0) {
+            const per = String(perSlot).trim();
+            const dice = per.match(/^(\d+)d(\d+)$/i);
+            const scaled = dice ? `${Number(dice[1]) * levelDelta}d${dice[2]}` : per;
+            return `${base}+${scaled}`;
         }
         return base;
     }

@@ -1063,6 +1063,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     const [spellDmgFormula, setSpellDmgFormula] = useState('');
     const [spellSecondaryDamage, setSpellSecondaryDamage] = useState('');
     const [spellDmgType, setSpellDmgType] = useState('Force');
+    const [spellScaling, setSpellScaling] = useState('');
     const [spellClasses, setSpellClasses] = useState<string[]>([]);
     const [spellOriginal, setSpellOriginal] = useState<any>(null);
 
@@ -1218,7 +1219,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
         setArmorProfs([]); setWeaponProfs([]); setMulticlassProfs(''); setMulticlassChoices('');
         setSpellLevel(0); setSpellSchool('Evocation'); setSpellCastTime('1 Action'); setSpellRange('60 feet'); setSpellDuration('Instantaneous'); setSpellRitual(false); setSpellConcentration(false);
         setSpellComponents(['V', 'S']); setSpellMaterial(''); setSpellHigherLevel(''); setSpellHasAttack(false); setSpellHasSave(false); setSpellDmgFormula(''); setSpellSecondaryDamage('');
-        setSpellDmgType('Force'); setSpellClasses([]); setSpellOriginal(null);
+        setSpellDmgType('Force'); setSpellScaling(''); setSpellClasses([]); setSpellOriginal(null);
         setItemCategory('Other'); setItemSubtype(''); setItemIsWondrous(false); setItemRarity('Common'); setItemWeight(0); setItemCost('0 gp'); setItemAttunement(false);
         setItemDmgDice(''); setItemDmgType('Piercing'); setItemWeaponType('Simple'); setItemArmorType('Light'); setItemAcBase(0); setItemAcDexBonus(false); setItemAcMaxBonus(null);
         setItemIsThrown(false); setItemThrownRange(''); setItemThrownDamage(''); setItemProperties([]); setItemModifiers([]);
@@ -1335,6 +1336,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                 }
                 setSpellDmgType(item.damage.damage_type?.name || 'Force');
             }
+            setSpellScaling(item.scaling?.per_slot || (typeof item.scaling === 'string' ? item.scaling : '') || '');
         } else if (activeTab === 'item') {
             setItemCategory(item.equipment_category?.name || 'Other');
             setItemSubtype(item.subtype || '');
@@ -1591,6 +1593,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     }),
                     attack_type: spellHasAttack ? spellAttackType.toLowerCase() : undefined,
                     damage: nextDamage,
+                    scaling: spellScaling.trim() ? { per_slot: spellScaling.trim() } : undefined,
                     secondary_damage: spellSecondaryDamage || undefined,
                     dc: spellHasSave ? { ...(previous.dc || {}), dc_type: { name: spellSaveType, index: spellSaveType.toLowerCase() }, dc_success: previous.dc?.dc_success || 'half' } : previous.dc
                 };
@@ -2096,6 +2099,11 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                 <div>
                                                     <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">At Higher Levels</label>
                                                     <textarea value={spellHigherLevel} onChange={e => setSpellHigherLevel(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-800 rounded-lg p-3 text-xs text-gray-500 h-20 resize-none outline-none focus:border-dnd-gold shadow-inner font-serif italic" placeholder="e.g. When you cast this spell using a slot of 2nd level or higher..." />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Scaling per Slot Above Base</label>
+                                                    <input value={spellScaling} onChange={e => setSpellScaling(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-800 rounded-lg p-3 text-sm text-white font-mono outline-none focus:border-dnd-gold" placeholder="e.g. 1d8 or 1d4" />
+                                                    <p className="text-[9px] text-gray-600 mt-1">Applied once for each slot level above the spell's base level.</p>
                                                 </div>
                                             </div>
                                         </section>

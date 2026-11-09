@@ -23,6 +23,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
     character, setCharacter, roll, triggerRollMenu, setSelectedDetail, spellSave, spellAttackStr, spellMod, setShowSpellManager, setShowHomebrewModal, onPolymorphCast, hasPendingSpells
 }) => {
     const [spellFilter, setSpellFilter] = useState<number | 'all'>('all');
+    const [showUpcasts, setShowUpcasts] = useState(false);
     const effectiveAbilities = getEffectiveAbilities(character);
     const proficiency = calculateProficiency(character.level);
     const spellAttackFor = (spell: SpellDetail) => (spell as any).itemAttackBonus !== undefined
@@ -35,13 +36,14 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
         : spell.spellcastingAbility
             ? 8 + proficiency + calculateModifier(effectiveAbilities[spell.spellcastingAbility])
             : spellSave;
-    const isHealingSpell = (spell: SpellDetail) => /healing/i.test(String(spell.damage?.damage_type?.name || ''));
+    const isHealingSpell = (spell: SpellDetail) => /healing/i.test(String(spell.damage?.damage_type?.name || '')) || Boolean((spell as any).heal_at_slot_level);
     const spellModifierText = (value: number) => value === 0 ? '' : value > 0 ? ` + ${value}` : ` - ${Math.abs(value)}`;
     const healingResult = (damage: string, spell: SpellDetail) => isHealingSpell(spell) ? `${damage}${spellModifierText(spellMod)}` : damage;
     const damageTypeSuffix = (spell: SpellDetail) => {
         const type = spell.damage?.damage_type?.name;
         return type && !/healing/i.test(type) ? ` ${String(type).toLowerCase()}` : '';
     };
+    const displayCastLevelFor = (spell: SpellDetail, sectionLevel: number) => (spell as any).itemSpell ? castLevelFor(spell) : (spell.level === 0 ? character.level : sectionLevel);
     const itemBaseCost = (spell: SpellDetail) => Number((spell as any).itemBaseCost || (spell as any).itemCost?.amount || 1);
     const itemCostFor = (spell: SpellDetail) => itemCostSelections[spell.index] ?? itemBaseCost(spell);
     const castLevelFor = (spell: SpellDetail) => {
@@ -97,7 +99,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
         );
         return minimum > 1 ? appendMinDie(resolved, minimum) : resolved;
     };
-    const castSpell = (spell: SpellDetail) => {
+    const castSpell = (spell: SpellDetail, requestedLevel?: number) => {
         if ((spell as any).itemSpell) {
             if ((spell as any).itemStorageItemId) {
                 const storageId = (spell as any).itemStorageItemId;
@@ -169,12 +171,17 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                 activeConcentration: spell.concentration ? spell : prev.activeConcentration,
             }));
         } else if (spell.level > 0) {
-            const slotLevel = Object.entries(character.spellSlots || {})
+            const availableSlots = Object.entries(character.spellSlots || {})
                 .map(([level, slots]) => ({ level: Number(level), ...(slots as any) }))
                 .filter(slot => Number(slot.max) > 0 && Number(slot.current) > 0 && slot.level >= spell.level)
-                .sort((a, b) => a.level - b.level)[0];
+                .sort((a, b) => a.level - b.level);
+            const slotLevel = requestedLevel && requestedLevel >= spell.level
+                ? availableSlots.find(slot => slot.level === requestedLevel)
+                : availableSlots[0];
             if (!slotLevel) {
-                alert(`No spell slot of level ${spell.level} or higher available.`);
+                alert(requestedLevel && requestedLevel >= spell.level
+                    ? `No level ${requestedLevel} spell slot available.`
+                    : `No spell slot of level ${spell.level} or higher available.`);
                 return;
             }
             setCharacter(prev => ({
@@ -254,6 +261,13 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                 {l === 0 ? 'C' : l}
                             </button>
                         ))}
+                        <button
+                            onClick={() => setShowUpcasts(!showUpcasts)}
+                            className={`text-[10px] font-bold uppercase px-3 py-1 rounded border transition-colors shrink-0 ${showUpcasts ? 'bg-dnd-gold text-black border-dnd-gold' : 'bg-black/40 text-gray-400 border-gray-600'}`}
+                            title="Show lower-level spells in higher-level slot sections"
+                        >
+                            Upcasts
+                        </button>
                     </div>
                     <div className="flex flex-wrap gap-2 items-center">
                         <button
@@ -292,7 +306,8 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                 {[0,1,2,3,4,5,6,7,8,9].map(lvl => {
                     if (spellFilter !== 'all' && spellFilter !== lvl) return null;
                     const spells = character.spells.filter(s => {
-                        if (s.level !== lvl) return false;
+                        if (s.level !== lvl && !(showUpcasts && lvl > 0 && s.level > 0 && s.level < lvl)) return false;
+                        if (s.level !== lvl && (s as any).itemSpell) return false;
                         if (!s.name.toLowerCase().includes(spellSearch.toLowerCase())) return false;
                         if (ritualOnly && !s.ritual) return false;
                         if (concentrationOnly && !s.concentration) return false;
@@ -334,7 +349,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                 </div>
                                 <div className="divide-y divide-[#2e3036]/60 min-w-[500px]">
                                     {spells.map(spell => {
-                                        const castLevel = spell.level === 0 ? character.level : castLevelFor(spell);
+                                        const castLevel = displayCastLevelFor(spell, lvl);
                                         const dmg = resolveSpellDamage(getSpellDamageString(spell, character.level, castLevel), spell);
                                         const secondaryDmg = resolveSpellDamage(getSpellSecondaryDamageString(spell, character.level, castLevel), spell);
                                         const upcast = getSpellUpcastCount(spell, castLevel);
@@ -348,6 +363,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                 <div className="min-w-0">
                                                     <div className="font-bold text-gray-200 text-sm group-hover:text-white truncate flex items-center gap-1.5">
                                                         {spell.name}
+                                                        {spell.level < lvl && <span className="text-[8px] bg-dnd-gold/10 text-dnd-gold border border-dnd-gold/40 px-1 rounded">Upcast L{lvl}</span>}
                                                         {spell.name === 'Eldritch Blast' && (
                                                             <span className="text-[10px] text-dnd-gold font-black ml-1">
                                                                 x{character.level >= 17 ? 4 : character.level >= 11 ? 3 : character.level >= 5 ? 2 : 1}
@@ -399,7 +415,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                 </div>
                                                 <div className="text-center">
                                                     <button
-                                                        onClick={(e) => { e.stopPropagation(); castSpell(spell); }}
+                                                        onClick={(e) => { e.stopPropagation(); castSpell(spell, lvl); }}
                                                         onContextMenu={(e) => {
                                                             e.preventDefault();
                                                             e.stopPropagation();
@@ -418,7 +434,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                             {/* Mobile: tappable spell rows (tap row for details) */}
                             <div className="lg:hidden divide-y divide-[#2e3036]/60">
                                 {spells.map(spell => {
-                                    const castLevel = spell.level === 0 ? character.level : castLevelFor(spell);
+                                    const castLevel = displayCastLevelFor(spell, lvl);
                                     const dmg = resolveSpellDamage(getSpellDamageString(spell, character.level, castLevel), spell);
                                     const secondaryDmg = resolveSpellDamage(getSpellSecondaryDamageString(spell, character.level, castLevel), spell);
                                     const upcast = getSpellUpcastCount(spell, castLevel);
@@ -452,7 +468,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                 )}
                                             </div>
                                             <button
-                                                onClick={(e) => { e.stopPropagation(); castSpell(spell); }}
+                                                onClick={(e) => { e.stopPropagation(); castSpell(spell, lvl); }}
                                                 className="text-[10px] font-bold uppercase bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold active:bg-dnd-gold active:text-black px-4 py-2 rounded-lg transition-colors shrink-0"
                                             >
                                                 Cast
