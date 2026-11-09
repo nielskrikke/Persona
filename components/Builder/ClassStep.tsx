@@ -233,7 +233,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
           const definition = classDetails[draft.index];
           for (const choice of (definition?.choices || [])) {
               const selected = classChoices[`${draft.index}:${choice.id}`] || [];
-              const required = getClassChoiceCount(draft.index, choice.id, draft.level, draftIndex === 0, getChoiceCount(choice, draft.level));
+              const required = getClassChoiceCount(draft.index, choice.id, draft.level, draftIndex === 0, getChoiceCount(choice, draft.level), definition);
               if (required === 0) continue;
               if (selected.length !== required) {
                   setValidationError(`Choose ${required} option(s) for ${choice.label || choice.kind}.`);
@@ -256,7 +256,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
           if (!cls || !choice) return;
           const draftLevel = draftClasses.find(draft => draft.index === classIndex)?.level || 1;
           const draftPosition = draftClasses.findIndex(draft => draft.index === classIndex);
-          const effectiveCount = getClassChoiceCount(classIndex, choice.id, draftLevel, draftPosition === 0, getChoiceCount(choice, draftLevel));
+          const effectiveCount = getClassChoiceCount(classIndex, choice.id, draftLevel, draftPosition === 0, getChoiceCount(choice, draftLevel), cls);
           if (effectiveCount === 0) return;
           if (choice.kind === 'weapon_mastery') {
               const weaponOptions = selected.map(name => {
@@ -399,17 +399,20 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
                                             <span className="flex items-center gap-1.5"><span className="text-dnd-gold">◈</span> Saves: {draftClasses[0]?.index === draft.index ? detail.saving_throws.map(s=>s.name).join(', ') : 'none from multiclass'}</span>
                                           </div>
                                           <p className="text-[10px] text-gray-500 mt-2 italic">Skill and tool proficiencies will be selected in the Level Advancement steps.</p>
+                                          {draftClasses[0]?.index !== draft.index && (detail as any).is_homebrew && !(detail as any).multiclass && (
+                                              <p className="text-[10px] text-amber-300 mt-2">Homebrew class has no multiclass profile, so it grants no additional proficiencies or choices as a later class.</p>
+                                          )}
                                        </div>
                                    </section>
                                 )}
 
-                                {detail?.choices?.filter((choice: any) => ['proficiency', 'skill', 'tool', 'weapon_mastery'].includes(choice.kind)).filter((choice: any) => getClassChoiceCount(draft.index, choice.id, draft.level, draftClasses[0]?.index === draft.index, getChoiceCount(choice, draft.level)) > 0).map((choice: any) => {
+                                {detail?.choices?.filter((choice: any) => ['proficiency', 'skill', 'tool', 'weapon_mastery'].includes(choice.kind)).filter((choice: any) => getClassChoiceCount(draft.index, choice.id, draft.level, draftClasses[0]?.index === draft.index, getChoiceCount(choice, draft.level), detail) > 0).map((choice: any) => {
                                     const key = `${draft.index}:${choice.id}`;
                                     const selected = classChoices[key] || [];
                                     return (
                                         <section key={choice.id} className="mt-6 pt-6 border-t border-gray-800 space-y-3">
                                             {(() => {
-                                                const choiceCount = getClassChoiceCount(draft.index, choice.id, draft.level, draftClasses[0]?.index === draft.index, getChoiceCount(choice, draft.level));
+                                                const choiceCount = getClassChoiceCount(draft.index, choice.id, draft.level, draftClasses[0]?.index === draft.index, getChoiceCount(choice, draft.level), detail);
                                                 return (
                                                 <>
                                             <div className="flex items-center justify-between">

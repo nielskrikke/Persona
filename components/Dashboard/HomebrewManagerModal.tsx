@@ -1007,6 +1007,8 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     const [levelFeatures, setLevelFeatures] = useState<{ level: number, name: string, desc: string, effects: any[] }[]>([]);
     const [armorProfs, setArmorProfs] = useState<string[]>([]);
     const [weaponProfs, setWeaponProfs] = useState<string[]>([]);
+    const [multiclassProfs, setMulticlassProfs] = useState('');
+    const [multiclassChoices, setMulticlassChoices] = useState('');
 
     // Subclass Forge
     const [parentClass, setParentClass] = useState('');
@@ -1212,7 +1214,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
         setSaves([]); setLevelFeatures([]); setHitDie(8);
         setCasterType('none'); setCasterAbility('int'); setSubclassLevel(3); setSubclassLabel('Subclass'); setAdvancedJson(''); setEditingIndex(null); setEditingIsHomebrew(true); setContentResources([]); setContentChoices([]);
         setBgSkills([]); setBgFeatureName(''); setBgTools([]); setBgEquipment(''); setBgEquipmentOptions([]); setBgCurrency({ gp: 0, sp: 0, cp: 0 }); setBgEffects([]);
-        setArmorProfs([]); setWeaponProfs([]);
+        setArmorProfs([]); setWeaponProfs([]); setMulticlassProfs(''); setMulticlassChoices('');
         setSpellLevel(0); setSpellSchool('Evocation'); setSpellCastTime('1 Action'); setSpellRange('60 feet'); setSpellDuration('Instantaneous'); setSpellRitual(false); setSpellConcentration(false);
         setSpellComponents(['V', 'S']); setSpellMaterial(''); setSpellHigherLevel(''); setSpellHasAttack(false); setSpellHasSave(false); setSpellDmgFormula(''); setSpellSecondaryDamage('');
         setSpellDmgType('Force'); setSpellClasses([]); setSpellOriginal(null);
@@ -1276,6 +1278,8 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
             setArmorProfs(armor);
             const weapons = item.proficiencies?.filter((p: any) => !['Light Armor', 'Medium Armor', 'Heavy Armor', 'Shields'].includes(p.name)).map((p: any) => p.name) || [];
             setWeaponProfs(weapons);
+            setMulticlassProfs((item.multiclass?.proficiencies || []).join(', '));
+            setMulticlassChoices(item.multiclass?.choices ? JSON.stringify(item.multiclass.choices, null, 2) : '');
         } else if (activeTab === 'subclass') {
             setParentClass(item.class?.index || item.class_index || parentClassOptions[0]?.index || '');
             setSubclassLevel(item.subclass_level ?? 3);
@@ -1417,7 +1421,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
             }
         }
 
-        const advancedKeys = ['resources', 'choices', 'widgets', 'spell_list', 'ui', 'options', 'rules', 'effects', 'mastery', 'range', 'versatileDamage', 'template', 'choice', 'use', 'attunement_classes', 'is_magic', 'stealth_disadvantage', 'str_minimum', 'weapon_range', 'category_range', 'contents', 'spell_save_dc', 'spell_attack_bonus'];
+        const advancedKeys = ['resources', 'choices', 'widgets', 'multiclass', 'spell_list', 'ui', 'options', 'rules', 'effects', 'mastery', 'range', 'versatileDamage', 'template', 'choice', 'use', 'attunement_classes', 'is_magic', 'stealth_disadvantage', 'str_minimum', 'weapon_range', 'category_range', 'contents', 'spell_save_dc', 'spell_attack_bonus'];
         const advanced = Object.fromEntries(
             advancedKeys
                 .filter(key => item[key] !== undefined)
@@ -1502,6 +1506,17 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     climb_speed: speeds.climb > 0 ? speeds.climb : undefined
                 };
             } else if (activeTab === 'class') {
+                let multiclassChoicesParsed: Record<string, number> = {};
+                if (multiclassChoices.trim()) {
+                    try {
+                        const parsed = JSON.parse(multiclassChoices);
+                        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) multiclassChoicesParsed = parsed;
+                    } catch {
+                        alert('Multiclass choices JSON is invalid. Nothing was saved.');
+                        setLoading(false);
+                        return;
+                    }
+                }
                 const level_table = Array.from({ length: 20 }, (_, i) => ({
                     level: i + 1,
                     prof_bonus: Math.floor(i / 4) + 2,
@@ -1515,7 +1530,11 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     subclass_level: subclassLevel,
                     subclass_label: subclassLabel,
                     spellcasting: casterType !== 'none' ? { spellcasting_ability: { index: casterAbility, name: casterAbility.toUpperCase() }, progression: casterType } : undefined,
-                    feature_details: levelFeatures.map(f => ({ index: f.name.toLowerCase().replace(/\s+/g, '-'), name: f.name, level: f.level, desc: [f.desc], effects: f.effects }))
+                    feature_details: levelFeatures.map(f => ({ index: f.name.toLowerCase().replace(/\s+/g, '-'), name: f.name, level: f.level, desc: [f.desc], effects: f.effects })),
+                    multiclass: {
+                        proficiencies: multiclassProfs.split(',').map(value => value.trim()).filter(Boolean),
+                        choices: multiclassChoicesParsed,
+                    },
                 };
             } else if (activeTab === 'subclass') {
                 payload = {
@@ -1524,7 +1543,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     class_index: parentClass,
                     subclass_level: subclassLevel,
                     subclass_label: subclassLabel,
-                    feature_details: levelFeatures.map(f => ({ index: f.name.toLowerCase().replace(/\s+/g, '-'), name: f.name, level: f.level, desc: [f.desc], effects: f.effects }))
+                    feature_details: levelFeatures.map(f => ({ index: f.name.toLowerCase().replace(/\s+/g, '-'), name: f.name, level: f.level, desc: [f.desc], effects: f.effects })),
                 };
             } else if (activeTab === 'background') {
                 payload = {
@@ -2432,6 +2451,22 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                             <div>
                                                 <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Subclass Label</label>
                                                 <input type="text" value={subclassLabel} onChange={e => setSubclassLabel(e.target.value)} placeholder="e.g. Divine Domain" className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-white" />
+                                            </div>
+                                        </section>
+
+                                        <section className="bg-amber-900/5 border border-amber-800/30 p-6 rounded-2xl space-y-4">
+                                            <div>
+                                                <h4 className="text-[10px] uppercase font-black text-amber-300 tracking-[0.2em]">Multiclass Profile</h4>
+                                                <p className="text-[10px] text-gray-500 mt-1">Used only when this class is taken after the starting class. Leave empty to grant nothing.</p>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Multiclass Proficiencies</label>
+                                                <input value={multiclassProfs} onChange={e => setMulticlassProfs(e.target.value)} placeholder="Light Armor, Shields, Thieves' Tools" className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-white" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Multiclass Choice Counts (JSON)</label>
+                                                <textarea value={multiclassChoices} onChange={e => setMulticlassChoices(e.target.value)} rows={4} placeholder={'{\n  "myclass-proficiency-0": 1\n}'} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-white font-mono" />
+                                                <p className="text-[9px] text-gray-600 mt-1">Keys are the class choice IDs; values are how many picks that choice grants when multiclassing.</p>
                                             </div>
                                         </section>
 

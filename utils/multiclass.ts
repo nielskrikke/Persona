@@ -35,8 +35,12 @@ export const getClassProficiencies = (characterClass: CharacterClass | any, isSt
     const definition = characterClass?.definition || characterClass || {};
     const all = Array.isArray(definition.proficiencies) ? definition.proficiencies : [];
     if (isStarting) return all;
+    const explicit = definition.multiclass?.proficiencies;
+    if (Array.isArray(explicit)) {
+        return explicit.map((name: string) => all.find((entry: any) => norm(entry.name) === norm(name)) || { name, index: norm(name).replace(/\s+/g, '-') });
+    }
     const grantedNames = MULTICLASS_PROFICIENCIES[String(definition.index || '').toLowerCase()];
-    if (!grantedNames) return all;
+    if (!grantedNames) return [];
     return grantedNames.map(name => all.find((entry: any) => norm(entry.name) === norm(name)) || { name, index: norm(name).replace(/\s+/g, '-') });
 };
 
@@ -46,8 +50,11 @@ export const getClassChoiceCount = (
     level: number,
     isStarting: boolean,
     fallback: number,
+    definition?: any,
 ): number => {
     if (isStarting) return fallback;
+    const explicit = definition?.multiclass?.choices;
+    if (explicit && Object.prototype.hasOwnProperty.call(explicit, choiceId)) return Number(explicit[choiceId]) || 0;
     return MULTICLASS_CHOICE_COUNTS[String(definitionIndex || '').toLowerCase()]?.[choiceId] ?? 0;
 };
 

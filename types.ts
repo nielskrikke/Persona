@@ -205,6 +205,11 @@ export interface ClassDetail extends APIReference {
     }[];
     class_levels?: string;
     multi_classing?: any;
+    multiclass?: {
+        proficiencies?: string[];
+        choices?: Record<string, number>;
+        casterContribution?: 'full' | 'half' | 'third' | 'artificer' | 'pact' | 'none';
+    };
     spellcasting?: {
         level: number;
         spellcasting_ability: APIReference;
