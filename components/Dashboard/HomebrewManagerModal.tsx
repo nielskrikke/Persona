@@ -1444,6 +1444,9 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     return;
                 }
             }
+            // Item extras are edited in itemExtraJson and must not be overwritten
+            // by the stale advanced JSON copied when the form was opened.
+            if (activeTab === 'item') advancedData = {};
             const tableMap = {
                 race: 'custom_races',
                 class: 'custom_classes',
@@ -1478,6 +1481,9 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     return;
                 }
             }
+            // Item extras are edited in itemExtraJson and must not be overwritten
+            // by the stale advanced JSON copied when the form was opened.
+            if (activeTab === 'item') advancedData = {};
             const tableMap = {
                 race: 'custom_races',
                 class: 'custom_classes',

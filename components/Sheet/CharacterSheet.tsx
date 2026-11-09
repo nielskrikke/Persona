@@ -3389,10 +3389,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const saveAbility = String(effect.save?.ability || effect.save_ability || effect.save_dc_ability || 'dex').toUpperCase();
                 const rawDC = String(effect.save?.dc ?? effect.save_dc ?? effect.dc ?? '').trim();
                 let saveDC = 13;
-                if (/^\d+$/.test(rawDC)) saveDC = Number(rawDC);
+                if (rawDC.toLowerCase() === 'spell' || rawDC.toLowerCase() === 'spell_save_dc') saveDC = spellSave;
+                else if (/^\d+$/.test(rawDC)) saveDC = Number(rawDC);
                 else if (rawDC) {
-                    let computed = 0;
-                    rawDC.toLowerCase().split('+').map(part => part.trim()).forEach(part => {
+                    let computed = rawDC.toLowerCase().startsWith('spell') ? spellSave : 0;
+                    rawDC.toLowerCase().replace(/^spell\s*\+?/, '').split('+').map(part => part.trim()).filter(Boolean).forEach(part => {
                         if (/^\d+$/.test(part)) computed += Number(part);
                         else if (part === 'pb' || part === 'proficiency') computed += prof;
                         else if (['str','dex','con','int','wis','cha'].includes(part)) computed += calculateModifier(getStat(part as AbilityName));

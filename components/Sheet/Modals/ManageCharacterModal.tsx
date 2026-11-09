@@ -371,6 +371,22 @@ const ManageCharacterModal = ({
                             });
                         }
                     }
+                    if (character.classes[0]?.definition.index === classIndex) {
+                        const toolChoiceId = `class-${classIndex}-artificer-artisan-tool`;
+                        if (classIndex === 'artificer' && !backfilled.some(existing => existing.id === toolChoiceId)) {
+                            backfilled.push({
+                                id: toolChoiceId,
+                                level: 1,
+                                source: sourceName,
+                                type: 'other',
+                                label: `${sourceName}: Artisan's Tools`,
+                                value: null,
+                                options: ARTISAN_TOOLS,
+                                count: 1,
+                                revertData: { classIndex },
+                            });
+                        }
+                    }
                     (liveDefinition.choices || []).forEach((choice: any) => {
                         const choiceId = `class-${classIndex}-${choice.id}`;
                         if (backfilled.some(existing => existing.id === choiceId)) return;
