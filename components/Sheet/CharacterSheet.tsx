@@ -23,6 +23,7 @@ import ItemSearchModal from '../Builder/ItemSearchModal';
 import ItemCustomizationModal from './Modals/ItemCustomizationModal';
 import ItemCustomizeModal from './Modals/ItemCustomizeModal';
 import { mergeInventoryItem } from '../../utils/itemInstances';
+import { getClassProficiencies } from '../../utils/multiclass';
 import { fetchAllSpells } from '../../data/index';
 import { getItemWidgets, storedSpellLevels } from '../../utils/itemWidgets';
 import LayoutManagerModal from './Modals/LayoutManagerModal';
@@ -2302,7 +2303,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 [...(character.toolProficiencies || []), ...activeModifiers.filter(m => m.type === 'proficiency' && m.category === 'tool').map(m => m.target)].forEach(tool => toolMap.set(String(tool).toLowerCase(), tool));
                 const charTools = Array.from(toolMap.values());
                 const allProfs = Array.from(new Set([
-                    ...character.classes.flatMap(c => c.definition.proficiencies.map(p => p.name)),
+                    ...character.classes.flatMap((c, index) => getClassProficiencies(c, index === 0).map((p: any) => p.name)),
                     ...(character.race?.starting_proficiencies?.map(p => p.name) || []),
                     ...activeModifiers.filter(m => m.type === 'proficiency' && (m.category === 'weapon' || m.category === 'armor')).map(m => m.target)
                 ]));
@@ -3126,7 +3127,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             });
 
             const proficiencyNames = [
-                ...character.classes.flatMap(c => (c.definition.proficiencies || []).map((entry: any) => entry.name)),
+                ...character.classes.flatMap((c, index) => getClassProficiencies(c, index === 0).map((entry: any) => entry.name)),
                 ...(character.race?.starting_proficiencies || []).map((entry: any) => entry.name),
                 ...activeModifiers.filter((m: any) => m.type === 'proficiency' && m.category === 'weapon').map((m: any) => m.target),
             ].map((name: any) => String(name || '').toLowerCase());

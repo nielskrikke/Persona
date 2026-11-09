@@ -12,6 +12,7 @@ import SpellSelectionStep from './components/Builder/SpellSelectionStep';
 import { CharacterSheet } from './components/Sheet/CharacterSheet';
 import ErrorBoundary from './components/ErrorBoundary';
 import { getSpellSlots, SKILL_LIST, getCasterProfileFor, calculateMaxHp, mergeSpellSlotCurrents } from './utils/rules';
+import { getClassProficiencies, isToolProficiency } from './utils/multiclass';
 import { STANDARD_LANGUAGES, ARTISAN_TOOLS, GAMING_SETS } from './data/constants';
 import { hydrateCharacterClasses, fetchAllSpells, hydrateGrantedSpells, fetchEquipment, fetchEquipmentDetail } from './data/index';
 import { saveCharacterToDb, loginUser } from './services/supabase';
@@ -441,7 +442,13 @@ const App: React.FC = () => {
     }
 
     const mergedSkills = Array.from(new Set([...character.skills, ...skills]));
-    const mergedTools = Array.from(new Set([...character.toolProficiencies, ...tools]));
+    const grantedClassTools = classes.flatMap((cls, index) =>
+        getClassProficiencies(cls, index === 0)
+            .map((entry: any) => entry.name)
+            .filter(isToolProficiency)
+    );
+    const mergedTools = Array.from(new Set([...character.toolProficiencies, ...tools, ...grantedClassTools]));
+    const startingSaves = (primary?.definition.saving_throws || []).map((save: any) => save.index || String(save.name || '').toLowerCase());
 
     // Extract feature choices into classFeatures
     const choiceFeatures: ClassFeature[] = [];
@@ -469,6 +476,7 @@ const App: React.FC = () => {
         currentHp: totalHp,
         skills: mergedSkills,
         toolProficiencies: mergedTools,
+        savingThrowProficiencies: startingSaves,
         classFeatures: [
             ...character.classFeatures.filter(f =>
                 f.source === 'Race'

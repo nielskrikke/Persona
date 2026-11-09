@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { APIReference, ClassDetail, SubclassDetail, CharacterClass } from '../../types';
 import { fetchClasses, fetchClassDetail, fetchSubclasses, fetchSubclassDetail, fetchEquipment } from '../../data/index';
 import { SKILL_LIST, getChoiceCount } from '../../utils/rules';
+import { getClassChoiceCount, getClassProficiencies } from '../../utils/multiclass';
 import { ARTISAN_TOOLS, MUSICAL_INSTRUMENTS } from '../../data/constants';
 
 interface ClassStepProps {
@@ -227,11 +228,13 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
           return;
       }
       
-      for (const draft of draftClasses) {
+      for (let draftIndex = 0; draftIndex < draftClasses.length; draftIndex++) {
+          const draft = draftClasses[draftIndex];
           const definition = classDetails[draft.index];
           for (const choice of (definition?.choices || [])) {
               const selected = classChoices[`${draft.index}:${choice.id}`] || [];
-              const required = getChoiceCount(choice, draft.level);
+              const required = getClassChoiceCount(draft.index, choice.id, draft.level, draftIndex === 0, getChoiceCount(choice, draft.level));
+              if (required === 0) continue;
               if (selected.length !== required) {
                   setValidationError(`Choose ${required} option(s) for ${choice.label || choice.kind}.`);
                   return;
@@ -252,6 +255,9 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
           const choice = cls?.choices?.find((item: any) => item.id === choiceId);
           if (!cls || !choice) return;
           const draftLevel = draftClasses.find(draft => draft.index === classIndex)?.level || 1;
+          const draftPosition = draftClasses.findIndex(draft => draft.index === classIndex);
+          const effectiveCount = getClassChoiceCount(classIndex, choice.id, draftLevel, draftPosition === 0, getChoiceCount(choice, draftLevel));
+          if (effectiveCount === 0) return;
           if (choice.kind === 'weapon_mastery') {
               const weaponOptions = selected.map(name => {
                   const option = choiceOptionsFor(choice).find((item: any) => (typeof item === 'string' ? item : item.name) === name);
@@ -265,7 +271,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
                   label: 'Weapon Mastery',
                   value: selected,
                   options: weaponOptions,
-                  count: getChoiceCount(choice, draftLevel),
+                  count: effectiveCount,
               });
               return;
           }
@@ -283,7 +289,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
               label: `${cls.name}: ${choice.label || choice.kind}`,
               value: selected,
               options: choiceOptionsFor(choice),
-              count: getChoiceCount(choice, draftLevel),
+              count: effectiveCount,
           });
       });
 
@@ -390,20 +396,20 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
                                           <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">Class Proficiencies</h4>
                                           <div className="flex flex-wrap gap-4 text-[10px] font-bold text-gray-300 uppercase">
                                             <span className="flex items-center gap-1.5"><span className="text-dnd-gold">◈</span> Hit Die: d{detail.hit_die}</span>
-                                            <span className="flex items-center gap-1.5"><span className="text-dnd-gold">◈</span> Saves: {detail.saving_throws.map(s=>s.name).join(', ')}</span>
+                                            <span className="flex items-center gap-1.5"><span className="text-dnd-gold">◈</span> Saves: {draftClasses[0]?.index === draft.index ? detail.saving_throws.map(s=>s.name).join(', ') : 'none from multiclass'}</span>
                                           </div>
                                           <p className="text-[10px] text-gray-500 mt-2 italic">Skill and tool proficiencies will be selected in the Level Advancement steps.</p>
                                        </div>
                                    </section>
                                 )}
 
-                                {detail?.choices?.filter((choice: any) => ['proficiency', 'skill', 'tool', 'weapon_mastery'].includes(choice.kind)).map((choice: any) => {
+                                {detail?.choices?.filter((choice: any) => ['proficiency', 'skill', 'tool', 'weapon_mastery'].includes(choice.kind)).filter((choice: any) => getClassChoiceCount(draft.index, choice.id, draft.level, draftClasses[0]?.index === draft.index, getChoiceCount(choice, draft.level)) > 0).map((choice: any) => {
                                     const key = `${draft.index}:${choice.id}`;
                                     const selected = classChoices[key] || [];
                                     return (
                                         <section key={choice.id} className="mt-6 pt-6 border-t border-gray-800 space-y-3">
                                             {(() => {
-                                                const choiceCount = getChoiceCount(choice, draft.level);
+                                                const choiceCount = getClassChoiceCount(draft.index, choice.id, draft.level, draftClasses[0]?.index === draft.index, getChoiceCount(choice, draft.level));
                                                 return (
                                                 <>
                                             <div className="flex items-center justify-between">

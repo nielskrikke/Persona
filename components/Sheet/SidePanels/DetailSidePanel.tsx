@@ -7,6 +7,7 @@ import { isSpell, getCasterProfileFor } from '../../../utils/rules';
 import { fetchEquipmentDetail, fetchFeatureDetail, fetchTraitDetail, fetchAllSpells } from '../../../data/index';
 import { MASTERY_DESCRIPTIONS, WIDGET_BG } from '../../../data/constants';
 import { getItemWidgets, storedSpellLevels } from '../../../utils/itemWidgets';
+import { getClassProficiencies } from '../../../utils/multiclass';
 
 // Heuristic maps for proficiency checking
 const PROFICIENCY_MAP: Record<string, string[]> = {
@@ -375,7 +376,7 @@ const DetailSidePanel = ({
 
         // Gather all character proficiencies (cleaned)
         const charProfs = new Set<string>();
-        character.classes.forEach(c => c.definition.proficiencies.forEach(p => charProfs.add(cleanProfName(p.name))));
+        character.classes.forEach((c, index) => getClassProficiencies(c, index === 0).forEach((p: any) => charProfs.add(cleanProfName(p.name))));
         character.race?.starting_proficiencies?.forEach(p => charProfs.add(cleanProfName(p.name)));
         // Include direct tool proficiencies from character state
         character.toolProficiencies?.forEach(t => charProfs.add(cleanProfName(t)));
