@@ -281,7 +281,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         const slots = getSpellSlots(initialCharacter.classes);
         const initialFeatures: any = {};
         getResourceDefinitions(initialCharacter).forEach(resource => {
-            initialFeatures[resource.name] = { max: resource.max, current: resource.max, reset: resource.reset };
+            initialFeatures[resource.name] = { max: resource.max, current: resource.max, reset: resource.reset, source: resource.source, itemId: resource.itemId, sourceType: resource.sourceType };
         });
         const inventory = initialCharacter.inventory && initialCharacter.inventory.length > 0 ? initialCharacter.inventory : initialCharacter.equipment.map((item, i) => ({ id: `init-${i}`, name: item, quantity: 1, weight: 5, equipped: true, attuned: false }));
         return {
@@ -587,11 +587,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
         resources.forEach(resource => {
             const existing = newUsage[resource.name];
-            if (!existing || existing.max !== resource.max || existing.itemId !== resource.itemId || existing.reset !== resource.reset) {
+            if (!existing || existing.max !== resource.max || existing.itemId !== resource.itemId || existing.reset !== resource.reset || existing.source !== resource.source) {
                 newUsage[resource.name] = {
                     max: resource.max,
                     current: existing ? Math.min(existing.current, resource.max) : resource.max,
                     reset: resource.reset,
+                    source: resource.source,
                     itemId: resource.itemId,
                     sourceType: resource.sourceType,
                 };
@@ -1708,17 +1709,15 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         });
     };
 
-    const openResourceDetails = (resourceName: string, usage: any) => {
+    const findResourceDetailsTarget = (resourceName: string, usage: any) => {
         const normalized = (value: any) => String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
         const item = character.inventory.find(entry =>
             entry.id === usage?.itemId
             || resourceName.startsWith(`${entry.name}: `)
             || normalized(resourceName).startsWith(normalized(entry.name) + ':')
+            || normalized(entry.name) === normalized(usage?.source)
         );
-        if (item) {
-            setSelectedDetail(item);
-            return;
-        }
+        if (item) return item;
         const features = [
             ...(character.classFeatures || []),
             ...character.classes.flatMap(cls => [
@@ -1729,12 +1728,27 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             ...((character.race as any)?.traits || []),
             ...((character.subrace as any)?.traits || []),
         ];
+        const source = normalized(usage?.source);
+        if (source) {
+            const bySource = features.find(entry => normalized(entry.name) === source);
+            if (bySource) return { ...bySource, id: bySource.index || bySource.name };
+        }
         const key = normalized(resourceName).replace(/\s*\([^)]*\)\s*/g, ' ').trim();
         const feature = features.find(entry => {
             const name = normalized(entry.name);
-            return name === key || key === name.replace(/\s*\([^)]*\)\s*/g, ' ').trim() || key.startsWith(name + ':') || name.startsWith(key + ':');
+            const effects = Array.isArray(entry.effects) ? entry.effects : [];
+            return name === key
+                || key === name.replace(/\s*\([^)]*\)\s*/g, ' ').trim()
+                || key.startsWith(name + ':')
+                || name.startsWith(key + ':')
+                || effects.some((effect: any) => normalized(effect.name) === key);
         });
-        if (feature) setSelectedDetail({ ...feature, id: feature.index || feature.name });
+        return feature ? { ...feature, id: feature.index || feature.name } : null;
+    };
+
+    const openResourceDetails = (resourceName: string, usage: any) => {
+        const target = findResourceDetailsTarget(resourceName, usage);
+        if (target) setSelectedDetail(target);
     };
 
     const renderWidget = (type: string, key?: string) => {
@@ -2100,6 +2114,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         )}
                         {Object.entries(character.featureUsage).filter(([name, usage]) => name !== 'Wild Shape' && !usage.hidden).map(([name, usage]: [string, any]) => {
                             const usedCount = usage.max - usage.current;
+                            const detailTarget = findResourceDetailsTarget(name, usage);
                             return (
                             <div key={name} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3 relative`}>
                                 {(() => {
@@ -2114,7 +2129,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     <span className="text-[10px] text-gray-500 shrink-0">Reset: {usage.reset === 'short' ? 'Short' : 'Long'}</span>
                                 </div>
                                 <div className="flex gap-1.5 justify-start pr-7">{Array.from({length: usage.max}).map((_, i) => { const isUsed = i < usedCount; return (<button type="button" key={i} aria-label={`${formatResourceName(name, character.level)} use ${i + 1}`} className={`h-4 w-4 cursor-pointer transition-colors border rounded-full ${isUsed ? 'bg-dnd-red border-dnd-red' : 'bg-transparent border-gray-600 hover:border-dnd-gold hover:bg-dnd-gold/10'}`} onClick={() => { let used = i + 1; if (usedCount === used) used = i; setCharacter(prev => ({...prev, featureUsage: {...prev.featureUsage, [name]: {...usage, current: usage.max - used}}})); }}></button>); })}</div>
-                                <button type="button" onClick={() => openResourceDetails(name, usage)} className="absolute bottom-2 right-2 text-gray-500 hover:text-dnd-gold text-sm leading-none px-1" title="Open details" aria-label={`Open details for ${formatResourceName(name, character.level)}`}>↗</button>
+                                {detailTarget && <button type="button" onClick={() => openResourceDetails(name, usage)} className="absolute bottom-2 right-2 text-gray-500 hover:text-dnd-gold text-sm leading-none px-1" title="Open details" aria-label={`Open details for ${formatResourceName(name, character.level)}`}>↗</button>}
                                         </>
                                     );
                                 })()}
@@ -2405,7 +2420,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         <div className="flex justify-between items-center mb-2 cursor-pointer hover:text-dnd-gold" onClick={() => setActiveTab('inventory')}><h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Inventory</h3><span className="text-[10px] text-gray-500">View All &rarr;</span></div>
 
                         <div className="mb-3 space-y-1"><div className="flex justify-between text-[9px] text-gray-500 font-bold uppercase"><span>Encumbrance</span><span className={Number(currentWeight) > Number(maxWeight) ? 'text-dnd-red' : 'text-gray-400'}>{currentWeight} / {maxWeight} lb</span></div><div className="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden"><div className={`h-full ${Number(currentWeight) > Number(maxWeight) ? 'bg-dnd-red' : 'bg-gray-500'}`} style={{width: `${Math.min(100, (Number(currentWeight)/Number(maxWeight))*100)}%`}}></div></div></div>
-                        <div className="grid grid-cols-5 gap-1">{[{ label: 'PP', val: pp }, { label: 'GP', val: gp }, { label: 'EP', val: ep }, { label: 'SP', val: sp }, { label: 'CP', val: cp }].map((c) => (<div key={c.label} className="flex flex-col items-center p-1 rounded bg-gray-800/30 border border-gray-800/50"><span className="text-[8px] font-bold uppercase mb-0.5 text-gray-500">{c.label}</span><span className="text-[10px] font-bold leading-none text-gray-300">{c.val}</span></div>))}</div>
+                        <div className="grid grid-cols-5 gap-1">{[{ label: 'PP', val: pp }, { label: 'GP', val: gp }, { label: 'EP', val: ep }, { label: 'SP', val: sp }, { label: 'CP', val: cp }].map((c) => (<div key={c.label} className="flex flex-col items-center p-1 rounded bg-gray-700/50 border border-gray-600/70"><span className="text-[8px] font-bold uppercase mb-0.5 text-gray-400">{c.label}</span><span className="text-[10px] font-bold leading-none text-gray-100">{c.val}</span></div>))}</div>
                     </div>
                 );
             case 'actions': {

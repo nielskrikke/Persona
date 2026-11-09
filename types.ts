@@ -583,7 +583,7 @@ export interface CharacterState {
     spellSlots: Record<number, { max: number, current: number }>;
     hitDiceUsage: Record<string, number>;
     feats: any[];
-    featureUsage: Record<string, { max: number, current: number, reset?: 'short' | 'long', hidden?: boolean, itemId?: string, sourceType?: 'item' }>;
+    featureUsage: Record<string, { max: number, current: number, reset?: 'short' | 'long', hidden?: boolean, itemId?: string, sourceType?: 'item', source?: string }>;
     classFeatures: ClassFeature[];
     xp: number;
     equipment: string[];
