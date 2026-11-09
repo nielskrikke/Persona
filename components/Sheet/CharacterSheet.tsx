@@ -1708,6 +1708,35 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         });
     };
 
+    const openResourceDetails = (resourceName: string, usage: any) => {
+        const normalized = (value: any) => String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
+        const item = character.inventory.find(entry =>
+            entry.id === usage?.itemId
+            || resourceName.startsWith(`${entry.name}: `)
+            || normalized(resourceName).startsWith(normalized(entry.name) + ':')
+        );
+        if (item) {
+            setSelectedDetail(item);
+            return;
+        }
+        const features = [
+            ...(character.classFeatures || []),
+            ...character.classes.flatMap(cls => [
+                ...(cls.definition.feature_details || []),
+                ...((cls.subclass as any)?.feature_details || []),
+            ]),
+            ...(character.feats || []),
+            ...((character.race as any)?.traits || []),
+            ...((character.subrace as any)?.traits || []),
+        ];
+        const key = normalized(resourceName).replace(/\s*\([^)]*\)\s*/g, ' ').trim();
+        const feature = features.find(entry => {
+            const name = normalized(entry.name);
+            return name === key || key === name.replace(/\s*\([^)]*\)\s*/g, ' ').trim() || key.startsWith(name + ':') || name.startsWith(key + ':');
+        });
+        if (feature) setSelectedDetail({ ...feature, id: feature.index || feature.name });
+    };
+
     const renderWidget = (type: string, key?: string) => {
         const widgetKey = key || type;
         switch (type) {
@@ -2072,7 +2101,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         {Object.entries(character.featureUsage).filter(([name, usage]) => name !== 'Wild Shape' && !usage.hidden).map(([name, usage]: [string, any]) => {
                             const usedCount = usage.max - usage.current;
                             return (
-                            <div key={name} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
+                            <div key={name} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3 relative`}>
                                 {(() => {
                                     const label = splitResourceLabel(formatResourceName(name, character.level));
                                     return (
@@ -2084,7 +2113,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     </div>
                                     <span className="text-[10px] text-gray-500 shrink-0">Reset: {usage.reset === 'short' ? 'Short' : 'Long'}</span>
                                 </div>
-                                <div className="flex gap-1.5 justify-start">{Array.from({length: usage.max}).map((_, i) => { const isUsed = i < usedCount; return (<button type="button" key={i} aria-label={`${formatResourceName(name, character.level)} use ${i + 1}`} className={`h-4 w-4 cursor-pointer transition-colors border rounded-full ${isUsed ? 'bg-dnd-red border-dnd-red' : 'bg-transparent border-gray-600 hover:border-dnd-gold hover:bg-dnd-gold/10'}`} onClick={() => { let used = i + 1; if (usedCount === used) used = i; setCharacter(prev => ({...prev, featureUsage: {...prev.featureUsage, [name]: {...usage, current: usage.max - used}}})); }}></button>); })}</div>
+                                <div className="flex gap-1.5 justify-start pr-7">{Array.from({length: usage.max}).map((_, i) => { const isUsed = i < usedCount; return (<button type="button" key={i} aria-label={`${formatResourceName(name, character.level)} use ${i + 1}`} className={`h-4 w-4 cursor-pointer transition-colors border rounded-full ${isUsed ? 'bg-dnd-red border-dnd-red' : 'bg-transparent border-gray-600 hover:border-dnd-gold hover:bg-dnd-gold/10'}`} onClick={() => { let used = i + 1; if (usedCount === used) used = i; setCharacter(prev => ({...prev, featureUsage: {...prev.featureUsage, [name]: {...usage, current: usage.max - used}}})); }}></button>); })}</div>
+                                <button type="button" onClick={() => openResourceDetails(name, usage)} className="absolute bottom-2 right-2 text-gray-500 hover:text-dnd-gold text-sm leading-none px-1" title="Open details" aria-label={`Open details for ${formatResourceName(name, character.level)}`}>↗</button>
                                         </>
                                     );
                                 })()}
@@ -2375,7 +2405,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         <div className="flex justify-between items-center mb-2 cursor-pointer hover:text-dnd-gold" onClick={() => setActiveTab('inventory')}><h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Inventory</h3><span className="text-[10px] text-gray-500">View All &rarr;</span></div>
 
                         <div className="mb-3 space-y-1"><div className="flex justify-between text-[9px] text-gray-500 font-bold uppercase"><span>Encumbrance</span><span className={Number(currentWeight) > Number(maxWeight) ? 'text-dnd-red' : 'text-gray-400'}>{currentWeight} / {maxWeight} lb</span></div><div className="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden"><div className={`h-full ${Number(currentWeight) > Number(maxWeight) ? 'bg-dnd-red' : 'bg-gray-500'}`} style={{width: `${Math.min(100, (Number(currentWeight)/Number(maxWeight))*100)}%`}}></div></div></div>
-                        <div className="grid grid-cols-5 gap-1">{[{ label: 'PP', val: pp }, { label: 'GP', val: gp, highlight: true }, { label: 'EP', val: ep }, { label: 'SP', val: sp }, { label: 'CP', val: cp }].map((c) => (<div key={c.label} className={`flex flex-col items-center p-1 rounded ${c.highlight ? 'bg-dnd-gold/10 border border-dnd-gold/30' : 'bg-gray-800/30 border border-gray-800/50'}`}><span className={`text-[8px] font-bold uppercase mb-0.5 ${c.highlight ? 'text-dnd-gold' : 'text-gray-500'}`}>{c.label}</span><span className={`text-[10px] font-bold leading-none ${c.highlight ? 'text-white' : 'text-gray-300'}`}>{c.val}</span></div>))}</div>
+                        <div className="grid grid-cols-5 gap-1">{[{ label: 'PP', val: pp }, { label: 'GP', val: gp }, { label: 'EP', val: ep }, { label: 'SP', val: sp }, { label: 'CP', val: cp }].map((c) => (<div key={c.label} className="flex flex-col items-center p-1 rounded bg-gray-800/30 border border-gray-800/50"><span className="text-[8px] font-bold uppercase mb-0.5 text-gray-500">{c.label}</span><span className="text-[10px] font-bold leading-none text-gray-300">{c.val}</span></div>))}</div>
                     </div>
                 );
             case 'actions': {
