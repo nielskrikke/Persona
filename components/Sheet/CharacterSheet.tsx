@@ -225,15 +225,24 @@ interface CharacterSheetProps {
 
 const splitResourceLabel = (name: string): { title: string; subtitle: string } => {
     let title = String(name || '').trim();
-    const details: string[] = [];
     const colon = title.indexOf(':');
     if (colon > 0) {
-        details.push(title.slice(colon + 1).trim());
-        title = title.slice(0, colon).trim();
+        // Item-bound resources use "Item (source): Resource" — the resource is
+        // the actionable thing, so it belongs in the heading.
+        let source = title.slice(0, colon).trim();
+        const resource = title.slice(colon + 1).trim();
+        const details: string[] = [];
+        const parenthetical = source.match(/\(([^)]+)\)/);
+        if (parenthetical) {
+            details.push(parenthetical[1].trim());
+            source = source.replace(/\s*\([^)]+\)\s*/, ' ').trim();
+        }
+        return { title: resource || source, subtitle: [source, ...details].filter(Boolean).join(' • ') };
     }
+    const details: string[] = [];
     const parenthetical = title.match(/\(([^)]+)\)/);
     if (parenthetical) {
-        details.unshift(parenthetical[1].trim());
+        details.push(parenthetical[1].trim());
         title = title.replace(/\s*\([^)]+\)\s*/, ' ').trim();
     }
     return { title, subtitle: details.filter(Boolean).join(' • ') };
