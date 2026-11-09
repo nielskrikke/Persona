@@ -11,7 +11,7 @@ export const MULTICLASS_PROFICIENCIES: Record<string, string[]> = {
     cleric: ['Light Armor', 'Medium Armor', 'Shields'],
     druid: ['Light Armor', 'Medium Armor', 'Shields'],
     fighter: ['Light Armor', 'Medium Armor', 'Shields', 'Simple Weapons', 'Martial Weapons'],
-    monk: ['Simple Weapons'],
+    monk: ['Simple Weapons', 'Martial Weapons with the Light property'],
     paladin: ['Light Armor', 'Medium Armor', 'Shields', 'Simple Weapons', 'Martial Weapons'],
     ranger: ['Light Armor', 'Medium Armor', 'Shields', 'Simple Weapons', 'Martial Weapons'],
     rogue: ['Light Armor', "Thieves' Tools"],
@@ -24,8 +24,11 @@ export const MULTICLASS_PROFICIENCIES: Record<string, string[]> = {
 // definition choices; later classes use these counts.
 export const MULTICLASS_CHOICE_COUNTS: Record<string, Record<string, number>> = {
     bard: { 'bard-proficiency-0': 1, 'bard-proficiency-1': 1 },
-    rogue: { 'rogue-proficiency-0': 1 },
-    ranger: { 'ranger-proficiency-0': 1 },
+    rogue: { 'rogue-proficiency-0': 1, 'rogue-weapon-mastery': 2 },
+    ranger: { 'ranger-proficiency-0': 1, 'ranger-weapon-mastery': 2 },
+    barbarian: { 'barbarian-weapon-mastery': 2 },
+    fighter: { 'fighter-weapon-mastery': 3 },
+    paladin: { 'paladin-weapon-mastery': 2 },
 };
 
 export const getClassProficiencies = (characterClass: CharacterClass | any, isStarting: boolean): any[] => {
