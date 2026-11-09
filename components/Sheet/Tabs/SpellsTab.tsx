@@ -363,7 +363,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                 <div className="min-w-0">
                                                     <div className="font-bold text-gray-200 text-sm group-hover:text-white truncate flex items-center gap-1.5">
                                                         {spell.name}
-                                                        {spell.level < lvl && <span className="text-[8px] bg-dnd-gold/10 text-dnd-gold border border-dnd-gold/40 px-1 rounded">Upcast L{lvl}</span>}
+                                                        {spell.level < lvl && <span className="text-[8px] bg-dnd-gold/10 text-dnd-gold border border-dnd-gold/40 px-1 rounded">Upcast</span>}
                                                         {spell.name === 'Eldritch Blast' && (
                                                             <span className="text-[10px] text-dnd-gold font-black ml-1">
                                                                 x{character.level >= 17 ? 4 : character.level >= 11 ? 3 : character.level >= 5 ? 2 : 1}
