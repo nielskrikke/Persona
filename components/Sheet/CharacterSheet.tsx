@@ -223,6 +223,22 @@ interface CharacterSheetProps {
     onOpenVault: () => void;
 }
 
+const splitResourceLabel = (name: string): { title: string; subtitle: string } => {
+    let title = String(name || '').trim();
+    const details: string[] = [];
+    const colon = title.indexOf(':');
+    if (colon > 0) {
+        details.push(title.slice(colon + 1).trim());
+        title = title.slice(0, colon).trim();
+    }
+    const parenthetical = title.match(/\(([^)]+)\)/);
+    if (parenthetical) {
+        details.unshift(parenthetical[1].trim());
+        title = title.replace(/\s*\([^)]+\)\s*/, ' ').trim();
+    }
+    return { title, subtitle: details.filter(Boolean).join(' • ') };
+};
+
 const getEntityId = (entity: any) => entity.id || entity.index;
 
 export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initialCharacter, currentUser, onOpenVault }) => {
@@ -2048,8 +2064,21 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             const usedCount = usage.max - usage.current;
                             return (
                             <div key={name} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
-                                <div className="flex justify-between items-center mb-2"><h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">{formatResourceName(name, character.level)}</h3><span className="text-[10px] text-gray-500">Reset: {usage.reset === 'short' ? 'Short' : 'Long'}</span></div>
+                                {(() => {
+                                    const label = splitResourceLabel(formatResourceName(name, character.level));
+                                    return (
+                                        <>
+                                <div className="flex justify-between items-start gap-2 mb-2">
+                                    <div className="min-w-0">
+                                        <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest leading-tight break-words">{label.title}</h3>
+                                        {label.subtitle && <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider leading-tight mt-0.5 break-words">{label.subtitle}</p>}
+                                    </div>
+                                    <span className="text-[10px] text-gray-500 shrink-0">Reset: {usage.reset === 'short' ? 'Short' : 'Long'}</span>
+                                </div>
                                 <div className="flex gap-1.5 justify-start">{Array.from({length: usage.max}).map((_, i) => { const isUsed = i < usedCount; return (<button type="button" key={i} aria-label={`${formatResourceName(name, character.level)} use ${i + 1}`} className={`h-4 w-4 cursor-pointer transition-colors border rounded-full ${isUsed ? 'bg-dnd-red border-dnd-red' : 'bg-transparent border-gray-600 hover:border-dnd-gold hover:bg-dnd-gold/10'}`} onClick={() => { let used = i + 1; if (usedCount === used) used = i; setCharacter(prev => ({...prev, featureUsage: {...prev.featureUsage, [name]: {...usage, current: usage.max - used}}})); }}></button>); })}</div>
+                                        </>
+                                    );
+                                })()}
                                 {name === 'Arrow Crafting' && (
                                     <button
                                         onClick={() => setActiveTab('inventory')}
