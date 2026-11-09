@@ -63,6 +63,7 @@ const buildFeatGrantChoices = async (feat: any, source: string, level: number): 
             revertData: {
                 featIndex: feat.index,
                 isSubChoice: true,
+                abilityAmount: effect.amount || 1,
                 expertiseIfProficient: !!effect.expertise_if_proficient,
                 spellGrant: {
                     freeCasts: effect.free_casts,
@@ -502,11 +503,7 @@ const App: React.FC = () => {
   const handleLevelingComplete = async (updates: Partial<CharacterState>) => {
       const granted = await hydrateGrantedSpells({ ...character, ...updates });
       updateCharacter({ ...updates, spells: granted.spells });
-      if (hasCasterClass(character.classes)) {
-          setPhase('spells');
-      } else {
-          setPhase('background');
-      }
+      setPhase('background');
   };
 
   const handleSpellComplete = (spells: SpellDetail[]) => {
@@ -515,7 +512,7 @@ const App: React.FC = () => {
       [...racialSpells, ...spells].forEach(s => spellMap.set(s.index + (s.sourceClassIndex || ''), s));
       const newSlots = getSpellSlots(character.classes);
       updateCharacter({ spells: Array.from(spellMap.values()), spellSlots: newSlots });
-      setPhase('background');
+      setPhase('gear');
   };
 
   const handleBackgroundComplete = async (name: string, background: BackgroundDetail, extraData: { languages: string[], tools: string[], skills: string[], choices?: any[], equipment?: string[], currency?: { gp: number; sp: number; cp: number }, abilities?: Record<string, number>, feats?: any[], spellcastingAbility?: any }) => {
@@ -629,7 +626,7 @@ const App: React.FC = () => {
         inventory: newInventory,
         choices: finalChoices
     });
-    setPhase('gear');
+    setPhase(hasCasterClass(character.classes) ? 'spells' : 'gear');
   };
 
   const handleEquipmentComplete = async (inventory: InventoryItem[], currency?: { gp: number; sp: number; cp: number }) => {

@@ -50,11 +50,20 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
     const activeClass = casterClasses.find(c => c.definition.index === activeClassIndex);
     const effectiveAbilities = useMemo(() => getEffectiveAbilities(character), [character]);
     const isPrepared = activeClass ? isPreparedCaster(activeClass.definition) : false;
-    const hasMagicalSecrets = useMemo(() =>
-        (character.classFeatures || []).some((feature: any) => /magical (secrets|discoveries)/i.test(feature.name || ''))
-        || (character.classes || []).some(cls => (cls.definition.feature_details || []).some((feature: any) =>
-            feature.level <= cls.level && /magical (secrets|discoveries)/i.test(feature.name || '')
-        )), [character.classFeatures, character.classes]);
+    const expandedFeatures = useMemo(() =>
+        (character.classes || []).flatMap(cls => [
+            ...(cls.definition.feature_details || []).filter((feature: any) => (feature.level || 0) <= cls.level),
+            ...(((cls.subclass as any)?.feature_details || []) as any[]).filter((feature: any) => (feature.level || 0) <= cls.level),
+        ]), [character.classes]);
+    const hasMagicalSecrets = expandedFeatures.some((feature: any) => /magical secrets/i.test(feature.name || ''))
+        || (character.classFeatures || []).some((feature: any) => /magical secrets/i.test(feature.name || ''));
+    const hasMagicalDiscoveries = expandedFeatures.some((feature: any) => /magical discoveries/i.test(feature.name || ''));
+    const hasExpandedSpellList = hasMagicalSecrets || hasMagicalDiscoveries;
+    const discoveryAllowance = expandedFeatures
+        .filter((feature: any) => /magical discoveries/i.test(feature.name || ''))
+        .flatMap((feature: any) => feature.effects || [])
+        .filter((effect: any) => effect.type === 'spell_access' && !effect.spell)
+        .reduce((sum: number, effect: any) => sum + Number(effect.count || 0), 0);
     
     // Calculate limits for the ACTIVE class
     const baseLimits = activeClass
@@ -63,7 +72,7 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
     const magicalSecretsAllowance = activeClass && ((activeClass.definition.feature_details || []).some((feature: any) => feature.level <= activeClass.level && /magical (secrets|discoveries)/i.test(feature.name || '')))
         ? (activeClass.level >= 18 ? 6 : activeClass.level >= 14 ? 4 : activeClass.level >= 10 ? 2 : 0)
         : 0;
-    const limits = { ...baseLimits, spells: baseLimits.spells + magicalSecretsAllowance };
+    const limits = { ...baseLimits, spells: baseLimits.spells + magicalSecretsAllowance + discoveryAllowance };
 
     // Calculate current usage for the ACTIVE class
     const knownSpells = character.spells.filter(s => s.sourceClassIndex === activeClassIndex);
@@ -76,9 +85,9 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
         
         const loadSpells = async () => {
             setLoading(true);
-            const spells = hasMagicalSecrets ? await fetchAllSpells(character.user_id) : await fetchSpellsByClass(activeClassIndex, character.user_id);
-            const allowedSecretsLists = new Set(['bard', 'cleric', 'druid', 'wizard']);
-            const filtered = hasMagicalSecrets
+            const spells = hasExpandedSpellList ? await fetchAllSpells(character.user_id) : await fetchSpellsByClass(activeClassIndex, character.user_id);
+            const allowedSecretsLists = new Set(hasMagicalDiscoveries && !hasMagicalSecrets ? ['cleric', 'druid', 'wizard'] : ['bard', 'cleric', 'druid', 'wizard']);
+            const filtered = hasExpandedSpellList
                 ? spells.filter(spell => (spell as any).classes?.some((entry: any) => allowedSecretsLists.has(String(entry.index).toLowerCase())))
                 : spells;
             const sorted = filtered.sort((a,b) => a.level - b.level || a.name.localeCompare(b.name));
@@ -86,7 +95,7 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
             setLoading(false);
         };
         loadSpells();
-    }, [isOpen, activeClassIndex, hasMagicalSecrets]);
+    }, [isOpen, activeClassIndex, hasExpandedSpellList, hasMagicalSecrets, hasMagicalDiscoveries]);
 
     const isGranted = (spell: SpellDetail) => character.spells.some(s => s.index === spell.index && s.isGranted);
     const isKnown = (spell: SpellDetail) => {
@@ -190,7 +199,7 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
                         <h2 className="text-2xl font-serif text-white">Spell Manager</h2>
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">
                             Manage your {isPrepared ? 'prepared spells' : 'spellbook'}
-                            {magicalSecretsAllowance > 0 ? ` • ${magicalSecretsAllowance} Magical Secrets` : ''}
+                            {(magicalSecretsAllowance + discoveryAllowance) > 0 ? ` • ${magicalSecretsAllowance + discoveryAllowance} expanded spells` : ''}
                         </p>
                     </div>
                     <div className="flex items-center gap-2">

@@ -92,7 +92,7 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
                         value: null,
                         options: opts,
                         count: e.count || 1,
-                        revertData: { parentChoiceId: choiceId, isSubChoice: true, expertiseIfProficient: !!e.expertise_if_proficient, spellGrant: { freeCasts: e.free_casts, freeCastReset: e.free_cast_reset || e.reset, ability: e.ability, minLevel: e.min_level } }
+                        revertData: { parentChoiceId: choiceId, isSubChoice: true, abilityAmount: e.amount || 1, expertiseIfProficient: !!e.expertise_if_proficient, spellGrant: { freeCasts: e.free_casts, freeCastReset: e.free_cast_reset || e.reset, ability: e.ability, minLevel: e.min_level } }
                     };
                 });
                 additionalUpdates.choices = [...(additionalUpdates.choices || character.choices), ...newSubChoices];
@@ -182,7 +182,7 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
                                         value: null,
                                         options: opts,
                                         count: e.count || 1,
-                                        revertData: { parentChoiceId: choiceId, isSubChoice: true, expertiseIfProficient: !!e.expertise_if_proficient, spellGrant: { freeCasts: e.free_casts, freeCastReset: e.free_cast_reset || e.reset, ability: e.ability, minLevel: e.min_level } }
+                                        revertData: { parentChoiceId: choiceId, isSubChoice: true, abilityAmount: e.amount || 1, expertiseIfProficient: !!e.expertise_if_proficient, spellGrant: { freeCasts: e.free_casts, freeCastReset: e.free_cast_reset || e.reset, ability: e.ability, minLevel: e.min_level } }
                                     });
                                 } else if (e.type === 'spell_access' && e.spell) {
                                     // Automatic spells (Domain Spells)
@@ -312,7 +312,7 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
                         value: null,
                         options: e.options || (e.category === 'language' ? STANDARD_LANGUAGES : (e.type === 'proficiency_choice' && e.category === 'skill' ? SKILL_LIST.map(s => s.name) : [])),
                         count: e.count || 1,
-                        revertData: { parentChoiceId: choiceId, featIndex: featDetail.index, expertiseIfProficient: !!e.expertise_if_proficient, spellGrant: { freeCasts: e.free_casts, freeCastReset: e.free_cast_reset || e.reset, ability: e.ability, minLevel: e.min_level } }
+                        revertData: { parentChoiceId: choiceId, featIndex: featDetail.index, abilityAmount: e.amount || 1, expertiseIfProficient: !!e.expertise_if_proficient, spellGrant: { freeCasts: e.free_casts, freeCastReset: e.free_cast_reset || e.reset, ability: e.ability, minLevel: e.min_level } }
                     }));
                 if (newSubChoices.length > 0) {
                     additionalUpdates.choices = [...(additionalUpdates.choices || character.choices), ...newSubChoices];

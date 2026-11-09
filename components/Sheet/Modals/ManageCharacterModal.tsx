@@ -813,6 +813,16 @@ const ManageCharacterModal = ({
                 else if (ARTISAN_TOOLS.some(tool => tool.toLowerCase() === name.toLowerCase())) derivedTools.add(ARTISAN_TOOLS.find(tool => tool.toLowerCase() === name.toLowerCase())!);
             });
         });
+        const resolvedClasses = overrides.classes || localClasses;
+        const resolvedFeats = overrides.feats || localFeats;
+        const resolvedAbilities = overrides.abilities || abilities;
+        const projected = {
+            ...character,
+            abilities: resolvedAbilities,
+            classes: resolvedClasses,
+            feats: resolvedFeats,
+            level: resolvedClasses.reduce((sum: number, c: any) => sum + c.level, 0),
+        };
         return {
         name,
         avatarUrl: avatar,
@@ -838,7 +848,7 @@ const ManageCharacterModal = ({
         spells: overrides.spells || localSpells,
         classes: overrides.classes || localClasses,
         classFeatures: overrides.classFeatures || localClassFeatures,
-        maxHp: overrides.maxHp || localMaxHp,
+        maxHp: overrides.maxHp || calculateMaxHp(projected),
         level: (overrides.classes || localClasses).reduce((sum: number, c: any) => sum + c.level, 0),
         spellSlots: mergeSpellSlotCurrents(getSpellSlots(overrides.classes || localClasses), character.spellSlots)
         };
@@ -1945,6 +1955,16 @@ const ManageCharacterModal = ({
                 const feat = allFeats.find(f => f.index === choice.revertData.featIndex);
                 if (!feat) return;
                 finalValue = `Feat: ${feat.name}`;
+            } else if (choice.revertData?.isSubChoice && typeof choice.value === 'string' && choice.value.trim()) {
+                const abilityKey = choice.value.toLowerCase() as AbilityName;
+                const abilityAmount = Number(choice.revertData.abilityAmount || 1);
+                if (ABILITY_NAMES.includes(abilityKey) && !choice.revertData.abilityApplied) {
+                    setAbilities(prev => ({ ...prev, [abilityKey]: (prev[abilityKey] || 0) + abilityAmount }));
+                    setLocalChoices(prev => prev.map(c => c.id === choiceId ? { ...c, revertData: { ...c.revertData, abilityApplied: true, abilityAmount } } : c));
+                    finalValue = `${ABILITY_LABELS[abilityKey]} +${abilityAmount}`;
+                } else {
+                    finalValue = choice.value;
+                }
             }
         } else if (choice.type === 'subclass' || choice.type === 'feat-selection') {
             const featIndex = choice.revertData?.featIndex || choice.value;

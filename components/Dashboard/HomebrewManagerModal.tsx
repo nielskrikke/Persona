@@ -230,6 +230,7 @@ const EffectEditor = ({ effects, onChange }: { effects: any[], onChange: (newEff
                                     <option value="int">INT save</option><option value="wis">WIS save</option><option value="cha">CHA save</option>
                                 </select>
                                 <input type="text" placeholder="Save DC (optional, e.g. 8+con+pb)" value={eff.save_dc || ''} onChange={e => updateEffect(i, { save_dc: e.target.value })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white" />
+                                <input type="number" placeholder="Attack bonus (optional)" value={eff.attack_bonus ?? ''} onChange={e => updateEffect(i, { attack_bonus: e.target.value === '' ? undefined : Number(e.target.value) })} className="bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white" />
                             </div>
                         )}
 

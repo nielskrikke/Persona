@@ -147,6 +147,20 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
       }));
   };
 
+  const getClassChoices = (definition: ClassDetail | undefined, isStarting: boolean) => {
+      const choices = [...(definition?.choices || [])];
+      if (isStarting && definition?.index === 'artificer' && !choices.some((choice: any) => choice.kind === 'tool')) {
+          choices.push({
+              id: 'artificer-artisan-tool',
+              kind: 'tool',
+              count: 1,
+              label: "Artisan's Tools",
+              options: ARTISAN_TOOLS.map(name => ({ name, category: 'tool' })),
+          } as any);
+      }
+      return choices;
+  };
+
   const toggleClassChoice = (classIndex: string, choiceId: string, option: string, count: number) => {
       setValidationError(null);
       const key = `${classIndex}:${choiceId}`;
@@ -231,7 +245,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
       for (let draftIndex = 0; draftIndex < draftClasses.length; draftIndex++) {
           const draft = draftClasses[draftIndex];
           const definition = classDetails[draft.index];
-          for (const choice of (definition?.choices || [])) {
+          for (const choice of getClassChoices(definition, draftIndex === 0)) {
               const selected = classChoices[`${draft.index}:${choice.id}`] || [];
               const required = getClassChoiceCount(draft.index, choice.id, draft.level, draftIndex === 0, getChoiceCount(choice, draft.level), definition);
               if (required === 0) continue;
@@ -252,10 +266,10 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
           const [classIndex, choiceId] = key.split(':');
           if (!draftClasses.some(draft => draft.index === classIndex)) return;
           const cls = classDetails[classIndex];
-          const choice = cls?.choices?.find((item: any) => item.id === choiceId);
-          if (!cls || !choice) return;
           const draftLevel = draftClasses.find(draft => draft.index === classIndex)?.level || 1;
           const draftPosition = draftClasses.findIndex(draft => draft.index === classIndex);
+          const choice = getClassChoices(cls, draftPosition === 0).find((item: any) => item.id === choiceId);
+          if (!cls || !choice) return;
           const effectiveCount = getClassChoiceCount(classIndex, choice.id, draftLevel, draftPosition === 0, getChoiceCount(choice, draftLevel), cls);
           if (effectiveCount === 0) return;
           if (choice.kind === 'weapon_mastery') {
@@ -406,7 +420,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
                                    </section>
                                 )}
 
-                                {detail?.choices?.filter((choice: any) => ['proficiency', 'skill', 'tool', 'weapon_mastery'].includes(choice.kind)).filter((choice: any) => getClassChoiceCount(draft.index, choice.id, draft.level, draftClasses[0]?.index === draft.index, getChoiceCount(choice, draft.level), detail) > 0).map((choice: any) => {
+                                {getClassChoices(detail, draftClasses[0]?.index === draft.index)?.filter((choice: any) => ['proficiency', 'skill', 'tool', 'weapon_mastery'].includes(choice.kind)).filter((choice: any) => getClassChoiceCount(draft.index, choice.id, draft.level, draftClasses[0]?.index === draft.index, getChoiceCount(choice, draft.level), detail) > 0).map((choice: any) => {
                                     const key = `${draft.index}:${choice.id}`;
                                     const selected = classChoices[key] || [];
                                     return (

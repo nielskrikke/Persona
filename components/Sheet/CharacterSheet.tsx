@@ -810,7 +810,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const wisMod = calculateModifier(getStat('wis'));
     const intMod = calculateModifier(getStat('int'));
     const chaMod = calculateModifier(getStat('cha'));
-    const conSaveBonus = conMod + (character.classes.some(c => c.definition.saving_throws.some(s => s.index === 'con' || s.name === 'CON')) ? prof : 0);
+    const conSaveBonus = conMod + ((character.classes[0]?.definition.saving_throws || []).some(s => s.index === 'con' || s.name === 'CON') ? prof : 0);
 
     const checkModifierRule = (
         m: any,
@@ -2200,8 +2200,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
                          <div className="flex justify-between items-center mb-2"><h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Saving Throws</h3></div>
                          <div className="space-y-1">{ABILITY_NAMES.map(stat => {
-                             const isProf = !!character.classes.some(c => c.definition.saving_throws.some(s => s.name === stat.substring(0,3).toUpperCase())) ||
-                                            (character.savingThrowProficiencies || []).includes(stat) ||
+                             const startingSaves = new Set((character.classes[0]?.definition.saving_throws || []).map(s => String(s.index || s.name || '').toLowerCase()));
+                             const nonStartingSaves = new Set(character.classes.slice(1).flatMap(c => (c.definition.saving_throws || []).map(s => String(s.index || s.name || '').toLowerCase())));
+                             const storedSave = (character.savingThrowProficiencies || []).some(saved => String(saved).toLowerCase() === stat) && !nonStartingSaves.has(stat);
+                             const isProf = startingSaves.has(stat) ||
+                                            storedSave ||
                                             activeModifiers.some(m => m.type === 'proficiency' && m.target === stat.substring(0,3).toUpperCase() && m.category === 'save');
 
                              const saveBonus = activeModifiers
@@ -3241,7 +3244,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     .reduce((max: number, effect: any) => Math.max(max, Number(effect.value || 0)), 0);
                 const spellDamageFormula = resolveDamageFormula(combineDamageParts(dmgStr || '', spellFlatBonus, spellExtraDice), spellCastMod, Number(character.classes?.[0]?.definition?.hit_die || 8));
                 const combinedSpellDmg = minimumDamageDie > 1 ? appendMinDie(spellDamageFormula, minimumDamageDie) : spellDamageFormula;
-                const spellAttackValue = prof + spellCastMod + extraSpellAttack + spellAttackBonus;
+                const spellAttackValue = prof + spellCastMod + spellAttackBonus;
                 const spellSaveValue = 8 + prof + spellCastMod + extraSpellSave;
                 const { hit: spellHit, damage: spellDmg } = applyOverrides(spellAttackValue, combinedSpellDmg || 'See Desc');
 
@@ -3383,13 +3386,27 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             if (!item.equipped) return;
             (item.effects || []).forEach((effect: any, index: number) => {
                 if (effect.type !== 'action' && effect.type !== 'reaction' && effect.type !== 'bonus_action') return;
-                const dcMatch = String(effect.save?.dc || effect.dc || '').match(/\d+/);
-                const save = effect.save ? { type: effect.save.ability || effect.save.type || 'DEX', dc: dcMatch ? Number(dcMatch[0]) : 13 } : null;
+                const saveAbility = String(effect.save?.ability || effect.save_ability || effect.save_dc_ability || 'dex').toUpperCase();
+                const rawDC = String(effect.save?.dc ?? effect.save_dc ?? effect.dc ?? '').trim();
+                let saveDC = 13;
+                if (/^\d+$/.test(rawDC)) saveDC = Number(rawDC);
+                else if (rawDC) {
+                    let computed = 0;
+                    rawDC.toLowerCase().split('+').map(part => part.trim()).forEach(part => {
+                        if (/^\d+$/.test(part)) computed += Number(part);
+                        else if (part === 'pb' || part === 'proficiency') computed += prof;
+                        else if (['str','dex','con','int','wis','cha'].includes(part)) computed += calculateModifier(getStat(part as AbilityName));
+                    });
+                    if (computed > 0) saveDC = computed;
+                }
+                const hasSave = Boolean(effect.save || effect.save_ability || effect.save_dc || effect.dc);
+                const save = hasSave ? { type: saveAbility, dc: saveDC } : null;
+                const rawRange = effect.range ? String(effect.range) : '';
                 const actionAttack = {
                     id: `item-action-${item.id}-${index}`,
                     name: effect.name || effect.spell_name || item.name,
-                    range: effect.range ? `${effect.range} ft.` : '-',
-                    hit: null,
+                    range: rawRange ? (/\bft\.?|\bfeet\b/i.test(rawRange) ? rawRange : `${rawRange} ft.`) : '-',
+                    hit: effect.attack_bonus !== undefined ? Number(effect.attack_bonus) : (effect.to_hit !== undefined ? Number(effect.to_hit) : null),
                     save,
                     damage: effect.damage || '-',
                     type: effect.damage_type || effect.damageType || 'Other',
