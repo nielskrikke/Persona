@@ -1064,6 +1064,12 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     const [spellSecondaryDamage, setSpellSecondaryDamage] = useState('');
     const [spellDmgType, setSpellDmgType] = useState('Force');
     const [spellScaling, setSpellScaling] = useState('');
+    const [spellAdvancedScaling, setSpellAdvancedScaling] = useState(false);
+    const [spellScalingMode, setSpellScalingMode] = useState<'linear' | 'table'>('linear');
+    const [spellSlotTable, setSpellSlotTable] = useState<Record<string, string>>({});
+    const [spellUpcastBase, setSpellUpcastBase] = useState(1);
+    const [spellUpcastTargets, setSpellUpcastTargets] = useState(0);
+    const [spellUpcastUnit, setSpellUpcastUnit] = useState('targets');
     const [spellClasses, setSpellClasses] = useState<string[]>([]);
     const [spellOriginal, setSpellOriginal] = useState<any>(null);
 
@@ -1219,7 +1225,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
         setArmorProfs([]); setWeaponProfs([]); setMulticlassProfs(''); setMulticlassChoices('');
         setSpellLevel(0); setSpellSchool('Evocation'); setSpellCastTime('1 Action'); setSpellRange('60 feet'); setSpellDuration('Instantaneous'); setSpellRitual(false); setSpellConcentration(false);
         setSpellComponents(['V', 'S']); setSpellMaterial(''); setSpellHigherLevel(''); setSpellHasAttack(false); setSpellHasSave(false); setSpellDmgFormula(''); setSpellSecondaryDamage('');
-        setSpellDmgType('Force'); setSpellScaling(''); setSpellClasses([]); setSpellOriginal(null);
+        setSpellDmgType('Force'); setSpellScaling(''); setSpellAdvancedScaling(false); setSpellScalingMode('linear'); setSpellSlotTable({}); setSpellUpcastBase(1); setSpellUpcastTargets(0); setSpellUpcastUnit('targets'); setSpellClasses([]); setSpellOriginal(null);
         setItemCategory('Other'); setItemSubtype(''); setItemIsWondrous(false); setItemRarity('Common'); setItemWeight(0); setItemCost('0 gp'); setItemAttunement(false);
         setItemDmgDice(''); setItemDmgType('Piercing'); setItemWeaponType('Simple'); setItemArmorType('Light'); setItemAcBase(0); setItemAcDexBonus(false); setItemAcMaxBonus(null);
         setItemIsThrown(false); setItemThrownRange(''); setItemThrownDamage(''); setItemProperties([]); setItemModifiers([]);
@@ -1337,6 +1343,14 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                 setSpellDmgType(item.damage.damage_type?.name || 'Force');
             }
             setSpellScaling(item.scaling?.per_slot || (typeof item.scaling === 'string' ? item.scaling : '') || '');
+            const slotTable = item.damage?.damage_at_slot_level || item.heal_at_slot_level || {};
+            setSpellSlotTable(Object.fromEntries(Object.entries(slotTable).map(([lvl, value]: any) => [String(lvl), String(value)])));
+            const hasTable = Object.keys(slotTable).length > 1;
+            setSpellAdvancedScaling(Boolean(item.scaling?.mode === 'table' || hasTable || Number(item.scaling?.targetsPerSlot || 0) > 0));
+            setSpellScalingMode(item.scaling?.mode === 'table' || hasTable ? 'table' : 'linear');
+            setSpellUpcastBase(Number(item.scaling?.baseTargets || 1));
+            setSpellUpcastTargets(Number(item.scaling?.targetsPerSlot || 0));
+            setSpellUpcastUnit(item.scaling?.targetUnit || 'targets');
         } else if (activeTab === 'item') {
             setItemCategory(item.equipment_category?.name || 'Other');
             setItemSubtype(item.subtype || '');
@@ -1573,12 +1587,29 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                 const previous = spellOriginal || {};
                 const previousDamage = previous.damage || {};
                 const damageKey = spellLevel === 0 ? 'damage_at_character_level' : 'damage_at_slot_level';
-                const damageTable = { ...(previousDamage[damageKey] || {}), [spellLevel === 0 ? '1' : spellLevel.toString()]: spellDmgFormula };
-                const nextDamage = spellDmgFormula ? {
+                let damageTable: Record<string, string> = {};
+                if (spellLevel === 0) {
+                    if (spellDmgFormula.trim()) damageTable['1'] = spellDmgFormula.trim();
+                } else if (spellAdvancedScaling && spellScalingMode === 'table') {
+                    for (let slot = spellLevel; slot <= 9; slot++) {
+                        const value = String(spellSlotTable[String(slot)] ?? (slot === spellLevel ? spellDmgFormula : '')).trim();
+                        if (value) damageTable[String(slot)] = value;
+                    }
+                } else if (spellDmgFormula.trim()) {
+                    damageTable[String(spellLevel)] = spellDmgFormula.trim();
+                }
+                const nextDamage = Object.keys(damageTable).length > 0 ? {
                     ...previousDamage,
                     damage_type: { name: spellDmgType, index: spellDmgType.toLowerCase() },
                     [damageKey]: damageTable,
                 } : (Object.keys(previousDamage).length > 0 ? previousDamage : undefined);
+                const scalingConfig = spellLevel > 0 && (spellAdvancedScaling || spellScaling.trim() || Number(spellUpcastTargets) > 0) ? {
+                    mode: spellAdvancedScaling && spellScalingMode === 'table' ? 'table' : 'linear',
+                    per_slot: spellAdvancedScaling && spellScalingMode === 'table' ? undefined : (spellScaling.trim() || undefined),
+                    baseTargets: Number(spellUpcastBase) || 1,
+                    targetsPerSlot: Number(spellUpcastTargets) || undefined,
+                    targetUnit: spellUpcastTargets > 0 ? (spellUpcastUnit.trim() || 'targets') : undefined,
+                } : undefined;
                 payload = {
                     ...previous,
                     ...payload,
@@ -1593,7 +1624,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     }),
                     attack_type: spellHasAttack ? spellAttackType.toLowerCase() : undefined,
                     damage: nextDamage,
-                    scaling: spellScaling.trim() ? { per_slot: spellScaling.trim() } : undefined,
+                    scaling: scalingConfig,
                     secondary_damage: spellSecondaryDamage || undefined,
                     dc: spellHasSave ? { ...(previous.dc || {}), dc_type: { name: spellSaveType, index: spellSaveType.toLowerCase() }, dc_success: previous.dc?.dc_success || 'half' } : previous.dc
                 };
@@ -2100,10 +2131,56 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                     <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">At Higher Levels</label>
                                                     <textarea value={spellHigherLevel} onChange={e => setSpellHigherLevel(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-800 rounded-lg p-3 text-xs text-gray-500 h-20 resize-none outline-none focus:border-dnd-gold shadow-inner font-serif italic" placeholder="e.g. When you cast this spell using a slot of 2nd level or higher..." />
                                                 </div>
-                                                <div>
-                                                    <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Scaling per Slot Above Base</label>
-                                                    <input value={spellScaling} onChange={e => setSpellScaling(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-800 rounded-lg p-3 text-sm text-white font-mono outline-none focus:border-dnd-gold" placeholder="e.g. 1d8 or 1d4" />
-                                                    <p className="text-[9px] text-gray-600 mt-1">Applied once for each slot level above the spell's base level.</p>
+                                                <div className="rounded-xl border border-gray-800 bg-black/20 p-4 space-y-4">
+                                                    <div className="flex items-center justify-between gap-3">
+                                                        <div>
+                                                            <label className="text-[10px] uppercase font-black text-gray-500 tracking-widest block">Upcast Scaling</label>
+                                                            <p className="text-[9px] text-gray-600 mt-1">Default: one formula per slot above the base level.</p>
+                                                        </div>
+                                                        <button type="button" onClick={() => setSpellAdvancedScaling(!spellAdvancedScaling)} className={`shrink-0 px-3 py-1.5 rounded border text-[9px] font-black uppercase tracking-widest transition-all ${spellAdvancedScaling ? 'bg-blue-600 border-blue-500 text-white' : 'bg-black/30 text-gray-500 border-gray-700 hover:border-gray-500'}`}>
+                                                            Advanced scaling
+                                                        </button>
+                                                    </div>
+                                                    {spellLevel === 0 ? (
+                                                        <p className="text-[10px] text-gray-600 italic">Cantrips scale by character level, not by slot level.</p>
+                                                    ) : !spellAdvancedScaling ? (
+                                                        <div>
+                                                            <input value={spellScaling} onChange={e => setSpellScaling(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-sm text-white font-mono outline-none focus:border-dnd-gold" placeholder="e.g. 1d8 or 1d4" />
+                                                            <p className="text-[9px] text-gray-600 mt-1">Added once for each slot level above level {spellLevel}.</p>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <div className="flex gap-2">
+                                                                {(['linear', 'table'] as const).map(mode => (
+                                                                    <button key={mode} type="button" onClick={() => setSpellScalingMode(mode)} className={`px-3 py-1.5 rounded border text-[9px] font-black uppercase tracking-widest ${spellScalingMode === mode ? 'bg-dnd-gold text-black border-dnd-gold' : 'bg-black/30 text-gray-500 border-gray-700'}`}>
+                                                                        {mode === 'linear' ? 'Linear per slot' : 'Explicit per slot'}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                            {spellScalingMode === 'linear' ? (
+                                                                <input value={spellScaling} onChange={e => setSpellScaling(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-sm text-white font-mono outline-none focus:border-dnd-gold" placeholder="e.g. 1d8 or 1d4" />
+                                                            ) : (
+                                                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                                                    {Array.from({ length: 10 - spellLevel }, (_, i) => spellLevel + i).map(slot => (
+                                                                        <label key={slot} className="space-y-1">
+                                                                            <span className="text-[8px] uppercase font-black text-gray-600 block">Level {slot}</span>
+                                                                            <input
+                                                                                value={spellSlotTable[String(slot)] ?? (slot === spellLevel ? spellDmgFormula : '')}
+                                                                                onChange={e => setSpellSlotTable(prev => ({ ...prev, [String(slot)]: e.target.value }))}
+                                                                                className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white font-mono"
+                                                                                placeholder={slot === spellLevel ? 'base' : 'same as base'}
+                                                                            />
+                                                                        </label>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-gray-800">
+                                                                <label className="space-y-1"><span className="text-[8px] uppercase font-black text-gray-600 block">Base targets</span><input type="number" min={1} value={spellUpcastBase} onChange={e => setSpellUpcastBase(Number(e.target.value) || 1)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white" /></label>
+                                                                <label className="space-y-1"><span className="text-[8px] uppercase font-black text-gray-600 block">Extra targets / slot</span><input type="number" min={0} value={spellUpcastTargets} onChange={e => setSpellUpcastTargets(Number(e.target.value) || 0)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white" /></label>
+                                                                <label className="space-y-1"><span className="text-[8px] uppercase font-black text-gray-600 block">Target unit</span><input value={spellUpcastUnit} onChange={e => setSpellUpcastUnit(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white" placeholder="targets" /></label>
+                                                            </div>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                         </section>

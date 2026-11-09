@@ -694,6 +694,12 @@ const UPCAST_NUMBERS: Record<string, number> = { one: 1, two: 2, three: 3, four:
 
 export const getSpellUpcastCount = (spell: SpellDetail, castLevel: number): { count: number; base: number; unit: string } | null => {
     if (!spell) return null;
+    const config: any = (spell as any).scaling;
+    if (config && Number(config.targetsPerSlot) > 0) {
+        const base = Math.max(1, Number(config.baseTargets) || 1);
+        const levelsAbove = Math.max(0, Number(castLevel) - Number(spell.level || 0));
+        return { count: base + Number(config.targetsPerSlot) * levelsAbove, base, unit: config.targetUnit || 'targets' };
+    }
     const text = (spell.higher_level || []).join(' ');
     if (!text) return null;
     const additional = text.match(/(one|two|three|four|five|six|\d+)\s+(?:additional|more)\s+(rays?|darts?|beams?|creatures?|targets?|undead|beasts?|humanoids?)/i);
@@ -771,7 +777,8 @@ export const getSpellDamageString = (spell: SpellDetail, characterLevel: number 
                 return `${dice}d${match[2]}${flat ? `+${flat}` : ''}`;
             }
         }
-        const perSlot = (spell as any).scaling?.per_slot || (spell as any).scaling;
+        const scalingConfig: any = (spell as any).scaling;
+        const perSlot = typeof scalingConfig?.per_slot === 'string' ? scalingConfig.per_slot : (typeof scalingConfig === 'string' ? scalingConfig : null);
         const levelDelta = Math.max(0, Number(slotLevel) - Number(spell.level || 0));
         if (perSlot && levelDelta > 0) {
             const per = String(perSlot).trim();
