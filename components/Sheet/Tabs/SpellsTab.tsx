@@ -44,6 +44,21 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
         return type && !/healing/i.test(type) ? ` ${String(type).toLowerCase()}` : '';
     };
     const displayCastLevelFor = (spell: SpellDetail, sectionLevel: number) => (spell as any).itemSpell ? castLevelFor(spell) : (spell.level === 0 ? character.level : sectionLevel);
+    const hasUpcastBenefit = (spell: SpellDetail): boolean => {
+        if (Number(spell.level) <= 0) return false;
+        const table: any = (spell as any).heal_at_slot_level || spell.damage?.damage_at_slot_level;
+        if (table) {
+            const base = table[String(spell.level)];
+            const hasHigher = Object.keys(table).some(key => Number(key) > Number(spell.level) && table[key] && table[key] !== base);
+            if (hasHigher) return true;
+        }
+        const scaling: any = (spell as any).scaling;
+        if (typeof scaling?.per_slot === 'string' && scaling.per_slot.trim()) return true;
+        if (typeof scaling === 'string' && scaling.trim()) return true;
+        if (Number(scaling?.targetsPerSlot || 0) > 0) return true;
+        return (spell.higher_level || []).some(line => String(line || '').trim().length > 0);
+    };
+
     const itemBaseCost = (spell: SpellDetail) => Number((spell as any).itemBaseCost || (spell as any).itemCost?.amount || 1);
     const itemCostFor = (spell: SpellDetail) => itemCostSelections[spell.index] ?? itemBaseCost(spell);
     const castLevelFor = (spell: SpellDetail) => {
@@ -306,7 +321,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                 {[0,1,2,3,4,5,6,7,8,9].map(lvl => {
                     if (spellFilter !== 'all' && spellFilter !== lvl) return null;
                     const spells = character.spells.filter(s => {
-                        if (s.level !== lvl && !(showUpcasts && lvl > 0 && s.level > 0 && s.level < lvl)) return false;
+                        if (s.level !== lvl && !(showUpcasts && lvl > 0 && s.level > 0 && s.level < lvl && hasUpcastBenefit(s))) return false;
                         if (s.level !== lvl && (s as any).itemSpell) return false;
                         if (!s.name.toLowerCase().includes(spellSearch.toLowerCase())) return false;
                         if (ritualOnly && !s.ritual) return false;
@@ -363,7 +378,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                 <div className="min-w-0">
                                                     <div className="font-bold text-gray-200 text-sm group-hover:text-white truncate flex items-center gap-1.5">
                                                         {spell.name}
-                                                        {spell.level < lvl && <span className="text-[8px] bg-dnd-gold/10 text-dnd-gold border border-dnd-gold/40 px-1 rounded">Upcast</span>}
+                                                        {spell.level < lvl && hasUpcastBenefit(spell) && <span className="text-[8px] bg-dnd-gold/10 text-dnd-gold border border-dnd-gold/40 px-1 rounded">Upcast</span>}
                                                         {spell.name === 'Eldritch Blast' && (
                                                             <span className="text-[10px] text-dnd-gold font-black ml-1">
                                                                 x{character.level >= 17 ? 4 : character.level >= 11 ? 3 : character.level >= 5 ? 2 : 1}
