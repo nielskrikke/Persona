@@ -3387,7 +3387,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             (item.effects || []).forEach((effect: any, index: number) => {
                 if (effect.type !== 'action' && effect.type !== 'reaction' && effect.type !== 'bonus_action') return;
                 const saveAbility = String(effect.save?.ability || effect.save_ability || effect.save_dc_ability || 'dex').toUpperCase();
-                const rawDC = String(effect.save?.dc ?? effect.save_dc ?? effect.dc ?? '').trim();
+                const rawDC = String(effect.save_dc ?? effect.save?.dc ?? effect.dc ?? '').trim();
                 let saveDC = 13;
                 if (rawDC.toLowerCase() === 'spell' || rawDC.toLowerCase() === 'spell_save_dc') saveDC = spellSave;
                 else if (/^\d+$/.test(rawDC)) saveDC = Number(rawDC);
@@ -3407,7 +3407,19 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     id: `item-action-${item.id}-${index}`,
                     name: effect.name || effect.spell_name || item.name,
                     range: rawRange ? (/\bft\.?|\bfeet\b/i.test(rawRange) ? rawRange : `${rawRange} ft.`) : '-',
-                    hit: effect.attack_bonus !== undefined ? Number(effect.attack_bonus) : (effect.to_hit !== undefined ? Number(effect.to_hit) : null),
+                    hit: (() => {
+                        const rawAttack = effect.attack_bonus ?? effect.to_hit;
+                        if (rawAttack === undefined || rawAttack === null || rawAttack === '') return null;
+                        if (String(rawAttack).toLowerCase() === 'spell') return Number(String(spellAttackStr).replace('+', '')) || 0;
+                        if (/^[+-]?\d+$/.test(String(rawAttack).trim())) return Number(rawAttack);
+                        let computed = 0;
+                        String(rawAttack).toLowerCase().split('+').map(part => part.trim()).forEach(part => {
+                            if (/^[+-]?\d+$/.test(part)) computed += Number(part);
+                            else if (part === 'pb' || part === 'proficiency') computed += prof;
+                            else if (['str','dex','con','int','wis','cha'].includes(part)) computed += calculateModifier(getStat(part as AbilityName));
+                        });
+                        return computed;
+                    })(),
                     save,
                     damage: effect.damage || '-',
                     type: effect.damage_type || effect.damageType || 'Other',
