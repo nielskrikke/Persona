@@ -747,7 +747,7 @@ export const getConditionLabelsFromText = (text: string): string[] => {
     if (!clean) return [];
     // Protection, immunity, removal, and object-state text should not assign
     // a condition to the target (e.g. Protection from Evil and Good, Forcecage).
-    if (/(?:can(?:'|no)t|can not|cannot)\s+be\s+(?:charmed|frightened|poisoned|prone|restrained|stunned|paralyzed|petrified|blinded|deafened|invisible|incapacitated|grappled)|protected against|protection from|immune to|no longer|suppress(?:es|ed)?|prevents? .*condition|cage is invisible|prison .*invisible/i.test(clean)) return [];
+    if (/(?:can(?:'|no)t|can not|cannot)\s+be\s+(?:charmed|frightened|poisoned|prone|restrained|stunned|paralyzed|petrified|blinded|deafened|invisible|incapacitated|grappled)|protected against|protection from|immune to|no longer|suppress(?:es|ed)?|prevents? .*condition|cage is invisible|prison .*invisible|can'?t benefit from .*invisible|can'?t become invisible/i.test(clean)) return [];
     return CONDITION_LABELS.filter(label => {
         const lower = label.toLowerCase();
         const affected = new RegExp(`\\b(?:target|creature|it|they)\\b[^.!?]{0,140}\\b(?:is|are|becomes?|remains?|falls?|has|have)\\b[^.!?]{0,80}\\b${lower}\\b`, 'i');

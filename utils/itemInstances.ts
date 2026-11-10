@@ -34,12 +34,16 @@ export const mergeInventoryItem = (
     };
     if (!dbRecord) return { ...entry, name: stripHomebrewSuffix(entry.name), overrides: customized ? overrides : undefined, customized };
     if (!customized) {
+        const baseIndex = entry.base_item || (dbRecord as any).base_item;
+        const base = baseIndex ? lookup.get(String(baseIndex).toLowerCase()) : undefined;
+        const hasEntryCost = entry.cost && (typeof entry.cost !== 'object' || Number(entry.cost.quantity) > 0);
+        const hasDbCost = dbRecord.cost && (typeof dbRecord.cost !== 'object' || Number(dbRecord.cost.quantity) > 0);
         return {
             ...dbRecord,
             ...entry,
             name: stripHomebrewSuffix(entry.name || dbRecord.name),
-            weight: Number(entry.weight) || Number(dbRecord.weight) || 0,
-            cost: entry.cost && (typeof entry.cost !== 'object' || Number(entry.cost.quantity) > 0) ? entry.cost : dbRecord.cost,
+            weight: Number(entry.weight) || Number(dbRecord.weight) || Number(base?.weight) || 0,
+            cost: hasEntryCost ? entry.cost : (hasDbCost ? dbRecord.cost : base?.cost),
             customized: false,
         };
     }

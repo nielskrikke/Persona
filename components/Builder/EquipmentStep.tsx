@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { CharacterClass, EquipmentDetail, InventoryItem } from '../../types';
+import { MUSICAL_INSTRUMENTS } from '../../data/constants';
 import { fetchEquipment, fetchEquipmentDetail } from '../../data/index';
 import ItemSearchModal from './ItemSearchModal';
 import ItemCustomizationModal from '../Sheet/Modals/ItemCustomizationModal';
@@ -11,11 +12,12 @@ interface EquipmentStepProps {
     onBack: () => void;
     userId?: string;
     classes?: CharacterClass[];
+    tools?: string[];
 }
 
 const CLASS_STARTING_KITS: Record<string, string[]> = {
     barbarian: ['Greataxe', 'Handaxe', 'Handaxe', 'Handaxe', 'Handaxe', "Explorer's Pack"],
-    bard: ['Leather Armor', 'Dagger', 'Musical Instrument', "Entertainer's Pack"],
+    bard: ['Leather Armor', 'Dagger', 'Dagger', 'Musical Instrument', "Entertainer's Pack"],
     cleric: ['Chain Shirt', 'Shield', 'Mace', 'Holy Symbol', "Priest's Pack"],
     druid: ['Leather Armor', 'Shield', 'Sickle', 'Quarterstaff', "Explorer's Pack", 'Herbalism Kit'],
     artificer: ['Light Crossbow', 'Bolts (20)', 'Studded Leather Armor', "Thieves' Tools", "Dungeoneer's Pack"],
@@ -39,7 +41,7 @@ const CLASS_OPTION_B_GOLD: Record<string, number> = {
     paladin: 150, ranger: 150, rogue: 100, sorcerer: 50, warlock: 100, wizard: 55,
 };
 
-const EquipmentStep: React.FC<EquipmentStepProps> = ({ onComplete, onBack, userId, classes = [] }) => {
+const EquipmentStep: React.FC<EquipmentStepProps> = ({ onComplete, onBack, userId, classes = [], tools = [] }) => {
     const [allEquipment, setAllEquipment] = useState<EquipmentDetail[]>([]);
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
@@ -86,9 +88,11 @@ const EquipmentStep: React.FC<EquipmentStepProps> = ({ onComplete, onBack, userI
     const classKits = classes.slice(0, 1).map(entry => {
         const definition: any = entry.definition;
         const configured = definition.starting_equipment_options || definition.equipment_options || [];
-        const items = configured.length > 0
+        const rawItems = configured.length > 0
             ? configured.flatMap((option: any) => option.equipment || option.items || []).map((item: any) => typeof item === 'string' ? item : item.item?.name || item.name).filter(Boolean)
             : (CLASS_STARTING_KITS[definition.index] || []);
+        const chosenInstrument = tools.find(tool => MUSICAL_INSTRUMENTS.some(instrument => String(instrument).toLowerCase() === String(tool).toLowerCase()));
+        const items = rawItems.map((item: string) => item === 'Musical Instrument' ? (chosenInstrument || item) : item);
         return { classIndex: definition.index, className: definition.name, items, goldA: CLASS_KIT_GOLD[definition.index] || 0, goldB: CLASS_OPTION_B_GOLD[definition.index] || 0 };
     }).filter(kit => kit.items.length > 0);
 

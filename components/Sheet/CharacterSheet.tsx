@@ -4259,7 +4259,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 }
                              />
                              {(() => {
-                                const totalInitMod = dexMod + extraInitiative;
+                                const hasJackOfAllTrades = (character.classFeatures || []).some((feature: any) => /jack of all trades/i.test(feature.name || ''))
+                                    || character.classes.some(cls => (cls.definition.feature_details || []).some((feature: any) => feature.level <= cls.level && /jack of all trades/i.test(feature.name || '')));
+                                const totalInitMod = dexMod + extraInitiative + (hasJackOfAllTrades ? Math.floor(prof / 2) : 0);
                                 return (
                                  <div
                                     onClick={() => roll(initAdv ? `2d20kh1${formatModifier(totalInitMod)}` : `1d20${formatModifier(totalInitMod)}`, "Initiative Roll")}

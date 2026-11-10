@@ -4,7 +4,7 @@ import { X, User, GraduationCap, Activity, Shield, Settings, Plus, Trash2, Save,
 import { CharacterState, APIReference, RaceDetail, SubraceDetail, BackgroundDetail, FeatDetail, ABILITY_NAMES, ABILITY_LABELS, AbilityScores, SpellDetail, LevelChoice, AbilityName } from '@/types';
 import { fetchClasses, fetchRaces, fetchSubraces, fetchBackgrounds, fetchFeatsList, fetchRaceDetail, fetchSubraceDetail, fetchBackgroundDetail, fetchSubclasses, fetchSubclassDetail, fetchSubclassLevels, fetchClassLevels, fetchLevelFeatures, fetchClassDetail, fetchAllSpells, RACES, SUBCLASSES } from '@/data/index';
 import { getSpellSlots, calculateModifier, SKILL_LIST, getSubclassLevel, getResourceDefinitions, calculateMaxHp, mergeSpellSlotCurrents, isFeatAvailableForLevel, isFeatAvailableForCharacter, getChoiceCount } from '@/utils/rules';
-import { STANDARD_LANGUAGES, ARTISAN_TOOLS, MUSICAL_INSTRUMENTS, GAMING_SETS, MASTERY_DESCRIPTIONS } from '../../../data/constants';
+import { STANDARD_LANGUAGES, ARTISAN_TOOLS, MUSICAL_INSTRUMENTS, GAMING_SETS, ALL_TOOLS, MASTERY_DESCRIPTIONS } from '../../../data/constants';
 import DiceRoller3D from '../Shared/DiceRoller3D';
 
 
@@ -826,7 +826,8 @@ const ManageCharacterModal = ({
             values.forEach((value: any) => {
                 const name = typeof value === 'string' ? value : (value?.name || value?.label || '');
                 if (!name) return;
-                if (choice.type === 'skill' || SKILL_LIST.some(skill => skill.name.toLowerCase() === name.toLowerCase())) pendingSkillValues.add(name);
+                if (ALL_TOOLS.some(tool => tool.toLowerCase() === name.toLowerCase())) pendingToolValues.add(name);
+                else if (choice.type === 'skill' || SKILL_LIST.some(skill => skill.name.toLowerCase() === name.toLowerCase())) pendingSkillValues.add(name);
                 else if (choice.type === 'other' || choice.type === 'feature_choice') pendingToolValues.add(name);
             });
         });
@@ -847,7 +848,7 @@ const ManageCharacterModal = ({
                 const name = typeof value === 'string' ? value : (value?.name || value?.label || '');
                 if (!name) return;
                 if (SKILL_LIST.some(skill => skill.name.toLowerCase() === name.toLowerCase())) derivedSkills.add(SKILL_LIST.find(skill => skill.name.toLowerCase() === name.toLowerCase())!.name);
-                else if (ARTISAN_TOOLS.some(tool => tool.toLowerCase() === name.toLowerCase())) derivedTools.add(ARTISAN_TOOLS.find(tool => tool.toLowerCase() === name.toLowerCase())!);
+                else if (ALL_TOOLS.some(tool => tool.toLowerCase() === name.toLowerCase())) derivedTools.add(ALL_TOOLS.find(tool => tool.toLowerCase() === name.toLowerCase())!);
             });
         });
         const resolvedClasses = overrides.classes || localClasses;
@@ -1399,7 +1400,7 @@ const ManageCharacterModal = ({
                 return { ...currentChoice, value: [...values, newValue] };
             }));
             if (choice.type === 'skill') {
-                if (ARTISAN_TOOLS.includes(newValue)) setToolProficiencies(prev => adding ? Array.from(new Set([...prev, newValue])) : prev.filter(value => value !== newValue));
+                if (ALL_TOOLS.includes(newValue)) setToolProficiencies(prev => adding ? Array.from(new Set([...prev, newValue])) : prev.filter(value => value !== newValue));
                 else setSkills(prev => adding ? Array.from(new Set([...prev, newValue])) : prev.filter(value => value !== newValue));
             }
             if (choice.type === 'expertise') setExpertise(prev => adding ? Array.from(new Set([...prev, newValue])) : prev.filter(value => value !== newValue));
@@ -3077,11 +3078,14 @@ const ManageCharacterModal = ({
                                                                     (() => {
                                                                         const knownSkillNames = new Set([...skills, ...(character.skills || [])].map((skill: any) => String(skill).toLowerCase()));
                                                                         const selectedValues = Array.isArray(choice.value) ? choice.value : [choice.value];
-                                                                        const options = (choice.options || []).filter((opt: any) => {
+                                                                        const baseOptions = (choice.options || []).filter((opt: any) => {
                                                                             if (choice.type !== 'skill') return true;
                                                                             const value = typeof opt === 'string' ? opt : (opt.name || opt.index || '');
                                                                             return selectedValues.includes(value) || !knownSkillNames.has(String(value).toLowerCase());
                                                                         });
+                                                                        const options = /skilled/i.test(choice.label || '')
+                                                                            ? Array.from(new Set([...baseOptions, ...ALL_TOOLS.filter((tool: string) => selectedValues.includes(tool) || !(character.toolProficiencies || []).includes(tool))]))
+                                                                            : baseOptions;
                                                                         const hasDescriptions = options.some((opt: any) => typeof opt !== 'string' && opt.desc);
                                                                         
                                                                         return (
@@ -3165,6 +3169,11 @@ const ManageCharacterModal = ({
                                                                     </div>
                                                                 )}
 
+                                                                {choice.type === 'asi-feat' && choice.revertData?.featIndex && (
+                                                                    <p className="mt-4 text-[10px] text-amber-300 leading-relaxed">
+                                                                        This feat has separate choice cards. Complete those before confirming this card.
+                                                                    </p>
+                                                                )}
                                                                 {/* Confirm Button */}
                                                                 {choice.revertData?.pendingConfirm && (
                                                                     <div className="mt-4 rounded-lg border border-dnd-gold/30 bg-dnd-gold/5 px-3 py-2 text-[10px] text-dnd-gold">
@@ -3485,11 +3494,14 @@ const ManageCharacterModal = ({
                                                                                                 (() => {
                                                                                                     const knownSkillNames = new Set([...skills, ...(character.skills || [])].map((skill: any) => String(skill).toLowerCase()));
                                                                                                     const selectedValues = Array.isArray(choice.value) ? choice.value : [choice.value];
-                                                                                                    const options = (choice.options || []).filter((opt: any) => {
+                                                                                                    const baseOptions = (choice.options || []).filter((opt: any) => {
                                                                                                         if (choice.type !== 'skill') return true;
                                                                                                         const value = typeof opt === 'string' ? opt : (opt.name || opt.index || '');
                                                                                                         return selectedValues.includes(value) || !knownSkillNames.has(String(value).toLowerCase());
                                                                                                     });
+                                                                                                    const options = /skilled/i.test(choice.label || '')
+                                                                                                        ? Array.from(new Set([...baseOptions, ...ALL_TOOLS.filter((tool: string) => selectedValues.includes(tool) || !(character.toolProficiencies || []).includes(tool))]))
+                                                                                                        : baseOptions;
                                                                                                     const hasDescriptions = options.some((opt: any) => typeof opt !== 'string' && opt.desc);
 
                                                                                                     return (

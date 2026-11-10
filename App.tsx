@@ -13,7 +13,7 @@ import { CharacterSheet } from './components/Sheet/CharacterSheet';
 import ErrorBoundary from './components/ErrorBoundary';
 import { getSpellSlots, SKILL_LIST, getCasterProfileFor, calculateMaxHp, mergeSpellSlotCurrents } from './utils/rules';
 import { getClassProficiencies, isToolProficiency } from './utils/multiclass';
-import { STANDARD_LANGUAGES, ARTISAN_TOOLS, GAMING_SETS } from './data/constants';
+import { STANDARD_LANGUAGES, ARTISAN_TOOLS, GAMING_SETS, ALL_TOOLS } from './data/constants';
 import { hydrateCharacterClasses, fetchAllSpells, hydrateGrantedSpells, fetchEquipment, fetchEquipmentDetail } from './data/index';
 import { saveCharacterToDb, loginUser } from './services/supabase';
 import AuthModal from './components/Auth/AuthModal';
@@ -36,8 +36,8 @@ const buildFeatGrantChoices = async (feat: any, source: string, level: number): 
         let options: any[] = effect.options || [];
         if (options.length === 0) {
             if (effect.type === 'proficiency_choice') {
-                if (effect.category === 'skill') options = (/tool/i.test(effect.name || '') || feat.name === 'Skilled') ? [...SKILL_LIST.map(skill => skill.name), ...ARTISAN_TOOLS] : SKILL_LIST.map(skill => skill.name);
-                else if (effect.category === 'tool') options = ARTISAN_TOOLS;
+                if (effect.category === 'skill') options = (/tool/i.test(effect.name || '') || feat.name === 'Skilled') ? [...SKILL_LIST.map(skill => skill.name), ...ALL_TOOLS] : SKILL_LIST.map(skill => skill.name);
+                else if (effect.category === 'tool') options = feat.name === 'Skilled' ? ALL_TOOLS : ARTISAN_TOOLS;
                 else if (effect.category === 'language') options = STANDARD_LANGUAGES;
             } else if (effect.type === 'spell_access') {
                 let filtered = allSpells;
@@ -45,6 +45,10 @@ const buildFeatGrantChoices = async (feat: any, source: string, level: number): 
                     filtered = filtered.filter(spell => spell.classes?.some((entry: any) => entry.name === effect.filter_class || entry.index === effect.filter_class));
                 }
                 if (effect.level !== undefined) filtered = filtered.filter(spell => spell.level === effect.level);
+                if (effect.school) {
+                    const schools = String(effect.school).split('/').map((school: string) => school.trim().toLowerCase()).filter(Boolean);
+                    filtered = filtered.filter(spell => schools.includes(String(spell.school?.name || '').toLowerCase()));
+                }
                 options = filtered.map(spell => ({ index: spell.index, name: spell.name }));
             }
         }
@@ -575,7 +579,8 @@ const App: React.FC = () => {
         const normalized = (value: string) => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
         const normalizedName = normalized(cleanName);
         const reversedName = normalizedName.split(' ').reverse().join(' ');
-        const aliasIndex = normalizedName.includes('traveler') && normalizedName.includes('clothes') ? 'clothes-traveler' : '';
+        const aliasIndex = normalizedName.includes('traveler') && normalizedName.includes('clothes') ? 'clothes-traveler'
+            : normalizedName === 'costume' ? 'clothes-costume' : '';
         const detail = (aliasIndex ? allItems.find(item => item.index === aliasIndex) : null)
             || await fetchEquipmentDetail(cleanName.toLowerCase().replace(/[^a-z0-9]+/g, '-'), currentUser?.id)
             || allItems.find(item => normalized(item.name) === normalizedName)
@@ -825,7 +830,7 @@ const App: React.FC = () => {
                 {phase === 'leveling' && <LevelingStep character={character} onComplete={handleLevelingComplete} onBack={handleBack} />}
                 {phase === 'spells' && <SpellSelectionStep character={character} onComplete={handleSpellComplete} onBack={handleBack} />}
                 {phase === 'background' && <BackgroundStep onComplete={handleBackgroundComplete} onBack={handleBack} userId={currentUser?.id} currentSkills={Array.from(new Set([...character.skills, ...((character.race as any)?.traits || []).flatMap((trait: any) => (trait.effects || []).filter((effect: any) => effect.type === 'proficiency' && effect.category === 'skill').map((effect: any) => effect.target || effect.value)), ...((character.subrace as any)?.traits || []).flatMap((trait: any) => (trait.effects || []).filter((effect: any) => effect.type === 'proficiency' && effect.category === 'skill').map((effect: any) => effect.target || effect.value))]))} />}
-                {phase === 'gear' && <EquipmentStep onComplete={handleEquipmentComplete} onBack={handleBack} userId={currentUser?.id} classes={character.classes} />}
+                {phase === 'gear' && <EquipmentStep onComplete={handleEquipmentComplete} onBack={handleBack} userId={currentUser?.id} classes={character.classes} tools={character.toolProficiencies} />}
               </div>
             </div>
           </div>

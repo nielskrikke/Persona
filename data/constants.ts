@@ -61,6 +61,18 @@ export const STANDARD_CONDITIONS = [
     "Restrained", "Stunned", "Unconscious"
 ];
 
+
+export const OTHER_TOOLS = [
+    "Thieves' Tools",
+    "Disguise Kit",
+    "Forgery Kit",
+    "Herbalism Kit",
+    "Poisoner's Kit",
+    "Navigator's Tools",
+    "Vehicles (Land)",
+    "Vehicles (Water)",
+];
+
 export const STANDARD_LANGUAGES = [
     "Abyssal", "Aquan", "Auran", "Celestial", "Common", "Deep Speech", "Draconic", 
     "Dwarvish", "Elvish", "Giant", "Gnomish", "Goblin", "Halfling", "Ignan", 
@@ -97,6 +109,8 @@ export const GAMING_SETS = [
     "Playing Card Set",
     "Three-Dragon Ante Set"
 ];
+
+export const ALL_TOOLS = Array.from(new Set([...ARTISAN_TOOLS, ...MUSICAL_INSTRUMENTS, ...GAMING_SETS, ...OTHER_TOOLS]));
 
 export const STANDARD_ACTIONS = [
     { name: 'Attack', desc: 'Perform one attack with a weapon or unarmed strike. If you have the Extra Attack feature, you can attack more than once.' },

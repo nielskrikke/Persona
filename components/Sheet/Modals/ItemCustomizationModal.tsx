@@ -42,6 +42,8 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({ item, a
 
     const resolve = () => {
         const selectedSpell = spells.find(spell => spell.index === spellIndex);
+        const variant = choiceConfig?.variants?.[choice] || choiceConfig?.variants?.find?.((entry: any) => entry.name === choice);
+        const variantEffects = variant?.effects || variant?.modifiers || [];
         const pattern = template?.name_pattern || (item as any).name_pattern || item.name;
         const resolvedName = String(pattern)
             .replaceAll('{base}', base.name)
@@ -64,14 +66,14 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({ item, a
             name: resolvedName,
             base_item: base.index,
             is_magic: true,
-            ...(selectedSpell ? {
-                spell_index: selectedSpell.index,
-                spell_name: selectedSpell.name,
-                effects: [
-                    ...(item.effects || []),
-                    { type: 'spell_access', spell: selectedSpell.index, spell_name: selectedSpell.name, cast_level: Number(template?.filter?.level || selectedSpell.level) },
-                ],
-            } : {}),
+            effects: [
+                ...(item.effects || []),
+                ...variantEffects,
+                ...(selectedSpell ? [{ type: 'spell_access', spell: selectedSpell.index, spell_name: selectedSpell.name, cast_level: Number(template?.filter?.level || selectedSpell.level) }] : []),
+            ],
+            ...(selectedSpell ? { spell_index: selectedSpell.index, spell_name: selectedSpell.name } : {}),
+            ...(variant?.weight !== undefined ? { weight: variant.weight } : {}),
+            ...(variant?.cost ? { cost: variant.cost } : {}),
         }, base.name, choice || base.name);
         merged.id = `${merged.index || item.index}-${Date.now()}`;
         merged.quantity = 1;

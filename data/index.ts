@@ -505,15 +505,24 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
     if (!allSpells?.length) return character;
 
     const grants: { effect: any; source: string; defaultMinLevel: number; item?: any; itemResourceName?: string; storage?: any }[] = [];
-    const collect = (effects: any[], source: string, defaultMinLevel: number = 0) => {
+    const collect = (effects: any[], source: string, defaultMinLevel: number = 0, abilityOverride?: string) => {
         (effects || []).forEach(effect => {
-            if (effect?.type === 'spell_access' && effect.spell) grants.push({ effect, source, defaultMinLevel });
+            if (effect?.type === 'spell_access' && effect.spell) grants.push({ effect: { ...effect, ability: effect.ability || abilityOverride }, source, defaultMinLevel });
         });
     };
-    const collectFeature = (entry: any, source: string, defaultMinLevel: number = 0) => {
-        if (Array.isArray(entry?.effects) && entry.effects.length > 0) collect(entry.effects, source, defaultMinLevel);
-        else collect(entry?.modifiers || [], source, defaultMinLevel);
+    const collectFeature = (entry: any, source: string, defaultMinLevel: number = 0, abilityOverride?: string) => {
+        if (Array.isArray(entry?.effects) && entry.effects.length > 0) collect(entry.effects, source, defaultMinLevel, abilityOverride);
+        else collect(entry?.modifiers || [], source, defaultMinLevel, abilityOverride);
     };
+    const featAbilityByIndex: Record<string, string> = {};
+    (character.choices || []).forEach((choice: any) => {
+        if (choice.type !== 'asi' || !choice.revertData?.featIndex || !choice.revertData?.isSubChoice) return;
+        const raw = String(choice.value || '').toLowerCase();
+        const ability = ['str','dex','con','int','wis','cha'].find(key => raw === key || raw.startsWith(`${key} `))
+            || ['strength','dexterity','constitution','intelligence','wisdom','charisma'].find(name => raw.startsWith(name))
+            ?.slice(0, 3);
+        if (ability) featAbilityByIndex[choice.revertData.featIndex] = ability;
+    });
 
     (character.race as any)?.traits?.forEach((trait: any) => collectFeature(trait, character.race.name, 1));
     (character.subrace as any)?.traits?.forEach((trait: any) => collectFeature(trait, character.subrace.name, 1));
@@ -537,7 +546,23 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
         if (feature.source && classSourceNames.has(feature.source)) return;
         collectFeature(feature, feature.source || 'Feature', feature.level || 0);
     });
-    (character.feats || []).forEach(feat => collectFeature(feat, feat.name || 'Feat', 1));
+    (character.feats || []).forEach(feat => collectFeature(feat, feat.name || 'Feat', 1, featAbilityByIndex[feat.index]));
+    (character.choices || []).forEach((choice: any) => {
+        if (choice.type !== 'spell' || !choice.value || !choice.revertData?.featIndex) return;
+        const feat = (character.feats || []).find((entry: any) => entry.index === choice.revertData.featIndex);
+        const grant = choice.revertData.spellGrant || {};
+        grants.push({
+            effect: {
+                type: 'spell_access',
+                spell: choice.value,
+                free_casts: grant.freeCasts,
+                free_cast_reset: grant.freeCastReset,
+                ability: featAbilityByIndex[choice.revertData.featIndex],
+            },
+            source: feat?.name || 'Feat',
+            defaultMinLevel: grant.minLevel || 1,
+        });
+    });
     (character.inventory || []).forEach((item: any) => {
         if (!item.equipped || (item.requires_attunement && !item.attuned)) return;
         (item.effects || []).forEach((effect: any) => {
@@ -642,7 +667,7 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
     let spells = refreshedSpells.filter(spell => !spell.isGranted && !spell.grantedBy);
     grantedByIndex.forEach((granted, index) => {
         const existing = spells.findIndex(spell => spell.index === index);
-        if (existing >= 0) spells[existing] = { ...spells[existing], ...granted };
+        if (existing >= 0) spells[existing] = { ...spells[existing], ...granted, sourceClassIndex: spells[existing].sourceClassIndex || granted.sourceClassIndex };
         else spells.push(granted);
     });
     spells = spells.filter(spell => !spell.isGranted || grantedByIndex.has(spell.index));
@@ -910,6 +935,25 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
             return item;
         });
     }
+    const chosenInstrument = (character.toolProficiencies || []).find(tool => MUSICAL_INSTRUMENTS.some(instrument => String(instrument).toLowerCase() === String(tool).toLowerCase()));
+    if (chosenInstrument) {
+        inventory = inventory.map((item: any) => {
+            if (!/^musical instrument$/i.test(String(item.name || ''))) return item;
+            const detail = inventoryCatalog.find(entry => String(entry.name).toLowerCase() === String(chosenInstrument).toLowerCase());
+            return { ...(detail || {}), ...item, name: chosenInstrument, index: detail?.index || String(chosenInstrument).toLowerCase().replace(/\s+/g, '-'), weight: detail?.weight ?? item.weight, cost: detail?.cost ?? item.cost };
+        });
+    }
+    inventory = inventory.map((item: any) => {
+        if (/^costume$/i.test(String(item.name || '')) && !item.index) {
+            const detail = inventoryCatalog.find(entry => /clothes, costume/i.test(String(entry.name || '')));
+            if (detail) return { ...detail, ...item, name: detail.name, index: detail.index, weight: detail.weight, cost: detail.cost };
+        }
+        return item;
+    });
+    if (character.classes.some((cls: any) => cls.definition?.index === 'bard')) {
+        const dagger = inventory.find((item: any) => /^dagger$/i.test(String(item.name || '')) && Number(item.quantity) === 1);
+        if (dagger) inventory = inventory.map((item: any) => item.id === dagger.id ? { ...item, quantity: 2 } : item);
+    }
     inventory = inventory.map((item: any) => {
         if (!item.index && /^arrow$/i.test(String(item.name || '')) && Number(item.quantity) >= 20) {
             const bundle = inventoryCatalog.find(entry => /^arrows \(20\)/i.test(String(entry.name || '')));
@@ -944,6 +988,22 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         return choice;
     });
 
+    let filteredSpellChoices = choices;
+    try {
+        const spellCatalog = await fetchAllSpells(character.user_id);
+        filteredSpellChoices = choices.map((choice: any) => {
+            if (choice.type !== 'spell' || !Array.isArray(choice.options) || !/divination.*enchantment/i.test(choice.label || '')) return choice;
+            return {
+                ...choice,
+                options: choice.options.filter((option: any) => {
+                    const index = typeof option === 'string' ? option : (option.index || option.name);
+                    const spell = spellCatalog.find((entry: any) => entry.index === index || entry.name.toLowerCase() === String(option.name || option).toLowerCase());
+                    return spell && ['divination', 'enchantment'].includes(String(spell.school?.name || '').toLowerCase());
+                }),
+            };
+        });
+    } catch (e) {}
+
     return hydrateGrantedSpells({
         ...character,
         race,
@@ -951,7 +1011,7 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         classes,
         classFeatures,
         inventory,
-        choices,
+        choices: filteredSpellChoices,
         skills: Array.from(derivedSkills),
         toolProficiencies: Array.from(derivedTools),
     });
