@@ -40,7 +40,8 @@ const EldritchCannonModal: React.FC<EldritchCannonModalProps> = ({ isOpen, onClo
     const artificer = getClassWithUiWidget(character, 'eldritchCannon');
     const artificerLevel = artificer?.level || 1;
     const maxHp = artificerLevel * 5;
-    const freebieAvailable = !character.eldritchCannonFreebieUsed;
+    const cannonResource = character.featureUsage?.['Eldritch Cannon'];
+    const freebieAvailable = cannonResource ? Number(cannonResource.current) > 0 : !character.eldritchCannonFreebieUsed;
 
     const handleSummon = () => {
         const typeData = CANNON_TYPES.find(t => t.name === selectedType);

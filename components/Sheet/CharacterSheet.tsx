@@ -1559,11 +1559,39 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             if (slotLevel > 0) {
                 newSlots[slotLevel] = { ...newSlots[slotLevel], current: Math.max(0, newSlots[slotLevel].current - 1) };
             }
+            const newFeatures = { ...prev.featureUsage };
+            const cannonKey = Object.keys(newFeatures).find(key => /eldritch cannon/i.test(key));
+            if (slotLevel === 0 && cannonKey && Number(newFeatures[cannonKey].current) > 0) {
+                newFeatures[cannonKey] = { ...newFeatures[cannonKey], current: Math.max(0, Number(newFeatures[cannonKey].current) - 1) };
+            }
+            const addWidget = (entries: string[]) => entries.includes('eldritchCannon') ? entries : [...entries, 'eldritchCannon'];
             return {
                 ...prev,
                 activeEldritchCannon: cannon,
                 eldritchCannonFreebieUsed: true,
-                spellSlots: newSlots
+                featureUsage: newFeatures,
+                spellSlots: newSlots,
+                layout: {
+                    ...prev.layout,
+                    right: addWidget(prev.layout.right || []),
+                    mobile: addWidget(prev.layout.mobile || []),
+                },
+            };
+        });
+    };
+
+    const dismissEldritchCannon = () => {
+        setCharacter(prev => {
+            const withoutCannon = (entries: string[]) => (entries || []).filter(id => id !== 'eldritchCannon');
+            return {
+                ...prev,
+                activeEldritchCannon: null,
+                layout: {
+                    ...prev.layout,
+                    left: withoutCannon(prev.layout.left),
+                    right: withoutCannon(prev.layout.right),
+                    mobile: withoutCannon(prev.layout.mobile),
+                },
             };
         });
     };
@@ -1827,10 +1855,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const isArtillerist = hasUiWidget(character, 'eldritchCannon');
                 if (!isArtillerist) return null;
                 const cannon = character.activeEldritchCannon;
+                if (!cannon) return null;
                 return (
                     <div
                         key={widgetKey}
-                        className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3 relative group cursor-pointer hover:border-dnd-gold transition-colors`}
+                        className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3 relative group cursor-pointer`}
                         onClick={() => {
                             if (cannon) {
                                 setViewingCompanion({
@@ -1853,7 +1882,6 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     >
                          <div className="flex justify-between items-center mb-2">
                              <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Eldritch Cannon</h3>
-                             <button onClick={(e) => { e.stopPropagation(); setShowEldritchCannonModal(true); }} className="text-[10px] uppercase font-bold text-gray-400 hover:text-white border border-gray-600 bg-black/40 px-2 py-0.5 rounded transition-colors">Summon</button>
                          </div>
                          {cannon ? (
                              <div className="space-y-3">
@@ -1862,7 +1890,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                          <div className="font-bold text-white text-sm">{cannon.type}</div>
                                          <div className="text-[9px] text-gray-500 uppercase">{cannon.size} Object</div>
                                      </div>
-                                     <button onClick={(e) => { e.stopPropagation(); setCharacter(p => ({ ...p, activeEldritchCannon: null })); }} className="text-gray-500 hover:text-red-500">&times;</button>
+                                     <button onClick={(e) => { e.stopPropagation(); dismissEldritchCannon(); }} className="text-gray-500 hover:text-red-500">&times;</button>
                                  </div>
                                  <div className="flex items-center gap-2 bg-gray-800/40 rounded p-2 overflow-hidden">
                                      <div className="flex-1 text-center border-r border-gray-700/50">
@@ -1902,7 +1930,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             roll('3d8', 'Detonate Explosion Damage');
-                                            setCharacter(p => ({ ...p, activeEldritchCannon: null }));
+                                            dismissEldritchCannon();
                                         }}
                                         className="py-1.5 bg-red-900/20 border border-red-900 text-red-500 rounded text-[10px] font-bold uppercase hover:bg-red-900/40 transition-colors"
                                      >
@@ -2112,7 +2140,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                  </div>
                              </div>
                         )}
-                        {Object.entries(character.featureUsage).filter(([name, usage]) => name !== 'Wild Shape' && !usage.hidden).map(([name, usage]: [string, any]) => {
+                        {Object.entries(character.featureUsage).filter(([name, usage]) => name !== 'Wild Shape' && !usage.hidden && !(name === 'Eldritch Cannon' && character.activeEldritchCannon)).map(([name, usage]: [string, any]) => {
                             const usedCount = usage.max - usage.current;
                             const detailTarget = findResourceDetailsTarget(name, usage);
                             return (
@@ -2128,8 +2156,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     </div>
                                     <span className="text-[10px] text-gray-500 shrink-0">Reset: {usage.reset === 'short' ? 'Short' : 'Long'}</span>
                                 </div>
-                                <div className="flex gap-1.5 justify-start pr-7">{Array.from({length: usage.max}).map((_, i) => { const isUsed = i < usedCount; return (<button type="button" key={i} aria-label={`${formatResourceName(name, character.level)} use ${i + 1}`} className={`h-4 w-4 cursor-pointer transition-colors border rounded-full ${isUsed ? 'bg-dnd-red border-dnd-red' : 'bg-transparent border-gray-600 hover:border-dnd-gold hover:bg-dnd-gold/10'}`} onClick={() => { let used = i + 1; if (usedCount === used) used = i; setCharacter(prev => ({...prev, featureUsage: {...prev.featureUsage, [name]: {...usage, current: usage.max - used}}})); }}></button>); })}</div>
+                                <div className="flex gap-1.5 justify-start pr-7">{Array.from({length: usage.max}).map((_, i) => { const isUsed = i < usedCount; return (<button type="button" key={i} aria-label={`${formatResourceName(name, character.level)} use ${i + 1}`} className={`h-4 w-4 cursor-pointer transition-colors border rounded-full ${isUsed ? 'bg-dnd-red border-dnd-red' : 'bg-transparent border-gray-600 hover:border-dnd-gold hover:bg-dnd-gold/10'}`} onClick={() => { let used = i + 1; if (usedCount === used) used = i; if (name === 'Eldritch Cannon' && used > 0 && !character.activeEldritchCannon) { setShowEldritchCannonModal(true); return; } setCharacter(prev => ({...prev, featureUsage: {...prev.featureUsage, [name]: {...usage, current: usage.max - used}}})); }}></button>); })}</div>
                                 {detailTarget && <button type="button" onClick={() => openResourceDetails(name, usage)} className="absolute bottom-2 right-2 text-gray-500 hover:text-dnd-gold text-sm leading-none px-1" title="Open details" aria-label={`Open details for ${formatResourceName(name, character.level)}`}>↗</button>}
+                                {name === 'Eldritch Cannon' && !character.activeEldritchCannon && (
+                                    <button type="button" onClick={() => setShowEldritchCannonModal(true)} className="mt-2 text-[9px] font-black uppercase tracking-widest text-cyan-300 border border-cyan-800/60 bg-cyan-900/20 hover:bg-cyan-900/40 rounded px-2 py-1 transition-colors">Summon</button>
+                                )}
                                         </>
                                     );
                                 })()}
@@ -4613,6 +4644,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             return;
                         }
                         if (action === 'toggleFeatureUsage') {
+                            if (itm?.name === 'Eldritch Cannon' && Number(itm.value || 0) > 0 && !character.activeEldritchCannon) {
+                                setShowEldritchCannonModal(true);
+                                return;
+                            }
                             setCharacter(prev => {
                                 const newUsage = { ...prev.featureUsage };
                                 if (newUsage[itm.name]) {
