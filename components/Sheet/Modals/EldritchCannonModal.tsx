@@ -77,7 +77,7 @@ const EldritchCannonModal: React.FC<EldritchCannonModalProps> = ({ isOpen, onClo
             <div className="bg-[#1b1c20] border border-gray-800 rounded-xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
                 <div className="p-6 border-b border-gray-700 bg-[#121316] rounded-t-xl shrink-0 flex justify-between items-center">
                     <div>
-                        <h2 className="text-2xl font-serif text-cyan-400">Summon Eldritch Cannon</h2>
+                        <h2 className="text-2xl font-serif text-dnd-gold">Summon Eldritch Cannon</h2>
                         <p className="text-xs text-gray-500 uppercase font-bold tracking-widest mt-1">Artillerist Feature</p>
                     </div>
                     <button onClick={onClose} className="text-gray-500 hover:text-white text-2xl transition-colors">&times;</button>
@@ -91,10 +91,10 @@ const EldritchCannonModal: React.FC<EldritchCannonModalProps> = ({ isOpen, onClo
                                 <button 
                                     key={t.name}
                                     onClick={() => setSelectedType(t.name)}
-                                    className={`p-4 rounded-lg border text-left transition-all ${selectedType === t.name ? 'bg-cyan-900/20 border-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.2)]' : 'bg-gray-800 border-gray-700 hover:border-gray-500'}`}
+                                    className={`p-4 rounded-lg border text-left transition-all ${selectedType === t.name ? 'bg-dnd-gold/10 border-dnd-gold' : 'bg-gray-800 border-gray-700 hover:border-gray-500'}`}
                                 >
                                     <div className="flex justify-between items-center mb-1">
-                                        <span className={`font-bold uppercase tracking-wide ${selectedType === t.name ? 'text-cyan-400' : 'text-white'}`}>{t.name}</span>
+                                        <span className={`font-bold uppercase tracking-wide ${selectedType === t.name ? 'text-dnd-gold' : 'text-white'}`}>{t.name}</span>
                                         <span className="text-[10px] text-gray-500 font-bold">{t.damageType}</span>
                                     </div>
                                     <p className="text-xs text-gray-400 leading-relaxed font-serif italic">"{t.desc}"</p>
@@ -111,7 +111,7 @@ const EldritchCannonModal: React.FC<EldritchCannonModalProps> = ({ isOpen, onClo
                                     <button 
                                         key={s}
                                         onClick={() => setSize(s)}
-                                        className={`flex-1 py-3 rounded-lg border font-bold uppercase text-xs transition-all ${size === s ? 'bg-cyan-900/40 border-cyan-500 text-cyan-100' : 'bg-gray-800 border-gray-700 text-gray-500'}`}
+                                        className={`flex-1 py-3 rounded-lg border font-bold uppercase text-xs transition-all ${size === s ? 'bg-dnd-gold/15 border-dnd-gold text-dnd-gold' : 'bg-gray-800 border-gray-700 text-gray-500'}`}
                                     >
                                         {s}
                                         <div className="text-[9px] opacity-60 normal-case font-normal mt-0.5">
@@ -138,7 +138,7 @@ const EldritchCannonModal: React.FC<EldritchCannonModalProps> = ({ isOpen, onClo
                                                 <button
                                                     key={slot.level}
                                                     onClick={() => setSelectedSlot(slot.level)}
-                                                    className={`px-3 py-2 rounded border text-xs font-bold uppercase transition-all ${selectedSlot === slot.level ? 'bg-cyan-600 border-cyan-500 text-white' : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500'}`}
+                                                    className={`px-3 py-2 rounded border text-xs font-bold uppercase transition-all ${selectedSlot === slot.level ? 'bg-dnd-gold border-dnd-gold text-black' : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500'}`}
                                                 >
                                                     Lvl {slot.level} ({slot.current})
                                                 </button>
@@ -169,7 +169,7 @@ const EldritchCannonModal: React.FC<EldritchCannonModalProps> = ({ isOpen, onClo
                     <button 
                         onClick={handleSummon}
                         disabled={!selectedType || (!freebieAvailable && selectedSlot === null)}
-                        className="bg-cyan-600 hover:bg-cyan-500 disabled:bg-gray-700 disabled:text-gray-500 text-white px-10 py-3 rounded font-bold uppercase text-sm shadow-lg transition-colors"
+                        className="bg-dnd-gold hover:bg-yellow-600 disabled:bg-gray-700 disabled:text-gray-500 text-black px-10 py-3 rounded font-bold uppercase text-sm shadow-lg transition-colors"
                     >
                         Summon
                     </button>

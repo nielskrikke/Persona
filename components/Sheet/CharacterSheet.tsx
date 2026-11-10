@@ -1573,6 +1573,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 spellSlots: newSlots,
                 layout: {
                     ...prev.layout,
+                    left: (prev.layout.left || []).filter(id => id !== 'eldritchCannon'),
                     right: addWidget(prev.layout.right || []),
                     mobile: addWidget(prev.layout.mobile || []),
                 },
@@ -1598,16 +1599,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
     useEffect(() => {
         if (!character.activeEldritchCannon) return;
-        if (character.layout.right?.[0] === 'eldritchCannon' && character.layout.mobile?.includes('eldritchCannon')) return;
+        if (character.layout.right?.[0] === 'eldritchCannon' && character.layout.mobile?.[0] === 'eldritchCannon' && !character.layout.left?.includes('eldritchCannon')) return;
         setCharacter(prev => {
             if (!prev.activeEldritchCannon) return prev;
-            const right = prev.layout.right?.[0] === 'eldritchCannon'
-                ? prev.layout.right
-                : ['eldritchCannon', ...(prev.layout.right || []).filter(id => id !== 'eldritchCannon')];
-            const mobile = (prev.layout.mobile || []).includes('eldritchCannon')
-                ? prev.layout.mobile
-                : ['eldritchCannon', ...(prev.layout.mobile || [])];
-            return { ...prev, layout: { ...prev.layout, right, mobile } };
+            const left = (prev.layout.left || []).filter(id => id !== 'eldritchCannon');
+            const right = ['eldritchCannon', ...(prev.layout.right || []).filter(id => id !== 'eldritchCannon')];
+            const mobile = ['eldritchCannon', ...(prev.layout.mobile || []).filter(id => id !== 'eldritchCannon')];
+            return { ...prev, layout: { ...prev.layout, left, right, mobile } };
         });
     }, [character.activeEldritchCannon]);
 
@@ -2172,7 +2170,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 <div className="flex gap-1.5 justify-start pr-7">{Array.from({length: usage.max}).map((_, i) => { const isUsed = i < usedCount; return (<button type="button" key={i} aria-label={`${formatResourceName(name, character.level)} use ${i + 1}`} className={`h-4 w-4 cursor-pointer transition-colors border rounded-full ${isUsed ? 'bg-dnd-red border-dnd-red' : 'bg-transparent border-gray-600 hover:border-dnd-gold hover:bg-dnd-gold/10'}`} onClick={() => { let used = i + 1; if (usedCount === used) used = i; if (name === 'Eldritch Cannon' && used > 0 && !character.activeEldritchCannon) { setShowEldritchCannonModal(true); return; } setCharacter(prev => ({...prev, featureUsage: {...prev.featureUsage, [name]: {...usage, current: usage.max - used}}})); }}></button>); })}</div>
                                 {detailTarget && <button type="button" onClick={() => openResourceDetails(name, usage)} className="absolute bottom-2 right-2 text-gray-500 hover:text-dnd-gold text-sm leading-none px-1" title="Open details" aria-label={`Open details for ${formatResourceName(name, character.level)}`}>↗</button>}
                                 {name === 'Eldritch Cannon' && !character.activeEldritchCannon && (
-                                    <button type="button" onClick={() => setShowEldritchCannonModal(true)} className="mt-2 text-[9px] font-black uppercase tracking-widest text-cyan-300 border border-cyan-800/60 bg-cyan-900/20 hover:bg-cyan-900/40 rounded px-2 py-1 transition-colors">Summon</button>
+                                    <button type="button" onClick={() => setShowEldritchCannonModal(true)} className="mt-2 text-[9px] font-black uppercase tracking-widest text-gray-300 border border-gray-600 bg-gray-800/60 hover:text-white hover:border-gray-500 rounded px-2 py-1 transition-colors">Summon</button>
                                 )}
                                         </>
                                     );
