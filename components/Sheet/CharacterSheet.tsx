@@ -1564,7 +1564,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             if (slotLevel === 0 && cannonKey && Number(newFeatures[cannonKey].current) > 0) {
                 newFeatures[cannonKey] = { ...newFeatures[cannonKey], current: Math.max(0, Number(newFeatures[cannonKey].current) - 1) };
             }
-            const addWidget = (entries: string[]) => entries.includes('eldritchCannon') ? entries : [...entries, 'eldritchCannon'];
+            const addWidget = (entries: string[]) => entries[0] === 'eldritchCannon' ? entries : ['eldritchCannon', ...entries.filter(id => id !== 'eldritchCannon')];
             return {
                 ...prev,
                 activeEldritchCannon: cannon,
@@ -1595,6 +1595,21 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             };
         });
     };
+
+    useEffect(() => {
+        if (!character.activeEldritchCannon) return;
+        if (character.layout.right?.[0] === 'eldritchCannon' && character.layout.mobile?.includes('eldritchCannon')) return;
+        setCharacter(prev => {
+            if (!prev.activeEldritchCannon) return prev;
+            const right = prev.layout.right?.[0] === 'eldritchCannon'
+                ? prev.layout.right
+                : ['eldritchCannon', ...(prev.layout.right || []).filter(id => id !== 'eldritchCannon')];
+            const mobile = (prev.layout.mobile || []).includes('eldritchCannon')
+                ? prev.layout.mobile
+                : ['eldritchCannon', ...(prev.layout.mobile || [])];
+            return { ...prev, layout: { ...prev.layout, right, mobile } };
+        });
+    }, [character.activeEldritchCannon]);
 
     const handleSummonDefender = (defender: SteelDefenderDetail) => {
         setCharacter(prev => ({ ...prev, activeSteelDefender: defender }));
@@ -1852,8 +1867,6 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     </div>
                 );
             case 'eldritchCannon':
-                const isArtillerist = hasUiWidget(character, 'eldritchCannon');
-                if (!isArtillerist) return null;
                 const cannon = character.activeEldritchCannon;
                 if (!cannon) return null;
                 return (

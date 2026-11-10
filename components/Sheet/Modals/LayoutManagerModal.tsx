@@ -6,7 +6,7 @@ import { CharacterState } from '@/types';
 const WidgetCard = ({ id, onRemove }: { id: string, onRemove?: () => void }) => {
     const meta = WIDGET_METADATA[id] || { icon: '?', desc: 'Widget', color: 'text-gray-400' };
     return (
-        <div className={`bg-[#1b1c20] border border-gray-700 rounded-lg p-3 cursor-move hover:border-dnd-gold transition-all shadow-sm group flex flex-col w-full relative`}>
+        <div className={`bg-[#1b1c20] border border-gray-700 rounded-lg p-3 cursor-move hover:border-gray-500 transition-all shadow-sm group flex flex-col w-full relative`}>
             {onRemove && (
                 <button 
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(); }}
@@ -17,10 +17,8 @@ const WidgetCard = ({ id, onRemove }: { id: string, onRemove?: () => void }) => 
             )}
             <div className="flex justify-between items-start mb-2">
                 <div className="flex items-center gap-2">
-                    <span className={`text-lg ${meta.color}`}>{meta.icon}</span>
-                    <span className="font-bold text-gray-200 text-sm group-hover:text-white">{WIDGET_LABELS[id]}</span>
+                        <span className="font-bold text-gray-200 text-sm group-hover:text-white">{WIDGET_LABELS[id]}</span>
                 </div>
-                <span className="text-gray-600 text-xs">☰</span>
             </div>
             <p className="text-[10px] text-gray-500 leading-tight">{meta.desc}</p>
         </div>
@@ -113,8 +111,8 @@ const LayoutManagerModal = ({
     const filteredUnused = unused.filter(w => WIDGET_LABELS[w].toLowerCase().includes(search.toLowerCase()));
 
     return (
-        <div className="fixed inset-0 bg-black/90 z-[300] flex items-center justify-center p-4 backdrop-blur-md">
-            <div className="bg-[#121316] border border-dnd-gold rounded-xl w-full max-w-6xl shadow-2xl relative flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 bg-black/90 z-[300] flex items-center justify-center p-4 backdrop-blur-md" onClick={onClose}>
+            <div className="bg-[#121316] border border-gray-700 rounded-xl w-full max-w-6xl shadow-2xl relative flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
                 <button onClick={onClose} className="absolute top-4 right-6 text-gray-500 hover:text-white text-2xl transition-colors z-30">&times;</button>
                 
                 <div className="p-6 border-b border-gray-800 bg-[#1b1c20] rounded-t-xl shrink-0">
@@ -216,11 +214,10 @@ const LayoutManagerModal = ({
                                         <button 
                                             key={id}
                                             onClick={() => toggleMobileWidget(id)}
-                                            className={`p-4 rounded-xl border text-left transition-all relative ${active ? 'bg-dnd-gold/10 border-dnd-gold shadow-[0_0_15px_rgba(201,173,106,0.2)]' : 'bg-gray-800 border-gray-700 opacity-60 grayscale hover:grayscale-0 hover:opacity-100'}`}
+                                            className={`p-4 rounded-xl border text-left transition-all relative ${active ? 'bg-dnd-gold/10 border-gray-500' : 'bg-gray-800 border-gray-700 opacity-60 hover:opacity-100'}`}
                                         >
                                             <div className="flex justify-between items-start mb-2">
-                                                <span className={`text-2xl ${active ? meta.color : 'text-gray-500'}`}>{meta.icon}</span>
-                                                {active && <span className="text-dnd-gold text-lg">✓</span>}
+                                                {active && <span className="text-[9px] font-black uppercase tracking-widest text-dnd-gold">Active</span>}
                                             </div>
                                             <div className={`font-bold text-sm ${active ? 'text-white' : 'text-gray-400'}`}>{WIDGET_LABELS[id]}</div>
                                             <div className="text-[9px] text-gray-500 uppercase mt-1 leading-tight">{meta.desc}</div>
