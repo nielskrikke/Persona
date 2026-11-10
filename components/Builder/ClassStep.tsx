@@ -52,7 +52,13 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
   }, []);
 
   const choiceOptionsFor = (choice: any) => {
-      if (choice.kind === 'weapon_mastery' && masteryWeapons.length > 0) return masteryWeapons;
+      if (choice.kind === 'weapon_mastery' && masteryWeapons.length > 0) {
+          const allowed = (choice.options || []).map((option: any) => typeof option === 'string' ? option : (option.name || option.index || '')).filter(Boolean);
+          const normalized = (value: any) => String(value || '').toLowerCase();
+          return allowed.length > 0
+              ? masteryWeapons.filter(weapon => allowed.some((name: string) => normalized(name) === normalized(weapon.name) || normalized(name) === normalized(weapon.index)))
+              : masteryWeapons;
+      }
       return (choice.options || []).flatMap((option: any) => {
           const name = typeof option === 'string' ? option : (option.name || option.index || '');
           if (name === "Artisan's Tools") return ARTISAN_TOOLS;

@@ -24,6 +24,7 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
     const [loading, setLoading] = useState(true);
     const [status, setStatus] = useState("Preparing your journey...");
+    const [ready, setReady] = useState(false);
 
     const accumulator = React.useRef<{
         skills: string[];
@@ -184,6 +185,14 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
                                     count: eff.count || 1,
                                     revertData: { classIndex: item.classIndex }
                                 });
+                                const createdChoice = accumulator.current.choices[accumulator.current.choices.length - 1];
+                                if (choiceType === 'skill' && Array.isArray(createdChoice.options)) {
+                                    const knownSkills = new Set([...accumulator.current.skills, ...character.skills].map(skill => String(skill).toLowerCase()));
+                                    createdChoice.options = createdChoice.options.filter((option: any) => {
+                                        const name = typeof option === 'string' ? option : (option.name || option.index || '');
+                                        return !knownSkills.has(String(name).toLowerCase());
+                                    });
+                                }
                             }
                         }
                     });
@@ -224,8 +233,9 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
             }
         }
 
-        setStatus("Finalizing character...");
-        finish();
+        setStatus("Build complete");
+        setLoading(false);
+        setReady(true);
     };
 
     const finish = async () => {
@@ -253,6 +263,32 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
 
         onComplete(updates);
     };
+
+    if (ready) {
+        const pendingChoices = accumulator.current.choices.filter(choice => choice.value === null || choice.value === undefined);
+        return (
+            <div className="flex flex-col items-center justify-center h-full max-w-3xl mx-auto px-6 text-center animate-in fade-in duration-500">
+                <div className="text-6xl mb-5 text-dnd-gold opacity-80">✦</div>
+                <h2 className="text-3xl font-serif text-white mb-3">Build Complete</h2>
+                <p className="text-gray-400 max-w-xl leading-relaxed mb-6">
+                    Class features and level choices have been prepared. {pendingChoices.length > 0
+                        ? `${pendingChoices.length} choice${pendingChoices.length === 1 ? '' : 's'} still need review.`
+                        : 'No pending choices remain.'}
+                </p>
+                <div className="w-full max-w-lg rounded-xl border border-dnd-gold/30 bg-dnd-gold/5 p-4 text-left mb-6">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-dnd-gold mb-1">Before you finish</p>
+                    <p className="text-xs text-gray-400 leading-relaxed">
+                        Subclass, ASI/feat, weapon mastery and feature choices are confirmed on the sheet under
+                        <strong className="text-gray-200"> Manage → Choices</strong> after creation.
+                    </p>
+                </div>
+                <div className="flex gap-3">
+                    <button onClick={onBack} className="rounded-xl border border-gray-700 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-white hover:border-gray-500 transition-colors">Back</button>
+                    <button onClick={finish} className="rounded-xl bg-dnd-gold px-8 py-3 text-[10px] font-black uppercase tracking-widest text-black hover:bg-yellow-600 transition-colors">Continue to Origin</button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col items-center justify-center h-full max-w-4xl mx-auto px-6 text-center animate-in fade-in duration-700">

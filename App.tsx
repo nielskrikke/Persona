@@ -549,7 +549,11 @@ const App: React.FC = () => {
     const newInventory = [...character.inventory];
     const allItems = await fetchEquipment(currentUser?.id);
     const byName = new Map(allItems.map(item => [item.name.toLowerCase(), item]));
-    for (const rawItem of (extraData.equipment || background.equipment || [])) {
+    const gamingSetPick = (extraData.tools || []).find(tool => GAMING_SETS.some(set => String(set).toLowerCase() === String(tool).toLowerCase()));
+    const resolvedBackgroundEquipment = (extraData.equipment || background.equipment || []).map((item: any) =>
+        /same as the one chosen/i.test(String(item)) ? (gamingSetPick || 'Gaming Set') : item
+    );
+    for (const rawItem of resolvedBackgroundEquipment) {
         const itemStr = String(rawItem).trim();
         if (!itemStr) continue;
         if (/any of your choice/i.test(itemStr)) {
@@ -566,7 +570,7 @@ const App: React.FC = () => {
             continue;
         }
         const quantityMatch = itemStr.match(/\((\d+)\)\s*$/);
-        const quantity = quantityMatch ? Number(quantityMatch[1]) : 1;
+        let quantity = quantityMatch ? Number(quantityMatch[1]) : 1;
         const cleanName = itemStr.replace(/\s*\(\d+\)\s*$/, '').replace(/\s*\(any of your choice\)\s*$/i, '').trim();
         const normalized = (value: string) => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
         const normalizedName = normalized(cleanName);
@@ -576,8 +580,11 @@ const App: React.FC = () => {
             || await fetchEquipmentDetail(cleanName.toLowerCase().replace(/[^a-z0-9]+/g, '-'), currentUser?.id)
             || allItems.find(item => normalized(item.name) === normalizedName)
             || allItems.find(item => !item.is_magic && (normalized(item.name) === reversedName || normalizedName.includes(normalized(item.name))))
+            || allItems.find(item => !item.is_magic && normalized(item.name).startsWith(normalizedName))
             || byName.get(cleanName.toLowerCase());
         if (detail) {
+            const bundleMatch = String(detail.name || '').match(/\((\d+)\)\s*$/);
+            if (bundleMatch && quantity === Number(bundleMatch[1])) quantity = 1;
             newInventory.push({
                 ...detail,
                 id: `bg-${detail.index}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,

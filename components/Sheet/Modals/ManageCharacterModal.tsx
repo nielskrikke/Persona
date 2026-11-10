@@ -818,9 +818,30 @@ const ManageCharacterModal = ({
 
     // Global Save Helper
     const getGlobalUpdates = (overrides: any = {}) => {
-        const derivedSkills = new Set(skills);
-        const derivedTools = new Set(toolProficiencies);
+        const pendingChoices = localChoices.filter((choice: any) => choice.revertData?.pendingConfirm);
+        const pendingSkillValues = new Set<string>();
+        const pendingToolValues = new Set<string>();
+        pendingChoices.forEach((choice: any) => {
+            const values = Array.isArray(choice.value) ? choice.value : [choice.value];
+            values.forEach((value: any) => {
+                const name = typeof value === 'string' ? value : (value?.name || value?.label || '');
+                if (!name) return;
+                if (choice.type === 'skill' || SKILL_LIST.some(skill => skill.name.toLowerCase() === name.toLowerCase())) pendingSkillValues.add(name);
+                else if (choice.type === 'other' || choice.type === 'feature_choice') pendingToolValues.add(name);
+            });
+        });
+        const derivedSkills = new Set(skills.filter((skill: string) => !pendingSkillValues.has(skill)));
+        const derivedTools = new Set(toolProficiencies.filter((tool: string) => !pendingToolValues.has(tool)));
+        const pendingAbilityDelta: any = { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
         localChoices.forEach((choice: any) => {
+            if (choice.revertData?.pendingConfirm) {
+                [choice.revertData?.abilities, choice.revertData?.featAbilities].forEach((source: any) => {
+                    Object.entries(source || {}).forEach(([stat, amount]) => {
+                        if (stat in pendingAbilityDelta) pendingAbilityDelta[stat] -= Number(amount || 0);
+                    });
+                });
+            }
+            if (choice.revertData?.pendingConfirm) return;
             const values = Array.isArray(choice.value) ? choice.value : [choice.value];
             values.forEach((value: any) => {
                 const name = typeof value === 'string' ? value : (value?.name || value?.label || '');
@@ -831,7 +852,9 @@ const ManageCharacterModal = ({
         });
         const resolvedClasses = overrides.classes || localClasses;
         const resolvedFeats = overrides.feats || localFeats;
-        const resolvedAbilities = overrides.abilities || abilities;
+        const resolvedAbilities = overrides.abilities || Object.fromEntries(
+            Object.entries(abilities).map(([stat, value]) => [stat, Number(value) + Number(pendingAbilityDelta[stat] || 0)])
+        ) as unknown as AbilityScores;
         const projected = {
             ...character,
             abilities: resolvedAbilities,
@@ -1959,7 +1982,7 @@ const ManageCharacterModal = ({
 
         let finalValue: any = null;
         if (choice.type === 'asi-feat' || choice.type === 'asi') {
-            if (choice.revertData?.mode === 'asi') {
+            if (choice.revertData?.mode !== 'feat') {
                 const abilities = choice.revertData.abilities;
                 const total = Object.values(abilities).reduce((a: number, b: number) => a + b, 0);
                 if (total === 0) return;
@@ -1998,6 +2021,8 @@ const ManageCharacterModal = ({
                 // Already has enough selections, just "confirming" current state
                 finalValue = choice.value;
             }
+        } else if (typeof choice.value === 'string' && choice.value.trim()) {
+            finalValue = choice.value;
         }
 
         if (finalValue) {
@@ -2013,13 +2038,17 @@ const ManageCharacterModal = ({
         activeTab?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }, [tab, isOpen]);
 
+    const requestClose = () => {
+        if (window.confirm('Discard unsaved changes?')) onClose();
+    };
+
     // Render Logic
     if (!isOpen) return null;
 
     return (
         <div 
             className="fixed inset-0 z-[300] flex items-center justify-center p-4 md:p-8 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300"
-            onClick={onClose}
+            onClick={(event) => { if (event.target === event.currentTarget) requestClose(); }}
         >
             <div 
                 className="bg-[#1b1c20] border border-gray-800 w-full max-w-6xl max-h-[94dvh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300"
@@ -2034,7 +2063,7 @@ const ManageCharacterModal = ({
                         </p>
                     </div>
                     <button 
-                        onClick={onClose}
+                        onClick={requestClose}
                         className="p-2 hover:bg-gray-800 rounded-full text-gray-400 hover:text-white transition-colors"
                     >
                         <X size={24} />
@@ -2912,7 +2941,7 @@ const ManageCharacterModal = ({
                                                                         {!choice.revertData?.isSubChoice && (
                                                                             <div className="flex gap-2">
                                                                                 <button 
-                                                                                    onClick={() => handleChoiceChange(choice.id, 'asi')}
+                                                                                    onClick={() => { if (choice.revertData?.mode === 'feat') handleChoiceChange(choice.id, 'asi'); }}
                                                                                     className={`flex-1 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${
                                                                                         choice.revertData?.mode !== 'feat' 
                                                                                             ? 'bg-dnd-gold border-dnd-gold text-black' 
@@ -3046,7 +3075,13 @@ const ManageCharacterModal = ({
                                                                     </div>
                                                                 ) : (
                                                                     (() => {
-                                                                        const options = choice.options || [];
+                                                                        const knownSkillNames = new Set([...skills, ...(character.skills || [])].map((skill: any) => String(skill).toLowerCase()));
+                                                                        const selectedValues = Array.isArray(choice.value) ? choice.value : [choice.value];
+                                                                        const options = (choice.options || []).filter((opt: any) => {
+                                                                            if (choice.type !== 'skill') return true;
+                                                                            const value = typeof opt === 'string' ? opt : (opt.name || opt.index || '');
+                                                                            return selectedValues.includes(value) || !knownSkillNames.has(String(value).toLowerCase());
+                                                                        });
                                                                         const hasDescriptions = options.some((opt: any) => typeof opt !== 'string' && opt.desc);
                                                                         
                                                                         return (
@@ -3141,7 +3176,7 @@ const ManageCharacterModal = ({
                                                                         onClick={() => handleConfirmChoice(choice.id)}
                                                                         disabled={
                                                                             choice.type === 'asi-feat' 
-                                                                                ? (choice.revertData?.mode === 'asi' 
+                                                                                ? (choice.revertData?.mode !== 'feat' 
                                                                                     ? Object.values(choice.revertData?.abilities || {}).reduce((a: any, b: any) => a + b, 0) === 0
                                                                                     : !choice.revertData?.featIndex)
                                                                                 : choice.type === 'subclass' || choice.type === 'feat-selection'
@@ -3318,7 +3353,7 @@ const ManageCharacterModal = ({
                                                                                                 <div className="space-y-4">
                                                                                                     <div className="flex gap-2">
                                                                                                         <button 
-                                                                                                            onClick={() => handleChoiceChange(choice.id, 'asi')}
+                                                                                                            onClick={() => { if (choice.revertData?.mode === 'feat') handleChoiceChange(choice.id, 'asi'); }}
                                                                                                             className={`flex-1 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${
                                                                                                                 choice.revertData?.mode !== 'feat' 
                                                                                                                     ? 'bg-dnd-gold border-dnd-gold text-black' 
@@ -3448,7 +3483,13 @@ const ManageCharacterModal = ({
                                                                                                 </div>
                                                                                             ) : (
                                                                                                 (() => {
-                                                                                                    const options = choice.options || [];
+                                                                                                    const knownSkillNames = new Set([...skills, ...(character.skills || [])].map((skill: any) => String(skill).toLowerCase()));
+                                                                                                    const selectedValues = Array.isArray(choice.value) ? choice.value : [choice.value];
+                                                                                                    const options = (choice.options || []).filter((opt: any) => {
+                                                                                                        if (choice.type !== 'skill') return true;
+                                                                                                        const value = typeof opt === 'string' ? opt : (opt.name || opt.index || '');
+                                                                                                        return selectedValues.includes(value) || !knownSkillNames.has(String(value).toLowerCase());
+                                                                                                    });
                                                                                                     const hasDescriptions = options.some((opt: any) => typeof opt !== 'string' && opt.desc);
 
                                                                                                     return (

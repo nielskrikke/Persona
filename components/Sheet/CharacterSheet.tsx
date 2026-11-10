@@ -329,6 +329,21 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     }, []);
 
     useEffect(() => {
+        if (!character.classes?.length) return;
+        const computed = calculateMaxHp(character);
+        if (computed === character.maxHp) return;
+        setCharacter(prev => {
+            const next = calculateMaxHp(prev);
+            if (next === prev.maxHp) return prev;
+            return {
+                ...prev,
+                maxHp: next,
+                currentHp: Math.max(0, Math.min(next, Number(prev.currentHp || 0) + Math.max(0, next - prev.maxHp))),
+            };
+        });
+    }, [character.inventory, character.abilities, character.classes, character.feats, character.race, character.subrace, character.level]);
+
+    useEffect(() => {
         if (saveTimeout.current) clearTimeout(saveTimeout.current);
         const curStateStr = JSON.stringify(character);
         if (curStateStr === lastSavedState.current) return;
@@ -3316,7 +3331,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const masteredWeapons = (character.choices || [])
                 .filter((choice: any) => choice.type === 'weapon_mastery')
                 .flatMap((choice: any) => Array.isArray(choice.value) ? choice.value : [choice.value]);
-            if (masteryName && masteredWeapons.some((name: any) => String(name).toLowerCase() === item.name.toLowerCase())) {
+            const masteryBaseName = item.base_item ? (Library.getItem(item.base_item)?.name || item.base_item) : '';
+            const masteryCandidates = [item.name, item.index, item.base_item, masteryBaseName].filter(Boolean).map((value: any) => String(value).toLowerCase());
+            if (masteryName && masteredWeapons.some((name: any) => masteryCandidates.includes(String(name).toLowerCase()))) {
                 (weaponAttack as any).mastery = {
                     ...getWeaponMasteryData(masteryName, prof, strMod, dexMod),
                     hit: finalHit,
@@ -3889,7 +3906,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         const deduped: any[] = [];
         const seenFeatureKeys = new Set<string>();
         list.forEach(feature => {
-            const key = `${feature.type}:${String(feature.name).trim().toLowerCase()}`;
+            const key = String(feature.name).trim().toLowerCase();
             if (seenFeatureKeys.has(key)) return;
             seenFeatureKeys.add(key);
             deduped.push(feature);

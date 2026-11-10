@@ -190,10 +190,16 @@ export const fetchEquipment = async (userId?: string): Promise<EquipmentDetail[]
     try {
         const custom = await loadHomebrew('custom_equipment', userId);
         if (custom && custom.length > 0) {
-            const items = custom.map((i: any) => ({
-                ...i,
-                name: i.name,
-            }));
+            cacheItems(custom);
+            const items = custom.map((i: any) => {
+                const base: any = i.base_item ? itemCache.get(String(i.base_item).toLowerCase()) : null;
+                return {
+                    ...i,
+                    name: i.name,
+                    weight: (i.weight === 0 || i.weight === undefined) && base ? base.weight : i.weight,
+                    cost: (!i.cost || !i.cost.quantity) && base ? base.cost : i.cost,
+                };
+            });
             cacheItems(items);
             return items;
         }
@@ -883,6 +889,44 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
             return mergeInventoryItem(latest, item, byIndex);
         });
     } catch (e) {}
+
+    const inventoryCatalog = await fetchEquipment(character.user_id).catch(() => []);
+    const gamingPick = (character.toolProficiencies || []).find(tool => GAMING_SETS.some(set => String(set).toLowerCase() === String(tool).toLowerCase()))
+        || (character.choices || []).flatMap((choice: any) => Array.isArray(choice.value) ? choice.value : [choice.value])
+            .find((value: any) => GAMING_SETS.some(set => String(set).toLowerCase() === String(value).toLowerCase()));
+    if (gamingPick) {
+        inventory = inventory.map((item: any) => {
+            if (/gaming set \(same as the one chosen\)/i.test(String(item.name || ''))) {
+                const detail = inventoryCatalog.find(entry => String(entry.name).toLowerCase() === String(gamingPick).toLowerCase());
+                return {
+                    ...(detail || {}),
+                    ...item,
+                    name: gamingPick,
+                    index: detail?.index || String(gamingPick).toLowerCase().replace(/\s+/g, '-'),
+                    weight: detail?.weight ?? item.weight,
+                    cost: detail?.cost ?? item.cost,
+                };
+            }
+            return item;
+        });
+    }
+    inventory = inventory.map((item: any) => {
+        if (!item.index && /^arrow$/i.test(String(item.name || '')) && Number(item.quantity) >= 20) {
+            const bundle = inventoryCatalog.find(entry => /^arrows \(20\)/i.test(String(entry.name || '')));
+            if (bundle) {
+                return {
+                    ...bundle,
+                    ...item,
+                    name: bundle.name,
+                    index: bundle.index,
+                    quantity: Math.max(1, Math.floor(Number(item.quantity) / 20)),
+                    weight: bundle.weight,
+                    cost: bundle.cost,
+                };
+            }
+        }
+        return item;
+    });
 
     const choices = (character.choices || []).map((choice: any) => {
         if (choice.type === 'expertise') {

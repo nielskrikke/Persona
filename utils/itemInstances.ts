@@ -34,7 +34,14 @@ export const mergeInventoryItem = (
     };
     if (!dbRecord) return { ...entry, name: stripHomebrewSuffix(entry.name), overrides: customized ? overrides : undefined, customized };
     if (!customized) {
-        return { ...dbRecord, ...entry, name: stripHomebrewSuffix(entry.name || dbRecord.name), customized: false };
+        return {
+            ...dbRecord,
+            ...entry,
+            name: stripHomebrewSuffix(entry.name || dbRecord.name),
+            weight: Number(entry.weight) || Number(dbRecord.weight) || 0,
+            cost: entry.cost && (typeof entry.cost !== 'object' || Number(entry.cost.quantity) > 0) ? entry.cost : dbRecord.cost,
+            customized: false,
+        };
     }
 
     const baseIndex = overrides.base_item || entry.base_item || (dbRecord as any).base_item;
@@ -99,5 +106,7 @@ export const mergeInventoryItem = (
     if (overrides.requires_attunement !== undefined) merged.requires_attunement = overrides.requires_attunement;
     const replaced = replaceTokens(merged, base?.name || '', overrides.choice_value || '');
     replaced.name = stripHomebrewSuffix(replaced.name);
+    if ((!replaced.weight || Number(replaced.weight) === 0) && Number(dbRecord.weight) > 0) replaced.weight = dbRecord.weight;
+    if ((!replaced.cost || (typeof replaced.cost === 'object' && !Number(replaced.cost.quantity))) && dbRecord.cost) replaced.cost = dbRecord.cost;
     return replaced;
 };
