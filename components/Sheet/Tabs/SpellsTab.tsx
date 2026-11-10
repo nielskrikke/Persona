@@ -43,6 +43,23 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
         const type = spell.damage?.damage_type?.name;
         return type && !/healing/i.test(type) ? ` ${String(type).toLowerCase()}` : '';
     };
+    const spellRangeFor = (spell: SpellDetail, castLevel: number): string => {
+        const base = typeof spell.range === 'object' && spell.range
+            ? `${(spell.range as any).normal || 0}${(spell.range as any).long ? `/${(spell.range as any).long}` : ''} feet`
+            : String(spell.range || '');
+        let perSlot = Number((spell as any).scaling?.rangePerSlot || 0);
+        if (perSlot <= 0) {
+            const higherText = (spell.higher_level || []).join(' ');
+            const rangeMatch = higherText.match(/range\s+increases\s+by\s+(\d+)\s+(?:feet|ft)/i);
+            if (rangeMatch) perSlot = Number(rangeMatch[1]) || 0;
+        }
+        if (perSlot <= 0 || castLevel <= Number(spell.level || 0)) return base;
+        const match = base.match(/(\d+)/);
+        if (!match) return base;
+        const increased = Number(match[1]) + perSlot * (castLevel - Number(spell.level || 0));
+        return base.replace(match[1], String(increased));
+    };
+
     const displayCastLevelFor = (spell: SpellDetail, sectionLevel: number) => (spell as any).itemSpell ? castLevelFor(spell) : (spell.level === 0 ? character.level : sectionLevel);
     const hasUpcastBenefit = (spell: SpellDetail): boolean => {
         if (Number(spell.level) <= 0) return false;
@@ -56,6 +73,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
         if (typeof scaling?.per_slot === 'string' && scaling.per_slot.trim()) return true;
         if (typeof scaling === 'string' && scaling.trim()) return true;
         if (Number(scaling?.targetsPerSlot || 0) > 0) return true;
+        if (Number(scaling?.rangePerSlot || 0) > 0) return true;
         return (spell.higher_level || []).some(line => String(line || '').trim().length > 0);
     };
 
@@ -395,7 +413,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                             {(spell as any).itemMaxCost > itemBaseCost(spell) && (<select value={itemCostFor(spell)} onChange={e => setItemCostSelections(prev => ({ ...prev, [spell.index]: Number(e.target.value) }))} onClick={e => e.stopPropagation()} className="text-[8px] bg-black/40 border border-orange-800/50 text-orange-200 rounded px-1">{[...Array(Number((spell as any).itemMaxCost) - itemBaseCost(spell) + 1)].map((_, i) => <option key={i} value={itemBaseCost(spell) + i}>{itemBaseCost(spell) + i}</option>)}</select>)}
                                                         </div>
                                                     </div>
-                                                    <div className="text-[10px] text-gray-500 truncate">{spell.casting_time} • {spell.range} • {spell.duration}</div>
+                                                    <div className="text-[10px] text-gray-500 truncate">{spell.casting_time} • {spellRangeFor(spell, castLevel)} • {spell.duration}</div>
                                                 </div>
                                                 <div className="text-center">
                                                     {dcType ? (
@@ -474,7 +492,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                     {spell.itemSpell && <span className="text-[8px] bg-orange-900/40 text-orange-300 border border-orange-800/60 px-1 rounded">{itemCostFor(spell)} charge</span>}
                                                     {(spell as any).itemMaxCost > itemBaseCost(spell) && <select value={itemCostFor(spell)} onChange={e => setItemCostSelections(prev => ({ ...prev, [spell.index]: Number(e.target.value) }))} onClick={e => e.stopPropagation()} className="text-[8px] bg-black/40 border border-orange-800/50 text-orange-200 rounded px-1">{[...Array(Number((spell as any).itemMaxCost) - itemBaseCost(spell) + 1)].map((_, i) => <option key={i} value={itemBaseCost(spell) + i}>{itemBaseCost(spell) + i}</option>)}</select>}
                                                 </div>
-                                                <div className="text-[10px] text-gray-500 truncate">{spell.casting_time} • {spell.range} • {spell.duration}</div>
+                                                <div className="text-[10px] text-gray-500 truncate">{spell.casting_time} • {spellRangeFor(spell, castLevel)} • {spell.duration}</div>
                                                 {dmg && (
                                                     <div className="text-[10px] text-gray-400 truncate">{healing ? 'Healing' : 'Result'}: <span className="text-white font-bold">{resultDmg}</span>{dcType ? ` • ${dcType} ${spellSaveFor(spell)}` : (spell as any).attack_type ? ` • ${spellAttackFor(spell)} to hit` : ''}</div>
                                                 )}

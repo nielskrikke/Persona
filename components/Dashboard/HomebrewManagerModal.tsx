@@ -1070,6 +1070,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     const [spellUpcastBase, setSpellUpcastBase] = useState(1);
     const [spellUpcastTargets, setSpellUpcastTargets] = useState(0);
     const [spellUpcastUnit, setSpellUpcastUnit] = useState('targets');
+    const [spellRangeScaling, setSpellRangeScaling] = useState(0);
     const [spellClasses, setSpellClasses] = useState<string[]>([]);
     const [spellOriginal, setSpellOriginal] = useState<any>(null);
 
@@ -1225,7 +1226,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
         setArmorProfs([]); setWeaponProfs([]); setMulticlassProfs(''); setMulticlassChoices('');
         setSpellLevel(0); setSpellSchool('Evocation'); setSpellCastTime('1 Action'); setSpellRange('60 feet'); setSpellDuration('Instantaneous'); setSpellRitual(false); setSpellConcentration(false);
         setSpellComponents(['V', 'S']); setSpellMaterial(''); setSpellHigherLevel(''); setSpellHasAttack(false); setSpellHasSave(false); setSpellDmgFormula(''); setSpellSecondaryDamage('');
-        setSpellDmgType('Force'); setSpellScaling(''); setSpellAdvancedScaling(false); setSpellScalingMode('linear'); setSpellSlotTable({}); setSpellUpcastBase(1); setSpellUpcastTargets(0); setSpellUpcastUnit('targets'); setSpellClasses([]); setSpellOriginal(null);
+        setSpellDmgType('Force'); setSpellScaling(''); setSpellAdvancedScaling(false); setSpellScalingMode('linear'); setSpellSlotTable({}); setSpellUpcastBase(1); setSpellUpcastTargets(0); setSpellUpcastUnit('targets'); setSpellRangeScaling(0); setSpellClasses([]); setSpellOriginal(null);
         setItemCategory('Other'); setItemSubtype(''); setItemIsWondrous(false); setItemRarity('Common'); setItemWeight(0); setItemCost('0 gp'); setItemAttunement(false);
         setItemDmgDice(''); setItemDmgType('Piercing'); setItemWeaponType('Simple'); setItemArmorType('Light'); setItemAcBase(0); setItemAcDexBonus(false); setItemAcMaxBonus(null);
         setItemIsThrown(false); setItemThrownRange(''); setItemThrownDamage(''); setItemProperties([]); setItemModifiers([]);
@@ -1351,6 +1352,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
             setSpellUpcastBase(Number(item.scaling?.baseTargets || 1));
             setSpellUpcastTargets(Number(item.scaling?.targetsPerSlot || 0));
             setSpellUpcastUnit(item.scaling?.targetUnit || 'targets');
+            setSpellRangeScaling(Number(item.scaling?.rangePerSlot || 0));
         } else if (activeTab === 'item') {
             setItemCategory(item.equipment_category?.name || 'Other');
             setItemSubtype(item.subtype || '');
@@ -1609,6 +1611,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     baseTargets: Number(spellUpcastBase) || 1,
                     targetsPerSlot: Number(spellUpcastTargets) || undefined,
                     targetUnit: spellUpcastTargets > 0 ? (spellUpcastUnit.trim() || 'targets') : undefined,
+                    rangePerSlot: Number(spellRangeScaling) || undefined,
                 } : undefined;
                 payload = {
                     ...previous,
@@ -2178,6 +2181,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                                 <label className="space-y-1"><span className="text-[8px] uppercase font-black text-gray-600 block">Base targets</span><input type="number" min={1} value={spellUpcastBase} onChange={e => setSpellUpcastBase(Number(e.target.value) || 1)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white" /></label>
                                                                 <label className="space-y-1"><span className="text-[8px] uppercase font-black text-gray-600 block">Extra targets / slot</span><input type="number" min={0} value={spellUpcastTargets} onChange={e => setSpellUpcastTargets(Number(e.target.value) || 0)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white" /></label>
                                                                 <label className="space-y-1"><span className="text-[8px] uppercase font-black text-gray-600 block">Target unit</span><input value={spellUpcastUnit} onChange={e => setSpellUpcastUnit(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white" placeholder="targets" /></label>
+                                                                <label className="space-y-1"><span className="text-[8px] uppercase font-black text-gray-600 block">Range / slot (ft)</span><input type="number" min={0} value={spellRangeScaling} onChange={e => setSpellRangeScaling(Number(e.target.value) || 0)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-1.5 text-xs text-white" placeholder="e.g. 30" /></label>
                                                             </div>
                                                         </>
                                                     )}

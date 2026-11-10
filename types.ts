@@ -117,7 +117,7 @@ export interface SpellDetail extends APIReference {
     classes: APIReference[];
     subclasses?: APIReference[];
     higher_level?: string[];
-    scaling?: { per_slot?: string; mode?: 'linear' | 'table'; baseTargets?: number; targetsPerSlot?: number; targetUnit?: string };
+    scaling?: { per_slot?: string; mode?: 'linear' | 'table'; baseTargets?: number; targetsPerSlot?: number; targetUnit?: string; rangePerSlot?: number };
     heal_at_slot_level?: Record<string, string>;
     damage?: any;
     dc?: any;
