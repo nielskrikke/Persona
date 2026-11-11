@@ -3432,6 +3432,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             ...(character.classFeatures || []),
             ...(character.feats || []),
         ];
+        const seenFeatureActions = new Set<string>();
         actionSources.forEach((feature: any) => {
             (feature.effects || []).forEach((effect: any, idx: number) => {
                 if (!['action', 'bonus_action', 'reaction'].includes(effect.type)) return;
@@ -3454,6 +3455,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 }
                 const hasSave = Boolean(effect.save_ability || effect.save?.ability || rawDC);
                 const actionName = effect.name || feature.name;
+                const actionKey = `${String(actionName).toLowerCase()}|${String(effect.type || '').toLowerCase()}`;
+                if (seenFeatureActions.has(actionKey)) return;
+                seenFeatureActions.add(actionKey);
                 const isDivineSpark = /divine spark/i.test(actionName);
                 const divineSparkDice = isDivineSpark ? (character.level >= 13 ? 3 : character.level >= 7 ? 2 : 1) : 0;
                 const usage = character.featureUsage?.[actionName];
