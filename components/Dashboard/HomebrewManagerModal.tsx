@@ -1062,7 +1062,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     const [spellSaveType, setSpellSaveType] = useState('DEX');
     const [spellDmgFormula, setSpellDmgFormula] = useState('');
     const [spellSecondaryDamage, setSpellSecondaryDamage] = useState('');
-    const [spellDmgType, setSpellDmgType] = useState('Force');
+    const [spellDmgType, setSpellDmgType] = useState('');
     const [spellScaling, setSpellScaling] = useState('');
     const [spellAdvancedScaling, setSpellAdvancedScaling] = useState(false);
     const [spellScalingMode, setSpellScalingMode] = useState<'linear' | 'table'>('linear');
@@ -1226,7 +1226,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
         setArmorProfs([]); setWeaponProfs([]); setMulticlassProfs(''); setMulticlassChoices('');
         setSpellLevel(0); setSpellSchool('Evocation'); setSpellCastTime('1 Action'); setSpellRange('60 feet'); setSpellDuration('Instantaneous'); setSpellRitual(false); setSpellConcentration(false);
         setSpellComponents(['V', 'S']); setSpellMaterial(''); setSpellHigherLevel(''); setSpellHasAttack(false); setSpellHasSave(false); setSpellDmgFormula(''); setSpellSecondaryDamage('');
-        setSpellDmgType('Force'); setSpellScaling(''); setSpellAdvancedScaling(false); setSpellScalingMode('linear'); setSpellSlotTable({}); setSpellUpcastBase(1); setSpellUpcastTargets(0); setSpellUpcastUnit('targets'); setSpellRangeScaling(0); setSpellClasses([]); setSpellOriginal(null);
+        setSpellDmgType(''); setSpellScaling(''); setSpellAdvancedScaling(false); setSpellScalingMode('linear'); setSpellSlotTable({}); setSpellUpcastBase(1); setSpellUpcastTargets(0); setSpellUpcastUnit('targets'); setSpellRangeScaling(0); setSpellClasses([]); setSpellOriginal(null);
         setItemCategory('Other'); setItemSubtype(''); setItemIsWondrous(false); setItemRarity('Common'); setItemWeight(0); setItemCost('0 gp'); setItemAttunement(false);
         setItemDmgDice(''); setItemDmgType('Piercing'); setItemWeaponType('Simple'); setItemArmorType('Light'); setItemAcBase(0); setItemAcDexBonus(false); setItemAcMaxBonus(null);
         setItemIsThrown(false); setItemThrownRange(''); setItemThrownDamage(''); setItemProperties([]); setItemModifiers([]);
@@ -1324,7 +1324,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
             setSpellSchool(item.school?.name || 'Evocation');
             setSpellCastTime(item.casting_time || '1 Action');
             setSpellRange(item.range || '60 feet');
-            setSpellDuration(item.duration?.replace("Concentration, ", "") || 'Instantaneous');
+            setSpellDuration(item.duration ? String(item.duration).replace(/^Concentration,\s*/i, '') : 'Instantaneous');
             setSpellConcentration(item.concentration || false);
             setSpellRitual(item.ritual || false);
             setSpellComponents(item.components || ['V', 'S']);
@@ -1341,7 +1341,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     const firstKey = Object.keys(dmgAtLevel)[0];
                     setSpellDmgFormula(dmgAtLevel[firstKey]);
                 }
-                setSpellDmgType(item.damage.damage_type?.name || 'Force');
+                setSpellDmgType(item.damage.damage_type?.name || '');
             }
             setSpellScaling(item.scaling?.per_slot || (typeof item.scaling === 'string' ? item.scaling : '') || '');
             const slotTable = item.damage?.damage_at_slot_level || item.heal_at_slot_level || {};
@@ -1602,7 +1602,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                 }
                 const nextDamage = Object.keys(damageTable).length > 0 ? {
                     ...previousDamage,
-                    damage_type: { name: spellDmgType, index: spellDmgType.toLowerCase() },
+                    damage_type: spellDmgType ? { name: spellDmgType, index: spellDmgType.toLowerCase() } : previousDamage.damage_type,
                     [damageKey]: damageTable,
                 } : (Object.keys(previousDamage).length > 0 ? previousDamage : undefined);
                 const scalingConfig = spellLevel > 0 && (spellAdvancedScaling || spellScaling.trim() || Number(spellUpcastTargets) > 0) ? {
@@ -2057,7 +2057,8 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                             </div>
                                             <div>
                                                 <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Duration</label>
-                                                <select value={spellDuration} onChange={e => setSpellDuration(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-white outline-none focus:border-dnd-gold">
+                                                <input value={spellDuration} onChange={e => setSpellDuration(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-white outline-none focus:border-dnd-gold" placeholder="e.g. Instantaneous, up to 1 minute, 1 hour" />
+                                                <select className="hidden" value={spellDuration} onChange={e => setSpellDuration(e.target.value)}>
                                                     <option>Instantaneous</option>
                                                     <option>1 Round</option>
                                                     <option>1 Minute</option>
@@ -2228,6 +2229,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                     <div>
                                                         <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Damage Type</label>
                                                         <select value={spellDmgType} onChange={e => setSpellDmgType(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-white">
+                                                            <option value="">None</option>
                                                             {['Acid', 'Bludgeoning', 'Cold', 'Fire', 'Force', 'Healing', 'Lightning', 'Necrotic', 'Piercing', 'Poison', 'Psychic', 'Radiant', 'Slashing', 'Thunder'].map(t => <option key={t} value={t}>{t}</option>)}
                                                         </select>
                                                     </div>

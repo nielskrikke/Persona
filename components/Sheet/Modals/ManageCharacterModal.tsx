@@ -66,6 +66,8 @@ const ManageCharacterModal = ({
     const [localClasses, setLocalClasses] = useState(character.classes);
     const [localClassFeatures, setLocalClassFeatures] = useState(character.classFeatures);
     const [localMaxHp, setLocalMaxHp] = useState(character.maxHp);
+    const [discardPrompt, setDiscardPrompt] = useState(false);
+    const initialSnapshotRef = useRef('');
     const [levelDownConfirm, setLevelDownConfirm] = useState<number | null>(null);
     const isChoiceComplete = (choice: any) => {
         if (!choice) return false;
@@ -2039,8 +2041,23 @@ const ManageCharacterModal = ({
         activeTab?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }, [tab, isOpen]);
 
+    const discardSnapshot = () => JSON.stringify({
+        name, avatar, alignment, xp, languages, abilities, localFeats, localSpells, localClasses,
+        localClassFeatures, localMaxHp, localChoices, skills, expertise, toolProficiencies,
+        savingThrowProficiencies, localFeatures, fontScale, backgroundImageUrl, backgroundColor,
+        themeColor, themeColorSecondary, diceColor, show3DDice, combatOverrides,
+    });
+    useEffect(() => {
+        if (!isOpen) return;
+        const timer = setTimeout(() => { initialSnapshotRef.current = discardSnapshot(); }, 0);
+        return () => clearTimeout(timer);
+    }, [isOpen]);
     const requestClose = () => {
-        if (window.confirm('Discard unsaved changes?')) onClose();
+        if (initialSnapshotRef.current && discardSnapshot() !== initialSnapshotRef.current) {
+            setDiscardPrompt(true);
+        } else {
+            onClose();
+        }
     };
 
     // Render Logic
@@ -3758,6 +3775,18 @@ const ManageCharacterModal = ({
                                     Revert
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {discardPrompt && (
+                <div className="fixed inset-0 z-[400] flex items-center justify-center p-4 bg-black/80">
+                    <div className="w-full max-w-md rounded-2xl border border-gray-700 bg-[#1b1c20] p-6 shadow-2xl">
+                        <h3 className="text-xl font-serif text-white mb-2">Discard unsaved changes?</h3>
+                        <p className="text-sm text-gray-400 mb-6">Your edits in Manage Character will be lost.</p>
+                        <div className="flex justify-end gap-3">
+                            <button onClick={() => setDiscardPrompt(false)} className="px-4 py-2 rounded-lg border border-gray-700 text-xs font-black uppercase tracking-widest text-gray-400 hover:text-white">Keep Editing</button>
+                            <button onClick={onClose} className="px-4 py-2 rounded-lg bg-red-700 text-xs font-black uppercase tracking-widest text-white hover:bg-red-600">Discard</button>
                         </div>
                     </div>
                 </div>

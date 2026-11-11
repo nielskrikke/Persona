@@ -795,7 +795,7 @@ const DetailSidePanel = ({
                                         { id: 'isHexWeapon', label: 'Hex Weapon', visible: isWarlock && isHexblade },
                                         { id: 'isSpellFocus', label: 'Spell Focus', visible: isSpellcaster },
                                         { id: 'isInfusion', label: 'Artificer Infusion', visible: isArtificer },
-                                        { id: 'isShillelagh', label: 'Shillelagh', visible: isSpellcaster },
+                                        { id: 'isShillelagh', label: 'Shillelagh', visible: isSpellcaster && /\b(club|quarterstaff)\b/i.test(itemName) },
                                         { id: 'isBattleReady', label: 'Battle Ready', visible: isArtificer && isBattleReady },
                                     ].filter(f => f.visible);
 

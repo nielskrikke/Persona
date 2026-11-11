@@ -9,6 +9,11 @@ const withCustom = (entries: any[] | undefined) => (entries || []).map(entry => 
 
 const stripHomebrewSuffix = (name: any) => typeof name === 'string' ? name.replace(/\s*\(HB\)\s*$/i, '').trim() : name;
 
+const dedupeEffects = (effects: any[] | undefined) => Array.from(new Map((effects || []).map((effect: any) => [
+    `${String(effect?.name || effect?.spell || '').toLowerCase()}|${String(effect?.spell || '').toLowerCase()}`,
+    effect,
+])).values());
+
 export const hasItemOverrides = (item: InventoryItem): boolean => Boolean(item?.overrides && Object.keys(item.overrides).length > 0);
 
 export const mergeInventoryItem = (
@@ -38,12 +43,16 @@ export const mergeInventoryItem = (
         const base = baseIndex ? lookup.get(String(baseIndex).toLowerCase()) : undefined;
         const hasEntryCost = entry.cost && (typeof entry.cost !== 'object' || Number(entry.cost.quantity) > 0);
         const hasDbCost = dbRecord.cost && (typeof dbRecord.cost !== 'object' || Number(dbRecord.cost.quantity) > 0);
+        const choiceValue = entry.choice_value || (dbRecord as any).choice_value;
+        const variant = choiceValue ? (dbRecord as any).choice?.variants?.[choiceValue] : null;
+        const effects = dedupeEffects([...(dbRecord.effects || []), ...(variant?.effects || []), ...(entry.effects || [])]);
         return {
             ...dbRecord,
             ...entry,
             name: stripHomebrewSuffix(entry.name || dbRecord.name),
             weight: Number(entry.weight) || Number(dbRecord.weight) || Number(base?.weight) || 0,
             cost: hasEntryCost ? entry.cost : (hasDbCost ? dbRecord.cost : base?.cost),
+            effects,
             customized: false,
         };
     }
@@ -100,6 +109,10 @@ export const mergeInventoryItem = (
         ...((dbRecord.effects) || []),
         ...withCustom(overrides.effects),
     ];
+    const choiceValue = overrides.choice_value || (entry as any).choice_value;
+    const variant = choiceValue ? (dbRecord as any).choice?.variants?.[choiceValue] : null;
+    if (variant?.effects) merged.effects.push(...variant.effects);
+    merged.effects = dedupeEffects(merged.effects);
     merged.resources = [
         ...((baseSource.resources) || []),
         ...((dbRecord.resources) || []),
