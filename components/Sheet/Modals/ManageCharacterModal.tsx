@@ -1066,7 +1066,16 @@ const ManageCharacterModal = ({
             const childIds = new Set(subChoices.map(s => s.id));
             const filtered = prev.filter(c => !childIds.has(c.id));
             return filtered.map(c => 
-                c.id === choiceId ? { ...c, value: null } : c
+                c.id === choiceId ? {
+                    ...c,
+                    value: null,
+                    revertData: {
+                        ...c.revertData,
+                        abilities: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+                        featAbilities: null,
+                        pendingConfirm: false,
+                    },
+                } : c
             );
         });
     };

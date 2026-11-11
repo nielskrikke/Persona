@@ -523,7 +523,8 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
     };
     const featAbilityByIndex: Record<string, string> = {};
     (character.choices || []).forEach((choice: any) => {
-        if (choice.type !== 'asi' || !choice.revertData?.featIndex || !choice.revertData?.isSubChoice) return;
+        if (!choice.revertData?.featIndex) return;
+        if (choice.type !== 'asi' && !/spellcasting ability/i.test(choice.label || '')) return;
         const raw = String(choice.value || '').toLowerCase();
         const ability = ['str','dex','con','int','wis','cha'].find(key => raw === key || raw.startsWith(`${key} `))
             || ['strength','dexterity','constitution','intelligence','wisdom','charisma'].find(name => raw.startsWith(name))
@@ -558,16 +559,20 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
         if (choice.type !== 'spell' || !choice.value || !choice.revertData?.featIndex) return;
         const feat = (character.feats || []).find((entry: any) => entry.index === choice.revertData.featIndex);
         const grant = choice.revertData.spellGrant || {};
-        grants.push({
-            effect: {
-                type: 'spell_access',
-                spell: choice.value,
-                free_casts: grant.freeCasts,
-                free_cast_reset: grant.freeCastReset,
-                ability: featAbilityByIndex[choice.revertData.featIndex],
-            },
-            source: feat?.name || 'Feat',
-            defaultMinLevel: grant.minLevel || 1,
+        const values = Array.isArray(choice.value) ? choice.value : [choice.value];
+        values.forEach((value: any) => {
+            if (!value) return;
+            grants.push({
+                effect: {
+                    type: 'spell_access',
+                    spell: typeof value === 'string' ? value : (value.index || value.name),
+                    free_casts: grant.freeCasts,
+                    free_cast_reset: grant.freeCastReset,
+                    ability: featAbilityByIndex[choice.revertData.featIndex],
+                },
+                source: feat?.name || 'Feat',
+                defaultMinLevel: grant.minLevel || 1,
+            });
         });
     });
     (character.inventory || []).forEach((item: any) => {

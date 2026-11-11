@@ -6,6 +6,7 @@ import { SKILL_LIST } from '../../utils/rules';
 import { SIMPLE_WEAPONS, MARTIAL_WEAPONS, TOOLS, SKILLS, LANGUAGES, getProficiencyType, getAllowedSwaps } from '../../data/origin_customization';
 
 const LANGUAGE_LIST = LANGUAGES;
+const STANDARD_LANGUAGE_NAMES = new Set(['Common', 'Dwarvish', 'Elvish', 'Giant', 'Gnomish', 'Goblin', 'Halfling', 'Orc']);
 
 interface RaceStepProps {
   onSelect: (race: RaceDetail, subrace: SubraceDetail | null, extraData?: any) => void;
@@ -145,7 +146,10 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
               ...((selectedSubrace as any)?.languages || []),
           ].map((language: any) => String(language?.name || language).toLowerCase()));
           const base = (Array.isArray(choice.options) && choice.options.length > 0) ? choice.options : LANGUAGE_LIST;
-          return base.filter((language: any) => !granted.has(String(typeof language === 'string' ? language : language?.name || '').toLowerCase()));
+          return base.filter((language: any) => {
+              const name = String(typeof language === 'string' ? language : language?.name || '');
+              return STANDARD_LANGUAGE_NAMES.has(name) && !granted.has(name.toLowerCase());
+          });
       }
       if (Array.isArray(choice.options) && choice.options.length > 0) return choice.options;
       if (choice.kind === 'spell' && choice.sourceClass) return spellChoiceOptions[choice.sourceClass] || [];

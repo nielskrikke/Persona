@@ -74,6 +74,8 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({ item, a
             ...(selectedSpell ? { spell_index: selectedSpell.index, spell_name: selectedSpell.name } : {}),
             ...(variant?.weight !== undefined ? { weight: variant.weight } : {}),
             ...(variant?.cost ? { cost: variant.cost } : {}),
+            ...(variant?.rarity ? { rarity: variant.rarity } : {}),
+            ...(variant?.modifiers ? { modifiers: variant.modifiers } : {}),
         }, base.name, choice || base.name);
         merged.id = `${merged.index || item.index}-${Date.now()}`;
         merged.quantity = 1;

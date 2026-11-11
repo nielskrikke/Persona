@@ -2,8 +2,9 @@ export const EXTRA_EQUIPMENT: any[] = [
     {
         id: 'hb-amulet-of-the-devout',
         name: 'Amulet of the Devout',
+        name_pattern: 'Amulet of the Devout {choice}',
         index: 'amulet-of-the-devout',
-        desc: ['This amulet bears the symbol of a deity. While you wear it, you gain a +1 bonus to your spell attack rolls and spell save DC. Once per Long Rest, when you use Channel Divinity, you can do so without expending a use.'],
+        desc: ['This amulet bears the symbol of a deity. While you wear it, you gain a bonus to your spell attack rolls and spell save DC. Once per Long Rest, when you use Channel Divinity, you can do so without expending a use.'],
         cost: { unit: 'gp', quantity: 5000 },
         weight: 1,
         rarity: 'Uncommon',
@@ -13,10 +14,16 @@ export const EXTRA_EQUIPMENT: any[] = [
         is_wondrous: true,
         requires_attunement: true,
         equipment_category: { name: 'Wondrous Items', index: 'wondrous-items' },
-        modifiers: [
-            { type: 'bonus', value: 1, target: 'spell_attack' },
-            { type: 'bonus', value: 1, target: 'spell_save_dc' },
-        ],
+        choice: {
+            label: 'Devout Bonus',
+            options: ['+1', '+2', '+3'],
+            variants: {
+                '+1': { modifiers: [{ type: 'bonus', value: 1, target: 'spell_attack' }, { type: 'bonus', value: 1, target: 'spell_save_dc' }], cost: { unit: 'gp', quantity: 5000 }, rarity: 'Uncommon' },
+                '+2': { modifiers: [{ type: 'bonus', value: 2, target: 'spell_attack' }, { type: 'bonus', value: 2, target: 'spell_save_dc' }], cost: { unit: 'gp', quantity: 20000 }, rarity: 'Rare' },
+                '+3': { modifiers: [{ type: 'bonus', value: 3, target: 'spell_attack' }, { type: 'bonus', value: 3, target: 'spell_save_dc' }], cost: { unit: 'gp', quantity: 50000 }, rarity: 'Very Rare' },
+            },
+        },
+        modifiers: [],
         properties: [],
         is_homebrew: false,
         is_public: true,

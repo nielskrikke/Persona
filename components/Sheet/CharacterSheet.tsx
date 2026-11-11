@@ -3454,15 +3454,17 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 }
                 const hasSave = Boolean(effect.save_ability || effect.save?.ability || rawDC);
                 const actionName = effect.name || feature.name;
+                const isDivineSpark = /divine spark/i.test(actionName);
+                const divineSparkDice = isDivineSpark ? (character.level >= 13 ? 3 : character.level >= 7 ? 2 : 1) : 0;
                 const usage = character.featureUsage?.[actionName];
                 attacks.push({
                     id: `feature-action-${feature.index || feature.name}-${idx}`,
                     name: actionName,
-                    range: effect.range || '-',
+                    range: isDivineSpark ? '30 ft.' : (effect.range || '-'),
                     hit: null,
-                    save: hasSave ? { dc: saveDC, type: String(effect.save_ability || effect.save?.ability || 'CON').toUpperCase() } : null,
-                    damage: scaled || effect.damage || '-',
-                    type: effect.damage_type || (effect.type === 'action' ? 'Action' : effect.type === 'reaction' ? 'Reaction' : 'Bonus Action'),
+                    save: isDivineSpark ? { dc: 8 + prof + wisMod, type: 'CON' } : (hasSave ? { dc: saveDC, type: String(effect.save_ability || effect.save?.ability || 'CON').toUpperCase() } : null),
+                    damage: isDivineSpark ? `${divineSparkDice}d8 + ${wisMod}` : (scaled || effect.damage || '-'),
+                    type: isDivineSpark ? 'Radiant / Necrotic' : (effect.damage_type || (effect.type === 'action' ? 'Action' : effect.type === 'reaction' ? 'Reaction' : 'Bonus Action')),
                     notes: effect.description ? [effect.description] : [],
                     source: { ...feature, name: actionName, desc: [effect.description || ''], activationType: effect.type, maxUses: usage?.max },
                 });
