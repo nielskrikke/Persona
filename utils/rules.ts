@@ -747,7 +747,9 @@ export const getConditionLabelsFromText = (text: string): string[] => {
     if (!clean) return [];
     // Protection, immunity, removal, and object-state text should not assign
     // a condition to the target (e.g. Protection from Evil and Good, Forcecage).
-    if (/(?:can(?:'|no)t|can not|cannot)\s+be\s+(?:charmed|frightened|poisoned|prone|restrained|stunned|paralyzed|petrified|blinded|deafened|invisible|incapacitated|grappled)|protected against|protection from|immune to|no longer|suppress(?:es|ed)?|prevents? .*condition|cage is invisible|prison .*invisible|can'?t benefit from .*invisible|can'?t become invisible/i.test(clean)) return [];
+    if (/(?:can(?:'|no)t|can not|cannot)\s+be\s+(?:charmed|frightened|poisoned|prone|restrained|stunned|paralyzed|petrified|blinded|deafened|invisible|incapacitated|grappled)|protected against|protection from|immun(?:e|ity) to|no longer|suppress(?:es|ed)?|prevents? .*condition|cage is invisible|prison .*invisible|can'?t benefit from .*invisible|can'?t become invisible/i.test(clean)) return [];
+    if (/\b(?:ends?|removes?|cures?|dispels?)\b[^.!?]{0,160}\b(?:conditions?|charmed|frightened|poisoned|prone|restrained|stunned|paralyzed|petrified|blinded|deafened|invisible|incapacitated|grappled)\b/i.test(clean)) return [];
+    if (/\b(?:neither|nor)\b[^.!?]{0,180}\bconditions?\b/i.test(clean)) return [];
     return CONDITION_LABELS.filter(label => {
         const lower = label.toLowerCase();
         const affected = new RegExp(`\\b(?:target|creature|it|they)\\b[^.!?]{0,140}\\b(?:is|are|becomes?|remains?|falls?|has|have)\\b[^.!?]{0,80}\\b${lower}\\b`, 'i');
@@ -917,7 +919,11 @@ export const isFeatAvailableForCharacter = (feat: any, character: CharacterState
     const hasHeavyArmor = classDefinitions.some(definition =>
         [...(definition.proficiencies || []), ...(definition.armor_proficiencies || [])]
             .some((armor: any) => /heavy/i.test(typeof armor === 'string' ? armor : armor.name || ''))
-    );
+    ) || [...(character.classFeatures || []), ...(character.race?.traits || []), ...(character.subrace?.traits || []), ...(character.feats || [])]
+        .flatMap((feature: any) => feature.effects || feature.modifiers || [])
+        .some((effect: any) => /proficiency/i.test(String(effect.type || ''))
+            && /heavy/i.test(String(effect.target || effect.value || effect.name || ''))
+            && /armor/i.test(String(effect.category || effect.target || '')));
     const hasSpellcasting = classDefinitions.some(definition => definition.caster && definition.caster.type !== 'none')
         || classDefinitions.some(definition => definition.spellcasting);
 
@@ -929,7 +935,23 @@ export const isFeatAvailableForCharacter = (feat: any, character: CharacterState
         strength: 'str', dexterity: 'dex', constitution: 'con',
         intelligence: 'int', wisdom: 'wis', charisma: 'cha',
     };
+    const abilityGroups: Array<{ pattern: RegExp; keys: string[] }> = [
+        { pattern: /strength\s+or\s+dexterity\s+(\d+)/, keys: ['str', 'dex'] },
+        { pattern: /dexterity\s+or\s+strength\s+(\d+)/, keys: ['str', 'dex'] },
+        { pattern: /wisdom\s+or\s+charisma\s+(\d+)/, keys: ['wis', 'cha'] },
+        { pattern: /charisma\s+or\s+wisdom\s+(\d+)/, keys: ['wis', 'cha'] },
+        { pattern: /intelligence\s*,\s*wisdom\s*,?\s*or\s*charisma\s+(\d+)/, keys: ['int', 'wis', 'cha'] },
+        { pattern: /strength\s*,\s*dexterity\s*,?\s*or\s*constitution\s+(\d+)/, keys: ['str', 'dex', 'con'] },
+    ];
+    const groupedAbilities = new Set<string>();
+    for (const group of abilityGroups) {
+        const match = requirements.match(group.pattern);
+        if (!match) continue;
+        group.keys.forEach(key => groupedAbilities.add(key));
+        if (group.keys.every(key => Number((character.abilities as any)[key] || 0) < Number(match[1]))) return false;
+    }
     for (const [name, key] of Object.entries(abilities)) {
+        if (groupedAbilities.has(key)) continue;
         const match = requirements.match(new RegExp(`${name}\\s+(\\d+)`));
         if (match && Number(character.abilities[key as keyof typeof character.abilities] || 0) < Number(match[1])) return false;
     }

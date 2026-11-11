@@ -64,7 +64,12 @@ const ShortRestModal = ({
         Object.keys(newFeatures).forEach(key => {
             const resetRule = (newFeatures[key] as any).reset || 'long';
             if (resetRule === 'short') {
-                newFeatures[key].current = newFeatures[key].max;
+                if (/channel divinity/i.test(key)) {
+                    const current = Number(newFeatures[key].current ?? newFeatures[key].max);
+                    newFeatures[key].current = Math.min(newFeatures[key].max, current + 1);
+                } else {
+                    newFeatures[key].current = newFeatures[key].max;
+                }
             }
         });
 

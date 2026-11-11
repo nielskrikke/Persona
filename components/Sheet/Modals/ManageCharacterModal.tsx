@@ -946,7 +946,7 @@ const ManageCharacterModal = ({
                     temp.abilities[stat as keyof AbilityScores] -= amount;
                 });
             }
-            if (data.featIndex) {
+            if (data.featIndex && !data.isSubChoice && !data.parentChoiceId) {
                 temp.feats = temp.feats.filter((f: any) => f.index !== data.featIndex && f.name !== data.featIndex);
             }
             if (data.featAbilities) {
@@ -1177,14 +1177,17 @@ const ManageCharacterModal = ({
             if (c.id === choiceId) {
                 const currentAbilities = { ...(c.revertData?.abilities || {}) };
                 const currentVal = currentAbilities[stat] || 0;
-                const newVal = Math.max(0, currentVal + delta);
+                const currentScore = Number(abilities[stat as keyof AbilityScores] || 0);
+                const appliedDelta = delta > 0 ? Math.min(delta, Math.max(0, 20 - currentScore)) : delta;
+                if (appliedDelta === 0) return c;
+                const newVal = Math.max(0, currentVal + appliedDelta);
                 
                 if (newVal === currentVal) return c;
 
                 // Total increases in this ASI choice
                 const max = c.count || 2;
                 const total = Object.values(currentAbilities).reduce((a: any, b: any) => (a as number) + (b as number), 0) as number;
-                if (delta > 0 && total >= max) return c;
+                if (appliedDelta > 0 && total >= max) return c;
 
                 const nextAbilities = { ...currentAbilities, [stat]: newVal };
                 const nextTotal = Object.values(nextAbilities).reduce((a: any, b: any) => (a as number) + (b as number), 0) as number;
@@ -1192,7 +1195,7 @@ const ManageCharacterModal = ({
                 // Update character abilities too
                 setAbilities(prevAbs => ({
                     ...prevAbs,
-                    [stat]: prevAbs[stat as keyof AbilityScores] + delta
+                    [stat]: prevAbs[stat as keyof AbilityScores] + appliedDelta
                 }));
 
                 // Handle linked save proficiency (e.g. Resilient feat)
@@ -1647,6 +1650,8 @@ const ManageCharacterModal = ({
                                             const schools = e.school.split('/').map(s => s.trim().toLowerCase());
                                             filtered = filtered.filter(s => schools.includes(s.school.name.toLowerCase()));
                                         }
+                                        const knownSpellKeys = new Set((localSpells || []).map((known: any) => String(known.index || known.name).toLowerCase()));
+                                        filtered = filtered.filter(s => !knownSpellKeys.has(String(s.index || s.name).toLowerCase()));
                                         options = filtered.map(s => ({ index: s.index, name: s.name }));
                                     } else if (e.type === 'class_choice') {
                                         options = e.options || [];
@@ -3103,7 +3108,13 @@ const ManageCharacterModal = ({
                                                                         });
                                                                         const options = /skilled/i.test(choice.label || '')
                                                                             ? Array.from(new Set([...baseOptions, ...ALL_TOOLS.filter((tool: string) => selectedValues.includes(tool) || !(character.toolProficiencies || []).includes(tool))]))
-                                                                            : baseOptions;
+                                                                            : (choice.type === 'spell'
+                                                                                ? baseOptions.filter((option: any) => {
+                                                                                    const value = typeof option === 'string' ? option : (option.index || option.name || '');
+                                                                                    const label = typeof option === 'string' ? option : (option.name || option.index || '');
+                                                                                    return selectedValues.includes(value) || selectedValues.includes(label) || !(localSpells || []).some((known: any) => String(known.index || known.name).toLowerCase() === String(value).toLowerCase());
+                                                                                })
+                                                                                : baseOptions);
                                                                         const hasDescriptions = options.some((opt: any) => typeof opt !== 'string' && opt.desc);
                                                                         
                                                                         return (
@@ -3519,7 +3530,13 @@ const ManageCharacterModal = ({
                                                                                                     });
                                                                                                     const options = /skilled/i.test(choice.label || '')
                                                                                                         ? Array.from(new Set([...baseOptions, ...ALL_TOOLS.filter((tool: string) => selectedValues.includes(tool) || !(character.toolProficiencies || []).includes(tool))]))
-                                                                                                        : baseOptions;
+                                                                                                        : (choice.type === 'spell'
+                                                                                                            ? baseOptions.filter((option: any) => {
+                                                                                                                const value = typeof option === 'string' ? option : (option.index || option.name || '');
+                                                                                                                const label = typeof option === 'string' ? option : (option.name || option.index || '');
+                                                                                                                return selectedValues.includes(value) || selectedValues.includes(label) || !(localSpells || []).some((known: any) => String(known.index || known.name).toLowerCase() === String(value).toLowerCase());
+                                                                                                            })
+                                                                                                            : baseOptions);
                                                                                                     const hasDescriptions = options.some((opt: any) => typeof opt !== 'string' && opt.desc);
 
                                                                                                     return (

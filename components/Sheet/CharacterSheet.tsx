@@ -155,6 +155,7 @@ const SavingThrowRow: React.FC<{
     isProf: boolean,
     mod: number,
     advantage?: boolean,
+    disadvantage?: boolean,
     onRoll: (formula: string, label: string) => void,
     onContextMenu: (e: React.MouseEvent, formula: string, label: string) => void
 }> = ({ label, stat, isProf, mod, advantage, onRoll, onContextMenu }) => (
@@ -185,13 +186,14 @@ const SkillRow: React.FC<{
     isExpertise: boolean,
     mod: number,
     advantage?: boolean,
+    disadvantage?: boolean,
     onRoll: (formula: string, label: string) => void,
     onContextMenu: (e: React.MouseEvent, formula: string, label: string) => void
-}> = ({ skill, stat, isProf, isExpertise, mod, advantage, onRoll, onContextMenu }) => (
+}> = ({ skill, stat, isProf, isExpertise, mod, advantage, disadvantage, onRoll, onContextMenu }) => (
     <div
         className="flex items-center justify-between text-xs p-1 hover:bg-[#2e3036]/50 rounded group cursor-pointer"
-        onClick={() => onRoll(advantage ? `2d20kh1${formatModifier(mod)}` : `1d20${formatModifier(mod)}`, `${skill} Check`)}
-        onContextMenu={(e) => onContextMenu(e, advantage ? `2d20kh1${formatModifier(mod)}` : `1d20${formatModifier(mod)}`, `${skill} Check`)}
+        onClick={() => onRoll(disadvantage ? `2d20kl1${formatModifier(mod)}` : advantage ? `2d20kh1${formatModifier(mod)}` : `1d20${formatModifier(mod)}`, `${skill} Check`)}
+        onContextMenu={(e) => onContextMenu(e, disadvantage ? `2d20kl1${formatModifier(mod)}` : advantage ? `2d20kh1${formatModifier(mod)}` : `1d20${formatModifier(mod)}`, `${skill} Check`)}
     >
         <div className="flex items-center gap-2">
              <div className={`flex items-center justify-center w-3 h-3`}>
@@ -206,6 +208,7 @@ const SkillRow: React.FC<{
             <span className={`text-gray-300 flex items-center gap-1 flex-wrap ${isExpertise ? 'text-dnd-gold font-bold' : ''}`}>
                 {skill} <span className="text-[9px] text-gray-600 ml-1">({stat.toUpperCase()})</span>
                 {advantage && <span className="text-[8px] bg-gray-800/60 text-gray-500 px-1 rounded border border-gray-700/50">ADV</span>}
+                {disadvantage && <span className="text-[8px] bg-red-900/30 text-red-300 px-1 rounded border border-red-900/50">DISADV</span>}
             </span>
         </div>
         <span className={`font-mono ${isProf ? 'text-white font-bold' : 'text-gray-500'}`}>{formatModifier(mod)}</span>
@@ -1130,13 +1133,16 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             if (stat === 'speed' || stat === 'walk_speed' || stat === 'walking_speed' || stat === 'speed_multiplier') {
                 if (checkModifierRule(m)) {
                     if (m.type === 'bonus' || m.type === 'stat_bonus') total += resolveEffectValue(m);
-                    else if (m.type === 'set' && stat !== 'speed_multiplier') total = Math.max(total, resolveEffectValue(m));
+                    else if (m.type === 'set' && stat === 'speed') total = Math.max(total, resolveEffectValue(m));
                     else if (m.type === 'set' || m.type === 'speed_multiplier') total *= Number(m.value || 2);
                 }
             }
         });
 
-        return total;
+        const heavyArmorPenalty = (character.inventory || []).some(item => item.equipped
+            && /heavy/i.test(String(item.armor_category || ''))
+            && Number((item as any).str_minimum || (item as any).strength_requirement || 0) > getStat('str'));
+        return Math.max(0, total - (heavyArmorPenalty ? 10 : 0));
     };
 
     const getSpeedBreakdown = () => {
@@ -1153,6 +1159,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 }
             }
         });
+        if ((character.inventory || []).some(item => item.equipped && /heavy/i.test(String(item.armor_category || '')) && Number((item as any).str_minimum || (item as any).strength_requirement || 0) > getStat('str'))) {
+            breakdown.push({ label: 'Heavy Armor STR Requirement', value: '-10 ft.' });
+        }
 
         return breakdown;
     };
@@ -2425,7 +2434,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     );
                                 }) || isTrustSkill;
 
-                                return <SkillRow key={skill.name} skill={skill.name} stat={skill.ability} isProf={isProf} isExpertise={isExpertise} mod={mod} advantage={hasFullAdv} onRoll={roll} onContextMenu={triggerRollMenu} />;
+                                const armorStealthDisadvantage = (character.inventory || []).some(item => item.equipped && item.stealth_disadvantage);
+                                return <SkillRow key={skill.name} skill={skill.name} stat={skill.ability} isProf={isProf} isExpertise={isExpertise} mod={mod} advantage={hasFullAdv} disadvantage={skill.name === 'Stealth' && armorStealthDisadvantage} onRoll={roll} onContextMenu={triggerRollMenu} />;
                             })}
                         </div>
                         {situationalSkills.length > 0 && (

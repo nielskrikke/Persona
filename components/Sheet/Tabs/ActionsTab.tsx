@@ -105,6 +105,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
         || Boolean(attack.attackCount)
         || Boolean(attack.source?.weapon_category)
         || Boolean(attack.source?.school)
+        || ['action', 'bonus_action', 'reaction'].includes(String(attack.source?.activationType || '').toLowerCase())
         || attack.type === 'Maneuver'
         || attack.source?.type === 'Maneuver'
     );
@@ -113,9 +114,9 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
         if (actionFilter === 'ALL') return true;
         if (actionFilter === 'ATTACK') return true; // Attacks are always attacks
         
-        const activation = attack.source?.activationType?.toLowerCase();
+        const activation = String(attack.source?.activationType || '').toLowerCase().replace(/_/g, ' ');
         if (actionFilter === 'ACTION' && (activation === 'action' || !activation)) return true;
-        if (actionFilter === 'BONUS ACTION' && activation === 'bonus') return true;
+        if (actionFilter === 'BONUS ACTION' && (activation === 'bonus' || activation === 'bonus action')) return true;
         if (actionFilter === 'REACTION' && activation === 'reaction') return true;
         if (actionFilter === 'OTHER' && (activation === 'legendary' || activation === 'other')) return true;
         if (actionFilter === 'LIMITED USE' && attack.source?.maxUses) return true;

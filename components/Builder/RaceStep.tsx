@@ -139,6 +139,14 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
   };
 
   const getChoiceOptions = (choice: any): any[] => {
+      if (choice.kind === 'language') {
+          const granted = new Set([
+              ...((previewRace as any)?.languages || []),
+              ...((selectedSubrace as any)?.languages || []),
+          ].map((language: any) => String(language?.name || language).toLowerCase()));
+          const base = (Array.isArray(choice.options) && choice.options.length > 0) ? choice.options : LANGUAGE_LIST;
+          return base.filter((language: any) => !granted.has(String(typeof language === 'string' ? language : language?.name || '').toLowerCase()));
+      }
       if (Array.isArray(choice.options) && choice.options.length > 0) return choice.options;
       if (choice.kind === 'spell' && choice.sourceClass) return spellChoiceOptions[choice.sourceClass] || [];
       if (choice.kind === 'feat') return (choice.options && choice.options.length > 0) ? choice.options : allFeats;

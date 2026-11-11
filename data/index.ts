@@ -6,6 +6,7 @@ import { ARTISAN_TOOLS, MUSICAL_INSTRUMENTS, GAMING_SETS } from './constants';
 import { SKILL_LIST } from '../utils/rules';
 import { mergeInventoryItem } from '../utils/itemInstances';
 import { getItemWidgets } from '../utils/itemWidgets';
+import { EXTRA_EQUIPMENT } from './equipmentExtras';
 
 export const CLASSES: any[] = [];
 export const SUBCLASSES: any[] = [];
@@ -200,11 +201,15 @@ export const fetchEquipment = async (userId?: string): Promise<EquipmentDetail[]
                     cost: (!i.cost || !i.cost.quantity) && base ? base.cost : i.cost,
                 };
             });
-            cacheItems(items);
-            return items;
+            const merged = [...items];
+            EXTRA_EQUIPMENT.forEach(extra => {
+                if (!merged.some(item => item.index === extra.index)) merged.push(extra);
+            });
+            cacheItems(merged);
+            return merged;
         }
     } catch (e) {}
-    return [];
+    return EXTRA_EQUIPMENT;
 };
 
 export const fetchEquipmentDetail = async (index: string, userId?: string): Promise<EquipmentDetail | null> => {
@@ -218,6 +223,8 @@ export const fetchEquipmentDetail = async (index: string, userId?: string): Prom
             return foundCustom;
         }
     } catch (e) {}
+    const extra = EXTRA_EQUIPMENT.find(item => item.index === key || item.name.toLowerCase().replace(/\s+/g, '-') === key);
+    if (extra) { cacheItems([extra]); return extra; }
     return null;
 };
 
@@ -987,6 +994,28 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         }
         return choice;
     });
+
+    {
+        const mergedInventory: any[] = [];
+        const seenEquipment = new Map<string, any>();
+        inventory.forEach((item: any) => {
+            const key = `${String(item.index || '').toLowerCase()}|${String(item.name || '').toLowerCase()}`;
+            const existing = seenEquipment.get(key);
+            if (existing) {
+                if (/holy symbol/i.test(String(item.name || ''))) {
+                    existing.quantity = Math.max(1, Number(existing.quantity || 1));
+                } else {
+                    existing.quantity = Number(existing.quantity || 1) + Number(item.quantity || 1);
+                }
+                existing.equipped = existing.equipped || item.equipped;
+                existing.attuned = existing.attuned || item.attuned;
+                return;
+            }
+            seenEquipment.set(key, { ...item });
+            mergedInventory.push(seenEquipment.get(key));
+        });
+        inventory = mergedInventory;
+    }
 
     let filteredSpellChoices = choices;
     try {
