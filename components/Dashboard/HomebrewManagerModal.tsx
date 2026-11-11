@@ -1324,7 +1324,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
             setSpellSchool(item.school?.name || 'Evocation');
             setSpellCastTime(item.casting_time || '1 Action');
             setSpellRange(item.range || '60 feet');
-            setSpellDuration(item.duration ? String(item.duration).replace(/^Concentration,\s*/i, '') : 'Instantaneous');
+            setSpellDuration(item.duration ? String(item.duration).replace(/^(?:Concentration,\s*)+/i, '') : 'Instantaneous');
             setSpellConcentration(item.concentration || false);
             setSpellRitual(item.ritual || false);
             setSpellComponents(item.components || ['V', 'S']);
@@ -1393,7 +1393,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
             }, null, 2));
         } else if (activeTab === 'background') {
             setBgSkills(item.skill_proficiencies || []);
-            setBgTools(item.tool_proficiencies || []);
+            setBgTools((item.tool_proficiencies || []).map((tool: any) => String(tool).trim()).filter(Boolean));
             setBgFeatureName(item.feature?.name || '');
             setBgEquipment(Array.isArray(item.equipment) ? item.equipment.join(', ') : (item.equipment || ''));
             setBgEquipmentOptions((item.equipment_options || []).map((option: any) => ({
@@ -1574,7 +1574,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                 payload = {
                     ...payload,
                     skill_proficiencies: bgSkills,
-                    tool_proficiencies: bgTools,
+                    tool_proficiencies: bgTools.map(tool => String(tool).trim()).filter(Boolean),
                     equipment: bgEquipment.split(',').filter(Boolean).map(s => s.trim()),
                     ...(bgEquipmentOptions.length > 0 ? { equipment_options: bgEquipmentOptions.map(option => ({
                         label: option.label,
@@ -1915,6 +1915,11 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                              </button>
                                          </div>
                                      </div>
+                                     <label className="flex items-center gap-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                         <input type="checkbox" checked={editingIsHomebrew} onChange={e => setEditingIsHomebrew(e.target.checked)} className="accent-dnd-gold" />
+                                         Homebrew
+                                         <span className="text-[9px] text-gray-600 normal-case tracking-normal font-normal">Shows the HB badge in the library.</span>
+                                     </label>
                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                          <div className="md:col-span-2">
                                              <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Entity Name</label>
@@ -2659,7 +2664,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                         <section className="grid grid-cols-1 gap-6">
                                             <div>
                                                 <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Tool Proficiencies (Comma Separated)</label>
-                                                <input type="text" value={bgTools.join(', ')} onChange={e => setBgTools(e.target.value.split(',').map(s => s.trim()))} className="w-full bg-[#0b0c0e] border border-gray-800 rounded p-3 text-white text-sm" placeholder="e.g. Cook's Utensils, Dice Set" />
+                                                <input type="text" value={bgTools.join(', ')} onChange={e => setBgTools(e.target.value.split(',').map(s => s.trim()).filter(Boolean))} className="w-full bg-[#0b0c0e] border border-gray-800 rounded p-3 text-white text-sm" placeholder="e.g. Cook's Utensils, Dice Set" />
                                             </div>
                                             <div>
                                                 <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Starting Equipment</label>

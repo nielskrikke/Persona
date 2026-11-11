@@ -219,6 +219,10 @@ const ChoiceRow = ({ choice, onChange, onRemove, renderEffects }: { choice: Cont
                     <label className={labelClass}>Available at Level</label>
                     <input type="number" min={1} max={20} className={inputClass} value={choice.level ?? 1} onChange={e => onChange({ ...choice, level: Number(e.target.value) })} />
                 </div>
+                <div className="sm:col-span-3">
+                    <label className={labelClass}>Choice Label</label>
+                    <input className={inputClass} value={choice.label || ''} onChange={e => onChange({ ...choice, label: e.target.value })} placeholder="e.g. Choose a skill proficiency" />
+                </div>
                 <div>
                     <label className={labelClass}>How many picks?</label>
                     <input type="number" min={1} className={inputClass} value={choice.count ?? 1} onChange={e => onChange({ ...choice, count: Number(e.target.value) })} />
