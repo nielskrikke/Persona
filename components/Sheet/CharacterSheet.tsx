@@ -3462,7 +3462,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     name: actionName,
                     range: isDivineSpark ? '30 ft.' : (effect.range || '-'),
                     hit: null,
-                    save: isDivineSpark ? { dc: 8 + prof + wisMod, type: 'CON' } : (hasSave ? { dc: saveDC, type: String(effect.save_ability || effect.save?.ability || 'CON').toUpperCase() } : null),
+                    save: isDivineSpark ? { dc: spellSave, type: 'CON' } : (hasSave ? { dc: saveDC, type: String(effect.save_ability || effect.save?.ability || 'CON').toUpperCase() } : null),
                     damage: isDivineSpark ? `${divineSparkDice}d8 + ${wisMod}` : (scaled || effect.damage || '-'),
                     type: isDivineSpark ? 'Radiant / Necrotic' : (effect.damage_type || (effect.type === 'action' ? 'Action' : effect.type === 'reaction' ? 'Reaction' : 'Bonus Action')),
                     notes: isDivineSpark
