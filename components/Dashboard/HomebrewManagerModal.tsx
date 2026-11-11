@@ -1005,6 +1005,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     const [editingIsHomebrew, setEditingIsHomebrew] = useState(true);
     const [contentResources, setContentResources] = useState<ResourceDefinition[]>([]);
     const [contentChoices, setContentChoices] = useState<ContentChoice[]>([]);
+    const initialChoicesJsonRef = useRef('');
     const [levelFeatures, setLevelFeatures] = useState<{ level: number, name: string, desc: string, effects: any[] }[]>([]);
     const [armorProfs, setArmorProfs] = useState<string[]>([]);
     const [weaponProfs, setWeaponProfs] = useState<string[]>([]);
@@ -1221,7 +1222,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
         setSpeeds({ walk: 30, fly: 0, swim: 0, climb: 0 });
         setAbilityBonuses([]); setTraits([]); setSize('Medium');
         setSaves([]); setLevelFeatures([]); setHitDie(8);
-        setCasterType('none'); setCasterAbility('int'); setSubclassLevel(3); setSubclassLabel('Subclass'); setAdvancedJson(''); setEditingIndex(null); setEditingIsHomebrew(true); setContentResources([]); setContentChoices([]);
+        setCasterType('none'); setCasterAbility('int'); setSubclassLevel(3); setSubclassLabel('Subclass'); setAdvancedJson(''); setEditingIndex(null); setEditingIsHomebrew(true); setContentResources([]); setContentChoices([]); initialChoicesJsonRef.current = '';
         setBgSkills([]); setBgFeatureName(''); setBgTools([]); setBgEquipment(''); setBgEquipmentOptions([]); setBgCurrency({ gp: 0, sp: 0, cp: 0 }); setBgEffects([]);
         setArmorProfs([]); setWeaponProfs([]); setMulticlassProfs(''); setMulticlassChoices('');
         setSpellLevel(0); setSpellSchool('Evocation'); setSpellCastTime('1 Action'); setSpellRange('60 feet'); setSpellDuration('Instantaneous'); setSpellRitual(false); setSpellConcentration(false);
@@ -1242,6 +1243,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
         setEditingIsHomebrew(item.is_homebrew ?? item.homebrew ?? true);
         setContentResources(Array.isArray(item.resources) ? item.resources : []);
         setContentChoices(Array.isArray(item.choices) ? item.choices : []);
+        initialChoicesJsonRef.current = JSON.stringify(Array.isArray(item.choices) ? item.choices : []);
         setName(item.name || '');
         setDescription(Array.isArray(item.desc) ? item.desc.join('\n') : (item.description || ''));
         setIsSharedGlobally(item.is_public || false);
@@ -1502,6 +1504,11 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
             // Item extras are edited in itemExtraJson and must not be overwritten
             // by the stale advanced JSON copied when the form was opened.
             if (activeTab === 'item') advancedData = {};
+            const jsonChoices = Array.isArray(advancedData.choices) ? advancedData.choices : null;
+            const initialChoices = initialChoicesJsonRef.current;
+            const jsonChoicesChanged = !!jsonChoices && initialChoices !== '' && JSON.stringify(jsonChoices) !== initialChoices;
+            const formChoicesChanged = initialChoices !== '' && JSON.stringify(contentChoices) !== initialChoices;
+            const resolvedChoices = jsonChoicesChanged ? jsonChoices : (formChoicesChanged ? contentChoices : (jsonChoices || contentChoices));
             const tableMap = {
                 race: 'custom_races',
                 class: 'custom_classes',
@@ -1682,16 +1689,16 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     prerequisite: featPrerequisite,
                     effects: featEffects,
                     resources: contentResources.length > 0 ? contentResources : (Array.isArray(advancedData.resources) ? advancedData.resources : []),
-                    choices: contentChoices.length > 0 ? contentChoices : (Array.isArray(advancedData.choices) ? advancedData.choices : []),
+                    choices: resolvedChoices,
                 };
             }
 
             payload = { ...payload, ...advancedData };
             if (activeTab === 'class' || activeTab === 'subclass') {
                 payload.resources = contentResources.length > 0 ? contentResources : (Array.isArray(advancedData.resources) ? advancedData.resources : []);
-                payload.choices = contentChoices.length > 0 ? contentChoices : (Array.isArray(advancedData.choices) ? advancedData.choices : []);
+                payload.choices = resolvedChoices;
             } else if (activeTab === 'race' || activeTab === 'background' || activeTab === 'feat') {
-                payload.choices = contentChoices.length > 0 ? contentChoices : (Array.isArray(advancedData.choices) ? advancedData.choices : []);
+                payload.choices = resolvedChoices;
                 if (activeTab === 'race') {
                     payload.resources = contentResources.length > 0 ? contentResources : (Array.isArray(advancedData.resources) ? advancedData.resources : []);
                 }

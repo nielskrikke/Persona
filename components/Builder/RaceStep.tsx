@@ -89,10 +89,36 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
     }
   };
 
+  const giantAncestryForSubrace = (indexOrName?: string): string | null => {
+      const text = String(indexOrName || '').toLowerCase();
+      if (/stone/.test(text)) return "Stone's Endurance";
+      if (/cloud/.test(text)) return "Cloud's Jaunt";
+      if (/fire/.test(text)) return "Fire's Burn";
+      if (/frost/.test(text)) return "Frost's Chill";
+      if (/hill/.test(text)) return "Hill's Tumble";
+      if (/storm/.test(text)) return "Storm's Thunder";
+      return null;
+  };
+  const subraceForGiantAncestry = (option?: string): string | null => {
+      const text = String(option || '').toLowerCase();
+      if (/stone/.test(text)) return 'stone-giant-ancestry';
+      if (/cloud/.test(text)) return 'cloud-giant-ancestry';
+      if (/fire/.test(text)) return 'fire-giant-ancestry';
+      if (/frost/.test(text)) return 'frost-giant-ancestry';
+      if (/hill/.test(text)) return 'hill-giant-ancestry';
+      if (/storm/.test(text)) return 'storm-giant-ancestry';
+      return null;
+  };
+
   const handleSubraceSelect = async (index: string) => {
       const detail = await fetchSubraceDetail(index, userId);
       setSelectedSubrace(detail);
       setValidationError(null);
+      const ancestryChoice = ((previewRace as any)?.choices || []).find((choice: any) => choice.kind === 'ancestry');
+      const ancestryOption = giantAncestryForSubrace(detail?.index || detail?.name || index);
+      if (ancestryChoice && ancestryOption && (ancestryChoice.options || []).some((option: any) => (typeof option === 'string' ? option : option.name) === ancestryOption)) {
+          setRaceChoiceSelections(prev => ({ ...prev, [ancestryChoice.id]: [ancestryOption] }));
+      }
   };
 
   const getRaceChoices = (): any[] => {
@@ -126,6 +152,12 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
   const toggleRaceChoice = (choice: any, optionName: string) => {
       setValidationError(null);
       const count = Number(choice.count || 1);
+      if (choice.kind === 'ancestry') {
+          const subraceIndex = subraceForGiantAncestry(optionName);
+          if (subraceIndex && subraces.some(subrace => subrace.index === subraceIndex)) {
+              handleSubraceSelect(subraceIndex);
+          }
+      }
       setRaceChoiceSelections(prev => {
           const current = prev[choice.id] || [];
           if (current.includes(optionName)) return { ...prev, [choice.id]: current.filter(item => item !== optionName) };
