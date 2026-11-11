@@ -26,15 +26,19 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
     const [showUpcasts, setShowUpcasts] = useState(false);
     const effectiveAbilities = getEffectiveAbilities(character);
     const proficiency = calculateProficiency(character.level);
+    const primarySpellAttack = proficiency + spellMod;
+    const primarySpellSave = 8 + proficiency + spellMod;
+    const globalSpellAttackBonus = Number(String(spellAttackStr).replace(/[^0-9-]/g, '')) - primarySpellAttack;
+    const globalSpellSaveBonus = Number(spellSave) - primarySpellSave;
     const spellAttackFor = (spell: SpellDetail) => (spell as any).itemAttackBonus !== undefined
         ? formatModifier(Number((spell as any).itemAttackBonus))
         : spell.spellcastingAbility
-            ? formatModifier(proficiency + calculateModifier(effectiveAbilities[spell.spellcastingAbility]))
+            ? formatModifier(primarySpellAttack + (calculateModifier(effectiveAbilities[spell.spellcastingAbility]) - spellMod) + globalSpellAttackBonus)
             : spellAttackStr;
     const spellSaveFor = (spell: SpellDetail) => (spell as any).itemDc !== undefined
         ? Number((spell as any).itemDc)
         : spell.spellcastingAbility
-            ? 8 + proficiency + calculateModifier(effectiveAbilities[spell.spellcastingAbility])
+            ? primarySpellSave + (calculateModifier(effectiveAbilities[spell.spellcastingAbility]) - spellMod) + globalSpellSaveBonus
             : spellSave;
     const featureNames = new Set([
         ...(character.classFeatures || []).map((feature: any) => String(feature.name || '').toLowerCase()),

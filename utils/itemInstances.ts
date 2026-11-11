@@ -14,6 +14,21 @@ const dedupeEffects = (effects: any[] | undefined) => Array.from(new Map((effect
     effect,
 ])).values());
 
+const normalizeItemBonuses = <T extends any>(item: T): T => {
+    const modifiers = (item as any)?.modifiers || [];
+    const modifierKeys = new Set(modifiers.map((modifier: any) => [
+        String(modifier?.type || '').toLowerCase(),
+        String(modifier?.target || modifier?.stat || '').toLowerCase(),
+        String(modifier?.value ?? modifier?.amount ?? '').toLowerCase(),
+    ].join('|')));
+    const effects = ((item as any)?.effects || []).filter((effect: any) => !modifierKeys.has([
+        String(effect?.type || '').toLowerCase(),
+        String(effect?.target || effect?.stat || '').toLowerCase(),
+        String(effect?.value ?? effect?.amount ?? '').toLowerCase(),
+    ].join('|')));
+    return { ...(item as any), effects };
+};
+
 export const hasItemOverrides = (item: InventoryItem): boolean => Boolean(item?.overrides && Object.keys(item.overrides).length > 0);
 
 export const mergeInventoryItem = (
@@ -46,7 +61,7 @@ export const mergeInventoryItem = (
         const choiceValue = entry.choice_value || (dbRecord as any).choice_value;
         const variant = choiceValue ? (dbRecord as any).choice?.variants?.[choiceValue] : null;
         const effects = dedupeEffects([...(dbRecord.effects || []), ...(variant?.effects || []), ...(entry.effects || [])]);
-        return {
+        return normalizeItemBonuses({
             ...dbRecord,
             ...entry,
             name: stripHomebrewSuffix(entry.name || dbRecord.name),
@@ -54,7 +69,7 @@ export const mergeInventoryItem = (
             cost: hasEntryCost ? entry.cost : (hasDbCost ? dbRecord.cost : base?.cost),
             effects,
             customized: false,
-        };
+        });
     }
 
     const baseIndex = overrides.base_item || entry.base_item || (dbRecord as any).base_item;
@@ -125,5 +140,5 @@ export const mergeInventoryItem = (
     replaced.name = stripHomebrewSuffix(replaced.name);
     if ((!replaced.weight || Number(replaced.weight) === 0) && Number(dbRecord.weight) > 0) replaced.weight = dbRecord.weight;
     if ((!replaced.cost || (typeof replaced.cost === 'object' && !Number(replaced.cost.quantity))) && dbRecord.cost) replaced.cost = dbRecord.cost;
-    return replaced;
+    return normalizeItemBonuses(replaced);
 };

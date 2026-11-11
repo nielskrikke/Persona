@@ -6,7 +6,7 @@ import { SKILL_LIST } from '../../utils/rules';
 import { SIMPLE_WEAPONS, MARTIAL_WEAPONS, TOOLS, SKILLS, LANGUAGES, getProficiencyType, getAllowedSwaps } from '../../data/origin_customization';
 
 const LANGUAGE_LIST = LANGUAGES;
-const STANDARD_LANGUAGE_NAMES = new Set(['Common', 'Dwarvish', 'Elvish', 'Giant', 'Gnomish', 'Goblin', 'Halfling', 'Orc']);
+const STANDARD_LANGUAGE_NAMES = new Set(['Common', 'Common Sign Language', 'Draconic', 'Dwarvish', 'Elvish', 'Giant', 'Gnomish', 'Goblin', 'Halfling', 'Orc']);
 
 interface RaceStepProps {
   onSelect: (race: RaceDetail, subrace: SubraceDetail | null, extraData?: any) => void;

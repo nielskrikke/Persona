@@ -74,7 +74,7 @@ export const OTHER_TOOLS = [
 ];
 
 export const STANDARD_LANGUAGES = [
-    "Abyssal", "Aquan", "Auran", "Celestial", "Common", "Deep Speech", "Draconic", 
+    "Abyssal", "Aquan", "Auran", "Celestial", "Common", "Common Sign Language", "Deep Speech", "Draconic", 
     "Dwarvish", "Elvish", "Giant", "Gnomish", "Goblin", "Halfling", "Ignan", 
     "Infernal", "Orc", "Primordial", "Sylvan", "Terran", "Undercommon"
 ];

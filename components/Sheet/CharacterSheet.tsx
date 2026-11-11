@@ -3465,8 +3465,16 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     save: isDivineSpark ? { dc: 8 + prof + wisMod, type: 'CON' } : (hasSave ? { dc: saveDC, type: String(effect.save_ability || effect.save?.ability || 'CON').toUpperCase() } : null),
                     damage: isDivineSpark ? `${divineSparkDice}d8 + ${wisMod}` : (scaled || effect.damage || '-'),
                     type: isDivineSpark ? 'Radiant / Necrotic' : (effect.damage_type || (effect.type === 'action' ? 'Action' : effect.type === 'reaction' ? 'Reaction' : 'Bonus Action')),
-                    notes: effect.description ? [effect.description] : [],
-                    source: { ...feature, name: actionName, desc: [effect.description || ''], activationType: effect.type, maxUses: usage?.max },
+                    notes: isDivineSpark
+                        ? ['Channel Divinity: 1d8 + WIS at level 2, 2d8 at level 7, 3d8 at level 13; CON save for half.']
+                        : (effect.description ? [effect.description] : []),
+                    source: {
+                        ...feature,
+                        name: actionName,
+                        desc: [isDivineSpark ? 'Channel Divinity: 1d8 + WIS at level 2, 2d8 at level 7, 3d8 at level 13; CON save for half.' : (effect.description || '')],
+                        activationType: effect.type,
+                        maxUses: usage?.max,
+                    },
                 });
             });
         });

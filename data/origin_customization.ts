@@ -27,7 +27,7 @@ export const SKILLS = [
 ];
 
 export const LANGUAGES = [
-    "Abyssal", "Aquan", "Auran", "Celestial", "Common", "Deep Speech", "Draconic", "Dwarvish", "Elvish", "Giant",
+    "Abyssal", "Aquan", "Auran", "Celestial", "Common", "Common Sign Language", "Deep Speech", "Draconic", "Dwarvish", "Elvish", "Giant",
     "Gnomish", "Goblin", "Halfling", "Ignan", "Infernal", "Orc", "Primordial", "Sylvan", "Terran", "Undercommon"
 ];
 
