@@ -3136,7 +3136,7 @@ const ManageCharacterModal = ({
                                                                             const saveProfs = new Set((savingThrowProficiencies || []).map((save: string) => save.toLowerCase()));
                                                                             options = options.filter((option: any) => {
                                                                                 const value = typeof option === 'string' ? option : (option.index || option.name || '');
-                                                                                return selectedValues.includes(value) || !saveProfs.has(String(value).toLowerCase());
+                                                                                return selectedValues.some((selected: any) => String(selected).toLowerCase().startsWith(String(value).toLowerCase())) || !saveProfs.has(String(value).toLowerCase());
                                                                             });
                                                                         }
                                                                         const hasDescriptions = options.some((opt: any) => typeof opt !== 'string' && opt.desc);
@@ -3570,7 +3570,7 @@ const ManageCharacterModal = ({
                                                                                                         const saveProfs = new Set((savingThrowProficiencies || []).map((save: string) => save.toLowerCase()));
                                                                                                         options = options.filter((option: any) => {
                                                                                                             const value = typeof option === 'string' ? option : (option.index || option.name || '');
-                                                                                                            return selectedValues.includes(value) || !saveProfs.has(String(value).toLowerCase());
+                                                                                                            return selectedValues.some((selected: any) => String(selected).toLowerCase().startsWith(String(value).toLowerCase())) || !saveProfs.has(String(value).toLowerCase());
                                                                                                         });
                                                                                                     }
                                                                                                     const hasDescriptions = options.some((opt: any) => typeof opt !== 'string' && opt.desc);

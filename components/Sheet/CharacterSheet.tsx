@@ -1560,6 +1560,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const augmentedCreature: CreatureDetail = {
                 ...creature,
                 ac: rules.ac ?? creature.ac,
+                hp: rules.tempHp,
+                hit_dice: `${rules.tempHp} Temporary HP`,
                 actions: (creature.actions || []).map((action: any) => ({
                     ...action,
                     desc: [action.desc, bonusText].filter(Boolean).join(' '),
@@ -3634,6 +3636,27 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 attacks.push(actionAttack);
             });
         });
+
+        if (character.activeWildShape?.creature) {
+            const featureNames = (character.classFeatures || []).map((feature: any) => String(feature.name || ''));
+            const primalRider = featureNames.some(name => /primal strike/i.test(name)) ? (character.level >= 15 ? '2d8' : '1d8') : '';
+            const lunarRider = featureNames.some(name => /lunar form/i.test(name)) ? '2d10' : '';
+            (character.activeWildShape.creature.actions || []).forEach((action: any, index: number) => {
+                if (!action.attack_bonus && !action.damage_dice) return;
+                const riders = [primalRider, lunarRider].filter(Boolean).join('+');
+                const damage = riders && action.damage_dice ? `${action.damage_dice}+${riders}` : (action.damage_dice || '-');
+                attacks.push({
+                    id: `wildshape-attack-${index}`,
+                    name: action.name,
+                    range: '5 ft.',
+                    hit: action.attack_bonus ?? null,
+                    damage,
+                    type: action.damage_type || 'Beast',
+                    notes: [action.desc, primalRider ? `Primal Strike +${primalRider} once per turn` : '', lunarRider ? `Lunar Form +${lunarRider} Radiant once per turn` : ''].filter(Boolean),
+                    source: { ...character.activeWildShape.creature, activationType: 'action', name: action.name },
+                });
+            });
+        }
 
         return attacks;
     };
