@@ -603,6 +603,16 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
                             <div className="mt-5 bg-black/40 p-5 rounded-xl border border-gray-700 animate-in fade-in duration-300">
                                 <h4 className="font-black uppercase tracking-tighter text-white mb-2">{selectedSubrace.name} Traits</h4>
                                 <p className="text-sm text-gray-400 leading-relaxed mb-4 font-serif italic">"{selectedSubrace.desc[0]}"</p>
+                                {(selectedSubrace.traits || []).length > 0 && (
+                                    <div className="space-y-2 mb-4">
+                                        {selectedSubrace.traits.map((trait: any) => (
+                                            <div key={trait.index || trait.name} className="bg-gray-900/50 border border-gray-700/50 rounded-lg p-3">
+                                                <div className="text-xs font-bold text-white">{trait.name}</div>
+                                                <p className="text-[10px] text-gray-400 leading-relaxed">{Array.isArray(trait.desc) ? trait.desc.join(' ') : trait.desc}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                                 {selectedSubrace.ability_bonuses.length > 0 && (
                                     <div className="text-xs text-green-400 font-bold uppercase tracking-widest">
                                         Bonus: {selectedSubrace.ability_bonuses.map(b => `${b.ability_score.name} +${b.bonus}`).join(', ')}

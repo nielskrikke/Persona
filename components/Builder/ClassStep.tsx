@@ -59,11 +59,19 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
               ? masteryWeapons.filter(weapon => allowed.some((name: string) => normalized(name) === normalized(weapon.name) || normalized(name) === normalized(weapon.index)))
               : masteryWeapons;
       }
-      return (choice.options || []).flatMap((option: any) => {
+      const expanded = (choice.options || []).flatMap((option: any) => {
           const name = typeof option === 'string' ? option : (option.name || option.index || '');
           if (name === "Artisan's Tools") return ARTISAN_TOOLS;
           if (name === 'Musical Instrument') return MUSICAL_INSTRUMENTS;
           return [option];
+      });
+      if (choice.kind !== 'skill' && choice.kind !== 'proficiency') return expanded;
+      const selectedNames = new Set(Object.values(classChoices).flat().map((value: any) => String(value).toLowerCase()));
+      const knownSkills = new Set((currentSkills || []).map((value: any) => String(value).toLowerCase()));
+      return expanded.filter((option: any) => {
+          const name = typeof option === 'string' ? option : (option.name || option.index || '');
+          const key = String(name).toLowerCase();
+          return selectedNames.has(key) || !knownSkills.has(key);
       });
   };
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import Markdown from 'react-markdown';
 import { Sparkles, Plus, X, Maximize, Search, Info, Heart, Skull, AlertOctagon } from 'lucide-react';
 import { CharacterState, ABILITY_NAMES, ABILITY_LABELS, RollResult, AbilityName, SpellDetail, InventoryItem, Currency, RuleEntry, CreatureDetail, EldritchCannonDetail, SteelDefenderDetail, EquipmentDetail, ItemModifier, DiceCustomizationOptions } from '../../types';
-import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount, getSpellAbilityForClass, getResourceDefinitions, mergeSpellSlotCurrents, hasUiWidget, getClassWithUiWidget, resolveDamageFormula, appendMinDie, getWeaponMasteryData, getSpellCastLevel, calculateMaxHp, formatResourceName } from '../../utils/rules';
+import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount, getSpellAbilityForClass, getResourceDefinitions, mergeSpellSlotCurrents, hasUiWidget, getClassWithUiWidget, resolveDamageFormula, appendMinDie, getWeaponMasteryData, getSpellCastLevel, calculateMaxHp, formatResourceName, getWildShapeRules } from '../../utils/rules';
 import { rollDice } from '../../utils/dice';
 import CreatureManagerModal from './Modals/CreatureManagerModal';
 import { WIDGET_LABELS, DEFAULT_LAYOUT, STANDARD_CONDITIONS, STANDARD_ACTIONS, STATIC_RULES, WIDGET_BG, MANEUVER_DESCRIPTIONS } from '../../data/constants';
@@ -23,7 +23,7 @@ import ItemSearchModal from '../Builder/ItemSearchModal';
 import ItemCustomizationModal from './Modals/ItemCustomizationModal';
 import ItemCustomizeModal from './Modals/ItemCustomizeModal';
 import { mergeInventoryItem } from '../../utils/itemInstances';
-import { getClassProficiencies } from '../../utils/multiclass';
+import { getClassProficiencies, isToolProficiency } from '../../utils/multiclass';
 import { fetchAllSpells } from '../../data/index';
 import { getItemWidgets, storedSpellLevels } from '../../utils/itemWidgets';
 import LayoutManagerModal from './Modals/LayoutManagerModal';
@@ -816,6 +816,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     }, [character.inventory, selectedDetail?.id]);
 
     const getStat = (stat: AbilityName): number => {
+        if (character.activeWildShape?.creature && ['str', 'dex', 'con'].includes(stat)) {
+            const wildStat = Number((character.activeWildShape.creature as any)[stat]);
+            if (Number.isFinite(wildStat)) return wildStat;
+        }
         return effectiveAbilities[stat];
     };
 
@@ -1237,11 +1241,16 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         return speeds;
     };
 
-    const acValue = calculateAC();
+    const acValue = character.activeWildShape?.ac ?? calculateAC();
     const acBreakdown = getACBreakdown();
     const globalSaveBonus = getGlobalSaveBonus();
-    const speed = calculateSpeed();
-    const speedBreakdown = getSpeedBreakdown();
+    const wildShapeSpeed = character.activeWildShape?.creature?.speed
+        ? parseInt(String(character.activeWildShape.creature.speed).match(/\d+/)?.[0] || '0', 10)
+        : 0;
+    const speed = wildShapeSpeed > 0 ? wildShapeSpeed : calculateSpeed();
+    const speedBreakdown = wildShapeSpeed > 0
+        ? [{ label: 'Wild Shape Form', value: `${wildShapeSpeed} ft.` }]
+        : getSpeedBreakdown();
     const specialSpeeds = getSpecialSpeeds();
     const currentWeight = character.inventory.reduce((sum: number, item) => sum + (item.weight || 0) * (item.quantity || 1), 0);
     const maxWeight = getStat('str') * 15;
@@ -1539,10 +1548,34 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             if (newFeatures['Wild Shape'] && newFeatures['Wild Shape'].current > 0) {
                 newFeatures['Wild Shape'] = { ...newFeatures['Wild Shape'], current: newFeatures['Wild Shape'].current - 1 };
             }
+            const rules = getWildShapeRules(character);
+            const featureNames = (character.classFeatures || []).map((feature: any) => String(feature.name || ''));
+            const hasPrimalStrike = featureNames.some(name => /primal strike/i.test(name));
+            const hasLunarForm = featureNames.some(name => /lunar form/i.test(name));
+            const primalDice = character.level >= 15 ? '2d8' : '1d8';
+            const bonusText = [
+                hasPrimalStrike ? `Primal Strike: +${primalDice} Cold, Fire, Lightning or Thunder damage once per turn.` : '',
+                hasLunarForm ? 'Lunar Form: +2d10 Radiant damage once per turn.' : '',
+            ].filter(Boolean).join(' ');
+            const augmentedCreature: CreatureDetail = {
+                ...creature,
+                ac: rules.ac ?? creature.ac,
+                actions: (creature.actions || []).map((action: any) => ({
+                    ...action,
+                    desc: [action.desc, bonusText].filter(Boolean).join(' '),
+                    name: bonusText ? `${action.name}${hasPrimalStrike ? ` (Primal ${primalDice})` : ''}${hasLunarForm ? ' (Lunar +2d10)' : ''}` : action.name,
+                })),
+            };
             setCharacter(prev => ({
                 ...prev,
                 featureUsage: newFeatures,
-                activeWildShape: { creature, currentHp: creature.hp, maxHp: creature.hp }
+                activeWildShape: {
+                    creature: augmentedCreature,
+                    currentHp: rules.tempHp,
+                    maxHp: rules.tempHp,
+                    ac: rules.ac ?? creature.ac,
+                    tempHp: true,
+                }
             }));
         } else if (creatureModalMode === 'familiar') {
             setCharacter(prev => ({
@@ -2020,18 +2053,18 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                              <div className="space-y-2">
                                  <div className="flex justify-between items-start"><div className="font-bold text-white">{character.activeWildShape.creature.name}</div><div className="text-[10px] text-gray-400">{character.activeWildShape.creature.size} {character.activeWildShape.creature.type}</div></div>
                                  <div className="grid grid-cols-3 gap-1 text-center bg-gray-800/50 rounded p-1">
-                                     <div><div className="text-[9px] text-gray-500 uppercase">AC</div><div className="text-white font-bold text-sm">{character.activeWildShape.creature.ac}</div></div>
+                                     <div><div className="text-[9px] text-gray-500 uppercase">AC</div><div className="text-white font-bold text-sm">{character.activeWildShape.ac || character.activeWildShape.creature.ac}</div></div>
                                      <div className="flex flex-col items-center">
-                                         <div className="text-[9px] text-gray-500 uppercase">HP</div>
+                                         <div className="text-[9px] text-gray-500 uppercase">Temp HP</div>
                                          <div className="flex items-center gap-1">
                                              <button onClick={(e) => { e.stopPropagation(); handleCreatureHpChange('wildshape', -1); }} className="w-4 h-4 flex items-center justify-center bg-red-900/30 text-red-400 rounded hover:bg-red-900/50">-</button>
-                                             <div className="text-white font-bold text-sm">{character.activeWildShape.currentHp}</div>
+                                             <div className="text-white font-bold text-sm">{character.activeWildShape.currentHp}<span className="text-[9px] text-gray-500">/{character.activeWildShape.maxHp}</span></div>
                                              <button onClick={(e) => { e.stopPropagation(); handleCreatureHpChange('wildshape', 1); }} className="w-4 h-4 flex items-center justify-center bg-green-900/30 text-green-400 rounded hover:bg-green-900/50">+</button>
                                          </div>
                                      </div>
                                      <div><div className="text-[9px] text-gray-500 uppercase">Spd</div><div className="text-white font-bold text-[10px] leading-tight mt-0.5">{character.activeWildShape.creature.speed.replace(' ft.', '')}</div></div>
                                  </div>
-                                 <div className="text-[10px] text-gray-400 space-y-1">{character.activeWildShape.creature.actions?.length > 0 && (<div><span className="font-bold text-gray-500 block">Actions:</span>{character.activeWildShape.creature.actions.map(a => (<div key={a.name} className="truncate pl-1">• {a.name}</div>))}</div>)}</div>
+                                 <div className="text-[10px] text-gray-400 space-y-1">{character.activeWildShape.creature.actions?.length > 0 && (<div><span className="font-bold text-gray-500 block">Actions:</span>{character.activeWildShape.creature.actions.map(a => (<div key={a.name} className="truncate pl-1">• {a.name}</div>))}</div>)}{character.activeWildShape.creature.actions?.some((action: any) => /Primal Strike|Lunar Form/.test(String(action.desc || ''))) && <div className="text-[9px] text-dnd-gold/80 pt-1">Primal Strike and Lunar Form once-per-turn riders are included in the attack text.</div>}</div>
                              </div>
                         ) : null}
                     </div>
@@ -2452,12 +2485,17 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 );
             case 'proficiencies':
                 const charLanguages = Array.from(new Set([...(character.languages || []), ...(character.race?.languages?.map(l => l.name) || [])]));
+                const classProficiencies = character.classes.flatMap((c, index) => getClassProficiencies(c, index === 0).map((p: any) => p.name));
                 const toolMap = new Map<string, string>();
-                [...(character.toolProficiencies || []), ...activeModifiers.filter(m => m.type === 'proficiency' && m.category === 'tool').map(m => m.target)].forEach(tool => toolMap.set(String(tool).toLowerCase(), tool));
+                [
+                    ...(character.toolProficiencies || []),
+                    ...classProficiencies.filter((prof: string) => isToolProficiency(prof)),
+                    ...activeModifiers.filter(m => m.type === 'proficiency' && m.category === 'tool').map(m => m.target),
+                ].forEach(tool => toolMap.set(String(tool).toLowerCase(), tool));
                 const charTools = Array.from(toolMap.values());
                 const allProfs = Array.from(new Set([
-                    ...character.classes.flatMap((c, index) => getClassProficiencies(c, index === 0).map((p: any) => p.name)),
-                    ...(character.race?.starting_proficiencies?.map(p => p.name) || []),
+                    ...classProficiencies.filter((prof: string) => !isToolProficiency(prof)),
+                    ...(character.race?.starting_proficiencies?.map(p => p.name).filter((prof: string) => !isToolProficiency(prof)) || []),
                     ...activeModifiers.filter(m => m.type === 'proficiency' && (m.category === 'weapon' || m.category === 'armor')).map(m => m.target)
                 ]));
                 return (

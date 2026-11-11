@@ -897,9 +897,12 @@ const ManageCharacterModal = ({
     };
 
     const handleSave = (shouldClose: boolean = true, overrides: any = {}) => {
+        const updates = getGlobalUpdates(overrides);
+        const nextMaxHp = Number(updates.maxHp || overrides.maxHp || localMaxHp);
+        const maxHpGain = Math.max(0, nextMaxHp - Number(character.maxHp || 0));
         onUpdate({
-            ...getGlobalUpdates(overrides),
-            currentHp: Math.min(character.currentHp, overrides.maxHp || localMaxHp)
+            ...updates,
+            currentHp: Math.min(nextMaxHp, Number(character.currentHp || 0) + maxHpGain)
         });
         if (shouldClose) onClose();
     };
@@ -3115,7 +3118,7 @@ const ManageCharacterModal = ({
                                                                             const value = typeof opt === 'string' ? opt : (opt.name || opt.index || '');
                                                                             return selectedValues.includes(value) || !knownSkillNames.has(String(value).toLowerCase());
                                                                         });
-                                                                        const options = /skilled/i.test(choice.label || '')
+                                                                        let options = /skilled/i.test(choice.label || '')
                                                                             ? Array.from(new Set([...baseOptions, ...ALL_TOOLS.filter((tool: string) => selectedValues.includes(tool) || !(character.toolProficiencies || []).includes(tool))]))
                                                                             : (choice.type === 'spell'
                                                                                 ? baseOptions.filter((option: any) => {
@@ -3123,7 +3126,19 @@ const ManageCharacterModal = ({
                                                                                     const label = typeof option === 'string' ? option : (option.name || option.index || '');
                                                                                     return selectedValues.includes(value) || selectedValues.includes(label) || !(localSpells || []).some((known: any) => String(known.index || known.name).toLowerCase() === String(value).toLowerCase());
                                                                                 })
-                                                                                : baseOptions);
+                                                                                : (choice.type === 'other' && /proficiency/i.test(choice.label || '')
+                                                                                    ? baseOptions.filter((option: any) => {
+                                                                                        const value = typeof option === 'string' ? option : (option.name || option.index || '');
+                                                                                        return selectedValues.includes(value) || !knownSkillNames.has(String(value).toLowerCase());
+                                                                                    })
+                                                                                    : baseOptions));
+                                                                        if (/resilient/i.test(choice.label || '')) {
+                                                                            const saveProfs = new Set((savingThrowProficiencies || []).map((save: string) => save.toLowerCase()));
+                                                                            options = options.filter((option: any) => {
+                                                                                const value = typeof option === 'string' ? option : (option.index || option.name || '');
+                                                                                return selectedValues.includes(value) || !saveProfs.has(String(value).toLowerCase());
+                                                                            });
+                                                                        }
                                                                         const hasDescriptions = options.some((opt: any) => typeof opt !== 'string' && opt.desc);
                                                                         
                                                                         return (
@@ -3537,7 +3552,7 @@ const ManageCharacterModal = ({
                                                                                                         const value = typeof opt === 'string' ? opt : (opt.name || opt.index || '');
                                                                                                         return selectedValues.includes(value) || !knownSkillNames.has(String(value).toLowerCase());
                                                                                                     });
-                                                                                                    const options = /skilled/i.test(choice.label || '')
+                                                                                                    let options = /skilled/i.test(choice.label || '')
                                                                                                         ? Array.from(new Set([...baseOptions, ...ALL_TOOLS.filter((tool: string) => selectedValues.includes(tool) || !(character.toolProficiencies || []).includes(tool))]))
                                                                                                         : (choice.type === 'spell'
                                                                                                             ? baseOptions.filter((option: any) => {
@@ -3545,7 +3560,19 @@ const ManageCharacterModal = ({
                                                                                                                 const label = typeof option === 'string' ? option : (option.name || option.index || '');
                                                                                                                 return selectedValues.includes(value) || selectedValues.includes(label) || !(localSpells || []).some((known: any) => String(known.index || known.name).toLowerCase() === String(value).toLowerCase());
                                                                                                             })
-                                                                                                            : baseOptions);
+                                                                                                            : (choice.type === 'other' && /proficiency/i.test(choice.label || '')
+                                                                                                                ? baseOptions.filter((option: any) => {
+                                                                                                                    const value = typeof option === 'string' ? option : (option.name || option.index || '');
+                                                                                                                    return selectedValues.includes(value) || !knownSkillNames.has(String(value).toLowerCase());
+                                                                                                                })
+                                                                                                                : baseOptions));
+                                                                                                    if (/resilient/i.test(choice.label || '')) {
+                                                                                                        const saveProfs = new Set((savingThrowProficiencies || []).map((save: string) => save.toLowerCase()));
+                                                                                                        options = options.filter((option: any) => {
+                                                                                                            const value = typeof option === 'string' ? option : (option.index || option.name || '');
+                                                                                                            return selectedValues.includes(value) || !saveProfs.has(String(value).toLowerCase());
+                                                                                                        });
+                                                                                                    }
                                                                                                     const hasDescriptions = options.some((opt: any) => typeof opt !== 'string' && opt.desc);
 
                                                                                                     return (

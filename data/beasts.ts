@@ -528,13 +528,13 @@ export const COMMON_CREATURES: CreatureDetail[] = [
     // CR 1
     {
         index: 'brown-bear', name: 'Brown Bear', size: 'Large', type: 'beast', challenge_rating: 1,
-        ac: 11, hp: 34, hit_dice: '4d10+12', speed: '40 ft., climb 30 ft.',
-        str: 19, dex: 10, con: 16, int: 2, wis: 13, cha: 7,
-        senses: 'Passive Perception 13', languages: '',
-        traits: [{name: 'Keen Smell', desc: 'Advantage on Perception (smell).'}, {name: 'Multiattack', desc: 'The bear makes two attacks: one with its bite and one with its claws.'}],
+        ac: 11, hp: 22, hit_dice: '3d10+6', speed: '40 ft., climb 30 ft.',
+        str: 17, dex: 12, con: 15, int: 2, wis: 13, cha: 7,
+        senses: 'Darkvision 60 ft.; Passive Perception 13', languages: '',
+        traits: [{name: 'Multiattack', desc: 'The bear makes one Bite attack and one Claw attack.'}],
         actions: [
-            {name: 'Bite', desc: 'Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 1d8+4 piercing damage.', attack_bonus: 5, damage_dice: '1d8+4'},
-            {name: 'Claws', desc: 'Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 2d6+4 slashing damage.', attack_bonus: 5, damage_dice: '2d6+4'}
+            {name: 'Bite', desc: 'Melee Attack Roll: +5, reach 5 ft. Hit: 7 (1d8+3) Piercing damage.', attack_bonus: 5, damage_dice: '1d8+3'},
+            {name: 'Claw', desc: 'Melee Attack Roll: +5, reach 5 ft. Hit: 5 (1d4+3) Slashing damage. If the target is a Large or smaller creature, it has the Prone condition.', attack_bonus: 5, damage_dice: '1d4+3'}
         ]
     },
     {

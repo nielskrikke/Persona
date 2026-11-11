@@ -609,6 +609,22 @@ export interface CharacterResource {
  * and no class-name checks. A resource with max 0 at the current level is not
  * included (e.g. Wild Shape before level 2, Stroke of Luck before 20).
  */
+export const getWildShapeRules = (character: CharacterState) => {
+    const druidClass = (character.classes || []).find((entry: any) => /druid/i.test(entry.definition?.index || entry.definition?.name || ''));
+    const level = Number(druidClass?.level || 0);
+    const subclassName = String((druidClass as any)?.subclass?.name || '');
+    const featureNames = [
+        ...((character.classFeatures || []).map((feature: any) => String(feature.name || ''))),
+        ...((((druidClass as any)?.subclass?.feature_details) || []).map((feature: any) => String(feature.name || ''))),
+    ];
+    const isMoon = /moon/i.test(subclassName) || featureNames.some(name => /circle forms|combat wild shape/i.test(name));
+    const tempo = isMoon ? level * 3 : level;
+    const maxCR = isMoon ? Math.max(1, Math.floor(level / 3)) : level >= 8 ? 1 : level >= 4 ? 0.5 : 0.25;
+    const abilities = getEffectiveAbilities(character);
+    const ac = isMoon ? 13 + calculateModifier(abilities.wis) : null;
+    return { druidClass, level, isMoon, maxCR, tempHp: Math.max(0, tempo), ac };
+};
+
 export const getResourceDefinitions = (character: CharacterState): CharacterResource[] => {
     const abilities = getEffectiveAbilities(character);
     const resources = new Map<string, CharacterResource>();

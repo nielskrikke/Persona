@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Markdown from 'react-markdown';
 import { CreatureDetail, CharacterState } from '@/types';
 import { Library } from '@/data/index';
-import { calculateModifier } from '@/utils/rules';
+import { calculateModifier, getWildShapeRules } from '@/utils/rules';
 import CustomCreatureModal from './CustomCreatureModal';
 import { Search, Plus, Trash2, PawPrint, Sparkles, Wand2 } from 'lucide-react';
 
@@ -28,23 +28,16 @@ const CreatureManagerModal: React.FC<CreatureManagerModalProps> = ({
     const [showCustomModal, setShowCustomModal] = useState(false);
 
     // Calculate Constraints
-    const druidClass = character.classes.find(c => ((c.definition as any).resources || []).some((resource: any) => resource.key === 'wild-shape'));
-    const druidLevel = druidClass?.level || 0;
-    const isMoonDruid = !!druidClass?.subclass?.feature_details?.some((feature: any) => feature.name === 'Combat Wild Shape');
+    const wildShapeRules = getWildShapeRules(character);
+    const druidLevel = wildShapeRules.level;
+    const isMoonDruid = wildShapeRules.isMoon;
 
     const canSwim = mode === 'wildshape' ? druidLevel >= 4 : true;
     const canFly = mode === 'wildshape' ? druidLevel >= 8 : true;
     
-    let maxCR = 100; // Default for polymorph (actually limited by target level, but we'll show all for now or filter later)
-    if (mode === 'wildshape') {
-        if (isMoonDruid) {
-            maxCR = druidLevel >= 6 ? Math.floor(druidLevel / 3) : 1;
-        } else {
-            maxCR = druidLevel >= 8 ? 1 : druidLevel >= 4 ? 0.5 : 0.25;
-        }
-    } else if (mode === 'familiar') {
-        maxCR = 0.25; // Standard familiars are low CR
-    }
+    let maxCR = 100;
+    if (mode === 'wildshape') maxCR = wildShapeRules.maxCR;
+    else if (mode === 'familiar') maxCR = 0.25;
 
     useEffect(() => {
         if (isOpen) {
@@ -131,6 +124,8 @@ const CreatureManagerModal: React.FC<CreatureManagerModalProps> = ({
                                 {mode === 'wildshape' && (
                                     <>
                                         <span>Max CR: {maxCR}</span>
+                                        <span>Temp HP: {wildShapeRules.tempHp}</span>
+                                        {wildShapeRules.ac !== null && <span>AC: {wildShapeRules.ac}</span>}
                                         <span>Swim: {canSwim ? 'Yes' : 'No'}</span>
                                         <span>Fly: {canFly ? 'Yes' : 'No'}</span>
                                     </>
