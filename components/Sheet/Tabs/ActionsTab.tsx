@@ -96,8 +96,13 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
     character, roll, triggerRollMenu, setSelectedDetail, getAttacks, bonusActionList, setShowCustomActionModal, setShowHomebrewModal, spellSave, spellMod, setCharacter
 }) => {
     const [actionFilter, setActionFilter] = useState('ALL');
+    const [tacticalMasterSelections, setTacticalMasterSelections] = useState<Record<string, string>>({});
 
-    const allAttacks = getAttacks();
+    const allAttacks = getAttacks().map((attack: any) => {
+        if (!attack.tacticalMaster || !attack.mastery) return attack;
+        const selected = tacticalMasterSelections[attack.id];
+        return selected ? { ...attack, mastery: { ...attack.mastery, name: selected } } : attack;
+    });
     const healAction = (attack: any) => {
         const formula = String(attack.damage || '');
         if (!formula || formula === '-') return;
@@ -231,6 +236,19 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                             {attack.mastery && (
                                         <div className="flex flex-wrap gap-1 mt-1 items-center">
                                             <span className="text-[9px] uppercase font-black tracking-widest text-dnd-gold">Mastery: {attack.mastery.name}</span>
+                                            {attack.tacticalMaster && (
+                                                <select
+                                                    value={tacticalMasterSelections[attack.id] || ''}
+                                                    onChange={(e) => { e.stopPropagation(); setTacticalMasterSelections(prev => ({ ...prev, [attack.id]: e.target.value })); }}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="text-[8px] bg-black/40 border border-dnd-gold/30 text-dnd-gold rounded px-1 py-0.5"
+                                                >
+                                                    <option value="">Tactical Master…</option>
+                                                    <option value="Push">Push</option>
+                                                    <option value="Sap">Sap</option>
+                                                    <option value="Slow">Slow</option>
+                                                </select>
+                                            )}
                                             {attack.mastery.saveDC && (
                                                 <button onClick={(e) => { e.stopPropagation(); roll('1d20', `${attack.mastery.saveAbility} Save vs ${attack.mastery.name}`); }} className="text-[9px] bg-purple-900/30 text-purple-200 border border-purple-700/50 px-1.5 py-0.5 rounded font-bold">
                                                     {attack.mastery.saveAbility} DC {attack.mastery.saveDC}
@@ -384,6 +402,19 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                     {attack.mastery && (
                                         <div className="flex flex-wrap gap-1 mt-1 items-center">
                                             <span className="text-[9px] uppercase font-black tracking-widest text-dnd-gold">Mastery: {attack.mastery.name}</span>
+                                            {attack.tacticalMaster && (
+                                                <select
+                                                    value={tacticalMasterSelections[attack.id] || ''}
+                                                    onChange={(e) => { e.stopPropagation(); setTacticalMasterSelections(prev => ({ ...prev, [attack.id]: e.target.value })); }}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="text-[8px] bg-black/40 border border-dnd-gold/30 text-dnd-gold rounded px-1 py-0.5"
+                                                >
+                                                    <option value="">Tactical Master…</option>
+                                                    <option value="Push">Push</option>
+                                                    <option value="Sap">Sap</option>
+                                                    <option value="Slow">Slow</option>
+                                                </select>
+                                            )}
                                             {attack.mastery.saveDC && (
                                                 <button onClick={(e) => { e.stopPropagation(); roll('1d20', `${attack.mastery.saveAbility} Save vs ${attack.mastery.name}`); }} className="text-[9px] bg-purple-900/30 text-purple-200 border border-purple-700/50 px-1.5 py-0.5 rounded font-bold">
                                                     {attack.mastery.saveAbility} DC {attack.mastery.saveDC}

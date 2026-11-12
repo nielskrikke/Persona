@@ -3446,6 +3446,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     hit: finalHit,
                     damage: displayDamage,
                 };
+                (weaponAttack as any).tacticalMaster = (character.classFeatures || []).some((feature: any) => /tactical master/i.test(feature.name || ''));
             }
             attacks.push(weaponAttack);
             if (hasGreatWeaponMaster && isTwoHanded && isHeavyWeapon && !isRanged) {
