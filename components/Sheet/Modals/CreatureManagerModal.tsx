@@ -132,7 +132,7 @@ const CreatureManagerModal: React.FC<CreatureManagerModalProps> = ({
                                     <>
                                         <span>Max CR: {maxCR}</span>
                                         <span>Temp HP: {wildShapeRules.tempHp}</span>
-                                        {wildShapeRules.ac !== null && <span>AC: {wildShapeRules.ac}</span>}
+                                        {wildShapeRules.ac !== null && <span>AC: {wildShapeRules.ac + wildShapeGearAc}</span>}
                                         <span>Swim: {canSwim ? 'Yes' : 'No'}</span>
                                         <span>Fly: {canFly ? 'Yes' : 'No'}</span>
                                     </>
