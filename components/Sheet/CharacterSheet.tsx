@@ -3217,7 +3217,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const desc = fs.desc?.join(' ') || '';
                 if (desc.includes('Archery') && (properties.includes('Ammunition') || (isRanged && item.range))) archeryBonus += 2;
                 if (desc.includes('Dueling')) hasDueling = true;
-                if (desc.includes('Great Weapon Fighting')) hasGWF = true;
+                if (/great weapon fighting/i.test(`${fs.name || ''} ${desc}`)) hasGWF = true;
                 if (desc.includes('Two-Weapon Fighting')) hasTWF = true;
             });
 
@@ -3393,21 +3393,22 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             }
 
             const allExtraDice = [...itemExtraDamageDice, ...extraDamageDice];
-            const totalFlatDmgMod = statMod + itemDamageBonus + extraDamageBonus + (hasDueling && !isWieldingTwoHanded ? 2 : 0);
+            const isHeavyWeapon = properties.some((property: any) => /heavy/i.test(typeof property === 'string' ? property : property?.name || ''));
+            const gwmDamageBonus = hasGreatWeaponMaster && isHeavyWeapon ? prof : 0;
+            const totalFlatDmgMod = statMod + itemDamageBonus + extraDamageBonus + (hasDueling && !isWieldingTwoHanded ? 2 : 0) + gwmDamageBonus;
 
             const baseDamage = combineDamageParts(currentDamageDice, totalFlatDmgMod, allExtraDice);
             const { hit: finalHit, damage: finalDamage } = applyOverrides(baseHit, baseDamage);
 
             const finalNotes = [...notes];
-            if (hasGWF && isWieldingTwoHanded) {
+            if (hasGWF && isWieldingTwoHanded && !isRanged) {
                 finalNotes.push('GWF (Reroll 1-2)');
             }
             if (item.wieldedTwoHanded) {
                 finalNotes.push('Two-Handed');
             }
-            const isHeavyWeapon = properties.some((property: any) => /heavy/i.test(typeof property === 'string' ? property : property?.name || ''));
-            if (hasGreatWeaponMaster && isTwoHanded && isHeavyWeapon && !isRanged) {
-                finalNotes.push(`Great Weapon Master: +${prof} damage once per turn`);
+            if (gwmDamageBonus > 0) {
+                finalNotes.push(`Great Weapon Master: +${prof} damage`);
             }
 
             let displayDamage = finalDamage === '0' ? 'None' : finalDamage;
@@ -3449,18 +3450,6 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 (weaponAttack as any).tacticalMaster = (character.classFeatures || []).some((feature: any) => /tactical master/i.test(feature.name || ''));
             }
             attacks.push(weaponAttack);
-            if (hasGreatWeaponMaster && isTwoHanded && isHeavyWeapon && !isRanged) {
-                attacks.push({
-                    id: `gwm-bonus-${item.id}`,
-                    name: 'Great Weapon Master (once per turn)',
-                    range: '-',
-                    hit: null,
-                    damage: String(prof),
-                    type: 'Weapon',
-                    notes: [`Add +${prof} damage to one Heavy weapon hit on your turn.`],
-                    source: { name: 'Great Weapon Master', activationType: 'action', desc: ['Heavy weapon damage bonus.'] },
-                });
-            }
         });
 
         character.spells.forEach(spell => {

@@ -674,12 +674,8 @@ const App: React.FC = () => {
       { key: 'gear', label: 'Gear' },
   ];
   const builderStepIndex = Math.max(0, builderSteps.findIndex(step => step.key === phase));
-  const closeBuilder = () => {
-      if (window.confirm('Discard this character draft and close the forge?')) {
-          setPhase('welcome');
-          setShowDashboard(false);
-      }
-  };
+  const [showCloseBuilderConfirm, setShowCloseBuilderConfirm] = useState(false);
+  const closeBuilder = () => setShowCloseBuilderConfirm(true);
 
   useEffect(() => {
       if (phase === 'welcome' || phase === 'sheet') return;
@@ -847,6 +843,18 @@ const App: React.FC = () => {
             </ErrorBoundary>
         )}
 
+        {showCloseBuilderConfirm && (
+            <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 p-4">
+                <div className="w-full max-w-md rounded-2xl border border-gray-700 bg-[#1b1c20] p-6 shadow-2xl">
+                    <h3 className="text-xl font-serif text-white mb-2">Discard this draft?</h3>
+                    <p className="text-sm text-gray-400 mb-6">This unfinished character has not been saved.</p>
+                    <div className="flex justify-end gap-3">
+                        <button onClick={() => setShowCloseBuilderConfirm(false)} className="rounded-lg border border-gray-700 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-white">Keep Editing</button>
+                        <button onClick={() => { setShowCloseBuilderConfirm(false); setPhase('welcome'); setShowDashboard(false); }} className="rounded-lg bg-red-700 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white hover:bg-red-600">Discard</button>
+                    </div>
+                </div>
+            </div>
+        )}
       </div>
     </div>
   );
