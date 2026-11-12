@@ -424,7 +424,9 @@ export const getSubclassLevel = (definition: any): number => {
 };
 
 export const getSubclassLabel = (definition: any): string => {
-    if (definition && definition.subclass_label) return definition.subclass_label;
+    const label = String(definition?.subclass_label || '');
+    if (/martial archetype/i.test(label) && /fighter/i.test(String(definition?.name || definition?.index || ''))) return 'Fighter Subclass';
+    if (label) return label;
     return 'Subclass';
 };
 
@@ -943,6 +945,7 @@ export const getWeaponMasteryData = (mastery: string, proficiency: number, strMo
 
 export const isFeatAvailableForCharacter = (feat: any, character: CharacterState): boolean => {
     if (!isFeatAvailableForLevel(feat, character.level)) return false;
+    if (['weapon master', 'heavily armored', 'moderately armored'].includes(String(feat?.name || '').toLowerCase())) return false;
     const requirements = String(feat?.prerequisite || '').toLowerCase();
     const text = `${requirements} ${Array.isArray(feat?.desc) ? feat.desc.join(' ') : (feat?.desc || '')}`.toLowerCase();
     const race = String(character.race?.name || character.race?.index || '').toLowerCase();

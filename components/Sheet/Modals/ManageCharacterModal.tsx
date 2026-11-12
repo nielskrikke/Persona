@@ -3,7 +3,7 @@ import Markdown from 'react-markdown';
 import { X, User, GraduationCap, Activity, Shield, Settings, Plus, Trash2, Save, Languages, Palette, Type, Dice5, Eye, EyeOff, Info, Sparkles, AlertTriangle, RotateCcw, AlertCircle } from 'lucide-react';
 import { CharacterState, APIReference, RaceDetail, SubraceDetail, BackgroundDetail, FeatDetail, ABILITY_NAMES, ABILITY_LABELS, AbilityScores, SpellDetail, LevelChoice, AbilityName } from '@/types';
 import { fetchClasses, fetchRaces, fetchSubraces, fetchBackgrounds, fetchFeatsList, fetchRaceDetail, fetchSubraceDetail, fetchBackgroundDetail, fetchSubclasses, fetchSubclassDetail, fetchSubclassLevels, fetchClassLevels, fetchLevelFeatures, fetchClassDetail, fetchAllSpells, RACES, SUBCLASSES } from '@/data/index';
-import { getSpellSlots, calculateModifier, SKILL_LIST, getSubclassLevel, getResourceDefinitions, calculateMaxHp, mergeSpellSlotCurrents, isFeatAvailableForLevel, isFeatAvailableForCharacter, getChoiceCount } from '@/utils/rules';
+import { getSpellSlots, calculateModifier, SKILL_LIST, getSubclassLevel, getSubclassLabel, getResourceDefinitions, calculateMaxHp, mergeSpellSlotCurrents, isFeatAvailableForLevel, isFeatAvailableForCharacter, getChoiceCount } from '@/utils/rules';
 import { STANDARD_LANGUAGES, ARTISAN_TOOLS, MUSICAL_INSTRUMENTS, GAMING_SETS, ALL_TOOLS, MASTERY_DESCRIPTIONS } from '../../../data/constants';
 import DiceRoller3D from '../Shared/DiceRoller3D';
 
@@ -194,7 +194,18 @@ const ManageCharacterModal = ({
                 damageOverride: null
             });
 
-            setLocalChoices(character.choices || []);
+            const saveProfsForChoices = new Set((character.savingThrowProficiencies || []).map((save: string) => save.toLowerCase()));
+            setLocalChoices((character.choices || []).map((choice: any) => {
+                if (!/resilient/i.test(choice.label || '') || !Array.isArray(choice.options)) return choice;
+                const selected = Array.isArray(choice.value) ? choice.value : [choice.value];
+                return {
+                    ...choice,
+                    options: choice.options.filter((option: any) => {
+                        const value = String(typeof option === 'string' ? option : (option.index || option.name || '')).toLowerCase();
+                        return selected.some((entry: any) => String(entry).toLowerCase().startsWith(value)) || !saveProfsForChoices.has(value);
+                    }),
+                };
+            }));
             setLocalFeats(character.feats || []);
             setLocalSpells(character.spells || []);
             setLocalClasses(character.classes || []);
@@ -2241,7 +2252,7 @@ const ManageCharacterModal = ({
                                                         onChange={(e) => { if (e.target.value) handleSubclassChange(cls.definition.index, e.target.value); }}
                                                         className="bg-black/40 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-dnd-gold/50"
                                                     >
-                                                        <option value="">Choose {cls.definition.subclass_label || 'Subclass'}...</option>
+                                                        <option value="">Choose {getSubclassLabel(cls.definition)}...</option>
                                                         {(classSubclassOptions[cls.definition.index] || []).map((sub: any) => (
                                                             <option key={sub.index} value={sub.index}>{sub.name}</option>
                                                         ))}
@@ -3024,7 +3035,8 @@ const ManageCharacterModal = ({
                                                                                                 <span className="text-sm font-bold text-white">{currentVal}</span>
                                                                                                 <button 
                                                                                                     onClick={() => handleAsiEdit(choice.id, stat, 1)}
-                                                                                                    className="w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center bg-gray-800 rounded text-xs hover:bg-gray-700"
+                                                                                                    disabled={Number(abilities[stat as keyof AbilityScores] || 0) >= 20}
+                                                                                                    className="w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center bg-gray-800 rounded text-xs hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
                                                                                                 >+</button>
                                                                                             </div>
                                                                                         </div>
@@ -3147,6 +3159,13 @@ const ManageCharacterModal = ({
                                                                             options = options.filter((option: any) => {
                                                                                 const value = typeof option === 'string' ? option : (option.index || option.name || '');
                                                                                 return selectedValues.some((selected: any) => String(selected).toLowerCase().startsWith(String(value).toLowerCase())) || !saveProfs.has(String(value).toLowerCase());
+                                                                            });
+                                                                        }
+                                                                        if (/maneuver/i.test(choice.label || '')) {
+                                                                            const legacy = new Set(['brace', 'grappling strike', 'quick toss']);
+                                                                            options = options.filter((option: any) => {
+                                                                                const value = typeof option === 'string' ? option : (option.name || option.index || '');
+                                                                                return selectedValues.includes(value) || !legacy.has(String(value).toLowerCase());
                                                                             });
                                                                         }
                                                                         const hasDescriptions = options.some((opt: any) => typeof opt !== 'string' && opt.desc);
@@ -3461,7 +3480,8 @@ const ManageCharacterModal = ({
                                                                                                                             <span className="text-sm font-bold text-white">{currentVal}</span>
                                                                                                                             <button 
                                                                                                                                 onClick={() => handleAsiEdit(choice.id, stat, 1)}
-                                                                                                                                className="w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center bg-gray-800 rounded text-xs hover:bg-gray-700"
+                                                                                                                                disabled={Number(abilities[stat as keyof AbilityScores] || 0) >= 20}
+                                                                                                                                className="w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center bg-gray-800 rounded text-xs hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
                                                                                                                             >+</button>
                                                                                                                         </div>
                                                                                                                     </div>
@@ -3581,6 +3601,13 @@ const ManageCharacterModal = ({
                                                                                                         options = options.filter((option: any) => {
                                                                                                             const value = typeof option === 'string' ? option : (option.index || option.name || '');
                                                                                                             return selectedValues.some((selected: any) => String(selected).toLowerCase().startsWith(String(value).toLowerCase())) || !saveProfs.has(String(value).toLowerCase());
+                                                                                                        });
+                                                                                                    }
+                                                                                                    if (/maneuver/i.test(choice.label || '')) {
+                                                                                                        const legacy = new Set(['brace', 'grappling strike', 'quick toss']);
+                                                                                                        options = options.filter((option: any) => {
+                                                                                                            const value = typeof option === 'string' ? option : (option.name || option.index || '');
+                                                                                                            return selectedValues.includes(value) || !legacy.has(String(value).toLowerCase());
                                                                                                         });
                                                                                                     }
                                                                                                     const hasDescriptions = options.some((opt: any) => typeof opt !== 'string' && opt.desc);

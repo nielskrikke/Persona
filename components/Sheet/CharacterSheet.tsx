@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import Markdown from 'react-markdown';
 import { Sparkles, Plus, X, Maximize, Search, Info, Heart, Skull, AlertOctagon } from 'lucide-react';
 import { CharacterState, ABILITY_NAMES, ABILITY_LABELS, RollResult, AbilityName, SpellDetail, InventoryItem, Currency, RuleEntry, CreatureDetail, EldritchCannonDetail, SteelDefenderDetail, EquipmentDetail, ItemModifier, DiceCustomizationOptions } from '../../types';
-import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount, getSpellAbilityForClass, getResourceDefinitions, mergeSpellSlotCurrents, hasUiWidget, getClassWithUiWidget, resolveDamageFormula, appendMinDie, getWeaponMasteryData, getSpellCastLevel, calculateMaxHp, formatResourceName, getWildShapeRules, canCastSpellInWildShape } from '../../utils/rules';
+import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount, getSpellAbilityForClass, getResourceDefinitions, mergeSpellSlotCurrents, hasUiWidget, getClassWithUiWidget, resolveDamageFormula, appendMinDie, getWeaponMasteryData, getSpellCastLevel, calculateMaxHp, formatResourceName, getWildShapeRules, canCastSpellInWildShape, getSubclassLabel } from '../../utils/rules';
 import { rollDice } from '../../utils/dice';
 import CreatureManagerModal from './Modals/CreatureManagerModal';
 import { WIDGET_LABELS, DEFAULT_LAYOUT, STANDARD_CONDITIONS, STANDARD_ACTIONS, STATIC_RULES, WIDGET_BG, MANEUVER_DESCRIPTIONS } from '../../data/constants';
@@ -1723,6 +1723,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 recoveryPool -= recovery;
                 if (recoveryPool <= 0) break;
             }
+            const hasResourceful = [...(prev.race?.traits || []), ...(prev.subrace?.traits || [])]
+                .some((trait: any) => /resourceful/i.test(String(trait.name || '')) || /Heroic Inspiration whenever/i.test(String((trait.desc || []).join(' '))));
             return {
                 ...prev,
                 currentHp: prev.maxHp,
@@ -1730,7 +1732,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 featureUsage: newFeatures,
                 freeCastUsage: {},
                 hitDiceUsage: newHitDiceUsage,
-                eldritchCannonFreebieUsed: false
+                eldritchCannonFreebieUsed: false,
+                inspiration: hasResourceful ? true : prev.inspiration
             };
         });
     };
@@ -1815,7 +1818,27 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             return { ...prev, inventory: prev.inventory.map(i => i.id === id ? { ...i, attuned: !i.attuned } : i) };
         });
     };
-    const toggleEquipped = (id: string) => { setCharacter(prev => ({ ...prev, inventory: prev.inventory.map(i => { if (i.id !== id) return i; if (i.equipped && (i as any).cursed) { alert(`${i.name} is cursed; you cannot remove it.`); return i; } return { ...i, equipped: !i.equipped }; }) })); };
+    const toggleEquipped = (id: string) => {
+        setCharacter(prev => {
+            const target = prev.inventory.find(i => i.id === id);
+            if (!target) return prev;
+            if (target.equipped && (target as any).cursed) {
+                alert(`${target.name} is cursed; you cannot remove it.`);
+                return prev;
+            }
+            const isBodyArmor = (entry: any) => Boolean(entry.armor_category)
+                && !/shield/i.test(String(entry.armor_category))
+                && /light|medium|heavy/i.test(String(entry.armor_category));
+            return {
+                ...prev,
+                inventory: prev.inventory.map(i => {
+                    if (i.id === id) return { ...i, equipped: !i.equipped };
+                    if (!target.equipped && isBodyArmor(target) && isBodyArmor(i)) return { ...i, equipped: false };
+                    return i;
+                }),
+            };
+        });
+    };
     const toggleItemFlag = (id: string, flag: keyof InventoryItem) => {
         setCharacter(prev => ({
             ...prev,
@@ -3174,7 +3197,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const canUseCha = item.isHexWeapon || item.isPactWeapon;
             const canUseWis = item.isShillelagh;
 
-            let statMod = strMod;
+            let statMod = isRanged ? dexMod : strMod;
             if (isFinesse || isMonkWeapon) statMod = Math.max(statMod, dexMod);
             if (canUseInt) statMod = Math.max(statMod, intMod);
             if (canUseCha) statMod = Math.max(statMod, chaMod);
@@ -3185,6 +3208,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
             const fightingStyles = character.classFeatures.filter(f => f.name.includes('Fighting Style'));
             let hasGWF = false;
+            const hasGreatWeaponMaster = (character.feats || []).some((feat: any) => /great weapon master/i.test(feat.name || ''));
             let hasDueling = false;
             let hasTWF = false;
             let archeryBonus = 0;
@@ -3381,6 +3405,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             if (item.wieldedTwoHanded) {
                 finalNotes.push('Two-Handed');
             }
+            const isHeavyWeapon = properties.some((property: any) => /heavy/i.test(typeof property === 'string' ? property : property?.name || ''));
+            if (hasGreatWeaponMaster && isTwoHanded && isHeavyWeapon && !isRanged) {
+                finalNotes.push(`Great Weapon Master: +${prof} damage once per turn`);
+            }
 
             let displayDamage = finalDamage === '0' ? 'None' : finalDamage;
             if (isThrown && item.thrownDamage && item.thrownDamage !== currentDamageDice) {
@@ -3420,6 +3448,18 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 };
             }
             attacks.push(weaponAttack);
+            if (hasGreatWeaponMaster && isTwoHanded && isHeavyWeapon && !isRanged) {
+                attacks.push({
+                    id: `gwm-bonus-${item.id}`,
+                    name: 'Great Weapon Master (once per turn)',
+                    range: '-',
+                    hit: null,
+                    damage: String(prof),
+                    type: 'Weapon',
+                    notes: [`Add +${prof} damage to one Heavy weapon hit on your turn.`],
+                    source: { name: 'Great Weapon Master', activationType: 'action', desc: ['Heavy weapon damage bonus.'] },
+                });
+            }
         });
 
         character.spells.forEach(spell => {
@@ -3528,6 +3568,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 if (seenFeatureActions.has(actionKey)) return;
                 seenFeatureActions.add(actionKey);
                 const isDivineSpark = /divine spark/i.test(actionName);
+                const isSecondWind = /^second wind$/i.test(actionName);
                 const divineSparkDice = isDivineSpark ? (character.level >= 13 ? 3 : character.level >= 7 ? 2 : 1) : 0;
                 const usage = character.featureUsage?.[actionName];
                 attacks.push({
@@ -3536,8 +3577,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     range: isDivineSpark ? '30 ft.' : (effect.range || '-'),
                     hit: null,
                     save: isDivineSpark ? { dc: spellSave, type: 'CON' } : (hasSave ? { dc: saveDC, type: String(effect.save_ability || effect.save?.ability || 'CON').toUpperCase() } : null),
-                    damage: isDivineSpark ? `${divineSparkDice}d8 + ${wisMod}` : (scaled || effect.damage || '-'),
-                    type: isDivineSpark ? 'Radiant / Necrotic' : (effect.damage_type || (effect.type === 'action' ? 'Action' : effect.type === 'reaction' ? 'Reaction' : 'Bonus Action')),
+                    damage: isSecondWind ? `1d10 + ${character.level}` : (isDivineSpark ? `${divineSparkDice}d8 + ${wisMod}` : (scaled || effect.damage || '-')),
+                    type: isSecondWind ? 'Healing' : (isDivineSpark ? 'Radiant / Necrotic' : (effect.damage_type || (effect.type === 'action' ? 'Action' : effect.type === 'reaction' ? 'Reaction' : 'Bonus Action'))),
+                    healing: isSecondWind,
                     notes: isDivineSpark
                         ? ['Channel Divinity: 1d8 + WIS at level 2, 2d8 at level 7, 3d8 at level 13; CON save for half.']
                         : (effect.description ? [effect.description] : []),
@@ -3602,17 +3644,41 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
         const battleMasterLevel = character.classes.reduce((level, cls) => /battle master/i.test(cls.subclass?.name || '') ? Math.max(level, cls.level) : level, 0);
         const superiorityDie = battleMasterLevel >= 18 ? '1d12' : battleMasterLevel >= 10 ? '1d10' : '1d8';
+        const maneuverSaveAbilities: Record<string, string> = {
+            'trip attack': 'STR',
+            'pushing attack': 'STR',
+            'disarming attack': 'STR',
+            'menacing attack': 'WIS',
+            'goading attack': 'WIS',
+        };
+        const noDamageManeuvers = new Set([
+            'precision attack', 'tactical assessment', "commander's strike", 'parry', 'rally',
+            'seize the initiative', 'ambush', 'commanding presence', 'bait and switch', 'evasive footwork',
+        ]);
+        const reactionManeuvers = new Set(['riposte', 'parry']);
+        const bonusActionManeuvers = new Set(['rally']);
+        const maneuverDC = 8 + prof + Math.max(strMod, dexMod);
         character.choices.filter((choice: any) => /maneuver/i.test(choice.label || '') && Array.isArray(choice.value)).forEach((choice: any) => {
             choice.value.forEach((maneuver: string, index: number) => {
+                const key = String(maneuver).toLowerCase();
+                const saveAbility = maneuverSaveAbilities[key];
+                const isReaction = reactionManeuvers.has(key);
+                const isBonusAction = bonusActionManeuvers.has(key);
+                const description = maneuverDescriptions.get(key) || MANEUVER_DESCRIPTIONS[maneuver] || 'Battle Master maneuver. Expend a Superiority Die to use it.';
                 attacks.push({
                     id: `maneuver-${choice.id}-${index}`,
                     name: maneuver,
                     range: '-',
                     hit: null,
-                    damage: superiorityDie,
+                    save: saveAbility ? { dc: maneuverDC, type: saveAbility } : null,
+                    damage: noDamageManeuvers.has(key) ? '-' : superiorityDie,
                     type: 'Maneuver',
-                    notes: ['Superiority Die'],
-                    source: { name: maneuver, desc: [maneuverDescriptions.get(String(maneuver).toLowerCase()) || MANEUVER_DESCRIPTIONS[maneuver] || 'Battle Master maneuver. Expend a Superiority Die to use it.'] },
+                    notes: [description, saveAbility ? `${saveAbility} save DC ${maneuverDC}` : 'Superiority Die'],
+                    source: {
+                        name: maneuver,
+                        desc: [description],
+                        activationType: isReaction ? 'reaction' : isBonusAction ? 'bonus_action' : 'action',
+                    },
                 });
             });
         });
@@ -3720,6 +3786,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     };
 
     const enrichFeature = (f_item: any) => {
+        if (/^weapon mastery$/i.test(String(f_item.name || ''))) {
+            const desc = Array.isArray(f_item.desc) ? f_item.desc : (f_item.desc ? [f_item.desc] : []);
+            return { ...f_item, desc: desc.map((line: string) => String(line).replace(/Simple or Martial Melee weapons/gi, 'Simple or Martial weapons')) };
+        }
         if (f_item.index === 'the-fool') {
             const cmClass = getClassWithUiWidget(character, 'activeCards');
             const foolStacks = character.foolStacks || 0;
@@ -4003,7 +4073,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
             // 3. Add virtual feature for subclasses
             if (cls.subclass) {
-                const categoryName = (cls.definition as any).subclass_label || 'Subclass';
+                const categoryName = getSubclassLabel(cls.definition);
 
                 list.push({
                     name: `${categoryName}: ${cls.subclass.name}`,

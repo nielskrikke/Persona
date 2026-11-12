@@ -560,7 +560,7 @@ const RaceStep: React.FC<RaceStepProps> = ({ onSelect, selectedRace, onBack, use
                 ) : (
                     <>
                         <div className="bg-black/20 p-5 rounded-lg border border-gray-800 italic text-gray-400 leading-relaxed font-serif">
-                           {previewRace.alignment}
+                           {Array.isArray(previewRace.desc) ? previewRace.desc.join(' ') : (previewRace.desc || previewRace.alignment)}
                         </div>
                         
                         <section>
