@@ -611,6 +611,7 @@ export interface CharacterState {
     backgroundImageUrl?: string;
     fontScale?: number;
     activeWildShape?: { creature: CreatureDetail, currentHp: number, maxHp: number, ac?: number, tempHp?: boolean } | null;
+    wildShapeGearWorks?: boolean;
     activeConcentration?: { name: string, duration?: string } | null;
     customTrackers?: { id: string, name: string, value?: string, color?: string }[];
     activeFamiliar?: { creature: CreatureDetail, currentHp: number, maxHp: number } | null;

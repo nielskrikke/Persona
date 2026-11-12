@@ -754,6 +754,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
         // 4. Equipped & Attuned Items
         character.inventory.forEach(item => {
+            if (character.activeWildShape && character.wildShapeGearWorks === false) return;
             if (item.equipped && (!item.requires_attunement || item.attuned)) {
                 const isWeaponItem = Boolean(item.damage || item.weapon_category);
                 (item.modifiers || []).forEach((modifier: any) => {
@@ -1241,7 +1242,14 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         return speeds;
     };
 
-    const acValue = character.activeWildShape?.ac ?? calculateAC();
+    const wildShapeGearAcBonus = character.activeWildShape
+        ? activeModifiers
+            .filter((modifier: any) => modifier.type === 'bonus' && String(modifier.target || modifier.stat || '').toLowerCase() === 'ac')
+            .reduce((sum: number, modifier: any) => sum + Number(modifier.value || 0), 0)
+        : 0;
+    const acValue = character.activeWildShape
+        ? Number(character.activeWildShape.ac ?? character.activeWildShape.creature.ac) + wildShapeGearAcBonus
+        : calculateAC();
     const acBreakdown = getACBreakdown();
     const globalSaveBonus = getGlobalSaveBonus();
     const wildShapeSpeed = character.activeWildShape?.creature?.speed
@@ -2079,6 +2087,15 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                      <div><div className="text-[9px] text-gray-500 uppercase">Spd</div><div className="text-white font-bold text-[10px] leading-tight mt-0.5">{character.activeWildShape.creature.speed.replace(' ft.', '')}</div></div>
                                  </div>
                                  <div className="text-[10px] text-gray-400 space-y-1">{character.activeWildShape.creature.actions?.length > 0 && (<div><span className="font-bold text-gray-500 block">Actions:</span>{character.activeWildShape.creature.actions.map(a => (<div key={a.name} className="truncate pl-1">• {a.name}</div>))}</div>)}</div>
+                                 <label className="flex items-center gap-2 text-[9px] text-gray-500 uppercase font-bold tracking-wider cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                                     <input
+                                         type="checkbox"
+                                         checked={character.wildShapeGearWorks !== false}
+                                         onChange={(e) => setCharacter(prev => ({ ...prev, wildShapeGearWorks: e.target.checked }))}
+                                         className="accent-dnd-gold"
+                                     />
+                                     Gear bonuses apply
+                                 </label>
                              </div>
                         ) : null}
                     </div>

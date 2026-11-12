@@ -151,6 +151,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
         );
         return minimum > 1 ? appendMinDie(resolved, minimum) : resolved;
     };
+    const isActiveConcentration = (spell: SpellDetail) => character.activeConcentration?.name === spell.name;
     const castSpell = (spell: SpellDetail, requestedLevel?: number) => {
         if (character.activeWildShape && !canCastSpellInWildShape(character, spell)) return;
         if ((spell as any).itemSpell) {
@@ -480,17 +481,21 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                     )}
                                                 </div>
                                                 <div className="text-center">
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); castSpell(spell, lvl); }}
-                                                        onContextMenu={(e) => {
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            if (spell.desc?.join(' ').toLowerCase().includes('spell attack')) triggerRollMenu(e, `1d20${spellAttackFor(spell)}`, `Attack: ${spell.name}`);
-                                                        }}
-                                                        className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full"
-                                                    >
-                                                        Cast
-                                                    </button>
+                                                    {isActiveConcentration(spell) ? (
+                                                        <span className="inline-block text-[10px] font-bold uppercase bg-blue-900/20 border border-blue-800/50 text-blue-300 px-2 py-1.5 rounded w-full">Active</span>
+                                                    ) : (
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); castSpell(spell, lvl); }}
+                                                            onContextMenu={(e) => {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                                if (spell.desc?.join(' ').toLowerCase().includes('spell attack')) triggerRollMenu(e, `1d20${spellAttackFor(spell)}`, `Attack: ${spell.name}`);
+                                                            }}
+                                                            className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full"
+                                                        >
+                                                            Cast
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         );
@@ -533,12 +538,16 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                     <div className="text-[10px] text-gray-400 truncate">Effect: <span className="text-white font-bold">{effectLabel}</span></div>
                                                 )}
                                             </div>
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); castSpell(spell, lvl); }}
-                                                className="text-[10px] font-bold uppercase bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold active:bg-dnd-gold active:text-black px-4 py-2 rounded-lg transition-colors shrink-0"
-                                            >
-                                                Cast
-                                            </button>
+                                            {isActiveConcentration(spell) ? (
+                                                <span className="text-[10px] font-bold uppercase bg-blue-900/20 border border-blue-800/50 text-blue-300 px-4 py-2 rounded-lg shrink-0">Active</span>
+                                            ) : (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); castSpell(spell, lvl); }}
+                                                    className="text-[10px] font-bold uppercase bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold active:bg-dnd-gold active:text-black px-4 py-2 rounded-lg transition-colors shrink-0"
+                                                >
+                                                    Cast
+                                                </button>
+                                            )}
                                         </div>
                                     );
                                 })}
