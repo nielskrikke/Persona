@@ -609,6 +609,21 @@ export interface CharacterResource {
  * and no class-name checks. A resource with max 0 at the current level is not
  * included (e.g. Wild Shape before level 2, Stroke of Luck before 20).
  */
+export const hasCostlyMaterialComponent = (spell: any): boolean => {
+    const components = Array.isArray(spell?.components) ? spell.components.map((entry: any) => String(entry).toUpperCase()) : [];
+    if (!components.includes('M')) return false;
+    const material = String(spell?.material || '');
+    return /worth|cost|gp|consum(?:e|ed|es)|specified/i.test(material);
+};
+
+export const canCastSpellInWildShape = (character: CharacterState, spell: any): boolean => {
+    if (!character.activeWildShape) return true;
+    const rules = getWildShapeRules(character);
+    if (!spell || hasCostlyMaterialComponent(spell)) return false;
+    if (rules.level >= 18) return true;
+    return rules.isMoon && /circle of the moon/i.test(String(spell.grantedBy || spell.granted_by || ''));
+};
+
 export const getWildShapeRules = (character: CharacterState) => {
     const druidClass = (character.classes || []).find((entry: any) => /druid/i.test(entry.definition?.index || entry.definition?.name || ''));
     const level = Number(druidClass?.level || 0);

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import Markdown from 'react-markdown';
 import { Sparkles, Plus, X, Maximize, Search, Info, Heart, Skull, AlertOctagon } from 'lucide-react';
 import { CharacterState, ABILITY_NAMES, ABILITY_LABELS, RollResult, AbilityName, SpellDetail, InventoryItem, Currency, RuleEntry, CreatureDetail, EldritchCannonDetail, SteelDefenderDetail, EquipmentDetail, ItemModifier, DiceCustomizationOptions } from '../../types';
-import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount, getSpellAbilityForClass, getResourceDefinitions, mergeSpellSlotCurrents, hasUiWidget, getClassWithUiWidget, resolveDamageFormula, appendMinDie, getWeaponMasteryData, getSpellCastLevel, calculateMaxHp, formatResourceName, getWildShapeRules } from '../../utils/rules';
+import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount, getSpellAbilityForClass, getResourceDefinitions, mergeSpellSlotCurrents, hasUiWidget, getClassWithUiWidget, resolveDamageFormula, appendMinDie, getWeaponMasteryData, getSpellCastLevel, calculateMaxHp, formatResourceName, getWildShapeRules, canCastSpellInWildShape } from '../../utils/rules';
 import { rollDice } from '../../utils/dice';
 import CreatureManagerModal from './Modals/CreatureManagerModal';
 import { WIDGET_LABELS, DEFAULT_LAYOUT, STANDARD_CONDITIONS, STANDARD_ACTIONS, STATIC_RULES, WIDGET_BG, MANEUVER_DESCRIPTIONS } from '../../data/constants';
@@ -1538,6 +1538,25 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         }
     };
 
+    useEffect(() => {
+        const active = character.activeWildShape;
+        if (!active?.creature?.actions?.length) return;
+        const cleanedActions = active.creature.actions.map((action: any) => {
+            const name = String(action.name || '')
+                .replace(/\s*\((?:Primal[^)]*|Lunar[^)]*)\)/gi, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+            const desc = String(action.desc || '')
+                .replace(/\s*Primal Strike: \+\d+d\d+[^.]*\./gi, '')
+                .replace(/\s*Lunar Form: \+\d+d\d+[^.]*\./gi, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+            return { ...action, name, desc };
+        });
+        if (JSON.stringify(cleanedActions) === JSON.stringify(active.creature.actions)) return;
+        setCharacter(prev => prev.activeWildShape ? ({ ...prev, activeWildShape: { ...prev.activeWildShape, creature: { ...prev.activeWildShape.creature, actions: cleanedActions } } }) : prev);
+    }, [character.activeWildShape?.creature]);
+
     const handleDamageTrigger = (dmg: number) => {
         if (character.activeWildShape && character.activeWildShape.currentHp === 0) setCharacter(prev => ({ ...prev, activeWildShape: null }));
         if (character.activeConcentration) { const dc = Math.max(10, Math.floor(dmg / 2)); setConcentrationCheck({ dc, spellName: character.activeConcentration.name }); }
@@ -1550,14 +1569,6 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 newFeatures['Wild Shape'] = { ...newFeatures['Wild Shape'], current: newFeatures['Wild Shape'].current - 1 };
             }
             const rules = getWildShapeRules(character);
-            const featureNames = (character.classFeatures || []).map((feature: any) => String(feature.name || ''));
-            const hasPrimalStrike = featureNames.some(name => /primal strike/i.test(name));
-            const hasLunarForm = featureNames.some(name => /lunar form/i.test(name));
-            const primalDice = character.level >= 15 ? '2d8' : '1d8';
-            const bonusText = [
-                hasPrimalStrike ? `Primal Strike: +${primalDice} Cold, Fire, Lightning or Thunder damage once per turn.` : '',
-                hasLunarForm ? 'Lunar Form: +2d10 Radiant damage once per turn.' : '',
-            ].filter(Boolean).join(' ');
             const augmentedCreature: CreatureDetail = {
                 ...creature,
                 ac: rules.ac ?? creature.ac,
@@ -1565,7 +1576,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 hit_dice: `${rules.tempHp} Temporary HP`,
                 actions: (creature.actions || []).map((action: any) => ({
                     ...action,
-                    desc: [action.desc, bonusText].filter(Boolean).join(' '),
+                    desc: action.desc,
                     name: action.name,
                 })),
             };
@@ -2067,7 +2078,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                      </div>
                                      <div><div className="text-[9px] text-gray-500 uppercase">Spd</div><div className="text-white font-bold text-[10px] leading-tight mt-0.5">{character.activeWildShape.creature.speed.replace(' ft.', '')}</div></div>
                                  </div>
-                                 <div className="text-[10px] text-gray-400 space-y-1">{character.activeWildShape.creature.actions?.length > 0 && (<div><span className="font-bold text-gray-500 block">Actions:</span>{character.activeWildShape.creature.actions.map(a => (<div key={a.name} className="truncate pl-1">• {a.name}</div>))}</div>)}{character.activeWildShape.creature.actions?.some((action: any) => /Primal Strike|Lunar Form/.test(String(action.desc || ''))) && <div className="text-[9px] text-dnd-gold/80 pt-1">Primal Strike and Lunar Form once-per-turn riders are included in the attack text.</div>}</div>
+                                 <div className="text-[10px] text-gray-400 space-y-1">{character.activeWildShape.creature.actions?.length > 0 && (<div><span className="font-bold text-gray-500 block">Actions:</span>{character.activeWildShape.creature.actions.map(a => (<div key={a.name} className="truncate pl-1">• {a.name}</div>))}</div>)}</div>
                              </div>
                         ) : null}
                     </div>
@@ -3682,7 +3693,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         }
 
         if (character.activeWildShape?.creature) {
-            return attacks.filter((attack: any) => !attack.source?.weapon_category && !attack.source?.school);
+            return attacks.filter((attack: any) => {
+                if (attack.source?.weapon_category) return false;
+                if (attack.source?.school) return canCastSpellInWildShape(character, attack.source);
+                return true;
+            });
         }
         return attacks;
     };
@@ -3904,7 +3919,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         });
 
          return character.activeWildShape
-             ? list.filter((item: any) => !item.source?.school && !item.source?.weapon_category)
+             ? list.filter((item: any) => !item.source?.weapon_category && (!item.source?.school || canCastSpellInWildShape(character, item.source)))
              : list;
     };
 

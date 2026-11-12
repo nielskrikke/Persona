@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { CharacterState, SpellDetail } from '../../../types';
 import { WIDGET_BG } from '../../../data/constants';
-import { getSpellDamageString, getSpellSecondaryDamageString, calculateModifier, calculateProficiency, formatModifier, getEffectiveAbilities, resolveDamageFormula, appendMinDie, getSpellCastLevel, getSpellUpcastCount, getConditionLabelsFromText } from '../../../utils/rules';
+import { getSpellDamageString, getSpellSecondaryDamageString, calculateModifier, calculateProficiency, formatModifier, getEffectiveAbilities, resolveDamageFormula, appendMinDie, getSpellCastLevel, getSpellUpcastCount, getConditionLabelsFromText, canCastSpellInWildShape, getWildShapeRules } from '../../../utils/rules';
 
 interface SpellsTabProps {
     character: CharacterState;
@@ -152,7 +152,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
         return minimum > 1 ? appendMinDie(resolved, minimum) : resolved;
     };
     const castSpell = (spell: SpellDetail, requestedLevel?: number) => {
-        if (character.activeWildShape) return;
+        if (character.activeWildShape && !canCastSpellInWildShape(character, spell)) return;
         if ((spell as any).itemSpell) {
             if ((spell as any).itemStorageItemId) {
                 const storageId = (spell as any).itemStorageItemId;
@@ -275,19 +275,19 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
     ]));
     const maxLevel = availableLevels.length > 0 ? Math.max(...availableLevels) : 0;
 
-    if (character.activeWildShape) {
-        return (
-            <div className="max-w-5xl mx-auto">
-                <div className={`${WIDGET_BG} border border-dnd-gold/30 rounded-xl p-8 text-center space-y-2`}>
-                    <h3 className="text-lg font-serif text-dnd-gold">Spellcasting unavailable in Wild Shape</h3>
-                    <p className="text-sm text-gray-400">A level 15 Druid can't cast spells while transformed. Revert to your normal form to cast.</p>
-                </div>
-            </div>
-        );
-    }
-
     return (
         <div className="max-w-5xl mx-auto space-y-6">
+            {character.activeWildShape && (
+                <div className="rounded-xl border border-dnd-gold/30 bg-dnd-gold/5 p-4 text-sm text-gray-300">
+                    <strong className="text-dnd-gold">Wild Shape spellcasting.</strong>{' '}
+                    {getWildShapeRules(character).level >= 18
+                        ? 'Beast Spells allows your Druid spells that do not require costly or consumed material components.'
+                        : getWildShapeRules(character).isMoon
+                            ? 'Circle of the Moon spells are available, plus any already-active concentration spell.'
+                            : 'Only spells permitted by your Wild Shape features are available.'}
+                    {' '}Spells with costly or consumed material components are unavailable.
+                </div>
+            )}
             <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 ${WIDGET_BG} p-4 rounded-xl border border-[#3e4149]/50 shadow-sm`}>
                 <div className="flex flex-col items-center justify-center p-2">
                     <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Modifier</span>
@@ -375,6 +375,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                         if (!s.name.toLowerCase().includes(spellSearch.toLowerCase())) return false;
                         if (ritualOnly && !s.ritual) return false;
                         if (concentrationOnly && !s.concentration) return false;
+                        if (character.activeWildShape && !canCastSpellInWildShape(character, s) && character.activeConcentration?.name !== s.name) return false;
                         return true;
                     }).sort((a,b) => a.name.localeCompare(b.name));
                     const slots = (character.spellSlots as Record<number, {max: number, current: number}>)[lvl];
