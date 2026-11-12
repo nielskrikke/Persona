@@ -49,6 +49,7 @@ const CreatureManagerModal: React.FC<CreatureManagerModalProps> = ({
             // Filter based on limitations
             const filtered = allCreatures.filter(b => {
                 if (mode === 'wildshape') {
+                    if (String(b.type).toLowerCase() !== 'beast') return false;
                     if (b.challenge_rating > maxCR) return false;
                     if (!canSwim && b.swim_speed) return false;
                     if (!canFly && b.fly_speed) return false;

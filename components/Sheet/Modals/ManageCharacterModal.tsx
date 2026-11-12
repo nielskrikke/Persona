@@ -2739,7 +2739,7 @@ const ManageCharacterModal = ({
                                                 </div>
                                                 <div className="text-[10px] text-gray-400 leading-relaxed markdown-body">
                                                     {raceDetail && raceDetail.index === selectedRaceIndex
-                                                        ? <Markdown>{`${raceDetail.alignment || ''} ${raceDetail.age || ''} ${raceDetail.size_description || ''}`.trim() || 'No description available.'}</Markdown>
+                                                        ? <Markdown>{Array.isArray(raceDetail.desc) ? raceDetail.desc.join('\n\n') : (raceDetail.desc || 'No description available.')}</Markdown>
                                                         : 'No description available.'}
                                                 </div>
                                             </div>
@@ -2766,9 +2766,19 @@ const ManageCharacterModal = ({
                                                 </div>
                                                 <div className="text-[10px] text-gray-400 leading-relaxed markdown-body">
                                                     {subraceDetail && subraceDetail.index === selectedSubraceIndex
-                                                        ? <Markdown>{subraceDetail.desc?.join('\n\n') || 'No description available.'}</Markdown>
+                                                        ? <Markdown>{Array.isArray(subraceDetail.desc) ? subraceDetail.desc.join('\n\n') : (subraceDetail.desc || 'No description available.')}</Markdown>
                                                         : 'No description available.'}
                                                 </div>
+                                                {subraceDetail && subraceDetail.index === selectedSubraceIndex && (subraceDetail.traits || []).length > 0 && (
+                                                    <div className="mt-2 space-y-2">
+                                                        {subraceDetail.traits.map((trait: any) => (
+                                                            <div key={trait.index || trait.name} className="bg-gray-900/50 border border-gray-700/50 rounded-lg p-2">
+                                                                <div className="text-[10px] font-bold text-white">{trait.name}</div>
+                                                                <p className="text-[9px] text-gray-400 leading-relaxed">{Array.isArray(trait.desc) ? trait.desc.join(' ') : trait.desc}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </div>

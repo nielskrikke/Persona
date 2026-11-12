@@ -294,7 +294,7 @@ export const COMMON_CREATURES: CreatureDetail[] = [
         actions: [{name: 'Hooves', desc: 'Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 2d4+2 bludgeoning damage.', attack_bonus: 4, damage_dice: '2d4+2'}]
     },
     {
-        index: 'stirge', name: 'Stirge', size: 'Tiny', type: 'beast', challenge_rating: 0.125,
+        index: 'stirge', name: 'Stirge', size: 'Tiny', type: 'monstrosity', challenge_rating: 0.125,
         ac: 14, hp: 2, hit_dice: '1d4', speed: '10 ft., fly 40 ft.',
         str: 4, dex: 16, con: 11, int: 2, wis: 8, cha: 6,
         senses: 'Darkvision 60 ft., Passive Perception 9', languages: '',

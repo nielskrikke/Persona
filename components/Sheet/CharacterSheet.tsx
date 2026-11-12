@@ -1253,7 +1253,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         : getSpeedBreakdown();
     const specialSpeeds = getSpecialSpeeds();
     const currentWeight = character.inventory.reduce((sum: number, item) => sum + (item.weight || 0) * (item.quantity || 1), 0);
-    const maxWeight = getStat('str') * 15;
+    const wildShapeSizeMultiplier = /huge/i.test(String(character.activeWildShape?.creature?.size || '')) ? 4 : /large/i.test(String(character.activeWildShape?.creature?.size || '')) ? 2 : 1;
+    const maxWeight = getStat('str') * 15 * wildShapeSizeMultiplier;
 
     useEffect(() => {
         if (selectedDetail && 'quantity' in selectedDetail) {
@@ -1565,7 +1566,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 actions: (creature.actions || []).map((action: any) => ({
                     ...action,
                     desc: [action.desc, bonusText].filter(Boolean).join(' '),
-                    name: bonusText ? `${action.name}${hasPrimalStrike ? ` (Primal ${primalDice})` : ''}${hasLunarForm ? ' (Lunar +2d10)' : ''}` : action.name,
+                    name: action.name,
                 })),
             };
             setCharacter(prev => ({
@@ -3643,21 +3644,46 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const lunarRider = featureNames.some(name => /lunar form/i.test(name)) ? '2d10' : '';
             (character.activeWildShape.creature.actions || []).forEach((action: any, index: number) => {
                 if (!action.attack_bonus && !action.damage_dice) return;
-                const riders = [primalRider, lunarRider].filter(Boolean).join('+');
-                const damage = riders && action.damage_dice ? `${action.damage_dice}+${riders}` : (action.damage_dice || '-');
                 attacks.push({
                     id: `wildshape-attack-${index}`,
                     name: action.name,
                     range: '5 ft.',
                     hit: action.attack_bonus ?? null,
-                    damage,
+                    damage: action.damage_dice || '-',
                     type: action.damage_type || 'Beast',
-                    notes: [action.desc, primalRider ? `Primal Strike +${primalRider} once per turn` : '', lunarRider ? `Lunar Form +${lunarRider} Radiant once per turn` : ''].filter(Boolean),
+                    notes: [action.desc],
                     source: { ...character.activeWildShape.creature, activationType: 'action', name: action.name },
                 });
             });
+            if (primalRider) {
+                attacks.push({
+                    id: 'wildshape-primal-strike',
+                    name: 'Primal Strike (once per turn)',
+                    range: '5 ft.',
+                    hit: null,
+                    damage: primalRider,
+                    type: 'Elemental',
+                    notes: ['Add this to one successful beast attack on your turn.'],
+                    source: { ...character.activeWildShape.creature, activationType: 'action', name: 'Primal Strike' },
+                });
+            }
+            if (lunarRider) {
+                attacks.push({
+                    id: 'wildshape-lunar-form',
+                    name: 'Lunar Form (once per turn)',
+                    range: '5 ft.',
+                    hit: null,
+                    damage: lunarRider,
+                    type: 'Radiant',
+                    notes: ['Add this to one successful beast attack on your turn.'],
+                    source: { ...character.activeWildShape.creature, activationType: 'action', name: 'Lunar Form' },
+                });
+            }
         }
 
+        if (character.activeWildShape?.creature) {
+            return attacks.filter((attack: any) => !attack.source?.weapon_category && !attack.source?.school);
+        }
         return attacks;
     };
 
@@ -3749,7 +3775,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
          const list: any[] = [];
 
          // 1. Spells with bonus action casting time
-         character.spells.forEach(spell => {
+         if (!character.activeWildShape) character.spells.forEach(spell => {
              if (spell.casting_time.toLowerCase().includes('bonus')) {
                  list.push({
                      id: spell.index,
@@ -3877,7 +3903,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             }
         });
 
-         return list;
+         return character.activeWildShape
+             ? list.filter((item: any) => !item.source?.school && !item.source?.weapon_category)
+             : list;
     };
 
 
@@ -4468,7 +4496,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                              <span className="text-gray-600 text-xl font-light">/</span>
                                              <div className="flex flex-col items-center"><span className="text-[9px] font-bold text-gray-500 uppercase">Max</span><span className="text-xl font-bold text-gray-400">{character.maxHp}</span></div>
                                              <div className="w-px h-8 bg-gray-700/50 mx-1"></div>
-                                             <div className="flex flex-col items-center"><span className="text-[9px] font-bold text-gray-500 uppercase">Temp</span><span className="text-lg font-bold text-gray-300">{character.tempHp || '--'}</span></div>
+                                             <div className="flex flex-col items-center"><span className="text-[9px] font-bold text-gray-500 uppercase">Temp</span><span className="text-lg font-bold text-gray-300">{character.activeWildShape?.currentHp ?? character.tempHp ?? '--'}</span></div>
                                          </div>
                                          <div className="py-0.5 text-center border-t bg-[#0b0c0e]/50 border-gray-600/50">
                                              <span className="text-[9px] font-bold uppercase text-gray-500">Hit Points</span>
