@@ -2075,7 +2075,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                              <div className="space-y-2">
                                  <div className="flex justify-between items-start"><div className="font-bold text-white">{character.activeWildShape.creature.name}</div><div className="text-[10px] text-gray-400">{character.activeWildShape.creature.size} {character.activeWildShape.creature.type}</div></div>
                                  <div className="grid grid-cols-3 gap-1 text-center bg-gray-800/50 rounded p-1">
-                                     <div><div className="text-[9px] text-gray-500 uppercase">AC</div><div className="text-white font-bold text-sm">{character.activeWildShape.ac || character.activeWildShape.creature.ac}</div></div>
+                                     <div><div className="text-[9px] text-gray-500 uppercase">AC</div><div className="text-white font-bold text-sm">{acValue}</div></div>
                                      <div className="flex flex-col items-center">
                                          <div className="text-[9px] text-gray-500 uppercase">Temp HP</div>
                                          <div className="flex items-center gap-1">

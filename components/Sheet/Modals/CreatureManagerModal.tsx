@@ -29,6 +29,12 @@ const CreatureManagerModal: React.FC<CreatureManagerModalProps> = ({
 
     // Calculate Constraints
     const wildShapeRules = getWildShapeRules(character);
+    const wildShapeGearAc = mode === 'wildshape' && character.wildShapeGearWorks !== false
+        ? (character.inventory || []).filter((item: any) => item.equipped && (!item.requires_attunement || item.attuned))
+            .flatMap((item: any) => item.modifiers || [])
+            .filter((modifier: any) => String(modifier.target || modifier.stat || '').toLowerCase() === 'ac' && (modifier.type === 'bonus' || modifier.type === 'stat_bonus'))
+            .reduce((sum: number, modifier: any) => sum + Number(modifier.value || 0), 0)
+        : 0;
     const druidLevel = wildShapeRules.level;
     const isMoonDruid = wildShapeRules.isMoon;
 
@@ -205,12 +211,13 @@ const CreatureManagerModal: React.FC<CreatureManagerModalProps> = ({
                                 <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 text-center">
                                     <div className="bg-gray-800/50 p-2 rounded border border-gray-700">
                                         <div className="text-[10px] uppercase font-black text-gray-500">Armor Class</div>
-                                        <div className="text-xl text-white font-bold">{selectedCreature.ac}</div>
+                                        <div className="text-xl text-white font-bold">{mode === 'wildshape' ? (wildShapeRules.ac ?? selectedCreature.ac) + wildShapeGearAc : selectedCreature.ac}</div>
+                                        {mode === 'wildshape' && wildShapeRules.ac !== null && <div className="text-[9px] text-gray-500">Circle Forms</div>}
                                     </div>
                                     <div className="bg-gray-800/50 p-2 rounded border border-gray-700">
-                                        <div className="text-[10px] uppercase font-black text-gray-500">Hit Points</div>
-                                        <div className="text-xl text-green-400 font-bold">{selectedCreature.hp}</div>
-                                        <div className="text-[10px] text-gray-500">{selectedCreature.hit_dice}</div>
+                                        <div className="text-[10px] uppercase font-black text-gray-500">{mode === 'wildshape' ? 'Temp HP' : 'Hit Points'}</div>
+                                        <div className="text-xl text-green-400 font-bold">{mode === 'wildshape' ? wildShapeRules.tempHp : selectedCreature.hp}</div>
+                                        <div className="text-[10px] text-gray-500">{mode === 'wildshape' ? 'Your HP is retained' : selectedCreature.hit_dice}</div>
                                     </div>
                                     <div className="bg-gray-800/50 p-2 rounded border border-gray-700">
                                         <div className="text-[10px] uppercase font-black text-gray-500">Speed</div>
@@ -218,14 +225,14 @@ const CreatureManagerModal: React.FC<CreatureManagerModalProps> = ({
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-3 lg:grid-cols-6 gap-2 text-center mb-6 bg-gray-800/30 p-3 rounded border border-gray-700">
+                                <div className="grid grid-cols-3 lg:grid-cols-6 gap-2 text-center mb-2 bg-gray-800/30 p-3 rounded border border-gray-700">
                                     {[
                                         { l: 'STR', v: selectedCreature.str },
                                         { l: 'DEX', v: selectedCreature.dex },
                                         { l: 'CON', v: selectedCreature.con },
-                                        { l: 'INT', v: selectedCreature.int },
-                                        { l: 'WIS', v: selectedCreature.wis },
-                                        { l: 'CHA', v: selectedCreature.cha },
+                                        { l: 'INT', v: mode === 'wildshape' ? character.abilities.int : selectedCreature.int },
+                                        { l: 'WIS', v: mode === 'wildshape' ? character.abilities.wis : selectedCreature.wis },
+                                        { l: 'CHA', v: mode === 'wildshape' ? character.abilities.cha : selectedCreature.cha },
                                     ].map(stat => (
                                         <div key={stat.l}>
                                             <div className="text-[10px] font-black text-gray-500">{stat.l}</div>
@@ -234,6 +241,7 @@ const CreatureManagerModal: React.FC<CreatureManagerModalProps> = ({
                                         </div>
                                     ))}
                                 </div>
+                                {mode === 'wildshape' && <p className="text-[9px] text-gray-500 text-center mb-4">STR, DEX and CON come from the form. INT, WIS and CHA are retained from your character.</p>}
 
                                 <div className="space-y-4 text-sm text-gray-300 markdown-body">
                                     {selectedCreature.traits?.map(t => (
