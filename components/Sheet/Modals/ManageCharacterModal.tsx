@@ -848,6 +848,7 @@ const ManageCharacterModal = ({
         const derivedTools = new Set(toolProficiencies.filter((tool: string) => !pendingToolValues.has(tool)));
         const pendingAbilityDelta: any = { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
         localChoices.forEach((choice: any) => {
+            if (/gaming set/i.test(choice.label || '')) return;
             if (choice.revertData?.pendingConfirm) {
                 [choice.revertData?.abilities, choice.revertData?.featAbilities].forEach((source: any) => {
                     Object.entries(source || {}).forEach(([stat, amount]) => {
@@ -1433,7 +1434,7 @@ const ManageCharacterModal = ({
             }
             if (choice.type === 'expertise') setExpertise(prev => adding ? Array.from(new Set([...prev, newValue])) : prev.filter(value => value !== newValue));
             if (choice.type === 'language') setLanguages(prev => adding ? Array.from(new Set([...prev, newValue])) : prev.filter(value => value !== newValue));
-            if ((choice.type as string) === 'tool') setToolProficiencies(prev => adding ? Array.from(new Set([...prev, newValue])) : prev.filter(value => value !== newValue));
+            if ((choice.type as string) === 'tool' && !/gaming set/i.test(choice.label || '')) setToolProficiencies(prev => adding ? Array.from(new Set([...prev, newValue])) : prev.filter(value => value !== newValue));
             return;
         }
 

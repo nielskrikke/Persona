@@ -1147,7 +1147,15 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         const heavyArmorPenalty = (character.inventory || []).some(item => item.equipped
             && /heavy/i.test(String(item.armor_category || ''))
             && Number((item as any).str_minimum || (item as any).strength_requirement || 0) > getStat('str'));
-        return Math.max(0, total - (heavyArmorPenalty ? 10 : 0));
+        const hasArmorEquipped = (character.inventory || []).some((item: any) => item.equipped && item.armor_class && !/shield/i.test(String(item.armor_category || '')));
+        const hasShieldEquipped = (character.inventory || []).some((item: any) => item.equipped && (/shield/i.test(String(item.name || '')) || /shield/i.test(String(item.armor_category || ''))));
+        const monkClass = (character.classes || []).find((entry: any) => /monk/i.test(entry.definition?.index || entry.definition?.name || ''));
+        const hasUnarmoredMovement = (character.classFeatures || []).some((feature: any) => /unarmored movement/i.test(feature.name || ''))
+            || !!monkClass;
+        const monkMovementBonus = hasUnarmoredMovement && !hasArmorEquipped && !hasShieldEquipped
+            ? (Number(monkClass?.level || character.level) >= 18 ? 30 : Number(monkClass?.level || character.level) >= 14 ? 25 : Number(monkClass?.level || character.level) >= 10 ? 20 : Number(monkClass?.level || character.level) >= 6 ? 15 : Number(monkClass?.level || character.level) >= 2 ? 10 : 0)
+            : 0;
+        return Math.max(0, total + monkMovementBonus - (heavyArmorPenalty ? 10 : 0));
     };
 
     const getSpeedBreakdown = () => {
@@ -1166,6 +1174,14 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         });
         if ((character.inventory || []).some(item => item.equipped && /heavy/i.test(String(item.armor_category || '')) && Number((item as any).str_minimum || (item as any).strength_requirement || 0) > getStat('str'))) {
             breakdown.push({ label: 'Heavy Armor STR Requirement', value: '-10 ft.' });
+        }
+        const monkBreakdown = (character.classFeatures || []).some((feature: any) => /unarmored movement/i.test(feature.name || ''));
+        const monkArmor = (character.inventory || []).some((item: any) => item.equipped && item.armor_class && !/shield/i.test(String(item.armor_category || '')));
+        const monkShield = (character.inventory || []).some((item: any) => item.equipped && /shield/i.test(String(item.name || '') + String(item.armor_category || '')));
+        if (monkBreakdown && !monkArmor && !monkShield) {
+            const monkLevel = Number((character.classes || []).find((entry: any) => /monk/i.test(entry.definition?.index || ''))?.level || character.level);
+            const bonus = monkLevel >= 18 ? 30 : monkLevel >= 14 ? 25 : monkLevel >= 10 ? 20 : monkLevel >= 6 ? 15 : monkLevel >= 2 ? 10 : 0;
+            if (bonus > 0) breakdown.push({ label: 'Unarmored Movement', value: `+${bonus} ft.` });
         }
 
         return breakdown;
@@ -3189,7 +3205,14 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const isThrown = item.isThrown || properties.includes('Thrown') || (item.range && item.weapon_range !== 'Ranged' && !item.weapon_category?.toLowerCase().includes('ranged'));
             const isReach = properties.includes('Reach');
             const isRanged = item.weapon_range === 'Ranged' || item.weapon_category?.toLowerCase().includes('ranged') || item.equipment_category?.name?.toLowerCase().includes('ranged') || properties.includes('Ammunition');
-            const isMonkWeapon = item.isMonkWeapon || item.isKenseiWeapon || (monk && (item.equipment_category?.index === 'weapon' && (Library.getItem(item.index || '')?.properties?.some(p => (typeof p === 'string' ? p : p.index) === 'simple') || item.name === 'Shortsword')));
+            const monkBase = item.base_item ? Library.getItem(item.base_item) : Library.getItem(item.index || '');
+            const monkProperties = [...(item.properties || []), ...((monkBase as any)?.properties || [])]
+                .map((property: any) => String(typeof property === 'string' ? property : property?.name || property?.index || '').toLowerCase());
+            const isMonkWeapon = item.isMonkWeapon || item.isKenseiWeapon || (monk && !isRanged && (
+                String(item.weapon_category || '').toLowerCase().includes('simple')
+                || monkProperties.some((property: string) => property.includes('light'))
+                || monkProperties.some((property: string) => property.includes('simple'))
+            ));
 
             // Special Attack Modifiers
             const isMagic = Boolean((item as any).is_magic || item.requires_attunement || (item.modifiers && item.modifiers.length > 0) || item.isInfusion);
@@ -3557,6 +3580,20 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const actionKey = `${String(actionName).toLowerCase()}|${String(effect.type || '').toLowerCase()}`;
                 if (seenFeatureActions.has(actionKey)) return;
                 seenFeatureActions.add(actionKey);
+                const isFlurry = /flurry of blows/i.test(actionName);
+                const isPatient = /patient defense/i.test(actionName);
+                const isStep = /step of the wind/i.test(actionName);
+                const isDeflect = /deflect attacks/i.test(actionName);
+                const heightenedFocus = (character.classFeatures || []).some((entry: any) => /heightened focus/i.test(entry.name || ''));
+                const monkActionDescription = isFlurry
+                    ? `Spend 1 Focus Point to make ${heightenedFocus ? 'three' : 'two'} Unarmed Strikes as a Bonus Action.`
+                    : isPatient
+                        ? 'Take the Disengage and Dodge actions as a Bonus Action; with Heightened Focus, gain temporary HP when you spend Focus.'
+                        : isStep
+                            ? 'Take the Dash and Disengage actions as a Bonus Action; spending Focus also doubles your jump distance.'
+                            : isDeflect
+                                ? `Reduce damage by 1d10 + DEX + Monk level (1d10 + ${dexMod} + ${character.level}).`
+                                : effect.description;
                 const isDivineSpark = /divine spark/i.test(actionName);
                 const isSecondWind = /^second wind$/i.test(actionName);
                 const divineSparkDice = isDivineSpark ? (character.level >= 13 ? 3 : character.level >= 7 ? 2 : 1) : 0;
@@ -3572,17 +3609,67 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     healing: isSecondWind,
                     notes: isDivineSpark
                         ? ['Channel Divinity: 1d8 + WIS at level 2, 2d8 at level 7, 3d8 at level 13; CON save for half.']
-                        : (effect.description ? [effect.description] : []),
+                        : (monkActionDescription ? [monkActionDescription] : []),
                     source: {
                         ...feature,
                         name: actionName,
-                        desc: [isDivineSpark ? 'Channel Divinity: 1d8 + WIS at level 2, 2d8 at level 7, 3d8 at level 13; CON save for half.' : (effect.description || '')],
+                        desc: [isDivineSpark ? 'Channel Divinity: 1d8 + WIS at level 2, 2d8 at level 7, 3d8 at level 13; CON save for half.' : (monkActionDescription || '')],
                         activationType: effect.type,
                         maxUses: usage?.max,
                     },
                 });
             });
         });
+
+        const hasFeature = (name: string) => (character.classFeatures || []).some((feature: any) => String(feature.name || '').toLowerCase().includes(String(name).toLowerCase()));
+        const pushMonkAction = (action: any) => {
+            if (attacks.some(existing => String(existing.name).toLowerCase() === String(action.name).toLowerCase())) return;
+            attacks.push(action);
+        };
+        const focusDC = 8 + prof + wisMod;
+        const monkDie = character.level >= 17 ? '1d12' : character.level >= 11 ? '1d10' : character.level >= 5 ? '1d8' : '1d6';
+        if (hasFeature('stunning strike')) {
+            pushMonkAction({
+                id: 'monk-stunning-strike',
+                name: 'Stunning Strike',
+                range: '5 ft.',
+                hit: null,
+                save: { dc: focusDC, type: 'CON' },
+                damage: '-',
+                type: 'Focus',
+                notes: ['Once per turn on a hit; spend 1 Focus Point. Failed save: Stunned until the start of your next turn.'],
+                source: { name: 'Stunning Strike', activationType: 'action', desc: ['Once per turn on a hit, spend 1 Focus Point to force a CON save.'] },
+            });
+        }
+        if (hasFeature('hand of harm')) {
+            pushMonkAction({
+                id: 'monk-hand-of-harm',
+                name: 'Hand of Harm',
+                range: '5 ft.',
+                hit: null,
+                save: null,
+                damage: `${monkDie} + ${wisMod}`,
+                type: 'Necrotic',
+                notes: ['Once per turn on an Unarmed Strike hit; spend 1 Focus Point.'],
+                source: { name: 'Hand of Harm', activationType: 'action', desc: ['Add Martial Arts die + WIS Necrotic damage to an Unarmed Strike.'] },
+            });
+        }
+        const breathTrait = [...(character.race?.traits || []), ...(character.subrace?.traits || [])]
+            .find((trait: any) => /breath weapon/i.test(trait.name || ''));
+        if (breathTrait) {
+            const breathDice = character.level >= 17 ? '4d10' : character.level >= 11 ? '3d10' : character.level >= 5 ? '2d10' : '1d10';
+            pushMonkAction({
+                id: 'dragonborn-breath-weapon',
+                name: 'Breath Weapon',
+                range: '15 ft. cone / 30 ft. line',
+                hit: null,
+                save: { dc: 8 + prof + conMod, type: 'CON' },
+                damage: breathDice,
+                type: 'Fire',
+                notes: ['Replace one attack; CON save for half. Uses equal to Proficiency Bonus per Long Rest.'],
+                source: { ...breathTrait, name: 'Breath Weapon', activationType: 'action', desc: ['Exhale elemental energy in a 15-ft. cone or 30-ft. line.'] },
+            });
+        }
 
         character.customActions?.forEach(action => {
             let hit: number | null = null;
@@ -3925,7 +4012,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                  ? enriched.desc.join(' ').toLowerCase()
                  : (enriched.desc || '').toLowerCase();
 
-             if (descStr.includes('bonus action') && !list.some(item => item.name === enriched.name)) {
+             if (descStr.includes('bonus action') && !/^(martial arts|monk's focus)$/i.test(String(enriched.name || '')) && !list.some(item => item.name === enriched.name)) {
                  list.push({
                      ...enriched,
                      id: enriched.id || `feature-${enriched.index || enriched.name.toLowerCase().replace(/\s+/g, '-')}`,

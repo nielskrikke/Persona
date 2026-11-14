@@ -857,6 +857,7 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
             if (!name) return;
             const skill = SKILL_LIST.find(entry => entry.name.toLowerCase() === name.toLowerCase());
             if (skill) derivedSkills.add(skill.name);
+            if (/gaming set/i.test(choice.label || '')) return;
             const tool = [...ARTISAN_TOOLS, ...MUSICAL_INSTRUMENTS, ...GAMING_SETS].find(entry => entry.toLowerCase() === name.toLowerCase());
             if (tool) derivedTools.add(tool);
         });
@@ -947,7 +948,37 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
             return item;
         });
     }
+    const gamingEquipmentChoice = (character.choices || []).find((choice: any) => /gaming set/i.test(choice.label || '') && choice.value);
+    const gamingEquipmentName = gamingEquipmentChoice
+        ? (Array.isArray(gamingEquipmentChoice.value) ? gamingEquipmentChoice.value[0] : gamingEquipmentChoice.value)
+        : null;
+    if (gamingEquipmentName) {
+        derivedTools.delete(String(gamingEquipmentName));
+        if (!inventory.some((item: any) => String(item.name).toLowerCase() === String(gamingEquipmentName).toLowerCase())) {
+            const detail = inventoryCatalog.find(entry => String(entry.name).toLowerCase() === String(gamingEquipmentName).toLowerCase());
+            inventory.push({
+                ...(detail || {}),
+                id: `background-gaming-${String(gamingEquipmentName).toLowerCase().replace(/\s+/g, '-')}`,
+                name: gamingEquipmentName,
+                quantity: 1,
+                equipped: false,
+                attuned: false,
+            });
+        }
+    }
     const chosenInstrument = (character.toolProficiencies || []).find(tool => MUSICAL_INSTRUMENTS.some(instrument => String(instrument).toLowerCase() === String(tool).toLowerCase()));
+    if (chosenInstrument && (character.classes || []).some((cls: any) => /monk|bard/i.test(cls.definition?.index || ''))
+        && !inventory.some((item: any) => String(item.name).toLowerCase() === String(chosenInstrument).toLowerCase())) {
+        const detail = inventoryCatalog.find(entry => String(entry.name).toLowerCase() === String(chosenInstrument).toLowerCase());
+        inventory.push({
+            ...(detail || {}),
+            id: `class-instrument-${String(chosenInstrument).toLowerCase().replace(/\s+/g, '-')}`,
+            name: chosenInstrument,
+            quantity: 1,
+            equipped: false,
+            attuned: false,
+        });
+    }
     if (chosenInstrument) {
         inventory = inventory.map((item: any) => {
             if (!/^musical instrument$/i.test(String(item.name || ''))) return item;

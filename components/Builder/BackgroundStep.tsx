@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { APIReference, BackgroundDetail, ContentChoice, FeatDetail, AbilityName, ABILITY_LABELS, ABILITY_NAMES } from '../../types';
 import { fetchBackgrounds, fetchBackgroundDetail, fetchFeatsList } from '../../data/index';
-import { STANDARD_LANGUAGES } from '../../data/constants';
+import { STANDARD_LANGUAGES, GAMING_SETS } from '../../data/constants';
 
 const LANGUAGE_LIST = ["Abyssal", "Celestial", "Common", "Deep Speech", "Draconic", "Dwarvish", "Elvish", "Giant", "Gnomish", "Goblin", "Halfling", "Infernal", "Orc", "Primordial", "Sylvan", "Undercommon"];
 
@@ -41,6 +41,7 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
     const [genericSelections, setGenericSelections] = useState<Record<string, string[]>>({});
     const [asiMode, setAsiMode] = useState<'2/1' | '1/1/1'>('2/1');
     const [equipmentOptionIndex, setEquipmentOptionIndex] = useState(0);
+    const [gamingSetChoice, setGamingSetChoice] = useState(GAMING_SETS[0]);
     const [skillReplacements, setSkillReplacements] = useState<Record<string, string>>({});
 
     useEffect(() => {
@@ -68,6 +69,7 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
         setGenericSelections({});
         setAsiMode('2/1');
         setEquipmentOptionIndex(0);
+        setGamingSetChoice(GAMING_SETS[0]);
         setSkillReplacements({});
         setValidationError(null);
     };
@@ -322,7 +324,7 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
             tools: extraTools,
             skills: Array.from(new Set([...extraSkills, ...duplicateSkills.map(skill => skillReplacements[skill]).filter(Boolean)])),
             choices: levelChoices,
-            equipment: selectedBackground.equipment_options?.[equipmentOptionIndex]?.equipment || selectedBackground.equipment,
+            equipment: (selectedBackground.equipment_options?.[equipmentOptionIndex]?.equipment || selectedBackground.equipment || []).map((item: string) => /gaming set/i.test(item) ? gamingSetChoice : item),
             currency: selectedBackground.equipment_options?.[equipmentOptionIndex]?.currency || selectedBackground.currency,
             abilities: abilityBonuses,
             feats: selectedFeats,
@@ -609,6 +611,14 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
                                                     </button>
                                                 ))}
                                             </div>
+                                            {((selectedBackground.equipment_options?.[equipmentOptionIndex]?.equipment || selectedBackground.equipment || []).some((item: string) => /gaming set/i.test(item))) && (
+                                                <label className="block space-y-1 pt-2">
+                                                    <span className="text-[9px] font-black uppercase tracking-widest text-gray-500">Gaming Set</span>
+                                                    <select value={gamingSetChoice} onChange={(e) => setGamingSetChoice(e.target.value)} className="w-full rounded-lg border border-gray-700 bg-black/40 px-3 py-2 text-xs text-white">
+                                                        {GAMING_SETS.map(set => <option key={set} value={set}>{set}</option>)}
+                                                    </select>
+                                                </label>
+                                            )}
                                         </section>
                                     )}
 

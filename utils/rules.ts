@@ -426,6 +426,7 @@ export const getSubclassLevel = (definition: any): number => {
 export const getSubclassLabel = (definition: any): string => {
     const label = String(definition?.subclass_label || '');
     if (/martial archetype/i.test(label) && /fighter/i.test(String(definition?.name || definition?.index || ''))) return 'Fighter Subclass';
+    if (/monastic tradition/i.test(label) && /monk/i.test(String(definition?.name || definition?.index || ''))) return 'Monk Subclass';
     if (label) return label;
     return 'Subclass';
 };
