@@ -1014,7 +1014,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
              // Unarmored Defense comes from data effects (stat_bonus_attribute).
              let attrBonus: number | null = null;
              activeModifiers.forEach(m => {
-                 if (m.type === 'stat_bonus_attribute' && (m.stat === 'ac' || m.target === 'ac') && m.attribute) {
+                 if (m.type === 'stat_bonus_attribute' && (m.stat === 'ac' || m.target === 'ac') && m.attribute && !shield) {
                      if (checkModifierRule(m)) {
                          const candidate = calculateModifier(getStat(m.attribute));
                          if (attrBonus === null || candidate > attrBonus) attrBonus = candidate;
@@ -3577,6 +3577,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 }
                 const hasSave = Boolean(effect.save_ability || effect.save?.ability || rawDC);
                 const actionName = effect.name || feature.name;
+                if (/breath weapon/i.test(actionName)) return;
                 const actionKey = `${String(actionName).toLowerCase()}|${String(effect.type || '').toLowerCase()}`;
                 if (seenFeatureActions.has(actionKey)) return;
                 seenFeatureActions.add(actionKey);
@@ -3584,13 +3585,16 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const isPatient = /patient defense/i.test(actionName);
                 const isStep = /step of the wind/i.test(actionName);
                 const isDeflect = /deflect attacks/i.test(actionName);
+                const isHandOfHealing = /hand of healing/i.test(actionName);
                 const heightenedFocus = (character.classFeatures || []).some((entry: any) => /heightened focus/i.test(entry.name || ''));
-                const monkActionDescription = isFlurry
+                const monkActionDescription = isHandOfHealing
+                    ? `Magic action; spend 1 Focus Point to restore ${character.level >= 17 ? '1d12' : character.level >= 11 ? '1d10' : character.level >= 5 ? '1d8' : '1d6'} + ${wisMod} HP.`
+                    : isFlurry
                     ? `Spend 1 Focus Point to make ${heightenedFocus ? 'three' : 'two'} Unarmed Strikes as a Bonus Action.`
                     : isPatient
-                        ? 'Take the Disengage and Dodge actions as a Bonus Action; with Heightened Focus, gain temporary HP when you spend Focus.'
+                        ? 'Take the Disengage action as a Bonus Action; spend 1 Focus Point to also take Dodge. With Heightened Focus, gain temporary HP when you spend Focus.'
                         : isStep
-                            ? 'Take the Dash and Disengage actions as a Bonus Action; spending Focus also doubles your jump distance.'
+                            ? 'Take the Dash action as a Bonus Action; spend 1 Focus Point to also take Disengage, which doubles your jump distance.'
                             : isDeflect
                                 ? `Reduce damage by 1d10 + DEX + Monk level (1d10 + ${dexMod} + ${character.level}).`
                                 : effect.description;
@@ -3604,9 +3608,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     range: isDivineSpark ? '30 ft.' : (effect.range || '-'),
                     hit: null,
                     save: isDivineSpark ? { dc: spellSave, type: 'CON' } : (hasSave ? { dc: saveDC, type: String(effect.save_ability || effect.save?.ability || 'CON').toUpperCase() } : null),
-                    damage: isSecondWind ? `1d10 + ${character.level}` : (isDivineSpark ? `${divineSparkDice}d8 + ${wisMod}` : (scaled || effect.damage || '-')),
-                    type: isSecondWind ? 'Healing' : (isDivineSpark ? 'Radiant / Necrotic' : (effect.damage_type || (effect.type === 'action' ? 'Action' : effect.type === 'reaction' ? 'Reaction' : 'Bonus Action'))),
-                    healing: isSecondWind,
+                    damage: isHandOfHealing
+                        ? `${character.level >= 17 ? '1d12' : character.level >= 11 ? '1d10' : character.level >= 5 ? '1d8' : '1d6'} + ${wisMod}`
+                        : (isSecondWind ? `1d10 + ${character.level}` : (isDivineSpark ? `${divineSparkDice}d8 + ${wisMod}` : (scaled || effect.damage || '-'))),
+                    type: isHandOfHealing ? 'Healing' : (isSecondWind ? 'Healing' : (isDivineSpark ? 'Radiant / Necrotic' : (effect.damage_type || (effect.type === 'action' ? 'Action' : effect.type === 'reaction' ? 'Reaction' : 'Bonus Action')))),
+                    healing: isSecondWind || isHandOfHealing,
                     notes: isDivineSpark
                         ? ['Channel Divinity: 1d8 + WIS at level 2, 2d8 at level 7, 3d8 at level 13; CON save for half.']
                         : (monkActionDescription ? [monkActionDescription] : []),
@@ -3663,10 +3669,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 name: 'Breath Weapon',
                 range: '15 ft. cone / 30 ft. line',
                 hit: null,
-                save: { dc: 8 + prof + conMod, type: 'CON' },
+                save: { dc: 8 + prof + conMod, type: 'DEX' },
                 damage: breathDice,
                 type: 'Fire',
-                notes: ['Replace one attack; CON save for half. Uses equal to Proficiency Bonus per Long Rest.'],
+                notes: ['Replace one attack; DEX save for half. Uses equal to Proficiency Bonus per Long Rest.'],
                 source: { ...breathTrait, name: 'Breath Weapon', activationType: 'action', desc: ['Exhale elemental energy in a 15-ft. cone or 30-ft. line.'] },
             });
         }

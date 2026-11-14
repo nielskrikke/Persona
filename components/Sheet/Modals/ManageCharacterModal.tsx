@@ -2078,7 +2078,7 @@ const ManageCharacterModal = ({
     });
     useEffect(() => {
         if (!isOpen) return;
-        const timer = setTimeout(() => { initialSnapshotRef.current = discardSnapshot(); }, 0);
+        const timer = setTimeout(() => { initialSnapshotRef.current = discardSnapshot(); }, 250);
         return () => clearTimeout(timer);
     }, [isOpen]);
     const requestClose = () => {
@@ -3412,7 +3412,7 @@ const ManageCharacterModal = ({
                                                                                             </div>
                                                                                         </div>
                                                                                         <div className="flex items-center gap-3">
-                                                                                            <h5 className="text-gray-300 font-bold text-xs">{choice.label}</h5>
+                                                                                            <h5 className="text-gray-300 font-bold text-xs">{choice.type === 'subclass' && /monastic tradition/i.test(choice.label || '') ? 'Monk Subclass' : choice.type === 'subclass' && /martial archetype/i.test(choice.label || '') ? 'Fighter Subclass' : choice.label}</h5>
                                                                                             {['subclass', 'feat-selection', 'asi-feat'].includes(choice.type) && (
                                                                                                 <button 
                                                                                                     onClick={() => toggleChoiceExpansion(choice.id)}
@@ -3433,7 +3433,9 @@ const ManageCharacterModal = ({
                                                                                 </div>
                                                                                 
                                                                                 <div className="text-[10px] text-dnd-gold font-medium bg-dnd-gold/5 border border-dnd-gold/10 px-3 py-1.5 rounded-lg inline-block">
-                                                                                    {Array.isArray(choice.value) ? choice.value.join(', ') : choice.value}
+                                                                                    {choice.type === 'subclass'
+                                                                                        ? (choice.options?.find((option: any) => option.index === choice.value || option.name === choice.value)?.name || choice.value)
+                                                                                        : Array.isArray(choice.value) ? choice.value.join(', ') : choice.value}
                                                                                 </div>
 
                                                                                 {isExpanded && (
