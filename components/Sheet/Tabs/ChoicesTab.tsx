@@ -31,7 +31,8 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
     const metamagicOptions = React.useMemo(() => character.classes.flatMap(c => (c.definition as any).options?.metamagic || []), [character.classes]);
 
     const pendingChoices = (character.choices || []).filter(c => !c.optional && (c.value === null || c.value === undefined || (Array.isArray(c.value) && c.value.length === 0)));
-    const completedChoices = (character.choices || []).filter(c => !pendingChoices.includes(c)).sort((a, b) => b.level - a.level);
+    const optionalChoices = (character.choices || []).filter(c => c.optional && (c.value === null || c.value === undefined || (Array.isArray(c.value) && c.value.length === 0)));
+    const completedChoices = (character.choices || []).filter(c => !c.optional && !pendingChoices.includes(c)).sort((a, b) => b.level - a.level);
 
     const handleMakeChoice = async (choiceId: string, value: any, revertData?: any) => {
         const choice = character.choices.find(c => c.id === choiceId);
@@ -525,6 +526,31 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
                     </div>
                 )}
             </section>
+
+            {optionalChoices.length > 0 && (
+                <section>
+                    <div className="flex items-center gap-3 mb-6 pt-8 border-t border-gray-800">
+                        <Sparkles className="text-purple-400 w-5 h-5" />
+                        <div>
+                            <h2 className="text-xl font-serif text-gray-300">Optional Changes</h2>
+                            <p className="text-[10px] text-gray-500">You can skip these without leaving a pending choice.</p>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 gap-4">
+                        {optionalChoices.map(choice => (
+                            <ChoiceCard
+                                key={choice.id}
+                                choice={choice}
+                                onMakeChoice={handleMakeChoice}
+                                allFeats={allFeats}
+                                allSpells={allSpells}
+                                character={character}
+                                metamagicOptions={metamagicOptions}
+                            />
+                        ))}
+                    </div>
+                </section>
+            )}
 
             {/* History Section */}
             {completedChoices.length > 0 && (

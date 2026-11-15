@@ -9,6 +9,7 @@ import { WIDGET_LABELS, DEFAULT_LAYOUT, STANDARD_CONDITIONS, STANDARD_ACTIONS, S
 import { Library, fetchEquipment, fetchEquipmentDetail, hydrateGrantedSpells } from '../../data/index';
 import DiceRoller3D, { DiceBoxRollRequest } from './Shared/DiceRoller3D';
 import LayOnHandsWidget from './Shared/LayOnHandsWidget';
+import FontOfMagicWidget from './Shared/FontOfMagicWidget';
 import { DiceBoxGroupResult } from '@3d-dice/dice-box';
 import { parseRollFormula, evaluateParsedFormula, evaluateFallbackRoll, ParsedRollFormula } from '../../utils/diceNotation';
 import { saveCharacterToDb, addPartyRoll, loadPartyInventory, savePartyInventory } from '../../services/supabase';
@@ -2302,6 +2303,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                  </div>
                              </div>
                         )}
+                        {(character.classFeatures || []).some((feature: any) => /font of magic/i.test(feature.name || '')) && (
+                            <FontOfMagicWidget character={character} setCharacter={setCharacter} />
+                        )}
                         {character.featureUsage['Lay on Hands'] && !character.featureUsage['Lay on Hands'].hidden && (
                             <LayOnHandsWidget
                                 usage={character.featureUsage['Lay on Hands']}
@@ -2314,7 +2318,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 }))}
                             />
                         )}
-                        {Object.entries(character.featureUsage).filter(([name, usage]) => name !== 'Wild Shape' && name !== 'Lay on Hands' && !usage.hidden && !(name === 'Eldritch Cannon' && character.activeEldritchCannon)).map(([name, usage]: [string, any]) => {
+                        {Object.entries(character.featureUsage).filter(([name, usage]) => name !== 'Wild Shape' && name !== 'Lay on Hands' && name !== 'Sorcery Points' && !usage.hidden && !(name === 'Eldritch Cannon' && character.activeEldritchCannon)).map(([name, usage]: [string, any]) => {
                             const usedCount = usage.max - usage.current;
                             const detailTarget = findResourceDetailsTarget(name, usage);
                             return (
