@@ -796,7 +796,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const effectiveAbilities = useMemo(() => getEffectiveAbilities(character), [character]);
 
     const hasPendingChoices = useMemo(() => {
-        return character.choices.some(c => (c.value === null || c.value === undefined || (Array.isArray(c.value) && c.value.length === 0)) && c.type !== 'Level Advancement');
+        return character.choices.some(c => !c.optional && (c.value === null || c.value === undefined || (Array.isArray(c.value) && c.value.length === 0)) && c.type !== 'Level Advancement');
     }, [character.choices]);
 
     const hasPendingSpells = useMemo(() => {
@@ -1219,6 +1219,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         if (hasRoving && !wearingHeavyArmor) {
             speeds.push({ type: 'Climbing', speed: walkingSpeed, source: 'Roving' });
             speeds.push({ type: 'Swimming', speed: walkingSpeed, source: 'Roving' });
+        }
+        if (character.activeConditions?.['dragon-wings'] && (character.classFeatures || []).some((feature: any) => /dragon wings/i.test(feature.name || ''))) {
+            speeds.push({ type: 'Flying', speed: 60, source: 'Dragon Wings' });
         }
 
         activeModifiers.forEach(m => {
@@ -1841,7 +1844,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const allowedClasses = (item as any).attunement_classes || [];
             if (!item.attuned && allowedClasses.length > 0) {
                 const classNames = character.classes.map(entry => entry.definition.name.toLowerCase());
-                if (!allowedClasses.some((allowed: string) => classNames.includes(String(allowed).toLowerCase()))) {
+                const isSpellcaster = character.classes.some(entry => { const profile = getCasterProfileFor(entry); return profile && profile.type !== 'none'; });
+                const qualifies = allowedClasses.some((allowed: string) => {
+                    const key = String(allowed).toLowerCase();
+                    if (key === 'spellcaster' || key === 'spellcaster (any)' || key === 'any spellcaster') return isSpellcaster;
+                    return classNames.includes(key);
+                });
+                if (!qualifies) {
                     alert(`${item.name} can only be attuned by: ${allowedClasses.join(', ')}.`);
                     return prev;
                 }
@@ -2761,8 +2770,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     </div>
                 );
             case 'defenses':
-                const res = activeModifiers.filter(m => m.type === 'resistance').map(m => String(m.value));
-                const imm = activeModifiers.filter(m => m.type === 'immunity').map(m => String(m.value));
+                const res = Array.from(new Set(activeModifiers.filter(m => m.type === 'resistance').map(m => String(m.value))));
+                const imm = Array.from(new Set(activeModifiers.filter(m => m.type === 'immunity').map(m => String(m.value))));
                 const advDef: string[] = [];
 
                 const defensiveFeatureNames = new Set([
@@ -3575,6 +3584,17 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     else spellFlatBonus += Number(effect.value || 0);
                 });
 
+                // Draconic Sorcery Elemental Affinity: add CHA to one damage
+                // roll of a spell matching the chosen element.
+                const affinityChoice = (character.choices || []).find((choice: any) =>
+                    /elemental affinity/i.test(choice.label || '') && choice.value
+                );
+                const affinityType = String(affinityChoice?.value || '').toLowerCase();
+                const spellDamageType = String((spell as any).damage?.damage_type?.name || (spell as any).damage?.damage_type || '').toLowerCase();
+                if (affinityType && spellDamageType === affinityType) {
+                    spellFlatBonus += chaMod;
+                }
+
                 const dc = (spell as any).dc?.dc_type?.name?.substring(0, 3).toUpperCase();
                 const spellAbility = (spell as any).spellcastingAbility as AbilityName | undefined;
                 const spellCastMod = spellAbility ? calculateModifier(getStat(spellAbility)) : spellMod;
@@ -4070,12 +4090,21 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
          // 1. Spells with bonus action casting time
          if (!character.activeWildShape) character.spells.forEach(spell => {
-             if (spell.casting_time.toLowerCase().includes('bonus')) {
+             const castTime = String(spell.casting_time || '').toLowerCase();
+             if (castTime.includes('bonus')) {
                  list.push({
                      id: spell.index,
                      name: spell.name,
                      category: 'Bonus Action',
                      desc: `Cast ${spell.name} as a bonus action.`,
+                     source: spell
+                 });
+             } else if (castTime.includes('reaction')) {
+                 list.push({
+                     id: spell.index,
+                     name: spell.name,
+                     category: 'Reaction',
+                     desc: `Cast ${spell.name} as a reaction.`,
                      source: spell
                  });
              }
@@ -4143,7 +4172,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                      name: effectName,
                      category: eff.type === 'reaction' ? 'Reaction' : eff.type === 'action' ? 'Action' : 'Bonus Action',
                      desc: [eff.description || eff.desc || (Array.isArray(enriched.desc) ? enriched.desc[0] : enriched.desc) || ''],
-                     source: { ...enriched, name: effectName, desc: [eff.description || eff.desc || (Array.isArray(enriched.desc) ? enriched.desc[0] : enriched.desc) || ''] }
+                     source: { ...enriched, name: effectName, toggle: /dragon wings/i.test(effectName) ? 'dragon-wings' : undefined, desc: [eff.description || eff.desc || (Array.isArray(enriched.desc) ? enriched.desc[0] : enriched.desc) || ''] }
                  });
              });
          });
@@ -4200,7 +4229,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             }
         });
 
-         const filtered = list.filter((item: any) => !/channel divinity|abjure foes|devious strikes/i.test(String(item.name || '')));
+         const filtered = list.filter((item: any) => !/channel divinity|abjure foes|devious strikes|^(font of magic|sorcery incarnate)$/i.test(String(item.name || '')));
          return character.activeWildShape
              ? filtered.filter((item: any) => !item.source?.weapon_category && (!item.source?.school || canCastSpellInWildShape(character, item.source)))
              : filtered;

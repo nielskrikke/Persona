@@ -1051,7 +1051,7 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         return item;
     });
 
-    const choices = (character.choices || []).map((choice: any) => {
+    let choices = (character.choices || []).map((choice: any) => {
         if (choice.type === 'expertise') {
             return { ...choice, options: Array.from(new Set([...(choice.options || []), ...Array.from(derivedSkills)])) };
         }
@@ -1087,6 +1087,20 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
             mergedInventory.push(seenEquipment.get(key));
         });
         inventory = mergedInventory;
+    }
+
+    const sorcererClass = (classes || []).find((cls: any) => cls.definition?.index === 'sorcerer');
+    const metamagicOptions = sorcererClass?.definition?.options?.metamagic;
+    if (Array.isArray(metamagicOptions) && metamagicOptions.length > 0) {
+        let keptCalibration = false;
+        choices = choices.flatMap((choice: any) => {
+            if (!choice.revertData?.isMetamagicMatrix) return [choice];
+            const next = { ...choice, options: metamagicOptions };
+            if (next.revertData.isProgression) return [next];
+            if (keptCalibration) return [];
+            keptCalibration = true;
+            return [{ ...next, optional: true, count: 1 }];
+        });
     }
 
     const isRogue = (character.classes || []).some((cls: any) => cls.definition?.index === 'rogue');

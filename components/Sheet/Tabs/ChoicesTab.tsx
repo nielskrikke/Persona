@@ -30,7 +30,7 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
 
     const metamagicOptions = React.useMemo(() => character.classes.flatMap(c => (c.definition as any).options?.metamagic || []), [character.classes]);
 
-    const pendingChoices = (character.choices || []).filter(c => c.value === null || c.value === undefined || (Array.isArray(c.value) && c.value.length === 0));
+    const pendingChoices = (character.choices || []).filter(c => !c.optional && (c.value === null || c.value === undefined || (Array.isArray(c.value) && c.value.length === 0)));
     const completedChoices = (character.choices || []).filter(c => !pendingChoices.includes(c)).sort((a, b) => b.level - a.level);
 
     const handleMakeChoice = async (choiceId: string, value: any, revertData?: any) => {

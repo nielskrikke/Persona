@@ -129,7 +129,7 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
 
     const alwaysPreparedSpellNames = new Set(
         (character.classFeatures || []).flatMap((feature: any) => (feature.effects || []))
-            .filter((effect: any) => effect.type === 'spell_access' && effect.spell && /always prepared|1\/long rest|free cast/i.test(String(effect.condition || effect.name || '')))
+            .filter((effect: any) => effect.type === 'spell_access' && effect.spell)
             .map((effect: any) => String(effect.spell).toLowerCase())
     );
     const displayedSpells = (availableSpellsCache[activeClassIndex] || []).filter(s => {

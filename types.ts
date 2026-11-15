@@ -517,6 +517,7 @@ export interface LevelChoice {
     value: any;
     options?: any[];
     count?: number;
+    optional?: boolean;
     revertData?: any;
 }
 

@@ -96,7 +96,7 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
                     const optionProgression = (cls.definition as any).options?.metamagicProgression;
                     if (optionProgression) {
                         const isProgression = (optionProgression.progressionLevels || []).includes(i);
-                        const isCalibration = !isProgression && i > Number(optionProgression.calibrationFrom ?? 2);
+                        const isCalibration = !isProgression && i === Number(optionProgression.calibrationFrom ?? 2);
 
                         if (isProgression || isCalibration) {
                             const choiceId = `metamagic-matrix-${cls.definition.index}-${i}`;
@@ -108,8 +108,9 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
                                     type: 'other',
                                     label: isProgression ? 'Metamagic Options' : 'Metamagic Calibration',
                                     value: null,
-                                    options: [],
+                                    options: (cls.definition as any).options?.metamagic || [],
                                     count: isProgression ? 2 : 1,
+                                    optional: !isProgression,
                                     revertData: { classIndex: cls.definition.index, isMetamagicMatrix: true, isProgression }
                                 });
                             }

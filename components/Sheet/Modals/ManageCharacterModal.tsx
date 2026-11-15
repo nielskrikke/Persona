@@ -2146,7 +2146,7 @@ const ManageCharacterModal = ({
                         { id: 'choices', label: 'Choices', icon: Settings },
                         { id: 'theme', label: 'Theme', icon: Palette }
                     ].map(t => {
-                        const hasPending = t.id === 'choices' && localChoices.some(c => !isChoiceComplete(c) && c.type !== 'Level Advancement');
+                        const hasPending = t.id === 'choices' && localChoices.some(c => !c.optional && !isChoiceComplete(c) && c.type !== 'Level Advancement');
                         return (
                             <button 
                                 key={t.id}

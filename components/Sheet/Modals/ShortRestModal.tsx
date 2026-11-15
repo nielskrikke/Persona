@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { CharacterState, RollResult } from '@/types';
 import { calculateModifier, formatModifier, getEffectiveAbilities } from '@/utils/rules';
 import { getCasterProfileFor } from '../../../utils/rules';
@@ -19,6 +19,13 @@ const ShortRestModal = ({
     onRoll?: (formula: string, label: string, preResult?: any, onComplete?: (result: RollResult) => void) => void
 }) => {
     const [rollingSize, setRollingSize] = useState<string | null>(null);
+    const [restorationAmount, setRestorationAmount] = useState(0);
+    const restorationFeature = character.featureUsage['Sorcerous Restoration'];
+    const sorceryPoints = character.featureUsage['Sorcery Points'];
+    const restorationAvailable = Boolean(restorationFeature && restorationFeature.current > 0 && sorceryPoints);
+    const maxRestoration = restorationAvailable ? Math.min(7, Math.max(0, Number(sorceryPoints.max || 0) - Number(sorceryPoints.current || 0))) : 0;
+
+    useEffect(() => { if (isOpen) setRestorationAmount(0); }, [isOpen]);
 
     if (!isOpen) return null;
 
@@ -100,6 +107,14 @@ const ShortRestModal = ({
             if (shortRestSpells.has(index)) delete newFreeCastUsage[index];
         });
 
+        if (restorationAvailable && restorationAmount > 0) {
+            newFeatures['Sorcery Points'] = {
+                ...newFeatures['Sorcery Points'],
+                current: Math.min(Number(newFeatures['Sorcery Points'].max || 0), Number(newFeatures['Sorcery Points'].current || 0) + restorationAmount),
+            };
+            newFeatures['Sorcerous Restoration'] = { ...newFeatures['Sorcerous Restoration'], current: 0 };
+        }
+
         onUpdate({ featureUsage: newFeatures, spellSlots: newSlots, freeCastUsage: newFreeCastUsage });
         onClose();
     };
@@ -141,6 +156,21 @@ const ShortRestModal = ({
                     ))}
                 </div>
 
+                {restorationAvailable && (
+                    <div className="bg-purple-950/20 border border-purple-900/50 rounded-lg p-4 mb-6">
+                        <div className="flex items-center justify-between gap-3 mb-2">
+                            <div>
+                                <h3 className="text-[10px] font-bold text-purple-300 uppercase tracking-widest">Sorcerous Restoration</h3>
+                                <p className="text-[10px] text-gray-500 mt-1">Regain up to 7 Sorcery Points. Once per Long Rest.</p>
+                            </div>
+                            <span className="text-[10px] text-gray-500">{sorceryPoints?.current} / {sorceryPoints?.max}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <input type="range" min={0} max={maxRestoration} value={restorationAmount} onChange={e => setRestorationAmount(Number(e.target.value))} className="flex-grow accent-purple-500" />
+                            <input type="number" min={0} max={maxRestoration} value={restorationAmount} onChange={e => setRestorationAmount(Math.max(0, Math.min(maxRestoration, Number(e.target.value) || 0)))} className="w-16 bg-black/40 border border-purple-900/50 rounded p-2 text-center text-sm text-white outline-none" />
+                        </div>
+                    </div>
+                )}
                 <button onClick={handleFinish} className="w-full py-4 bg-dnd-gold hover:bg-yellow-600 text-black font-bold uppercase rounded shadow-lg transition-colors">
                     Finish Rest
                 </button>
