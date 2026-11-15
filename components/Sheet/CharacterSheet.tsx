@@ -2744,7 +2744,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             case 'defenses':
                 const res = activeModifiers.filter(m => m.type === 'resistance').map(m => String(m.value));
                 const imm = activeModifiers.filter(m => m.type === 'immunity').map(m => String(m.value));
-                const advDef = activeModifiers.filter(m => m.type === 'advantage' && (m.target === 'saves' || m.target === 'skills') && m.filter).map(m => String(m.filter));
+                const advDef = activeModifiers.filter(m => m.type === 'advantage' && m.target === 'saves' && m.filter).map(m => String(m.filter));
 
                 const defensiveFeatureNames = new Set([
                     'Evasion', 'Uncanny Dodge', 'Aura of Protection', 'Danger Sense', 'Deflect Energy',
@@ -4170,7 +4170,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             }
         });
 
-         const filtered = list.filter((item: any) => !/^(channel divinity|abjure foes)$/i.test(String(item.name || '')));
+         const filtered = list.filter((item: any) => !/channel divinity|abjure foes/i.test(String(item.name || '')));
          return character.activeWildShape
              ? filtered.filter((item: any) => !item.source?.weapon_category && (!item.source?.school || canCastSpellInWildShape(character, item.source)))
              : filtered;

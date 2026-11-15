@@ -3,7 +3,7 @@ import Markdown from 'react-markdown';
 import { X, User, GraduationCap, Activity, Shield, Settings, Plus, Trash2, Save, Languages, Palette, Type, Dice5, Eye, EyeOff, Info, Sparkles, AlertTriangle, RotateCcw, AlertCircle } from 'lucide-react';
 import { CharacterState, APIReference, RaceDetail, SubraceDetail, BackgroundDetail, FeatDetail, ABILITY_NAMES, ABILITY_LABELS, AbilityScores, SpellDetail, LevelChoice, AbilityName } from '@/types';
 import { fetchClasses, fetchRaces, fetchSubraces, fetchBackgrounds, fetchFeatsList, fetchRaceDetail, fetchSubraceDetail, fetchBackgroundDetail, fetchSubclasses, fetchSubclassDetail, fetchSubclassLevels, fetchClassLevels, fetchLevelFeatures, fetchClassDetail, fetchAllSpells, RACES, SUBCLASSES } from '@/data/index';
-import { getSpellSlots, calculateModifier, SKILL_LIST, getSubclassLevel, getSubclassLabel, getResourceDefinitions, calculateMaxHp, mergeSpellSlotCurrents, isFeatAvailableForLevel, isFeatAvailableForCharacter, getChoiceCount } from '@/utils/rules';
+import { getSpellSlots, calculateModifier, SKILL_LIST, getSubclassLevel, getSubclassLabel, getResourceDefinitions, calculateMaxHp, mergeSpellSlotCurrents, getEffectiveAbilities, isFeatAvailableForLevel, isFeatAvailableForCharacter, getChoiceCount } from '@/utils/rules';
 import { STANDARD_LANGUAGES, ARTISAN_TOOLS, MUSICAL_INSTRUMENTS, GAMING_SETS, ALL_TOOLS, MASTERY_DESCRIPTIONS } from '../../../data/constants';
 import DiceRoller3D from '../Shared/DiceRoller3D';
 
@@ -2084,6 +2084,15 @@ const ManageCharacterModal = ({
         }
     }, [isOpen]);
 
+    const identityAbilities = getEffectiveAbilities({
+        ...character,
+        abilities,
+        feats: localFeats,
+        choices: localChoices,
+        classes: localClasses,
+        classFeatures: localClassFeatures,
+    });
+
     const requestClose = () => {
         if (hasUserEditsRef.current) {
             setDiscardPrompt(true);
@@ -2212,7 +2221,7 @@ const ManageCharacterModal = ({
                                             <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block">{ABILITY_LABELS[stat]}</label>
                                             <input 
                                                 type="number" 
-                                                value={abilities[stat]} 
+                                                value={identityAbilities[stat]} 
                                                 onChange={(e) => handleAbilityChange(stat, e.target.value)}
                                                 className="w-full bg-black/40 border border-gray-700 rounded-xl py-3 text-center text-2xl font-serif font-bold text-white focus:border-dnd-gold/50 outline-none transition-all" 
                                             />
