@@ -2071,10 +2071,21 @@ const ManageCharacterModal = ({
     }, [tab, isOpen]);
 
     const discardSnapshot = () => JSON.stringify({
-        name, avatar, alignment, xp, languages, abilities, localFeats, localSpells, localClasses,
-        localClassFeatures, localMaxHp, localChoices, skills, expertise, toolProficiencies,
-        savingThrowProficiencies, localFeatures, fontScale, backgroundImageUrl, backgroundColor,
-        themeColor, themeColorSecondary, diceColor, show3DDice, combatOverrides,
+        name, avatar, alignment, xp, languages, abilities,
+        // Compare the selected identities/values, not derived display data such
+        // as choice option lists or refreshed resource definitions.
+        feats: (localFeats || []).map((feat: any) => feat.index || feat.name),
+        spells: (localSpells || []).map((spell: any) => `${spell.index}:${spell.sourceClassIndex || ''}:${spell.level}`),
+        classes: (localClasses || []).map((cls: any) => `${cls.definition?.index}:${cls.level}:${cls.subclass?.index || ''}`),
+        classFeatures: (localClassFeatures || []).map((feature: any) => feature.index || feature.name),
+        maxHp: localMaxHp,
+        choices: (localChoices || []).map((choice: any) => ({
+            id: choice.id, level: choice.level, type: choice.type, label: choice.label,
+            value: choice.value, count: choice.count, pending: choice.revertData?.pendingConfirm,
+        })),
+        skills, expertise, toolProficiencies, savingThrowProficiencies,
+        resources: Object.fromEntries(Object.entries(localFeatures || {}).map(([key, value]: any) => [key, { current: value?.current, max: value?.max }])),
+        fontScale, backgroundImageUrl, backgroundColor, themeColor, themeColorSecondary, diceColor, show3DDice, combatOverrides,
     });
     useEffect(() => {
         if (!isOpen) return;
