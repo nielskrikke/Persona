@@ -119,6 +119,7 @@ const ManageCharacterModal = ({
     const [themeColorSecondary, setThemeColorSecondary] = useState(character.themeColorSecondary || '#8a0b0b');
     const [diceColor, setDiceColor] = useState(character.diceColor || '#c9ad6a');
     const [show3DDice, setShow3DDice] = useState(character.show3DDice !== false); // Default to true
+    const [encumbranceEnabled, setEncumbranceEnabled] = useState(character.encumbranceEnabled !== false);
 
     // Combat Overrides State
     const [combatOverrides, setCombatOverrides] = useState(character.combatOverrides || {
@@ -187,6 +188,7 @@ const ManageCharacterModal = ({
             setThemeColorSecondary(character.themeColorSecondary || '#8a0b0b');
             setDiceColor(character.diceColor || '#c9ad6a');
             setShow3DDice(character.show3DDice !== false);
+            setEncumbranceEnabled(character.encumbranceEnabled !== false);
             setCombatOverrides(character.combatOverrides || {
                 hitBonus: 0,
                 damageBonus: 0,
@@ -897,6 +899,7 @@ const ManageCharacterModal = ({
         themeColorSecondary,
         diceColor,
         show3DDice,
+        encumbranceEnabled,
         combatOverrides,
         choices: overrides.choices || localChoices,
         spells: overrides.spells || localSpells,
@@ -3800,6 +3803,23 @@ const ManageCharacterModal = ({
                                             <span className="text-xs font-bold uppercase tracking-widest">Enable 3D Dice</span>
                                             <div className={`w-10 h-5 rounded-full relative transition-all ${show3DDice ? 'bg-blue-600' : 'bg-gray-800'}`}>
                                                 <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${show3DDice ? 'left-6' : 'left-1'}`} />
+                                            </div>
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-500">
+                                            <Shield size={12} /> Inventory Options
+                                        </label>
+                                        <button
+                                            onClick={() => setEncumbranceEnabled(!encumbranceEnabled)}
+                                            className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${
+                                                encumbranceEnabled ? 'bg-amber-900/10 border-amber-800/60 text-amber-300' : 'bg-black/20 border-gray-800 text-gray-500'
+                                            }`}
+                                        >
+                                            <span className="text-xs font-bold uppercase tracking-widest">Show Encumbrance</span>
+                                            <div className={`w-10 h-5 rounded-full relative transition-all ${encumbranceEnabled ? 'bg-amber-600' : 'bg-gray-800'}`}>
+                                                <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${encumbranceEnabled ? 'left-6' : 'left-1'}`} />
                                             </div>
                                         </button>
                                     </div>

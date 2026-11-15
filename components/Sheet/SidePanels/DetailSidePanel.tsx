@@ -453,8 +453,8 @@ const DetailSidePanel = ({
                     </div>
                      {isItemLike(fullDetail) && fullDetail.requires_attunement && (
                         <div className="flex items-center gap-2">
-                             <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Requires Attunement</span>
-                             <span className={`w-2 h-2 rounded-full ${fullDetail.attuned ? 'bg-cyan-400 shadow-[0_0_5px_cyan]' : 'bg-gray-700'}`} />
+                             <span className="text-[9px] text-gray-600 uppercase font-semibold tracking-wide">Requires Attunement</span>
+                             <span className={`w-1.5 h-1.5 rounded-full ${fullDetail.attuned ? 'bg-amber-600/60' : 'bg-gray-800'}`} />
                         </div>
                     )}
                 </div>

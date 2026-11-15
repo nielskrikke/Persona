@@ -9,6 +9,7 @@ interface InventoryTabProps {
     character: CharacterState;
     currentWeight: number;
     maxWeight: number;
+    encumbranceEnabled?: boolean;
     updateQuantity: (id: string, newQty: number) => void;
     toggleAttunement: (id: string) => void;
     setSelectedDetail: (item: any) => void;
@@ -18,7 +19,7 @@ interface InventoryTabProps {
 }
 
 const InventoryTab: React.FC<InventoryTabProps> = ({ 
-    character, currentWeight, maxWeight, updateQuantity, toggleAttunement, setSelectedDetail, setShowItemSearchModal, setShowHomebrewModal, setCharacter 
+    character, currentWeight, maxWeight, encumbranceEnabled = true, updateQuantity, toggleAttunement, setSelectedDetail, setShowItemSearchModal, setShowHomebrewModal, setCharacter 
 }) => {
     const [inventorySearch, setInventorySearch] = useState('');
     const [inventoryMode, setInventoryMode] = useState<'personal' | 'party'>('personal');
@@ -239,18 +240,20 @@ const InventoryTab: React.FC<InventoryTabProps> = ({
                             </div>
                         ))}
                     </div>
-                    <div className="flex flex-col justify-center border-l border-gray-700/50 pl-0 lg:pl-6 pt-4 lg:pt-0">
-                        <div className="flex justify-between text-[10px] font-bold text-gray-500 uppercase mb-1">
-                            <span>Personal Encumbrance</span>
-                            <span>{currentWeight} / {maxWeight} lb</span>
+                    {encumbranceEnabled && (
+                        <div className="flex flex-col justify-center border-l border-gray-700/50 pl-0 lg:pl-6 pt-4 lg:pt-0">
+                            <div className="flex justify-between text-[9px] font-bold text-gray-600 uppercase mb-1">
+                                <span className="tracking-wide">Encumbrance</span>
+                                <span className={currentWeight > maxWeight ? 'text-red-400/70' : 'text-gray-500'}>{currentWeight} / {maxWeight} lb</span>
+                            </div>
+                            <div className="w-full bg-gray-800/60 h-1 rounded-full overflow-hidden">
+                                <div 
+                                    className={`h-full ${currentWeight > maxWeight ? 'bg-red-800/70' : 'bg-gray-600/70'}`} 
+                                    style={{width: `${Math.min(100, (currentWeight/maxWeight)*100)}%`}}
+                                ></div>
+                            </div>
                         </div>
-                        <div className="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
-                            <div 
-                                className={`h-full ${currentWeight > maxWeight ? 'bg-dnd-red' : 'bg-gray-500'}`} 
-                                style={{width: `${Math.min(100, (currentWeight/maxWeight)*100)}%`}}
-                            ></div>
-                        </div>
-                    </div>
+                    )}
                 </div>
             ) : (
                 <div className={`flex gap-4 bg-purple-950/20 p-4 rounded-xl border border-purple-800/50 shadow-sm items-center justify-between`}>
@@ -341,11 +344,9 @@ const InventoryTab: React.FC<InventoryTabProps> = ({
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-2">
                 <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center w-full md:w-auto">
                     {inventoryMode === 'personal' && (
-                        <div className="flex items-center justify-between sm:justify-start gap-2 text-xs font-bold uppercase text-gray-400 bg-black/40 px-3 py-1.5 rounded border border-gray-700/50">
-                            <span className={character.inventory.filter(i => i.attuned).length >= 3 ? 'text-red-400' : 'text-blue-400'}>
-                                {character.inventory.filter(i => i.attuned).length} / 3
-                            </span>
-                            <span>Attuned</span>
+                        <div className="flex items-center justify-between sm:justify-start gap-1.5 text-[9px] font-semibold uppercase tracking-wide text-gray-600 bg-black/20 px-2.5 py-1 rounded border border-gray-800/80">
+                            <span className="text-gray-500">{character.inventory.filter(i => i.attuned).length} / 3</span>
+                            <span>attuned</span>
                         </div>
                     )}
                     <input 
@@ -405,8 +406,8 @@ const InventoryTab: React.FC<InventoryTabProps> = ({
                                             <div className="text-center text-xs text-gray-400">{((item.cost as any) && typeof item.cost === 'object' && (item.cost as any).quantity !== undefined && (item.cost as any).unit) ? `${(item.cost as any).quantity} ${(item.cost as any).unit}` : (typeof (item.cost as any) === 'string' && (item.cost as any).trim() ? (item.cost as any) : '—')}</div>
                                             <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
                                                 {item.requires_attunement && (
-                                                    <div onClick={() => toggleAttunement(item.id)} className={`w-6 h-6 rounded-full border-2 cursor-pointer flex items-center justify-center ${item.attuned ? 'bg-cyan-500 border-cyan-400' : 'bg-transparent border-gray-600'}`}>
-                                                        {item.attuned && <div className="w-2 h-2 rounded-full bg-cyan-200"></div>}
+                                                    <div onClick={() => toggleAttunement(item.id)} className={`w-4 h-4 rounded-full border cursor-pointer flex items-center justify-center transition-colors ${item.attuned ? 'bg-amber-500/15 border-amber-600/50' : 'bg-transparent border-gray-700/70'}`}>
+                                                        {item.attuned && <div className="w-1.5 h-1.5 rounded-full bg-amber-500/70"></div>}
                                                     </div>
                                                 )}
                                             </div>
@@ -435,8 +436,8 @@ const InventoryTab: React.FC<InventoryTabProps> = ({
                                         </div>
                                         {item.requires_attunement && (
                                             <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-                                                <div onClick={() => toggleAttunement(item.id)} className={`w-6 h-6 rounded-full border-2 cursor-pointer flex items-center justify-center ${item.attuned ? 'bg-cyan-500 border-cyan-400' : 'bg-transparent border-gray-600'}`}>
-                                                    {item.attuned && <div className="w-2 h-2 rounded-full bg-cyan-200"></div>}
+                                                <div onClick={() => toggleAttunement(item.id)} className={`w-4 h-4 rounded-full border cursor-pointer flex items-center justify-center transition-colors ${item.attuned ? 'bg-amber-500/15 border-amber-600/50' : 'bg-transparent border-gray-700/70'}`}>
+                                                    {item.attuned && <div className="w-1.5 h-1.5 rounded-full bg-amber-500/70"></div>}
                                                 </div>
                                             </div>
                                         )}

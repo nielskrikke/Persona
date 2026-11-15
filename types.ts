@@ -604,6 +604,7 @@ export interface CharacterState {
     themeColor: string;
     themeColorSecondary: string;
     show3DDice: boolean;
+    encumbranceEnabled?: boolean;
     diceColor?: string;
     diceEffect?: string;
     diceCustomization?: DiceCustomizationOptions;
