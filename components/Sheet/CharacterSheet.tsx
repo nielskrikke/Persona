@@ -51,6 +51,61 @@ import LogTab from './Tabs/LogTab';
 import StatsTab from './Tabs/StatsTab';
 import ChoicesTab from './Tabs/ChoicesTab';
 
+const LayOnHandsWidget: React.FC<{
+    usage: { max: number; current: number; reset?: 'short' | 'long' };
+    onChange: (value: number) => void;
+}> = ({ usage, onChange }) => {
+    const [draft, setDraft] = useState(String(usage.current ?? 0));
+    useEffect(() => { setDraft(String(usage.current ?? 0)); }, [usage.current]);
+    const max = Math.max(1, Number(usage.max || 0));
+    const commit = (raw: string | number) => {
+        const parsed = Number(raw);
+        const next = Number.isFinite(parsed) ? Math.max(0, Math.min(max, Math.round(parsed))) : Number(usage.current || 0);
+        onChange(next);
+        setDraft(String(next));
+    };
+    const current = Math.max(0, Math.min(max, Number(usage.current || 0)));
+    const stepBase = Number.isFinite(Number(draft)) ? Number(draft) : current;
+    return (
+        <div className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3 relative`}>
+            <div className="flex justify-between items-start gap-2 mb-1">
+                <div className="min-w-0">
+                    <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest leading-tight">Lay on Hands</h3>
+                    <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider mt-0.5">Healing HP Pool</p>
+                </div>
+                <span className="text-[9px] text-gray-600 shrink-0">Long Rest</span>
+            </div>
+            <div className="flex items-center gap-1.5 my-2">
+                <button type="button" onClick={() => commit(stepBase - 5)} className="h-7 min-w-7 px-1.5 rounded border border-gray-700/70 bg-black/20 text-[10px] font-bold text-gray-400 hover:text-white hover:border-gray-500 transition-colors" aria-label="Spend 5 HP from Lay on Hands">−5</button>
+                <button type="button" onClick={() => commit(stepBase - 1)} className="h-7 w-7 rounded border border-gray-700/70 bg-black/20 text-sm font-bold text-gray-400 hover:text-white hover:border-gray-500 transition-colors" aria-label="Spend 1 HP from Lay on Hands">−</button>
+                <div className="flex-1 flex items-baseline justify-center gap-1">
+                    <input
+                        type="number"
+                        min={0}
+                        max={max}
+                        value={draft}
+                        onChange={e => setDraft(e.target.value)}
+                        onBlur={() => commit(draft)}
+                        onKeyDown={e => { if (e.key === 'Enter') { commit(draft); (e.target as HTMLInputElement).blur(); } }}
+                        className="w-16 bg-transparent text-center text-xl font-serif font-bold text-white outline-none border-b border-transparent focus:border-dnd-gold/60 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        aria-label="Lay on Hands remaining HP"
+                    />
+                    <span className="text-[10px] text-gray-500">/ {usage.max} HP</span>
+                </div>
+                <button type="button" onClick={() => commit(stepBase + 1)} className="h-7 w-7 rounded border border-gray-700/70 bg-black/20 text-sm font-bold text-gray-400 hover:text-white hover:border-gray-500 transition-colors" aria-label="Restore 1 HP to Lay on Hands">+</button>
+                <button type="button" onClick={() => commit(stepBase + 5)} className="h-7 min-w-7 px-1.5 rounded border border-gray-700/70 bg-black/20 text-[10px] font-bold text-gray-400 hover:text-white hover:border-gray-500 transition-colors" aria-label="Restore 5 HP to Lay on Hands">+5</button>
+            </div>
+            <div className="w-full bg-gray-800/60 h-1.5 rounded-full overflow-hidden">
+                <div className="h-full bg-amber-600/50 transition-all" style={{ width: `${(current / max) * 100}%` }} />
+            </div>
+            <div className="flex justify-between items-center mt-1.5">
+                <span className="text-[9px] text-gray-600">Remaining healing</span>
+                <button type="button" onClick={() => commit(max)} className="text-[9px] font-bold uppercase tracking-wider text-gray-500 hover:text-dnd-gold transition-colors">Restore pool</button>
+            </div>
+        </div>
+    );
+};
+
 const cleanProficiencyName = (name: string) => {
     if (!name) return '';
     return name.replace(/^(Skill|Musical Instrument|Gaming Set|Tool|Armor|Weapon|Other):\s*/i, '')
@@ -2292,7 +2347,19 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                  </div>
                              </div>
                         )}
-                        {Object.entries(character.featureUsage).filter(([name, usage]) => name !== 'Wild Shape' && !usage.hidden && !(name === 'Eldritch Cannon' && character.activeEldritchCannon)).map(([name, usage]: [string, any]) => {
+                        {character.featureUsage['Lay on Hands'] && !character.featureUsage['Lay on Hands'].hidden && (
+                            <LayOnHandsWidget
+                                usage={character.featureUsage['Lay on Hands']}
+                                onChange={(value) => setCharacter(prev => ({
+                                    ...prev,
+                                    featureUsage: {
+                                        ...prev.featureUsage,
+                                        'Lay on Hands': { ...prev.featureUsage['Lay on Hands'], current: value },
+                                    },
+                                }))}
+                            />
+                        )}
+                        {Object.entries(character.featureUsage).filter(([name, usage]) => name !== 'Wild Shape' && name !== 'Lay on Hands' && !usage.hidden && !(name === 'Eldritch Cannon' && character.activeEldritchCannon)).map(([name, usage]: [string, any]) => {
                             const usedCount = usage.max - usage.current;
                             const detailTarget = findResourceDetailsTarget(name, usage);
                             return (
