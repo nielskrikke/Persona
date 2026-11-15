@@ -1239,6 +1239,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             ...(character.feats || [])
         ];
         allTraits.forEach((t: any) => {
+            if ((t.effects || []).some((effect: any) => effect.type === 'attack_rider') && !/(unarmed|claw|jaws|talon)/i.test(String(t.name || ''))) return;
             const rawText = getTextString(t.desc) || getTextString(t.description) || getTextString(t.name);
             const text = rawText.toLowerCase();
             const climbMatch = text.match(/climb(?:ing)?\s+speed\s+(?:of\s+)?(\d+)\s*ft/i);
@@ -2447,7 +2448,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 );
             }
             case 'saves':
-                const situationalSaves = activeModifiers.filter(m => m.type === 'advantage' && m.target === 'saves' && m.filter);
+                const situationalSaves = activeModifiers.filter(m => m.type === 'advantage' && m.target === 'saves' && (m.filter || m.condition));
                 return (
                     <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
                          <div className="flex justify-between items-center mb-2"><h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Saving Throws</h3></div>
@@ -2465,12 +2466,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     let v = 0;
                                     if (m.value === 'wisMod') v = Math.max(m.min || 1, wisMod);
                                     else if (m.value === 'intMod') v = Math.max(m.min || 1, intMod);
-                                    else v = Number(m.value) || 0;
+                                    else v = resolveEffectValue(m);
                                     return acc + v;
                                 }, 0);
 
                              const mod = calculateModifier(getStat(stat)) + (isProf ? prof : 0) + saveBonus;
-                             const hasFullAdv = activeModifiers.some(m => m.type === 'advantage' && (m.target === `${stat}_save` || (m.target === 'saves' && (!m.filter || m.filter.toLowerCase() === ABILITY_LABELS[stat].toLowerCase()))));
+                             const hasFullAdv = activeModifiers.some(m => m.type === 'advantage' && !m.condition && (m.target === `${stat}_save` || (m.target === 'saves' && (!m.filter || m.filter.toLowerCase() === ABILITY_LABELS[stat].toLowerCase()))));
 
                              return <SavingThrowRow key={stat} label={ABILITY_LABELS[stat]} stat={stat} isProf={isProf} mod={mod} advantage={hasFullAdv} onRoll={roll} onContextMenu={triggerRollMenu} />;
                          })}</div>
@@ -2479,7 +2480,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                  <span className="text-[9px] font-bold text-gray-500 uppercase block mb-1">Situational Advantages</span>
                                  <div className="flex flex-wrap gap-1">
                                      {situationalSaves.map((m, i) => (
-                                         <span key={i} className="text-[8px] bg-gray-800/60 text-gray-500 px-1.5 py-0.5 rounded border border-gray-700/50">Adv vs {m.filter}</span>
+                                         <span key={i} className="text-[8px] bg-gray-800/60 text-gray-500 px-1.5 py-0.5 rounded border border-gray-700/50">Adv vs {m.filter || m.condition}</span>
                                      ))}
                                  </div>
                              </div>
@@ -2940,6 +2941,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             ...(character.feats || [])
         ];
         allTraits.forEach((t: any) => {
+            if ((t.effects || []).some((effect: any) => effect.type === 'attack_rider') && !/(unarmed|claw|jaws|talon)/i.test(String(t.name || ''))) return;
             const rawText = getTextString(t.desc) || getTextString(t.description) || getTextString(t.name);
             const text = rawText.toLowerCase();
             if (text.includes('unarmed strike') || text.includes('unarmed strikes') || text.includes('cat\'s claws') || text.includes('natural weapon') || text.includes('hungry jaws') || text.includes('talons')) {
@@ -3100,6 +3102,19 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         };
         (unarmedAttack as any).modifiers = getAttackModifiers(unarmedAttack);
         attacks.push(unarmedAttack);
+        const hasRadiantStrikes = (character.classFeatures || []).some((feature: any) => /radiant strikes/i.test(feature.name || ''));
+        if (hasRadiantStrikes) {
+            attacks.push({
+                id: 'radiant-strikes',
+                name: 'Radiant Strikes (once per hit)',
+                range: '5 ft.',
+                hit: null,
+                damage: '1d8',
+                type: 'Radiant',
+                notes: ['Add to a Melee weapon or Unarmed Strike hit.'],
+                source: { name: 'Radiant Strikes', activationType: 'action', desc: ['Extra 1d8 Radiant damage on a hit.'] },
+            });
+        }
 
         // --- Card Master: The Fool Spell ---
         const cmClass = getClassWithUiWidget(character, 'activeCards');
@@ -3586,8 +3601,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const isStep = /step of the wind/i.test(actionName);
                 const isDeflect = /deflect attacks/i.test(actionName);
                 const isHandOfHealing = /hand of healing/i.test(actionName);
+                const isHealingHands = /healing hands/i.test(actionName);
+                const isAbjure = /abjure foes/i.test(actionName);
                 const heightenedFocus = (character.classFeatures || []).some((entry: any) => /heightened focus/i.test(entry.name || ''));
-                const monkActionDescription = isHandOfHealing
+                const monkActionDescription = isHealingHands
+                    ? `Magic action; once per Long Rest, restore ${prof}d4 HP.`
+                    : isHandOfHealing
                     ? `Magic action; spend 1 Focus Point to restore ${character.level >= 17 ? '1d12' : character.level >= 11 ? '1d10' : character.level >= 5 ? '1d8' : '1d6'} + ${wisMod} HP.`
                     : isFlurry
                     ? `Spend 1 Focus Point to make ${heightenedFocus ? 'three' : 'two'} Unarmed Strikes as a Bonus Action.`
@@ -3607,12 +3626,20 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     name: actionName,
                     range: isDivineSpark ? '30 ft.' : (effect.range || '-'),
                     hit: null,
-                    save: isDivineSpark ? { dc: spellSave, type: 'CON' } : (hasSave ? { dc: saveDC, type: String(effect.save_ability || effect.save?.ability || 'CON').toUpperCase() } : null),
-                    damage: isHandOfHealing
-                        ? `${character.level >= 17 ? '1d12' : character.level >= 11 ? '1d10' : character.level >= 5 ? '1d8' : '1d6'} + ${wisMod}`
-                        : (isSecondWind ? `1d10 + ${character.level}` : (isDivineSpark ? `${divineSparkDice}d8 + ${wisMod}` : (scaled || effect.damage || '-'))),
-                    type: isHandOfHealing ? 'Healing' : (isSecondWind ? 'Healing' : (isDivineSpark ? 'Radiant / Necrotic' : (effect.damage_type || (effect.type === 'action' ? 'Action' : effect.type === 'reaction' ? 'Reaction' : 'Bonus Action')))),
-                    healing: isSecondWind || isHandOfHealing,
+                    save: isAbjure ? { dc: spellSave, type: 'WIS' } : (isDivineSpark ? { dc: spellSave, type: 'CON' } : (hasSave ? { dc: saveDC, type: String(effect.save_ability || effect.save?.ability || 'CON').toUpperCase() } : null)),
+                    damage: isAbjure
+                        ? '-'
+                        : isHealingHands
+                            ? `${prof}d4`
+                            : isHandOfHealing
+                                ? `${character.level >= 17 ? '1d12' : character.level >= 11 ? '1d10' : character.level >= 5 ? '1d8' : '1d6'} + ${wisMod}`
+                                : isSecondWind
+                                    ? `1d10 + ${character.level}`
+                                    : isDivineSpark
+                                        ? `${divineSparkDice}d8 + ${wisMod}`
+                                        : (scaled || effect.damage || '-'),
+                    type: isAbjure ? 'Wisdom' : (isHealingHands || isHandOfHealing || isSecondWind ? 'Healing' : (isDivineSpark ? 'Radiant / Necrotic' : (effect.damage_type || (effect.type === 'action' ? 'Action' : effect.type === 'reaction' ? 'Reaction' : 'Bonus Action')))),
+                    healing: isSecondWind || isHandOfHealing || isHealingHands,
                     notes: isDivineSpark
                         ? ['Channel Divinity: 1d8 + WIS at level 2, 2d8 at level 7, 3d8 at level 13; CON save for half.']
                         : (monkActionDescription ? [monkActionDescription] : []),
@@ -3677,6 +3704,34 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             });
         }
 
+        if (hasFeature('sacred weapon')) {
+            pushMonkAction({
+                id: 'paladin-sacred-weapon', name: 'Sacred Weapon', range: 'Self', hit: null, save: null, damage: '-', type: 'Channel Divinity',
+                notes: ['Spend 1 Channel Divinity use; add CHA modifier to attack rolls with one melee weapon for 10 minutes.'],
+                source: { name: 'Sacred Weapon', activationType: 'action', desc: ['Imbue a melee weapon with positive energy.'] },
+            });
+        }
+        if (hasFeature('smite of protection')) {
+            pushMonkAction({
+                id: 'paladin-smite-of-protection', name: 'Smite of Protection', range: 'Aura', hit: null, save: null, damage: '-', type: 'Divine Smite',
+                notes: ['After Divine Smite, you and allies in your Aura of Protection have Half Cover until the start of your next turn.'],
+                source: { name: 'Smite of Protection', activationType: 'action', desc: ['Protective half cover after Divine Smite.'] },
+            });
+        }
+        if (hasFeature('sacred weapon')) {
+            pushMonkAction({
+                id: 'paladin-sacred-weapon', name: 'Sacred Weapon', range: 'Self', hit: null, save: null, damage: '-', type: 'Channel Divinity',
+                notes: ['Spend 1 Channel Divinity use; add CHA modifier to attack rolls with one melee weapon for 10 minutes.'],
+                source: { name: 'Sacred Weapon', activationType: 'action', desc: ['Imbue a melee weapon with positive energy.'] },
+            });
+        }
+        if (hasFeature('smite of protection')) {
+            pushMonkAction({
+                id: 'paladin-smite-of-protection', name: 'Smite of Protection', range: 'Aura', hit: null, save: null, damage: '-', type: 'Divine Smite',
+                notes: ['After Divine Smite, you and allies in your Aura of Protection have Half Cover until the start of your next turn.'],
+                source: { name: 'Smite of Protection', activationType: 'action', desc: ['Protective half cover after Divine Smite.'] },
+            });
+        }
         character.customActions?.forEach(action => {
             let hit: number | null = null;
             let save: { type: string, dc: number } | null = null;

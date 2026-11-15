@@ -127,8 +127,14 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
         onComplete(allSelected);
     };
 
+    const alwaysPreparedSpellNames = new Set(
+        (character.classFeatures || []).flatMap((feature: any) => (feature.effects || []))
+            .filter((effect: any) => effect.type === 'spell_access' && effect.spell && /always prepared|1\/long rest|free cast/i.test(String(effect.condition || effect.name || '')))
+            .map((effect: any) => String(effect.spell).toLowerCase())
+    );
     const displayedSpells = (availableSpellsCache[activeClassIndex] || []).filter(s => {
         if (!activeClass) return false;
+        if (alwaysPreparedSpellNames.has(String(s.name).toLowerCase()) || alwaysPreparedSpellNames.has(String(s.index).toLowerCase())) return false;
         if (s.level === 0) return true;
         return s.level <= getMaxSpellLevelForClass(activeClass);
     }).sort((a,b) => a.level - b.level || a.name.localeCompare(b.name));

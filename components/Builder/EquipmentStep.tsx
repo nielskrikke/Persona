@@ -23,7 +23,7 @@ const CLASS_STARTING_KITS: Record<string, string[]> = {
     artificer: ['Light Crossbow', 'Bolts (20)', 'Studded Leather Armor', "Thieves' Tools", "Dungeoneer's Pack"],
     fighter: ['Chain Mail', 'Greatsword', 'Flail', 'Javelin', 'Javelin', 'Javelin', 'Javelin', 'Javelin', 'Javelin', 'Javelin', 'Javelin', "Dungeoneer's Pack"],
     monk: ['Spear', 'Dagger', 'Dagger', 'Dagger', 'Dagger', 'Dagger', 'Musical Instrument', "Explorer's Pack"],
-    paladin: ['Chain Mail', 'Shield', 'Longsword', 'Javelin', 'Javelin', 'Javelin', "Priest's Pack"],
+    paladin: ['Chain Mail', 'Shield', 'Longsword', 'Javelin', 'Javelin', 'Javelin', 'Javelin', 'Javelin', 'Javelin', 'Holy Symbol', "Priest's Pack"],
     ranger: ['Studded Leather', 'Scimitar', 'Shortsword', 'Longbow', 'Arrows (20)', 'Quiver', "Explorer's Pack"],
     rogue: ['Leather Armor', 'Dagger', 'Shortsword', 'Shortbow', 'Arrow', 'Arrow', 'Arrow', 'Quiver', "Burglar's Pack"],
     sorcerer: ['Spear', 'Dagger', 'Dagger', 'Arcane Focus', "Dungeoneer's Pack"],

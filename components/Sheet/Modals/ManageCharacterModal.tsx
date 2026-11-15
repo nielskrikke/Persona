@@ -67,7 +67,7 @@ const ManageCharacterModal = ({
     const [localClassFeatures, setLocalClassFeatures] = useState(character.classFeatures);
     const [localMaxHp, setLocalMaxHp] = useState(character.maxHp);
     const [discardPrompt, setDiscardPrompt] = useState(false);
-    const initialSnapshotRef = useRef('');
+    const hasUserEditsRef = useRef(false);
     const [levelDownConfirm, setLevelDownConfirm] = useState<number | null>(null);
     const isChoiceComplete = (choice: any) => {
         if (!choice) return false;
@@ -848,7 +848,7 @@ const ManageCharacterModal = ({
         const derivedTools = new Set(toolProficiencies.filter((tool: string) => !pendingToolValues.has(tool)));
         const pendingAbilityDelta: any = { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
         localChoices.forEach((choice: any) => {
-            if (/gaming set/i.test(choice.label || '')) return;
+            if (/gaming set.*(any of your choice)/i.test(choice.label || '')) return;
             if (choice.revertData?.pendingConfirm) {
                 [choice.revertData?.abilities, choice.revertData?.featAbilities].forEach((source: any) => {
                     Object.entries(source || {}).forEach(([stat, amount]) => {
@@ -925,6 +925,7 @@ const ManageCharacterModal = ({
     };
 
     const addManualLanguage = () => {
+        hasUserEditsRef.current = true;
         if (!newLangInput.trim()) return;
         if (!languages.includes(newLangInput.trim())) {
             setLanguages(prev => [...prev, newLangInput.trim()]);
@@ -943,6 +944,7 @@ const ManageCharacterModal = ({
     };
 
     const handleAddFeat = async () => {
+        hasUserEditsRef.current = true;
         if (!featToAdd) return;
         const feat = allFeats.find(f => f.index === featToAdd);
         if (feat && !localFeats.some(lf => lf.index === feat.index)) {
@@ -1058,6 +1060,7 @@ const ManageCharacterModal = ({
     };
 
     const handleRevertSingleChoice = (choiceId: string) => {
+        hasUserEditsRef.current = true;
         const choice = localChoices.find(c => c.id === choiceId);
         if (!choice) return;
         
@@ -1096,6 +1099,7 @@ const ManageCharacterModal = ({
     };
 
     const handleRevertLevel = (level: number) => {
+        hasUserEditsRef.current = true;
         const choicesAtLevel = localChoices.filter(c => c.level === level);
         
         const temp = {
@@ -1197,6 +1201,7 @@ const ManageCharacterModal = ({
     };
 
     const handleAsiEdit = (choiceId: string, stat: string, delta: number) => {
+        hasUserEditsRef.current = true;
         setLocalChoices(prev => prev.map(c => {
             if (c.id === choiceId) {
                 const currentAbilities = { ...(c.revertData?.abilities || {}) };
@@ -1247,6 +1252,7 @@ const ManageCharacterModal = ({
     };
 
     const handleRemoveFeat = (index: string) => {
+        hasUserEditsRef.current = true;
         setLocalFeats(prev => prev.filter(f => f.index !== index));
     };
 
@@ -1396,6 +1402,7 @@ const ManageCharacterModal = ({
 
     // Handle Choice Change with Side Effects
     const handleChoiceChange = async (choiceId: string, newValue: any) => {
+        hasUserEditsRef.current = true;
         const choice = localChoices.find(c => c.id === choiceId);
         if (!choice) return;
         setLocalChoices(prev => prev.map(c => c.id === choiceId ? { ...c, revertData: { ...c.revertData, pendingConfirm: true } } : c));
@@ -1434,7 +1441,7 @@ const ManageCharacterModal = ({
             }
             if (choice.type === 'expertise') setExpertise(prev => adding ? Array.from(new Set([...prev, newValue])) : prev.filter(value => value !== newValue));
             if (choice.type === 'language') setLanguages(prev => adding ? Array.from(new Set([...prev, newValue])) : prev.filter(value => value !== newValue));
-            if ((choice.type as string) === 'tool' && !/gaming set/i.test(choice.label || '')) setToolProficiencies(prev => adding ? Array.from(new Set([...prev, newValue])) : prev.filter(value => value !== newValue));
+            if ((choice.type as string) === 'tool' && !/gaming set.*(any of your choice)/i.test(choice.label || '')) setToolProficiencies(prev => adding ? Array.from(new Set([...prev, newValue])) : prev.filter(value => value !== newValue));
             return;
         }
 
@@ -2070,30 +2077,15 @@ const ManageCharacterModal = ({
         activeTab?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }, [tab, isOpen]);
 
-    const discardSnapshot = () => JSON.stringify({
-        name, avatar, alignment, xp, languages, abilities,
-        // Compare the selected identities/values, not derived display data such
-        // as choice option lists or refreshed resource definitions.
-        feats: (localFeats || []).map((feat: any) => feat.index || feat.name),
-        spells: (localSpells || []).map((spell: any) => `${spell.index}:${spell.sourceClassIndex || ''}:${spell.level}`),
-        classes: (localClasses || []).map((cls: any) => `${cls.definition?.index}:${cls.level}:${cls.subclass?.index || ''}`),
-        classFeatures: (localClassFeatures || []).map((feature: any) => feature.index || feature.name),
-        maxHp: localMaxHp,
-        choices: (localChoices || []).map((choice: any) => ({
-            id: choice.id, level: choice.level, type: choice.type, label: choice.label,
-            value: choice.value, count: choice.count, pending: choice.revertData?.pendingConfirm,
-        })),
-        skills, expertise, toolProficiencies, savingThrowProficiencies,
-        resources: Object.fromEntries(Object.entries(localFeatures || {}).map(([key, value]: any) => [key, { current: value?.current, max: value?.max }])),
-        fontScale, backgroundImageUrl, backgroundColor, themeColor, themeColorSecondary, diceColor, show3DDice, combatOverrides,
-    });
     useEffect(() => {
-        if (!isOpen) return;
-        const timer = setTimeout(() => { initialSnapshotRef.current = discardSnapshot(); }, 250);
-        return () => clearTimeout(timer);
+        if (isOpen) {
+            hasUserEditsRef.current = false;
+            setDiscardPrompt(false);
+        }
     }, [isOpen]);
+
     const requestClose = () => {
-        if (initialSnapshotRef.current && discardSnapshot() !== initialSnapshotRef.current) {
+        if (hasUserEditsRef.current) {
             setDiscardPrompt(true);
         } else {
             onClose();
@@ -2111,6 +2103,8 @@ const ManageCharacterModal = ({
             <div 
                 className="bg-[#1b1c20] border border-gray-800 w-full max-w-6xl max-h-[94dvh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300"
                 onClick={(e) => e.stopPropagation()}
+                onChangeCapture={() => { hasUserEditsRef.current = true; }}
+                onInputCapture={() => { hasUserEditsRef.current = true; }}
             >
                 {/* Header */}
                 <div className="shrink-0 p-4 sm:p-6 bg-[#121316] border-b border-gray-800 flex justify-between items-center">
@@ -3423,7 +3417,7 @@ const ManageCharacterModal = ({
                                                                                             </div>
                                                                                         </div>
                                                                                         <div className="flex items-center gap-3">
-                                                                                            <h5 className="text-gray-300 font-bold text-xs">{choice.type === 'subclass' && /monastic tradition/i.test(choice.label || '') ? 'Monk Subclass' : choice.type === 'subclass' && /martial archetype/i.test(choice.label || '') ? 'Fighter Subclass' : choice.label}</h5>
+                                                                                            <h5 className="text-gray-300 font-bold text-xs">{choice.type === 'subclass' && /monastic tradition/i.test(choice.label || '') ? 'Monk Subclass' : choice.type === 'subclass' && /martial archetype/i.test(choice.label || '') ? 'Fighter Subclass' : choice.type === 'subclass' && /sacred oath/i.test(choice.label || '') ? 'Paladin Subclass' : choice.label}</h5>
                                                                                             {['subclass', 'feat-selection', 'asi-feat'].includes(choice.type) && (
                                                                                                 <button 
                                                                                                     onClick={() => toggleChoiceExpansion(choice.id)}

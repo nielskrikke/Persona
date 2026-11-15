@@ -51,13 +51,16 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
     });
   }, []);
 
-  const choiceOptionsFor = (choice: any) => {
+  const choiceOptionsFor = (choice: any, classIndex?: string) => {
       if (choice.kind === 'weapon_mastery' && masteryWeapons.length > 0) {
           const allowed = (choice.options || []).map((option: any) => typeof option === 'string' ? option : (option.name || option.index || '')).filter(Boolean);
           const normalized = (value: any) => String(value || '').toLowerCase();
-          return allowed.length > 0
+          const options = allowed.length > 0
               ? masteryWeapons.filter(weapon => allowed.some((name: string) => normalized(name) === normalized(weapon.name) || normalized(name) === normalized(weapon.index)))
               : masteryWeapons;
+          return classIndex === 'paladin'
+              ? options.filter((weapon: any) => !/ranged/i.test(String(weapon.weapon_range || '')) && !/longbow|crossbow|sling|dart/i.test(String(weapon.name || '')))
+              : options;
       }
       const expanded = (choice.options || []).flatMap((option: any) => {
           const name = typeof option === 'string' ? option : (option.name || option.index || '');
@@ -288,7 +291,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
           if (effectiveCount === 0) return;
           if (choice.kind === 'weapon_mastery') {
               const weaponOptions = selected.map(name => {
-                  const option = choiceOptionsFor(choice).find((item: any) => (typeof item === 'string' ? item : item.name) === name);
+                  const option = choiceOptionsFor(choice, classIndex).find((item: any) => (typeof item === 'string' ? item : item.name) === name);
                   return typeof option === 'object' ? option : { name };
               });
               levelChoices.push({
@@ -304,7 +307,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
               return;
           }
           selected.forEach(name => {
-              const option = choiceOptionsFor(choice).find((item: any) => (typeof item === 'string' ? item : item.name) === name);
+              const option = choiceOptionsFor(choice, classIndex).find((item: any) => (typeof item === 'string' ? item : item.name) === name);
               const category = typeof option === 'object' ? option.category : 'skill';
               if (category === 'skill' || SKILL_LIST.some(skill => skill.name === name)) selectedSkills.add(name);
               else selectedTools.add(name);
@@ -452,7 +455,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
                                                 </span>
                                             </div>
                                             <div className="flex flex-wrap gap-2">
-                                                {choiceOptionsFor(choice).map((option: any, optionIndex: number) => {
+                                                {choiceOptionsFor(choice, draft.index).map((option: any, optionIndex: number) => {
                                                     const name = typeof option === 'string' ? option : option.name;
                                                     const isSelected = selected.includes(name);
                                                     return (

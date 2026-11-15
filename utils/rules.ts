@@ -427,6 +427,7 @@ export const getSubclassLabel = (definition: any): string => {
     const label = String(definition?.subclass_label || '');
     if (/martial archetype/i.test(label) && /fighter/i.test(String(definition?.name || definition?.index || ''))) return 'Fighter Subclass';
     if (/monastic tradition/i.test(label) && /monk/i.test(String(definition?.name || definition?.index || ''))) return 'Monk Subclass';
+    if (/sacred oath/i.test(label) && /paladin/i.test(String(definition?.name || definition?.index || ''))) return 'Paladin Subclass';
     if (label) return label;
     return 'Subclass';
 };
@@ -784,6 +785,7 @@ export const getConditionLabelsFromText = (text: string): string[] => {
     if (/(?:can(?:'|no)t|can not|cannot)\s+be\s+(?:charmed|frightened|poisoned|prone|restrained|stunned|paralyzed|petrified|blinded|deafened|invisible|incapacitated|grappled)|protected against|protection from|immun(?:e|ity) to|no longer|suppress(?:es|ed)?|prevents? .*condition|cage is invisible|prison .*invisible|can'?t benefit from .*invisible|can'?t become invisible/i.test(clean)) return [];
     if (/\b(?:ends?|removes?|cures?|dispels?)\b[^.!?]{0,160}\b(?:conditions?|charmed|frightened|poisoned|prone|restrained|stunned|paralyzed|petrified|blinded|deafened|invisible|incapacitated|grappled)\b/i.test(clean)) return [];
     if (/\b(?:neither|nor)\b[^.!?]{0,180}\bconditions?\b/i.test(clean)) return [];
+    if (/\bif (?:you|the target|a creature|it|they) (?:has|have|is|are)\b[^.]{0,100}\b(?:condition|incapacitated|charmed|frightened|poisoned|prone|restrained|stunned|paralyzed|petrified|blinded|deafened|invisible|grappled)\b/i.test(clean)) return [];
     return CONDITION_LABELS.filter(label => {
         const lower = label.toLowerCase();
         const affected = new RegExp(`\\b(?:target|creature|it|they)\\b[^.!?]{0,140}\\b(?:is|are|becomes?|remains?|falls?|has|have)\\b[^.!?]{0,80}\\b${lower}\\b`, 'i');

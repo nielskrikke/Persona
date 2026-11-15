@@ -857,7 +857,7 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
             if (!name) return;
             const skill = SKILL_LIST.find(entry => entry.name.toLowerCase() === name.toLowerCase());
             if (skill) derivedSkills.add(skill.name);
-            if (/gaming set/i.test(choice.label || '')) return;
+            if (/gaming set.*(any of your choice)/i.test(choice.label || '')) return;
             const tool = [...ARTISAN_TOOLS, ...MUSICAL_INSTRUMENTS, ...GAMING_SETS].find(entry => entry.toLowerCase() === name.toLowerCase());
             if (tool) derivedTools.add(tool);
         });
@@ -953,7 +953,8 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         ? (Array.isArray(gamingEquipmentChoice.value) ? gamingEquipmentChoice.value[0] : gamingEquipmentChoice.value)
         : null;
     if (gamingEquipmentName) {
-        derivedTools.delete(String(gamingEquipmentName));
+        if (!/any of your choice/i.test(gamingEquipmentChoice?.label || '')) derivedTools.add(String(gamingEquipmentName));
+        inventory = inventory.filter((item: any) => !GAMING_SETS.some(set => String(set).toLowerCase() === String(item.name).toLowerCase()) || String(item.name).toLowerCase() === String(gamingEquipmentName).toLowerCase());
         if (!inventory.some((item: any) => String(item.name).toLowerCase() === String(gamingEquipmentName).toLowerCase())) {
             const detail = inventoryCatalog.find(entry => String(entry.name).toLowerCase() === String(gamingEquipmentName).toLowerCase());
             inventory.push({
@@ -964,6 +965,14 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
                 equipped: false,
                 attuned: false,
             });
+        }
+    }
+    if ((character.classes || []).some((cls: any) => cls.definition?.index === 'paladin')) {
+        const javelin = inventory.find((item: any) => /^javelin$/i.test(String(item.name || '')));
+        if (javelin && Number(javelin.quantity) === 3) inventory = inventory.map((item: any) => item.id === javelin.id ? { ...item, quantity: 6 } : item);
+        if (!inventory.some((item: any) => /holy symbol/i.test(String(item.name || '')))) {
+            const detail = inventoryCatalog.find(entry => /holy symbol/i.test(String(entry.name || '')));
+            inventory.push({ ...(detail || {}), id: 'paladin-holy-symbol', name: detail?.name || 'Holy Symbol', quantity: 1, equipped: false, attuned: false });
         }
     }
     const chosenInstrument = (character.toolProficiencies || []).find(tool => MUSICAL_INSTRUMENTS.some(instrument => String(instrument).toLowerCase() === String(tool).toLowerCase()));
