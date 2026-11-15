@@ -356,7 +356,7 @@ const CharacterDashboard: React.FC<CharacterDashboardProps> = ({ onLoadCharacter
                             : `Lvl ${char.data.level} Adventurer`;
 
                         return (
-                            <div key={char.id} onClick={() => handleSelect(char)} className={`bg-[#1b1c20] border border-gray-700 rounded-xl p-6 cursor-pointer relative group flex flex-col min-h-[220px] overflow-hidden transition-all ${isDeleting ? 'opacity-50 pointer-events-none' : 'hover:border-dnd-gold/50 hover:bg-[#202125]'}`}>
+                            <div key={char.id} onClick={() => handleSelect(char)} className={`bg-[#1b1c20] border border-gray-700 rounded-xl p-6 pb-8 cursor-pointer relative group flex flex-col min-h-[220px] overflow-hidden transition-all ${isDeleting ? 'opacity-50 pointer-events-none' : 'hover:border-dnd-gold/50 hover:bg-[#202125]'}`}>
                                 <div className="absolute top-4 right-4 z-50 flex items-center gap-1.5" onClick={(e) => { e.stopPropagation(); }}>
                                     {!char.isShared && (
                                         <button type="button" onClick={(e) => setSharingChar(char)} className="text-gray-600 hover:text-blue-400 p-2.5 rounded-full hover:bg-black/40 transition-colors" title="Share Character">
@@ -402,7 +402,7 @@ const CharacterDashboard: React.FC<CharacterDashboardProps> = ({ onLoadCharacter
                                         </button>
                                     </div>
                                 )}
-                                <div className="mt-auto w-full shrink-0 text-[10px] text-gray-600 pt-4 border-t border-gray-800 flex justify-between gap-2"><span className="truncate">{char.data.race?.name || 'Unknown Race'}</span><span className="shrink-0">Updated: {new Date(char.updated_at).toLocaleDateString()}</span></div>
+                                <div className="mt-auto w-full shrink-0 text-[10px] text-gray-600 pt-4 pb-1 border-t border-gray-800 flex justify-between gap-2"><span className="truncate">{char.data.race?.name || 'Unknown Race'}</span><span className="shrink-0">Updated: {new Date(char.updated_at).toLocaleDateString()}</span></div>
                             </div>
                         );
                     })}
