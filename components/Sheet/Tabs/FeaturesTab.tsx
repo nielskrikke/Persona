@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { CharacterState } from '@/types';
+import LayOnHandsWidget from '../Shared/LayOnHandsWidget';
 import { WIDGET_BG } from '../../../data/constants';
 import { formatResourceName } from '../../../utils/rules';
 import { Maximize, X, Search, Filter } from 'lucide-react';
@@ -86,8 +87,20 @@ const FeaturesTab: React.FC<FeaturesTabProps> = ({ character, setCharacter, getA
             )}
             {Object.keys(character.featureUsage).length > 0 && (
                 <section className="animate-in fade-in slide-in-from-top-4 duration-500">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {Object.entries(character.featureUsage).map(([name, usage]: [string, any]) => {
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 items-start gap-4">
+                        {character.featureUsage['Lay on Hands'] && !character.featureUsage['Lay on Hands'].hidden && (
+                            <LayOnHandsWidget
+                                usage={character.featureUsage['Lay on Hands']}
+                                onChange={(value) => setCharacter(prev => ({
+                                    ...prev,
+                                    featureUsage: {
+                                        ...prev.featureUsage,
+                                        'Lay on Hands': { ...prev.featureUsage['Lay on Hands'], current: value },
+                                    },
+                                }))}
+                            />
+                        )}
+                        {Object.entries(character.featureUsage).filter(([name]) => name !== 'Lay on Hands').map(([name, usage]: [string, any]) => {
                             const usedCount = usage.max - usage.current;
                             return (
                                 <div key={name} className={`${WIDGET_BG} border border-[#3e4149]/50 hover:border-gray-600 rounded-xl p-4 shadow-xl transition-all group`}>
