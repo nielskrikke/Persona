@@ -691,8 +691,13 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
     let spells = refreshedSpells.filter(spell => !spell.isGranted && !spell.grantedBy);
     grantedByIndex.forEach((granted, index) => {
         const existing = spells.findIndex(spell => spell.index === index);
-        if (existing >= 0) spells[existing] = { ...spells[existing], ...granted, sourceClassIndex: spells[existing].sourceClassIndex || granted.sourceClassIndex };
-        else spells.push(granted);
+        if (existing >= 0) {
+            // Keep a learned/prepared copy distinct from an item-granted copy.
+            // Otherwise a staff can overwrite the character's own spell and
+            // remove their ability to cast it with a slot.
+            if (granted.itemSpell && !spells[existing].isGranted) return;
+            spells[existing] = { ...spells[existing], ...granted, sourceClassIndex: spells[existing].sourceClassIndex || granted.sourceClassIndex };
+        } else spells.push(granted);
     });
     spells = spells.filter(spell => !spell.isGranted || grantedByIndex.has(spell.index));
     const deduped = new Map<string, any>();
@@ -721,6 +726,7 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
         const granted = grantedByIndex.get(String(spell.index).toLowerCase())
             || Array.from(grantedByIndex.values()).find(entry => String(entry.index).toLowerCase() === String(spell.index).toLowerCase());
         if (!granted) return spell;
+        if (granted.itemSpell && !spell.itemSpell) return spell;
         return {
             ...spell,
             ...granted,
@@ -790,6 +796,30 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
             }
         }
     }
+
+    // Keep generated Metamagic feature rows readable and refresh Font of
+    // Magic text from the live class document for existing characters.
+    const sorcererDefinition = classes?.find((cls: any) => cls.definition?.index === 'sorcerer')?.definition;
+    const liveFontOfMagic = (sorcererDefinition?.feature_details || []).find((feature: any) => /^font of magic$/i.test(feature.name || ''));
+    const liveMetamagic = (sorcererDefinition?.feature_details || []).find((feature: any) => /^metamagic$/i.test(feature.name || ''));
+    classFeatures = classFeatures.map((feature: any) => {
+        let next = feature;
+        if (/^metamagic options:\s*/i.test(String(feature.name || ''))) {
+            next = {
+                ...next,
+                name: String(feature.name).replace(/^metamagic options:\s*/i, ''),
+                source: 'Metamagic',
+                type: 'Metamagic',
+            };
+        }
+        if (/^font of magic$/i.test(next.name || '') && liveFontOfMagic?.desc) {
+            next = { ...next, desc: liveFontOfMagic.desc, effects: liveFontOfMagic.effects || next.effects };
+        }
+        if (/^metamagic$/i.test(next.name || '') && liveMetamagic?.desc) {
+            next = { ...next, desc: liveMetamagic.desc, effects: liveMetamagic.effects || next.effects };
+        }
+        return next;
+    });
 
     // Re-resolve the race/subrace so ancestry choices and resources come from
     // the live content library, not a stale character snapshot.
@@ -1099,7 +1129,7 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
             if (next.revertData.isProgression) return [next];
             if (keptCalibration) return [];
             keptCalibration = true;
-            return [{ ...next, optional: true, count: 1 }];
+            return [{ ...next, level: Number(sorcererClass?.definition?.options?.metamagicProgression?.calibrationFrom || next.level), optional: true, count: 1 }];
         });
     }
 

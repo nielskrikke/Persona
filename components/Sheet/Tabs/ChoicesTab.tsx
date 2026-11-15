@@ -104,7 +104,7 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
             if (passiveEffects.length > 0 || selectedOption.desc) {
                 const newFeature = {
                     index: `${choiceId}-${selectedOption.name}`.toLowerCase().replace(/[^a-z0-9]/g, '-'),
-                    name: `${choice.label}: ${selectedOption.name}`,
+                    name: choice.revertData?.isMetamagicMatrix ? selectedOption.name : `${choice.label}: ${selectedOption.name}`,
                     level: choice.level,
                     source: choice.source,
                     desc: selectedOption.desc ? [selectedOption.desc] : [],
@@ -802,6 +802,8 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onMakeChoice, allFeats,
                     
                     const isProgression = choice.revertData.isProgression;
                     const count = choice.count || (isProgression ? 2 : 1);
+                    const knownSet = new Set(currentMetamagics.map((name: string) => String(name).toLowerCase()));
+                    const newOptions = metamagicOptions.filter((opt: any) => !knownSet.has(String(opt.name).toLowerCase()));
 
                     return (
                         <div className="space-y-6">
@@ -839,7 +841,7 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onMakeChoice, allFeats,
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">{isProgression ? `Select ${count} Options:` : 'New Option:'}</label>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                                    {metamagicOptions.map((opt: any) => {
+                                    {newOptions.map((opt: any) => {
                                         const isAlreadyKnown = currentMetamagics.includes(opt.name);
                                         const isSelected = isProgression 
                                             ? (Array.isArray(selection) && selection.includes(opt.name))
@@ -935,8 +937,14 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onMakeChoice, allFeats,
         if (choice.revertData?.isMetamagicMatrix) {
             const isProgression = choice.revertData.isProgression;
             const count = choice.count || (isProgression ? 2 : 1);
-            if (isProgression) return Array.isArray(selection) && selection.length === count;
-            return selection?.toReplace && selection?.newOption && selection.toReplace !== selection.newOption;
+            const known = (character.choices || [])
+                .filter(c => c.revertData?.isMetamagicMatrix && c.value)
+                .flatMap(c => Array.isArray(c.value) ? c.value : [c.value])
+                .map((name: any) => String(name).toLowerCase());
+            if (isProgression) return Array.isArray(selection) && selection.length === count && selection.every((name: string) => !known.includes(String(name).toLowerCase()));
+            return Boolean(selection?.toReplace && selection?.newOption && selection.toReplace !== selection.newOption
+                && known.includes(String(selection.toReplace).toLowerCase())
+                && !known.includes(String(selection.newOption).toLowerCase()));
         }
 
         if (choice.type === 'asi' || choice.type === 'asi-feat') {

@@ -10,6 +10,7 @@ import { Library, fetchEquipment, fetchEquipmentDetail, hydrateGrantedSpells } f
 import DiceRoller3D, { DiceBoxRollRequest } from './Shared/DiceRoller3D';
 import LayOnHandsWidget from './Shared/LayOnHandsWidget';
 import FontOfMagicWidget from './Shared/FontOfMagicWidget';
+import DragonWingsWidget from './Shared/DragonWingsWidget';
 import { DiceBoxGroupResult } from '@3d-dice/dice-box';
 import { parseRollFormula, evaluateParsedFormula, evaluateFallbackRoll, ParsedRollFormula } from '../../utils/diceNotation';
 import { saveCharacterToDb, addPartyRoll, loadPartyInventory, savePartyInventory } from '../../services/supabase';
@@ -841,9 +842,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         }
     });
 
+    const innateSorceryActive = character.activeConditions?.['innate-sorcery'] === true;
     const spellAttack = prof + spellMod + extraSpellAttack;
     const spellAttackStr = formatModifier(spellAttack);
-    const spellSave = 8 + prof + spellMod + extraSpellSave;
+    const spellSave = 8 + prof + spellMod + extraSpellSave + (innateSorceryActive ? 1 : 0);
 
     const strMod = calculateModifier(getStat('str'));
     const dexMod = calculateModifier(getStat('dex'));
@@ -1733,6 +1735,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const newSlots = {...prev.spellSlots};
             Object.keys(newSlots).forEach(lvl => { newSlots[parseInt(lvl)].current = newSlots[parseInt(lvl)].max; });
             const newFeatures = {...prev.featureUsage};
+            const clearedConditions = { ...(prev.activeConditions || {}) };
+            delete clearedConditions['dragon-wings'];
+            delete clearedConditions['innate-sorcery'];
             const resourceDefinitions = new Map(getResourceDefinitions(prev).map(resource => [resource.name, resource]));
             Object.keys(newFeatures).forEach(key => {
                 const resetRule = (newFeatures[key] as any).reset || 'long';
@@ -2303,6 +2308,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                  </div>
                              </div>
                         )}
+                        <DragonWingsWidget character={character} setCharacter={setCharacter} />
                         {(character.classFeatures || []).some((feature: any) => /font of magic/i.test(feature.name || '')) && (
                             <FontOfMagicWidget character={character} setCharacter={setCharacter} />
                         )}
@@ -2318,7 +2324,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 }))}
                             />
                         )}
-                        {Object.entries(character.featureUsage).filter(([name, usage]) => name !== 'Wild Shape' && name !== 'Lay on Hands' && name !== 'Sorcery Points' && !usage.hidden && !(name === 'Eldritch Cannon' && character.activeEldritchCannon)).map(([name, usage]: [string, any]) => {
+                        {Object.entries(character.featureUsage).filter(([name, usage]) => name !== 'Wild Shape' && name !== 'Lay on Hands' && name !== 'Sorcery Points' && name !== 'Dragon Wings' && !usage.hidden && !(name === 'Eldritch Cannon' && character.activeEldritchCannon)).map(([name, usage]: [string, any]) => {
                             const usedCount = usage.max - usage.current;
                             const detailTarget = findResourceDetailsTarget(name, usage);
                             return (
@@ -3608,7 +3614,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const spellDamageFormula = resolveDamageFormula(combineDamageParts(dmgStr || '', spellFlatBonus, spellExtraDice), spellCastMod, Number(character.classes?.[0]?.definition?.hit_die || 8));
                 const combinedSpellDmg = minimumDamageDie > 1 ? appendMinDie(spellDamageFormula, minimumDamageDie) : spellDamageFormula;
                 const spellAttackValue = prof + spellCastMod + spellAttackBonus;
-                const spellSaveValue = 8 + prof + spellCastMod + extraSpellSave;
+                const spellSaveValue = 8 + prof + spellCastMod + extraSpellSave + (innateSorceryActive ? 1 : 0);
                 const { hit: spellHit, damage: spellDmg } = applyOverrides(spellAttackValue, combinedSpellDmg || 'See Desc');
 
                 let spellAttackCount = 1;
@@ -3666,7 +3672,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 }
                 const hasSave = Boolean(effect.save_ability || effect.save?.ability || rawDC);
                 const actionName = effect.name || feature.name;
-                if (/breath weapon/i.test(actionName)) return;
+                if (/breath weapon|dragon wings/i.test(actionName)) return;
                 const actionKey = `${String(actionName).toLowerCase()}|${String(effect.type || '').toLowerCase()}`;
                 if (seenFeatureActions.has(actionKey)) return;
                 seenFeatureActions.add(actionKey);
@@ -4233,7 +4239,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             }
         });
 
-         const filtered = list.filter((item: any) => !/channel divinity|abjure foes|devious strikes|^(font of magic|sorcery incarnate)$/i.test(String(item.name || '')));
+         const filtered = list.filter((item: any) => item.source?.type !== 'Metamagic' && !/channel divinity|abjure foes|devious strikes|dragon wings|^(font of magic|sorcery incarnate)$/i.test(String(item.name || '')));
          return character.activeWildShape
              ? filtered.filter((item: any) => !item.source?.weapon_category && (!item.source?.school || canCastSpellInWildShape(character, item.source)))
              : filtered;
