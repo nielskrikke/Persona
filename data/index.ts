@@ -514,7 +514,19 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
     const grants: { effect: any; source: string; defaultMinLevel: number; item?: any; itemResourceName?: string; storage?: any }[] = [];
     const collect = (effects: any[], source: string, defaultMinLevel: number = 0, abilityOverride?: string) => {
         (effects || []).forEach(effect => {
-            if (effect?.type === 'spell_access' && effect.spell) grants.push({ effect: { ...effect, ability: effect.ability || abilityOverride }, source, defaultMinLevel });
+            if (effect?.type !== 'spell_access' || !effect.spell) return;
+            const proficiencyBonus = 2 + Math.floor((Math.max(1, Number(character.level || 1)) - 1) / 4);
+            const pbUses = /pb uses|proficiency bonus.*uses|uses equal to your proficiency/i.test(String(effect.condition || effect.description || ''));
+            grants.push({
+                effect: {
+                    ...effect,
+                    ability: effect.ability || abilityOverride,
+                    free_casts: effect.free_casts ?? (pbUses ? proficiencyBonus : undefined),
+                    free_cast_reset: effect.free_cast_reset || (effect.free_casts || pbUses ? 'long' : undefined),
+                },
+                source,
+                defaultMinLevel,
+            });
         });
     };
     const collectFeature = (entry: any, source: string, defaultMinLevel: number = 0, abilityOverride?: string) => {
@@ -967,6 +979,16 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
             });
         }
     }
+    if ((character.classes || []).some((cls: any) => cls.definition?.index === 'rogue')) {
+        const dagger = inventory.find((item: any) => /^dagger$/i.test(String(item.name || '')));
+        if (dagger && Number(dagger.quantity) === 1) inventory = inventory.map((item: any) => item.id === dagger.id ? { ...item, quantity: 2 } : item);
+        const arrows = inventory.find((item: any) => /^arrows?(\s*\(20\))?$/i.test(String(item.name || '')));
+        if (arrows && Number(arrows.quantity) > 1) inventory = inventory.map((item: any) => item.id === arrows.id ? { ...item, quantity: 1 } : item);
+        if (!inventory.some((item: any) => /thieves' tools/i.test(String(item.name || '')))) {
+            const detail = inventoryCatalog.find(entry => /thieves' tools/i.test(String(entry.name || '')));
+            inventory.push({ ...(detail || {}), id: 'rogue-thieves-tools', name: detail?.name || "Thieves' Tools", quantity: 1, equipped: false, attuned: false });
+        }
+    }
     if ((character.classes || []).some((cls: any) => cls.definition?.index === 'ranger')
         && !inventory.some((item: any) => /druidic focus/i.test(String(item.name || '')))) {
         const detail = inventoryCatalog.find(entry => /druidic focus.*mistletoe/i.test(String(entry.name || '')));
@@ -1067,6 +1089,19 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         inventory = mergedInventory;
     }
 
+    const isRogue = (character.classes || []).some((cls: any) => cls.definition?.index === 'rogue');
+    if (isRogue) {
+        const languageOptions = ['Abyssal','Celestial','Common','Deep Speech','Draconic','Dwarvish','Elvish','Giant','Gnomish','Goblin','Halfling','Infernal','Orc','Primordial','Sylvan','Undercommon'];
+        const knownLanguages = new Set([...(character.languages || []), ...((character.race?.languages || []).map((entry: any) => entry.name || entry)), 'Thieves\' Cant'].map((entry: any) => String(entry).toLowerCase()));
+        if (!choices.some((choice: any) => choice.id === 'rogue-thieves-cant-language')) {
+            choices.push({
+                id: 'rogue-thieves-cant-language', level: 1, source: 'Rogue', type: 'language',
+                label: "Thieves' Cant: Additional Language", value: null,
+                options: languageOptions.filter((language: string) => !knownLanguages.has(language.toLowerCase())), count: 1,
+            });
+        }
+    }
+
     let filteredSpellChoices = choices;
     try {
         const spellCatalog = await fetchAllSpells(character.user_id);
@@ -1090,6 +1125,7 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         classes,
         classFeatures,
         inventory,
+        languages: isRogue ? Array.from(new Set([...(character.languages || []), "Thieves' Cant"])) : character.languages,
         choices: filteredSpellChoices,
         skills: Array.from(derivedSkills),
         toolProficiencies: Array.from(derivedTools),

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import Markdown from 'react-markdown';
 import { Sparkles, Plus, X, Maximize, Search, Info, Heart, Skull, AlertOctagon } from 'lucide-react';
 import { CharacterState, ABILITY_NAMES, ABILITY_LABELS, RollResult, AbilityName, SpellDetail, InventoryItem, Currency, RuleEntry, CreatureDetail, EldritchCannonDetail, SteelDefenderDetail, EquipmentDetail, ItemModifier, DiceCustomizationOptions } from '../../types';
-import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount, getSpellAbilityForClass, getResourceDefinitions, mergeSpellSlotCurrents, hasUiWidget, getClassWithUiWidget, resolveDamageFormula, appendMinDie, getWeaponMasteryData, getSpellCastLevel, calculateMaxHp, formatResourceName, getWildShapeRules, canCastSpellInWildShape, getSubclassLabel } from '../../utils/rules';
+import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount, getSpellAbilityForClass, getResourceDefinitions, mergeSpellSlotCurrents, hasUiWidget, getClassWithUiWidget, resolveDamageFormula, appendMinDie, getWeaponMasteryData, getSpellCastLevel, calculateMaxHp, formatResourceName, getWildShapeRules, canCastSpellInWildShape, getSubclassLabel, getCasterProfileFor } from '../../utils/rules';
 import { rollDice } from '../../utils/dice';
 import CreatureManagerModal from './Modals/CreatureManagerModal';
 import { WIDGET_LABELS, DEFAULT_LAYOUT, STANDARD_CONDITIONS, STANDARD_ACTIONS, STATIC_RULES, WIDGET_BG, MANEUVER_DESCRIPTIONS } from '../../data/constants';
@@ -2461,7 +2461,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 );
             }
             case 'saves':
-                const situationalSaves = activeModifiers.filter(m => m.type === 'advantage' && m.target === 'saves' && (m.filter || m.condition));
+                const situationalSaves = activeModifiers.filter(m => m.type === 'advantage' && m.target === 'saves' && (m.filter || (m.condition && !/^unless\b/i.test(String(m.condition)))));
                 return (
                     <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
                          <div className="flex justify-between items-center mb-2"><h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Saving Throws</h3></div>
@@ -2488,7 +2488,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 }, 0);
 
                              const mod = calculateModifier(getStat(stat)) + (isProf ? prof : 0) + saveBonus;
-                             const hasFullAdv = activeModifiers.some(m => m.type === 'advantage' && !m.condition && (m.target === `${stat}_save` || (m.target === 'saves' && (!m.filter || m.filter.toLowerCase() === ABILITY_LABELS[stat].toLowerCase()))));
+                             const hasFullAdv = activeModifiers.some(m => m.type === 'advantage' && (!m.condition || /^unless\b/i.test(String(m.condition))) && (m.target === `${stat}_save` || (m.target === 'saves' && (!m.filter || m.filter.toLowerCase() === ABILITY_LABELS[stat].toLowerCase()))));
 
                              return <SavingThrowRow key={stat} label={ABILITY_LABELS[stat]} stat={stat} isProf={isProf} mod={mod} advantage={hasFullAdv} onRoll={roll} onContextMenu={triggerRollMenu} />;
                          })}</div>
@@ -2597,7 +2597,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     </div>
                 );
             case 'spells':
-                if (false) return null; // Removed Wild Shape spellcasting restriction
+                if (!showSpellsTab) return null;
                 const widgetSlots = (Object.entries(character.spellSlots) as [string, {max: number, current: number}][]).map(([l, s]) => ({ level: parseInt(l), ...s })).filter(s => (s.max as number) > 0).sort((a, b) => a.level - b.level);
                 return (
                     <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
@@ -2744,7 +2744,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             case 'defenses':
                 const res = activeModifiers.filter(m => m.type === 'resistance').map(m => String(m.value));
                 const imm = activeModifiers.filter(m => m.type === 'immunity').map(m => String(m.value));
-                const advDef = activeModifiers.filter(m => m.type === 'advantage' && m.target === 'saves' && m.filter).map(m => String(m.filter));
+                const advDef: string[] = [];
 
                 const defensiveFeatureNames = new Set([
                     'Evasion', 'Uncanny Dodge', 'Aura of Protection', 'Danger Sense', 'Deflect Energy',
@@ -3737,6 +3737,14 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             });
         }
 
+        if (hasFeature('cunning strike')) {
+            pushMonkAction({
+                id: 'rogue-cunning-strike', name: 'Cunning Strike', range: 'Weapon', hit: null,
+                save: { dc: 8 + prof + dexMod, type: 'Special' }, damage: '-', type: 'Special',
+                notes: ['When you deal Sneak Attack damage, forgo dice for an effect. Saving throw DC 8 + DEX + PB.'],
+                source: { name: 'Cunning Strike', activationType: 'action', desc: ['Trade Sneak Attack dice for a Cunning Strike effect.'] },
+            });
+        }
         if (hasFeature('dreadful strike')) {
             pushMonkAction({
                 id: 'ranger-dreadful-strike', name: 'Dreadful Strike (once per turn)', range: 'Weapon', hit: null, save: null,
@@ -4132,10 +4140,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             if (actionEffects.length > 0) {
                 actionEffects.forEach((effect: any) => {
                     const effectName = effect.name || enriched.name;
-                    if (list.some(item => item.name === effectName)) return;
+                    const displayName = /telekinetic shove/i.test(effectName)
+                        ? `Telekinetic Shove (STR DC ${8 + prof + intMod})`
+                        : effectName;
+                    if (list.some(item => item.name === displayName)) return;
                     list.push({
                         id: `feat-effect-${enriched.index || enriched.name}-${effectName}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-                        name: effectName,
+                        name: displayName,
                         category: effect.type === 'reaction' ? 'Reaction' : effect.type === 'action' ? 'Action' : 'Bonus Action',
                         desc: [effect.description || effect.desc || (Array.isArray(enriched.desc) ? enriched.desc[0] : enriched.desc) || ''],
                         source: { ...enriched, name: effectName },
@@ -4176,6 +4187,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
              : filtered;
     };
 
+
+    const showSpellsTab = (character.classes || []).some((cls: any) => { const profile = getCasterProfileFor(cls); return profile && profile.type !== 'none'; }) || (character.spells || []).length > 0;
 
     const tabIcons: Record<string, React.ReactNode> = {
         actions: <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" y1="19" x2="19" y2="13"/><line x1="16" y1="16" x2="20" y2="20"/><line x1="19" y1="21" x2="21" y2="19"/></svg>,
@@ -4779,7 +4792,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
             <footer className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#121316] border-t border-[#3e4149] shadow-lg pb-safe">
                 <div className="flex items-stretch justify-between w-full h-[64px] px-1">
-                {(['stats', 'actions', 'spells', 'inventory', 'more'] as const).map((tab_btn) => (
+                {(['stats', 'actions', ...(showSpellsTab ? ['spells'] : []), 'inventory', 'more'] as const).map((tab_btn) => (
                     <button key={tab_btn} onClick={() => tab_btn === 'more' ? setShowMobileMenu(true) : setActiveTab(tab_btn as any)} className={`flex flex-col items-center justify-center flex-1 rounded-lg transition-colors relative py-1 ${tab_btn === 'more' && showMobileMenu ? 'text-dnd-gold' : activeTab === tab_btn ? 'text-dnd-gold' : 'text-gray-500'}`}>
                         <div className={`${activeTab === tab_btn ? 'scale-110' : 'scale-100'} transition-transform duration-200`}>{tabIcons[tab_btn]}</div>
                         <span className="text-[8px] font-bold uppercase mt-1 tracking-wider leading-tight text-center">{tab_btn === 'inventory' ? 'Items' : tab_btn === 'stats' ? 'Home' : tab_btn === 'more' ? 'More' : tab_btn}</span>
@@ -4847,7 +4860,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
                 <section className={`min-h-0 flex-grow flex flex-col ${character.backgroundImageUrl ? "bg-[#121316]/85" : "bg-transparent"} overflow-hidden`}>
                     <nav className="hidden lg:flex items-center gap-2 px-4 py-2 bg-[#121316]/50 shrink-0 overflow-x-auto custom-scrollbar border-b border-[#3e4149]/40">
-            {['actions', 'spells', 'inventory', 'features', 'rules', 'log'].map(tab_key => (
+            {['actions', ...(showSpellsTab ? ['spells'] : []), 'inventory', 'features', 'rules', 'log'].map(tab_key => (
                 <button
                     key={tab_key}
                     onClick={() => setActiveTab(tab_key as any)}

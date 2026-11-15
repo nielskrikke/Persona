@@ -3188,6 +3188,21 @@ const ManageCharacterModal = ({
                                                                                 return selectedValues.includes(value) || !knownLanguages.has(String(value).toLowerCase());
                                                                             });
                                                                         }
+                                                                        if (choice.type === 'expertise') {
+                                                                            options = options.filter((option: any) => {
+                                                                                const value = typeof option === 'string' ? option : (option.name || option.index || '');
+                                                                                return selectedValues.includes(value) || !expertise.some((known: string) => String(known).toLowerCase() === String(value).toLowerCase());
+                                                                            });
+                                                                        }
+                                                                        if (/musician/i.test(choice.label || '') && options.some((option: any) => /^(bagpipes|drum|dulcimer|flute|horn|lute|lyre|pan flute|shawm|viol)$/i.test(String(typeof option === 'string' ? option : option.name || '')))) {
+                                                                            options = options.filter((option: any) => {
+                                                                                const value = typeof option === 'string' ? option : (option.name || option.index || '');
+                                                                                return selectedValues.includes(value) || !toolProficiencies.some((known: string) => String(known).toLowerCase() === String(value).toLowerCase());
+                                                                            });
+                                                                        }
+                                                                        if (choice.type === 'skill' && /rogue/i.test(String(choice.label || choice.source || ''))) {
+                                                                            options = options.filter((option: any) => String(typeof option === 'string' ? option : option.name || '').toLowerCase() !== 'nature');
+                                                                        }
                                                                         if (/maneuver/i.test(choice.label || '')) {
                                                                             const legacy = new Set(['brace', 'grappling strike', 'quick toss']);
                                                                             options = options.filter((option: any) => {
@@ -3643,6 +3658,21 @@ const ManageCharacterModal = ({
                                                                                                             return selectedValues.includes(value) || !knownLanguages.has(String(value).toLowerCase());
                                                                                                         });
                                                                                                     }
+                                                                                                    if (choice.type === 'expertise') {
+                                                                                                        options = options.filter((option: any) => {
+                                                                                                            const value = typeof option === 'string' ? option : (option.name || option.index || '');
+                                                                                                            return selectedValues.includes(value) || !expertise.some((known: string) => String(known).toLowerCase() === String(value).toLowerCase());
+                                                                                                        });
+                                                                                                    }
+                                                                                                    if (/musician/i.test(choice.label || '') && options.some((option: any) => /^(bagpipes|drum|dulcimer|flute|horn|lute|lyre|pan flute|shawm|viol)$/i.test(String(typeof option === 'string' ? option : option.name || '')))) {
+                                                                                                        options = options.filter((option: any) => {
+                                                                                                            const value = typeof option === 'string' ? option : (option.name || option.index || '');
+                                                                                                            return selectedValues.includes(value) || !toolProficiencies.some((known: string) => String(known).toLowerCase() === String(value).toLowerCase());
+                                                                                                        });
+                                                                                                    }
+                                                                                                    if (choice.type === 'skill' && /rogue/i.test(String(choice.label || choice.source || ''))) {
+                                                                                                                                                                                options = options.filter((option: any) => String(typeof option === 'string' ? option : option.name || '').toLowerCase() !== 'nature');
+                                                                                                                                                                            }
                                                                                                     if (/maneuver/i.test(choice.label || '')) {
                                                                                                         const legacy = new Set(['brace', 'grappling strike', 'quick toss']);
                                                                                                         options = options.filter((option: any) => {

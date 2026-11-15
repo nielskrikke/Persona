@@ -95,7 +95,10 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
         
         const loadSpells = async () => {
             setLoading(true);
-            const spells = hasExpandedSpellList ? await fetchAllSpells(character.user_id) : await fetchSpellsByClass(activeClassIndex, character.user_id);
+            const isArcaneTrickster = /arcane trickster/i.test(activeClass?.subclass?.name || '');
+            const isEldritchKnight = /eldritch knight/i.test(activeClass?.subclass?.name || '');
+            const spellListClass = isArcaneTrickster || isEldritchKnight ? 'wizard' : activeClassIndex;
+            const spells = hasExpandedSpellList ? await fetchAllSpells(character.user_id) : await fetchSpellsByClass(spellListClass, character.user_id);
             const allowedSecretsLists = new Set(hasMagicalDiscoveries && !hasMagicalSecrets ? ['cleric', 'druid', 'wizard'] : ['bard', 'cleric', 'druid', 'wizard']);
             const filtered = hasExpandedSpellList
                 ? spells.filter(spell => (spell as any).classes?.some((entry: any) => allowedSecretsLists.has(String(entry.index).toLowerCase())))
@@ -105,7 +108,7 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
             setLoading(false);
         };
         loadSpells();
-    }, [isOpen, activeClassIndex, hasExpandedSpellList, hasMagicalSecrets, hasMagicalDiscoveries]);
+    }, [isOpen, activeClassIndex, activeClass, hasExpandedSpellList, hasMagicalSecrets, hasMagicalDiscoveries]);
 
     const isGranted = (spell: SpellDetail) => character.spells.some(s => s.index === spell.index && s.isGranted);
     const isKnown = (spell: SpellDetail) => {
