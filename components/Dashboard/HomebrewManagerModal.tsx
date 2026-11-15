@@ -1643,7 +1643,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     damage: nextDamage,
                     scaling: scalingConfig,
                     secondary_damage: spellSecondaryDamage || undefined,
-                    dc: spellHasSave ? { ...(previous.dc || {}), dc_type: { name: spellSaveType, index: spellSaveType.toLowerCase() }, dc_success: spellSaveEffect } : previous.dc
+                    dc: spellHasSave ? { ...(previous.dc || {}), dc_type: { name: spellSaveType, index: spellSaveType.toLowerCase() }, dc_success: spellSaveEffect } : undefined
                 };
             } else if (activeTab === 'item') {
                 payload = {

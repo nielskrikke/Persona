@@ -2492,16 +2492,22 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
                              return <SavingThrowRow key={stat} label={ABILITY_LABELS[stat]} stat={stat} isProf={isProf} mod={mod} advantage={hasFullAdv} onRoll={roll} onContextMenu={triggerRollMenu} />;
                          })}</div>
-                         {situationalSaves.length > 0 && (
-                             <div className="mt-3 pt-2 border-t border-gray-800/50">
-                                 <span className="text-[9px] font-bold text-gray-500 uppercase block mb-1">Situational Advantages</span>
-                                 <div className="flex flex-wrap gap-1">
-                                     {situationalSaves.map((m, i) => (
-                                         <span key={i} className="text-[8px] bg-gray-800/60 text-gray-500 px-1.5 py-0.5 rounded border border-gray-700/50">Adv vs {String(m.filter || m.condition).replace(/^against\s+/i, '')}</span>
-                                     ))}
+                         {situationalSaves.length > 0 && (() => {
+                             const abilityFilters = situationalSaves.map(m => String(m.filter || '')).filter(f => /^(intelligence|wisdom|charisma)$/i.test(f));
+                             const labels = abilityFilters.length === situationalSaves.length && abilityFilters.length >= 2
+                                 ? [`Adv on ${abilityFilters.map(f => f.slice(0, 3).toUpperCase()).join(', ')} saves`]
+                                 : situationalSaves.map(m => `Adv vs ${String(m.filter || m.condition).replace(/^against\s+/i, '')}`);
+                             return (
+                                 <div className="mt-3 pt-2 border-t border-gray-800/50">
+                                     <span className="text-[9px] font-bold text-gray-500 uppercase block mb-1">Situational Advantages</span>
+                                     <div className="flex flex-wrap gap-1">
+                                         {labels.map((label, i) => (
+                                             <span key={i} className="text-[8px] bg-gray-800/60 text-gray-500 px-1.5 py-0.5 rounded border border-gray-700/50">{label}</span>
+                                         ))}
+                                     </div>
                                  </div>
-                             </div>
-                         )}
+                             );
+                         })()}
                     </div>
                 );
             case 'skills':
@@ -4181,7 +4187,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             }
         });
 
-         const filtered = list.filter((item: any) => !/channel divinity|abjure foes/i.test(String(item.name || '')));
+         const filtered = list.filter((item: any) => !/channel divinity|abjure foes|devious strikes/i.test(String(item.name || '')));
          return character.activeWildShape
              ? filtered.filter((item: any) => !item.source?.weapon_category && (!item.source?.school || canCastSpellInWildShape(character, item.source)))
              : filtered;
