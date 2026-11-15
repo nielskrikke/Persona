@@ -30,6 +30,7 @@ const ChoicesTab: React.FC<ChoicesTabProps> = ({ character, setCharacter }) => {
 
     const metamagicOptions = React.useMemo(() => character.classes.flatMap(c => (c.definition as any).options?.metamagic || []), [character.classes]);
 
+
     const pendingChoices = (character.choices || []).filter(c => !c.optional && (c.value === null || c.value === undefined || (Array.isArray(c.value) && c.value.length === 0)));
     const optionalChoices = (character.choices || []).filter(c => c.optional && (c.value === null || c.value === undefined || (Array.isArray(c.value) && c.value.length === 0)));
     const completedChoices = (character.choices || []).filter(c => !c.optional && !pendingChoices.includes(c)).sort((a, b) => b.level - a.level);
@@ -604,6 +605,20 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onMakeChoice, allFeats,
         }
         return choice.count && choice.count > 1 ? [] : null;
     });
+    const knownMetamagics = React.useMemo(() => {
+        const fromChoices = (character.choices || [])
+            .filter(c => c.revertData?.isMetamagicMatrix && c.value)
+            .flatMap(c => Array.isArray(c.value) ? c.value : [c.value]);
+        const fromFeatures = (character.classFeatures || [])
+            .filter((feature: any) => {
+                const choiceId = feature.revertData?.choiceId;
+                if (!choiceId) return true;
+                return Boolean((character.choices || []).find(c => c.id === choiceId)?.value);
+            })
+            .map((feature: any) => String(feature.name || '').replace(/^metamagic options:\s*/i, ''))
+            .filter((name: string) => metamagicOptions.some((opt: any) => String(opt.name).toLowerCase() === name.toLowerCase()));
+        return Array.from(new Set([...fromChoices, ...fromFeatures]));
+    }, [character.choices, character.classFeatures, metamagicOptions]);
     const [asiIncreases, setAsiIncreases] = useState<Record<string, number>>({});
     const [asiMode, setAsiMode] = useState<'ability' | 'feat'>('ability');
     const [subclassDetails, setSubclassDetails] = useState<Record<string, SubclassDetail>>({});
@@ -626,6 +641,8 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onMakeChoice, allFeats,
         if (choice.revertData?.isMetamagicMatrix) {
             const isProgression = choice.revertData.isProgression;
             if (isProgression) {
+                const known = new Set(knownMetamagics.map((name: any) => String(name).toLowerCase()));
+                if (!Array.isArray(selection) || selection.length !== (choice.count || 2) || selection.some((name: string) => known.has(String(name).toLowerCase()))) return;
                 onMakeChoice(choice.id, selection, { isMetamagic: true });
             } else {
                 onMakeChoice(choice.id, `${selection.newOption} (Replaced ${selection.toReplace})`, { 
@@ -796,13 +813,9 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onMakeChoice, allFeats,
             case 'feature_choice':
             case 'other':
                 if (choice.revertData?.isMetamagicMatrix) {
-                    const currentMetamagics = (character.choices || [])
-                        .filter(c => c.revertData?.isMetamagicMatrix && c.value)
-                        .flatMap(c => Array.isArray(c.value) ? c.value : [c.value]);
-                    
                     const isProgression = choice.revertData.isProgression;
                     const count = choice.count || (isProgression ? 2 : 1);
-                    const knownSet = new Set(currentMetamagics.map((name: string) => String(name).toLowerCase()));
+                    const knownSet = new Set(knownMetamagics.map((name: string) => String(name).toLowerCase()));
                     const newOptions = metamagicOptions.filter((opt: any) => !knownSet.has(String(opt.name).toLowerCase()));
 
                     return (
@@ -815,8 +828,8 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onMakeChoice, allFeats,
                                     <h4 className="text-sm font-bold text-purple-300 mb-1">{isProgression ? 'Enhancement Mode' : 'Calibration Mode'}</h4>
                                     <p className="text-[11px] text-gray-400 leading-relaxed italic">
                                         {isProgression 
-                                            ? `Select ${count} new Metamagic options to add to your repertoire. Current options: ${currentMetamagics.join(', ') || 'None'}`
-                                            : `Replace one of your existing Metamagic options with a new one. Current: ${currentMetamagics.join(', ')}`}
+                                            ? `Select ${count} new Metamagic options to add to your repertoire. Current options: ${knownMetamagics.join(', ') || 'None'}`
+                                            : `Replace one of your existing Metamagic options with a new one. Current: ${knownMetamagics.join(', ')}`}
                                     </p>
                                 </div>
                             </div>
@@ -825,7 +838,7 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onMakeChoice, allFeats,
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Replace Option:</label>
                                     <div className="flex flex-wrap gap-2">
-                                        {currentMetamagics.map(m => (
+                                        {knownMetamagics.map(m => (
                                             <button
                                                 key={m}
                                                 onClick={() => setSelection((prev: any) => ({ ...prev, toReplace: m }))}
@@ -842,7 +855,7 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onMakeChoice, allFeats,
                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">{isProgression ? `Select ${count} Options:` : 'New Option:'}</label>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                                     {newOptions.map((opt: any) => {
-                                        const isAlreadyKnown = currentMetamagics.includes(opt.name);
+                                        const isAlreadyKnown = knownMetamagics.some((name: string) => String(name).toLowerCase() === String(opt.name).toLowerCase());
                                         const isSelected = isProgression 
                                             ? (Array.isArray(selection) && selection.includes(opt.name))
                                             : selection?.newOption === opt.name;
@@ -937,10 +950,7 @@ const ChoiceCard: React.FC<ChoiceCardProps> = ({ choice, onMakeChoice, allFeats,
         if (choice.revertData?.isMetamagicMatrix) {
             const isProgression = choice.revertData.isProgression;
             const count = choice.count || (isProgression ? 2 : 1);
-            const known = (character.choices || [])
-                .filter(c => c.revertData?.isMetamagicMatrix && c.value)
-                .flatMap(c => Array.isArray(c.value) ? c.value : [c.value])
-                .map((name: any) => String(name).toLowerCase());
+            const known = knownMetamagics.map((name: any) => String(name).toLowerCase());
             if (isProgression) return Array.isArray(selection) && selection.length === count && selection.every((name: string) => !known.includes(String(name).toLowerCase()));
             return Boolean(selection?.toReplace && selection?.newOption && selection.toReplace !== selection.newOption
                 && known.includes(String(selection.toReplace).toLowerCase())

@@ -694,12 +694,19 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
         if (existing >= 0) {
             // Keep a learned/prepared copy distinct from an item-granted copy.
             // Otherwise a staff can overwrite the character's own spell and
-            // remove their ability to cast it with a slot.
-            if (granted.itemSpell && !spells[existing].isGranted) return;
+            // remove their ability to cast it with a slot. Add the item copy
+            // under a stable unique index so both rows remain usable.
+            if (granted.itemSpell && !spells[existing].isGranted) {
+                const itemIndex = `${index}::item-${granted.itemId || 'granted'}`;
+                if (!spells.some(spell => spell.index === itemIndex)) {
+                    spells.push({ ...granted, index: itemIndex, originalIndex: index });
+                }
+                return;
+            }
             spells[existing] = { ...spells[existing], ...granted, sourceClassIndex: spells[existing].sourceClassIndex || granted.sourceClassIndex };
         } else spells.push(granted);
     });
-    spells = spells.filter(spell => !spell.isGranted || grantedByIndex.has(spell.index));
+    spells = spells.filter(spell => !spell.isGranted || grantedByIndex.has(spell.index) || Boolean((spell as any).originalIndex));
     const deduped = new Map<string, any>();
     spells.forEach(spell => {
         const key = String(spell.index).toLowerCase();

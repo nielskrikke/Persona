@@ -209,7 +209,7 @@ const FeaturesTab: React.FC<FeaturesTabProps> = ({ character, setCharacter, getA
                                 onClick={() => setSelectedDetail(feat)} 
                                 className="grid grid-cols-[2fr_1.5fr_60px_2.5fr] gap-4 px-6 py-4 items-center hover:bg-[#2e3036]/60 cursor-pointer group transition-all"
                             >
-                                <div className="font-bold text-gray-200 text-sm group-hover:text-white transition-colors">{feat.name}</div>
+                                <div className="font-bold text-gray-200 text-sm group-hover:text-white transition-colors">{featureDisplayName(feat.name)}</div>
                                 <div className="text-xs text-gray-400">
                                     <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold border ${
                                         feat.type === 'Class' ? 'bg-blue-900/20 border-blue-800 text-blue-400' : 
@@ -241,7 +241,7 @@ const FeaturesTab: React.FC<FeaturesTabProps> = ({ character, setCharacter, getA
                                 className="px-4 py-3.5 active:bg-[#2e3036]/60 cursor-pointer transition-colors"
                             >
                                 <div className="flex items-start justify-between gap-3">
-                                    <div className="font-bold text-sm text-gray-200 min-w-0">{feat.name}</div>
+                                    <div className="font-bold text-sm text-gray-200 min-w-0">{featureDisplayName(feat.name)}</div>
                                     <span className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold border shrink-0 ${
                                         feat.type === 'Class' ? 'bg-blue-900/20 border-blue-800 text-blue-400' : 
                                         feat.type === 'Race' ? 'bg-green-900/20 border-green-800 text-green-400' : 
@@ -269,5 +269,7 @@ const FeaturesTab: React.FC<FeaturesTabProps> = ({ character, setCharacter, getA
         </div>
     );
 };
+
+const featureDisplayName = (name: string) => String(name || '').replace(/^metamagic options:\s*/i, '');
 
 export default FeaturesTab;

@@ -1768,6 +1768,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             return {
                 ...prev,
                 currentHp: prev.maxHp,
+                activeConditions: clearedConditions,
                 spellSlots: newSlots,
                 featureUsage: newFeatures,
                 freeCastUsage: {},
@@ -3561,7 +3562,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
         character.spells.forEach(spell => {
             const desc = spell.desc?.join(' ').toLowerCase() || '';
-            if (desc.includes('spell attack') || spell.attack_type !== undefined) {
+            if (Boolean(spell.attack_type) || desc.includes('spell attack')) {
                 let dmgStr = getSpellDamageString(spell, character.level, getSpellCastLevel(character, spell));
 
                 let spellFlatBonus = 0;
@@ -4239,7 +4240,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             }
         });
 
-         const filtered = list.filter((item: any) => item.source?.type !== 'Metamagic' && !/channel divinity|abjure foes|devious strikes|dragon wings|^(font of magic|sorcery incarnate)$/i.test(String(item.name || '')));
+         const metamagicNames = /^(careful|distant|empowered|extended|heightened|quickened|seeking|subtle|transmuted|twinned) spell$/i;
+         const filtered = list.filter((item: any) => item.source?.type !== 'Metamagic' && !metamagicNames.test(String(item.name || '')) && !/^metamagic options:/i.test(String(item.name || '')) && !/channel divinity|abjure foes|devious strikes|dragon wings|^(font of magic|sorcery incarnate)$/i.test(String(item.name || '')));
          return character.activeWildShape
              ? filtered.filter((item: any) => !item.source?.weapon_category && (!item.source?.school || canCastSpellInWildShape(character, item.source)))
              : filtered;

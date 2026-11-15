@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { WIDGET_BG } from '../../../data/constants';
 
 const SLOT_COSTS: Record<number, number> = { 1: 2, 2: 3, 3: 5, 4: 6, 5: 7 };
@@ -6,6 +6,10 @@ const SLOT_COSTS: Record<number, number> = { 1: 2, 2: 3, 3: 5, 4: 6, 5: 7 };
 const FontOfMagicWidget = ({ character, setCharacter }: { character: any; setCharacter: React.Dispatch<React.SetStateAction<any>> }) => {
     const [createLevel, setCreateLevel] = useState(1);
     const [convertLevel, setConvertLevel] = useState(1);
+    const convertibleLevels = [1,2,3,4,5,6,7,8,9].filter(level => Number(character.spellSlots?.[level]?.current || 0) > 0);
+    useEffect(() => {
+        if (convertibleLevels.length > 0 && !convertibleLevels.includes(convertLevel)) setConvertLevel(convertibleLevels[0]);
+    }, [convertibleLevels.join(','), convertLevel]);
     const points = character.featureUsage?.['Sorcery Points'];
     if (!points) return null;
 
@@ -40,7 +44,17 @@ const FontOfMagicWidget = ({ character, setCharacter }: { character: any; setCha
     const innate = character.featureUsage?.['Innate Sorcery'];
     const hasIncarnate = (character.classFeatures || []).some((feature: any) => /sorcery incarnate/i.test(feature.name || ''));
     const innateActive = character.activeConditions?.['innate-sorcery'] === true;
+    const canUseInnate = Boolean(innate) && Number(innate.current || 0) > 0 && !innateActive;
     const canActivateInnate = hasIncarnate && innate && Number(innate.current || 0) <= 0 && current >= 2 && !innateActive;
+    const useInnate = () => setCharacter((prev: any) => {
+        const source = prev.featureUsage['Innate Sorcery'];
+        if (!source || Number(source.current || 0) <= 0) return prev;
+        return {
+            ...prev,
+            activeConditions: { ...(prev.activeConditions || {}), 'innate-sorcery': true },
+            featureUsage: { ...prev.featureUsage, 'Innate Sorcery': { ...source, current: Math.max(0, Number(source.current || 0) - 1) } },
+        };
+    });
     const activateInnate = () => setCharacter((prev: any) => {
         const p = prev.featureUsage['Sorcery Points'];
         const source = prev.featureUsage['Innate Sorcery'];
@@ -93,13 +107,17 @@ const FontOfMagicWidget = ({ character, setCharacter }: { character: any; setCha
                 <div className="flex items-center gap-1.5">
                     <span className="text-[9px] text-gray-500 uppercase font-bold w-16">To points</span>
                     <select value={convertLevel} onChange={e => setConvertLevel(Number(e.target.value))} className="flex-1 bg-black/30 border border-gray-700/60 rounded px-1.5 py-1 text-[10px] text-gray-300 outline-none">
-                        {[1,2,3,4,5,6,7,8,9].map(level => <option key={level} value={level}>Level {level} · {character.spellSlots?.[level]?.current || 0} left</option>)}
+                        {[1,2,3,4,5,6,7,8,9].filter(level => Number(character.spellSlots?.[level]?.current || 0) > 0).map(level => <option key={level} value={level}>Level {level} · {character.spellSlots?.[level]?.current || 0} left</option>)}
                     </select>
                     <button type="button" onClick={convertSlot} disabled={!canConvert} className="px-2 py-1 rounded border border-gray-700/60 bg-black/20 text-[9px] font-bold uppercase text-gray-400 hover:text-white disabled:opacity-30">Convert</button>
                 </div>
                 {innateActive ? (
                     <button type="button" onClick={() => setCharacter((prev: any) => ({ ...prev, activeConditions: { ...(prev.activeConditions || {}), 'innate-sorcery': false } }))} className="w-full mt-2 py-1.5 rounded border border-dnd-gold/50 bg-dnd-gold/10 text-[9px] font-bold uppercase tracking-wide text-dnd-gold hover:bg-dnd-gold/20 transition-colors">
                         End Innate Sorcery · +1 DC active
+                    </button>
+                ) : canUseInnate ? (
+                    <button type="button" onClick={useInnate} className="w-full mt-2 py-1.5 rounded border border-purple-800/60 bg-purple-950/20 text-[9px] font-bold uppercase tracking-wide text-purple-300 hover:bg-purple-900/30 transition-colors">
+                        Activate Innate Sorcery · 1 use
                     </button>
                 ) : canActivateInnate && (
                     <button type="button" onClick={activateInnate} className="w-full mt-2 py-1.5 rounded border border-purple-800/60 bg-purple-950/20 text-[9px] font-bold uppercase tracking-wide text-purple-300 hover:bg-purple-900/30 transition-colors">
