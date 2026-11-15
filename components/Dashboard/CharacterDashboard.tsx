@@ -384,8 +384,8 @@ const CharacterDashboard: React.FC<CharacterDashboardProps> = ({ onLoadCharacter
                                         </div>
                                     )}
                                 </div>
-                                <h3 className="text-xl font-serif text-white mb-1 truncate pr-8">{char.name || 'Unnamed'}</h3>
-                                <div className="text-xs text-dnd-gold font-bold uppercase mb-2 truncate" title={classString}>{classString}</div>
+                                <h3 className="text-xl font-serif text-white mb-1 truncate pr-8 shrink-0">{char.name || 'Unnamed'}</h3>
+                                <div className="text-xs text-dnd-gold font-bold uppercase mb-2 truncate shrink-0" title={classString}>{classString}</div>
                                 {char.data?.campaign_id ? (
                                     <div className="mb-4">
                                         <span className="text-[9px] bg-purple-900/30 text-purple-300 border border-purple-800/60 px-2 py-0.5 rounded font-bold uppercase tracking-wide inline-flex items-center gap-1">

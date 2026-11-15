@@ -845,6 +845,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
     const strMod = calculateModifier(getStat('str'));
     const dexMod = calculateModifier(getStat('dex'));
+    const wisMod = calculateModifier(getStat('wis'));
+    const intMod = calculateModifier(getStat('int'));
     let extraInitiative = 0;
     activeModifiers.forEach(m => {
         if ((m.type === 'bonus' || m.type === 'stat_bonus') && (m.target === 'initiative' || m.stat === 'initiative')) {
@@ -862,8 +864,6 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     });
     const initAdv = activeModifiers.some(m => m.type === 'advantage' && (m.target === 'initiative' || m.stat === 'initiative'));
     const conMod = calculateModifier(getStat('con'));
-    const wisMod = calculateModifier(getStat('wis'));
-    const intMod = calculateModifier(getStat('int'));
     const chaMod = calculateModifier(getStat('cha'));
     const conSaveBonus = conMod + ((character.classes[0]?.definition.saving_throws || []).some(s => s.index === 'con' || s.name === 'CON') ? prof : 0);
 
