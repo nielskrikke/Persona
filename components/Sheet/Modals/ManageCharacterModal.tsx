@@ -910,7 +910,12 @@ const ManageCharacterModal = ({
         show3DDice,
         encumbranceEnabled,
         combatOverrides,
-        choices: overrides.choices || localChoices,
+        choices: (overrides.choices || localChoices).map((choice: any) => {
+            if (choice.revertData?.isMetamagicMatrix && !choice.revertData.isProgression && choice.revertData.pendingConfirm && !choice.value) {
+                return { ...choice, revertData: { ...choice.revertData, toReplace: undefined, newOption: undefined, pendingConfirm: false } };
+            }
+            return choice;
+        }),
         spells: overrides.spells || localSpells,
         classes: overrides.classes || localClasses,
         classFeatures: overrides.classFeatures || localClassFeatures,
@@ -1067,6 +1072,21 @@ const ManageCharacterModal = ({
         setLocalMaxHp(temp.maxHp);
     };
 
+    const makeMetamagicFeature = (choiceId: string, name: string, level: number = 3) => {
+        const options = (localClasses || []).flatMap((cls: any) => (cls.definition as any)?.options?.metamagic || []);
+        const opt = options.find((entry: any) => String(entry.name).toLowerCase() === String(name).toLowerCase());
+        return {
+            index: `${choiceId}-${String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+            name,
+            level,
+            source: 'Metamagic',
+            type: 'Metamagic',
+            desc: opt?.desc ? [opt.desc] : [],
+            effects: [],
+            revertData: { choiceId },
+        };
+    };
+
     const revertChoice = (choice: LevelChoice) => {
         revertChoices([choice]);
     };
@@ -1075,6 +1095,22 @@ const ManageCharacterModal = ({
         hasUserEditsRef.current = true;
         const choice = localChoices.find(c => c.id === choiceId);
         if (!choice) return;
+
+        if (choice.revertData?.isMetamagicMatrix && !choice.revertData.isProgression) {
+            const toReplace = choice.revertData?.toReplace;
+            const newOption = choice.revertData?.newOption;
+            if (toReplace && newOption) {
+                const sourceChoice = localChoices.find((c: any) => c.id !== choiceId && c.revertData?.isMetamagicMatrix && Array.isArray(c.value) && c.value.includes(newOption));
+                const sourceChoiceId = sourceChoice?.id || choiceId;
+                setLocalChoices(prev => prev.map((c: any) => c.id === sourceChoiceId && Array.isArray(c.value)
+                    ? { ...c, value: c.value.map((entry: string) => entry === newOption ? toReplace : entry) }
+                    : c));
+                setLocalClassFeatures(prev => [
+                    ...prev.filter((feature: any) => String(feature.name).replace(/^metamagic (?:options|calibration):\s*/i, '').toLowerCase() !== String(newOption).toLowerCase()),
+                    makeMetamagicFeature(sourceChoiceId, toReplace, choice.level || 3),
+                ]);
+            }
+        }
         
         // Find children sub-choices recursively
         const findChildren = (parentId: string): LevelChoice[] => {
@@ -2071,19 +2107,7 @@ const ManageCharacterModal = ({
 
         if (choice.revertData?.isMetamagicMatrix) {
             const options = getMetamagicOptionList(choice);
-            const featureFor = (name: string) => {
-                const opt = options.find((entry: any) => String(entry.name).toLowerCase() === String(name).toLowerCase());
-                return {
-                    index: `${choiceId}-${String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
-                    name,
-                    level: choice.level || 3,
-                    source: 'Metamagic',
-                    type: 'Metamagic',
-                    desc: opt?.desc ? [opt.desc] : [],
-                    effects: [],
-                    revertData: { choiceId },
-                };
-            };
+            const featureFor = (name: string) => makeMetamagicFeature(choiceId, name, choice.level || 3);
             if (choice.revertData.isProgression) {
                 const selected = Array.isArray(choice.value) ? choice.value : [];
                 if (selected.length !== (choice.count || 2)) return;
@@ -3610,7 +3634,7 @@ const ManageCharacterModal = ({
                                                                                     <button 
                                                                                         onClick={() => handleRevertSingleChoice(choice.id)}
                                                                                         className="p-2 text-gray-600 hover:text-red-400 hover:bg-red-900/10 rounded-lg transition-all"
-                                                                                        title="Revert Choice"
+                                                                                        title={choice.revertData?.isMetamagicMatrix && !choice.revertData.isProgression ? 'Undo Calibration Swap' : 'Revert Choice'}
                                                                                     >
                                                                                         <RotateCcw size={14} />
                                                                                     </button>
