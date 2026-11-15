@@ -3168,6 +3168,17 @@ const ManageCharacterModal = ({
                                                                                 return selectedValues.some((selected: any) => String(selected).toLowerCase().startsWith(String(value).toLowerCase())) || !saveProfs.has(String(value).toLowerCase());
                                                                             });
                                                                         }
+                                                                        if (choice.type === 'language') {
+                                                                            const knownLanguages = new Set([
+                                                                                ...(languages || []),
+                                                                                ...((character.race?.languages || []).map((language: any) => language?.name || language)),
+                                                                                ...((character.subrace?.languages || []).map((language: any) => language?.name || language)),
+                                                                            ].map((language: any) => String(language).toLowerCase()));
+                                                                            options = options.filter((option: any) => {
+                                                                                const value = typeof option === 'string' ? option : (option.name || option.index || '');
+                                                                                return selectedValues.includes(value) || !knownLanguages.has(String(value).toLowerCase());
+                                                                            });
+                                                                        }
                                                                         if (/maneuver/i.test(choice.label || '')) {
                                                                             const legacy = new Set(['brace', 'grappling strike', 'quick toss']);
                                                                             options = options.filter((option: any) => {
@@ -3418,7 +3429,7 @@ const ManageCharacterModal = ({
                                                                                             </div>
                                                                                         </div>
                                                                                         <div className="flex items-center gap-3">
-                                                                                            <h5 className="text-gray-300 font-bold text-xs">{choice.type === 'subclass' && /monastic tradition/i.test(choice.label || '') ? 'Monk Subclass' : choice.type === 'subclass' && /martial archetype/i.test(choice.label || '') ? 'Fighter Subclass' : choice.type === 'subclass' && /sacred oath/i.test(choice.label || '') ? 'Paladin Subclass' : choice.label}</h5>
+                                                                                            <h5 className="text-gray-300 font-bold text-xs">{choice.type === 'subclass' && /monastic tradition/i.test(choice.label || '') ? 'Monk Subclass' : choice.type === 'subclass' && /martial archetype/i.test(choice.label || '') ? 'Fighter Subclass' : choice.type === 'subclass' && /sacred oath/i.test(choice.label || '') ? 'Paladin Subclass' : choice.type === 'subclass' && /ranger archetype/i.test(choice.label || '') ? 'Ranger Subclass' : choice.label}</h5>
                                                                                             {['subclass', 'feat-selection', 'asi-feat'].includes(choice.type) && (
                                                                                                 <button 
                                                                                                     onClick={() => toggleChoiceExpansion(choice.id)}
@@ -3610,6 +3621,17 @@ const ManageCharacterModal = ({
                                                                                                         options = options.filter((option: any) => {
                                                                                                             const value = typeof option === 'string' ? option : (option.index || option.name || '');
                                                                                                             return selectedValues.some((selected: any) => String(selected).toLowerCase().startsWith(String(value).toLowerCase())) || !saveProfs.has(String(value).toLowerCase());
+                                                                                                        });
+                                                                                                    }
+                                                                                                    if (choice.type === 'language') {
+                                                                                                        const knownLanguages = new Set([
+                                                                                                            ...(languages || []),
+                                                                                                            ...((character.race?.languages || []).map((language: any) => language?.name || language)),
+                                                                                                            ...((character.subrace?.languages || []).map((language: any) => language?.name || language)),
+                                                                                                        ].map((language: any) => String(language).toLowerCase()));
+                                                                                                        options = options.filter((option: any) => {
+                                                                                                            const value = typeof option === 'string' ? option : (option.name || option.index || '');
+                                                                                                            return selectedValues.includes(value) || !knownLanguages.has(String(value).toLowerCase());
                                                                                                         });
                                                                                                     }
                                                                                                     if (/maneuver/i.test(choice.label || '')) {

@@ -428,6 +428,7 @@ export const getSubclassLabel = (definition: any): string => {
     if (/martial archetype/i.test(label) && /fighter/i.test(String(definition?.name || definition?.index || ''))) return 'Fighter Subclass';
     if (/monastic tradition/i.test(label) && /monk/i.test(String(definition?.name || definition?.index || ''))) return 'Monk Subclass';
     if (/sacred oath/i.test(label) && /paladin/i.test(String(definition?.name || definition?.index || ''))) return 'Paladin Subclass';
+    if (/ranger archetype/i.test(label) && /ranger/i.test(String(definition?.name || definition?.index || ''))) return 'Ranger Subclass';
     if (label) return label;
     return 'Subclass';
 };
@@ -963,6 +964,13 @@ export const isFeatAvailableForCharacter = (feat: any, character: CharacterState
             && /armor/i.test(String(effect.category || effect.target || '')));
     const hasSpellcasting = classDefinitions.some(definition => definition.caster && definition.caster.type !== 'none')
         || classDefinitions.some(definition => definition.spellcasting);
+    const proficiencyLabels = classDefinitions.flatMap(definition => [...(definition.proficiencies || []), ...(definition.armor_proficiencies || [])])
+        .map((entry: any) => String(typeof entry === 'string' ? entry : entry.name || entry.index || ''));
+    const hasLightArmor = proficiencyLabels.some(label => /light/i.test(label));
+    const hasMartialWeapon = proficiencyLabels.some(label => /martial/i.test(label));
+    const featName = String(feat?.name || '').toLowerCase();
+    if (featName === 'lightly armored' && hasLightArmor) return false;
+    if (featName === 'martial weapon training' && hasMartialWeapon) return false;
 
     if (/elf or half-elf/.test(text) && !/elf/.test(race)) return false;
     if (/heavy armor (training|proficiency)/.test(requirements) && !hasHeavyArmor) return false;

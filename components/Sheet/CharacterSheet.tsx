@@ -608,7 +608,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             if (!existing || existing.max !== resource.max || existing.itemId !== resource.itemId || existing.reset !== resource.reset || existing.source !== resource.source) {
                 newUsage[resource.name] = {
                     max: resource.max,
-                    current: existing ? Math.min(existing.current, resource.max) : resource.max,
+                    current: existing
+                        ? Math.min(resource.max, existing.current + (existing.current >= existing.max ? Math.max(0, resource.max - existing.max) : 0))
+                        : resource.max,
                     reset: resource.reset,
                     source: resource.source,
                     itemId: resource.itemId,
@@ -849,6 +851,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const raw = m.value ?? m.amount;
             if (m.scaling === 'proficiency' || m.scale === 'proficiency' || raw?.type === 'proficiency') {
                 extraInitiative += prof;
+            } else if (raw === 'wisMod') {
+                extraInitiative += wisMod;
+            } else if (raw === 'intMod') {
+                extraInitiative += intMod;
             } else {
                 extraInitiative += Number(raw || 0) || 0;
             }
@@ -1205,6 +1211,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         if (race?.fly_speed || subrace?.fly_speed) {
             const val = race?.fly_speed || subrace?.fly_speed;
             speeds.push({ type: 'Flying', speed: val === true ? walkingSpeed : Number(val) || walkingSpeed, source: race?.name || 'Race' });
+        }
+
+        const hasRoving = (character.classFeatures || []).some((feature: any) => /roving/i.test(feature.name || ''));
+        const wearingHeavyArmor = (character.inventory || []).some((item: any) => item.equipped && /heavy/i.test(String(item.armor_category || '')));
+        if (hasRoving && !wearingHeavyArmor) {
+            speeds.push({ type: 'Climbing', speed: walkingSpeed, source: 'Roving' });
+            speeds.push({ type: 'Swimming', speed: walkingSpeed, source: 'Roving' });
         }
 
         activeModifiers.forEach(m => {
@@ -2458,7 +2471,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                              const storedSave = (character.savingThrowProficiencies || []).some(saved => String(saved).toLowerCase() === stat) && !nonStartingSaves.has(stat);
                              const isProf = startingSaves.has(stat) ||
                                             storedSave ||
-                                            activeModifiers.some(m => m.type === 'proficiency' && m.target === stat.substring(0,3).toUpperCase() && m.category === 'save');
+                                            activeModifiers.some(m => {
+                                                if (m.type !== 'proficiency' || m.category !== 'save') return false;
+                                                const target = String(m.target || m.value || '').toLowerCase();
+                                                return target === stat || target === stat.substring(0, 3) || target === ABILITY_LABELS[stat].toLowerCase();
+                                            });
 
                              const saveBonus = activeModifiers
                                 .filter(m => m.type === 'bonus' && (m.target === stat.substring(0,3).toUpperCase() || m.target === 'saves'))
@@ -3668,7 +3685,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             });
         });
 
-        const hasFeature = (name: string) => (character.classFeatures || []).some((feature: any) => String(feature.name || '').toLowerCase().includes(String(name).toLowerCase()));
+        const hasFeature = (name: string) => (character.classFeatures || []).some((feature: any) =>
+            String(feature.name || '').toLowerCase().includes(String(name).toLowerCase())
+            || (feature.effects || []).some((effect: any) => String(effect.name || '').toLowerCase().includes(String(name).toLowerCase())));
         const pushMonkAction = (action: any) => {
             if (attacks.some(existing => String(existing.name).toLowerCase() === String(action.name).toLowerCase())) return;
             attacks.push(action);
@@ -3718,6 +3737,14 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             });
         }
 
+        if (hasFeature('dreadful strike')) {
+            pushMonkAction({
+                id: 'ranger-dreadful-strike', name: 'Dreadful Strike (once per turn)', range: 'Weapon', hit: null, save: null,
+                damage: character.level >= 11 ? '2d8' : '2d6', type: 'Psychic',
+                notes: ['Once per turn on a weapon hit; uses equal to WIS modifier per Long Rest.'],
+                source: { name: 'Dreadful Strike', activationType: 'action', desc: ['Extra Psychic damage on one weapon hit.'] },
+            });
+        }
         if (hasFeature('sacred weapon')) {
             pushMonkAction({
                 id: 'paladin-sacred-weapon', name: 'Sacred Weapon', range: 'Self', hit: null, save: null, damage: '-', type: 'Channel Divinity',

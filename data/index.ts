@@ -967,6 +967,11 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
             });
         }
     }
+    if ((character.classes || []).some((cls: any) => cls.definition?.index === 'ranger')
+        && !inventory.some((item: any) => /druidic focus/i.test(String(item.name || '')))) {
+        const detail = inventoryCatalog.find(entry => /druidic focus.*mistletoe/i.test(String(entry.name || '')));
+        inventory.push({ ...(detail || {}), id: 'ranger-druidic-focus', name: detail?.name || 'Druidic Focus (Mistletoe)', quantity: 1, equipped: false, attuned: false });
+    }
     if ((character.classes || []).some((cls: any) => cls.definition?.index === 'paladin')) {
         const javelin = inventory.find((item: any) => /^javelin$/i.test(String(item.name || '')));
         if (javelin && Number(javelin.quantity) === 3) inventory = inventory.map((item: any) => item.id === javelin.id ? { ...item, quantity: 6 } : item);
