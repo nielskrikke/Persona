@@ -507,7 +507,7 @@ const App: React.FC = () => {
   const handleLevelingComplete = async (updates: Partial<CharacterState>) => {
       const granted = await hydrateGrantedSpells({ ...character, ...updates });
       updateCharacter({ ...updates, spells: granted.spells });
-      setPhase('background');
+      setPhase(hasCasterClass(character.classes) ? 'spells' : 'background');
   };
 
   const handleSpellComplete = (spells: SpellDetail[]) => {
@@ -516,7 +516,7 @@ const App: React.FC = () => {
       [...racialSpells, ...spells].forEach(s => spellMap.set(s.index + (s.sourceClassIndex || ''), s));
       const newSlots = getSpellSlots(character.classes);
       updateCharacter({ spells: Array.from(spellMap.values()), spellSlots: newSlots });
-      setPhase('gear');
+      setPhase('background');
   };
 
   const handleBackgroundComplete = async (name: string, background: BackgroundDetail, extraData: { languages: string[], tools: string[], skills: string[], choices?: any[], equipment?: string[], currency?: { gp: number; sp: number; cp: number }, abilities?: Record<string, number>, feats?: any[], spellcastingAbility?: any }) => {
@@ -645,7 +645,7 @@ const App: React.FC = () => {
         inventory: newInventory,
         choices: finalChoices
     });
-    setPhase(hasCasterClass(character.classes) ? 'spells' : 'gear');
+    setPhase('gear');
   };
 
   const handleEquipmentComplete = async (inventory: InventoryItem[], currency?: { gp: number; sp: number; cp: number }) => {

@@ -664,7 +664,7 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
                             disabled={!name.trim() || !selectedBackground}
                             className={`flex-grow py-4 font-black uppercase text-xs tracking-[0.2em] rounded-xl shadow-2xl transition-all transform active:scale-95 ${!name.trim() || !selectedBackground ? 'bg-gray-800 text-gray-600 cursor-not-allowed border border-gray-700' : 'bg-dnd-gold hover:bg-yellow-600 text-black'}`}
                         >
-                            Finalize Legend
+                            Continue to Gear
                         </button>
                     </div>
                 </div>

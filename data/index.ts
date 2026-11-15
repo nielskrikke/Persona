@@ -811,10 +811,10 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
     const liveMetamagic = (sorcererDefinition?.feature_details || []).find((feature: any) => /^metamagic$/i.test(feature.name || ''));
     classFeatures = classFeatures.map((feature: any) => {
         let next = feature;
-        if (/^metamagic options:\s*/i.test(String(feature.name || ''))) {
+        if (/^metamagic (?:options|calibration):\s*/i.test(String(feature.name || ''))) {
             next = {
                 ...next,
-                name: String(feature.name).replace(/^metamagic options:\s*/i, ''),
+                name: String(feature.name).replace(/^metamagic (?:options|calibration):\s*/i, ''),
                 source: 'Metamagic',
                 type: 'Metamagic',
             };

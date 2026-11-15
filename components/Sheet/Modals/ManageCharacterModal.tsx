@@ -211,6 +211,15 @@ const ManageCharacterModal = ({
             setLocalFeats(character.feats || []);
             setLocalSpells(character.spells || []);
             setLocalClasses(character.classes || []);
+            setLocalClassFeatures((character.classFeatures || []).map((feature: any) => {
+                if (!/^metamagic (?:options|calibration):/i.test(String(feature.name || ''))) return feature;
+                return {
+                    ...feature,
+                    name: String(feature.name).replace(/^metamagic (?:options|calibration):\s*/i, ''),
+                    source: 'Metamagic',
+                    type: 'Metamagic',
+                };
+            }));
             setLocalMaxHp(character.maxHp || 10);
 
             // Preload subraces if race exists
@@ -1397,6 +1406,44 @@ const ManageCharacterModal = ({
         onClose();
     };
 
+    const getMetamagicOptionList = (choice: any) => {
+        const fromClass = (localClasses || []).flatMap((cls: any) => (cls.definition as any)?.options?.metamagic || []);
+        return fromClass.length > 0 ? fromClass : (choice.options || []);
+    };
+
+    const getKnownMetamagics = (excludeChoiceId?: string) => {
+        const options = (localClasses || []).flatMap((cls: any) => (cls.definition as any)?.options?.metamagic || []);
+        const fromChoices = localChoices
+            .filter((c: any) => c.id !== excludeChoiceId && c.revertData?.isMetamagicMatrix && c.value)
+            .flatMap((c: any) => Array.isArray(c.value) ? c.value : [String(c.value).replace(/\s*\(Replaced .*$/i, '')]);
+        const activeChoiceIds = new Set(localChoices.filter((c: any) => c.value).map((c: any) => c.id));
+        const fromFeatures = localClassFeatures
+            .filter((feature: any) => {
+                const choiceId = feature.revertData?.choiceId;
+                return !choiceId || activeChoiceIds.has(choiceId);
+            })
+            .map((feature: any) => String(feature.name || '').replace(/^metamagic (?:options|calibration):\s*/i, ''))
+            .filter((name: string) => options.some((opt: any) => String(opt.name).toLowerCase() === name.toLowerCase()));
+        return Array.from(new Set([...fromChoices, ...fromFeatures].map((name: any) => String(name))));
+    };
+
+    const handleMetamagicSelect = (choiceId: string, value: string, part: 'progression' | 'replace' | 'new') => {
+        hasUserEditsRef.current = true;
+        setLocalChoices(prev => prev.map((choice: any) => {
+            if (choice.id !== choiceId) return choice;
+            if (part === 'progression') {
+                const current = Array.isArray(choice.value) ? choice.value : [];
+                const count = choice.count || 2;
+                const next = current.includes(value) ? current.filter((entry: string) => entry !== value) : (current.length < count ? [...current, value] : current);
+                return { ...choice, value: next, revertData: { ...choice.revertData, pendingConfirm: true } };
+            }
+            const nextRevert = { ...choice.revertData, pendingConfirm: true };
+            if (part === 'replace') nextRevert.toReplace = value;
+            else nextRevert.newOption = value;
+            return { ...choice, value: null, revertData: nextRevert };
+        }));
+    };
+
     const toggleChoiceExpansion = (id: string) => {
         setExpandedChoices(prev => 
             prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
@@ -2021,6 +2068,51 @@ const ManageCharacterModal = ({
     const handleConfirmChoice = (choiceId: string) => {
         const choice = localChoices.find(c => c.id === choiceId);
         if (!choice) return;
+
+        if (choice.revertData?.isMetamagicMatrix) {
+            const options = getMetamagicOptionList(choice);
+            const featureFor = (name: string) => {
+                const opt = options.find((entry: any) => String(entry.name).toLowerCase() === String(name).toLowerCase());
+                return {
+                    index: `${choiceId}-${String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+                    name,
+                    level: choice.level || 3,
+                    source: 'Metamagic',
+                    type: 'Metamagic',
+                    desc: opt?.desc ? [opt.desc] : [],
+                    effects: [],
+                    revertData: { choiceId },
+                };
+            };
+            if (choice.revertData.isProgression) {
+                const selected = Array.isArray(choice.value) ? choice.value : [];
+                if (selected.length !== (choice.count || 2)) return;
+                const known = getKnownMetamagics(choiceId);
+                if (selected.some((name: string) => known.some((knownName: string) => knownName.toLowerCase() === name.toLowerCase()))) return;
+                setLocalClassFeatures(prev => [...prev.filter((feature: any) => feature.revertData?.choiceId !== choiceId), ...selected.map(featureFor)]);
+                setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: selected, revertData: { ...c.revertData, pendingConfirm: false } } : c));
+            } else {
+                const toReplace = choice.revertData?.toReplace;
+                const newOption = choice.revertData?.newOption;
+                if (!toReplace || !newOption) return;
+                const known = getKnownMetamagics(choiceId);
+                if (!known.some((name: string) => name.toLowerCase() === String(toReplace).toLowerCase())) return;
+                if (known.some((name: string) => name.toLowerCase() === String(newOption).toLowerCase())) return;
+                const sourceChoice = localChoices.find((c: any) => c.id !== choiceId && c.revertData?.isMetamagicMatrix && Array.isArray(c.value) && c.value.includes(toReplace));
+                const sourceChoiceId = sourceChoice?.id || choiceId;
+                const replacementFeature = { ...featureFor(newOption), revertData: { choiceId: sourceChoiceId } };
+                setLocalClassFeatures(prev => [
+                    ...prev.filter((feature: any) => String(feature.name).replace(/^metamagic (?:options|calibration):\s*/i, '').toLowerCase() !== String(toReplace).toLowerCase()),
+                    replacementFeature,
+                ]);
+                setLocalChoices(prev => prev.map((c: any) => {
+                    if (c.id === choiceId) return { ...c, value: `${newOption} (Replaced ${toReplace})`, revertData: { ...c.revertData, pendingConfirm: false } };
+                    if (c.id === sourceChoiceId && Array.isArray(c.value)) return { ...c, value: c.value.map((entry: string) => entry === toReplace ? newOption : entry) };
+                    return c;
+                }));
+            }
+            return;
+        }
 
         let finalValue: any = null;
         if (choice.type === 'asi-feat' || choice.type === 'asi') {
@@ -3152,6 +3244,50 @@ const ManageCharacterModal = ({
                                                                     </div>
                                                                 ) : (
                                                                     (() => {
+                                                                        if (choice.revertData?.isMetamagicMatrix) {
+                                                                            const isProgression = Boolean(choice.revertData.isProgression);
+                                                                            const options = getMetamagicOptionList(choice);
+                                                                            const knownOptions = getKnownMetamagics(choice.id);
+                                                                            const selected = Array.isArray(choice.value) ? choice.value : [];
+                                                                            const knownSet = new Set(knownOptions.map((name: string) => name.toLowerCase()));
+                                                                            const available = options.filter((opt: any) => !knownSet.has(String(opt.name).toLowerCase()));
+                                                                            return (
+                                                                                <div className="space-y-5">
+                                                                                    <div className="rounded-xl border border-purple-900/40 bg-purple-950/20 p-4">
+                                                                                        <p className="text-[10px] text-purple-200 font-bold uppercase tracking-widest">{isProgression ? 'Choose new Metamagic options' : 'Replace a known Metamagic option'}</p>
+                                                                                        <p className="text-[10px] text-gray-500 mt-1">{isProgression ? `Select ${choice.count || 2} options you do not already know.` : 'Pick the known option to replace, then pick an unknown replacement.'}</p>
+                                                                                    </div>
+                                                                                    {!isProgression && (
+                                                                                        <div>
+                                                                                            <div className="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-2">Replace known option</div>
+                                                                                            <div className="flex flex-wrap gap-2">
+                                                                                                {knownOptions.map((name: string) => (
+                                                                                                    <button key={name} onClick={() => handleMetamagicSelect(choice.id, name, 'replace')} className={`px-3 py-1.5 rounded-lg border text-xs font-bold ${choice.revertData?.toReplace === name ? 'bg-red-900/30 border-red-500 text-red-100' : 'bg-black/40 border-gray-800 text-gray-400 hover:border-gray-600'}`}>{name}</button>
+                                                                                                ))}
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    )}
+                                                                                    <div>
+                                                                                        <div className="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-2">{isProgression ? 'New options' : 'Replacement option'}</div>
+                                                                                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                                                                                            {available.map((opt: any) => {
+                                                                                                const isSelected = isProgression ? selected.includes(opt.name) : choice.revertData?.newOption === opt.name;
+                                                                                                return (
+                                                                                                    <button key={opt.name} onClick={() => handleMetamagicSelect(choice.id, opt.name, isProgression ? 'progression' : 'new')} className={`p-4 rounded-xl border text-left transition-all ${isSelected ? 'bg-purple-900/30 border-purple-500 text-white' : 'bg-black/40 border-gray-800 text-gray-400 hover:border-gray-600'}`}>
+                                                                                                        <div className="font-serif text-base font-bold">{opt.name}</div>
+                                                                                                        <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">{opt.desc}</p>
+                                                                                                    </button>
+                                                                                                );
+                                                                                            })}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    {!isProgression && (
+                                                                                        <p className="text-[10px] text-gray-500">Selected: {choice.revertData?.toReplace || '—'} → {choice.revertData?.newOption || '—'}</p>
+                                                                                    )}
+                                                                                    {isProgression && <p className="text-[10px] text-gray-500">Selected {selected.length} / {choice.count || 2}: {selected.join(', ') || 'None'}</p>}
+                                                                                </div>
+                                                                            );
+                                                                        }
                                                                         const knownSkillNames = new Set([...skills, ...(character.skills || [])].map((skill: any) => String(skill).toLowerCase()));
                                                                         const selectedValues = Array.isArray(choice.value) ? choice.value : [choice.value];
                                                                         const baseOptions = (choice.options || []).filter((opt: any) => {
@@ -3311,7 +3447,11 @@ const ManageCharacterModal = ({
                                                                     <button
                                                                         onClick={() => handleConfirmChoice(choice.id)}
                                                                         disabled={
-                                                                            choice.type === 'asi-feat' 
+                                                                            choice.revertData?.isMetamagicMatrix
+                                                                                ? (choice.revertData.isProgression
+                                                                                    ? !Array.isArray(choice.value) || choice.value.length < (choice.count || 2)
+                                                                                    : !(choice.revertData?.toReplace && choice.revertData?.newOption))
+                                                                                : choice.type === 'asi-feat' 
                                                                                 ? (choice.revertData?.mode !== 'feat' 
                                                                                     ? Object.values(choice.revertData?.abilities || {}).reduce((a: any, b: any) => a + b, 0) === 0
                                                                                     : !choice.revertData?.featIndex)

@@ -4241,7 +4241,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         });
 
          const metamagicNames = /^(careful|distant|empowered|extended|heightened|quickened|seeking|subtle|transmuted|twinned) spell$/i;
-         const filtered = list.filter((item: any) => item.source?.type !== 'Metamagic' && !metamagicNames.test(String(item.name || '')) && !/^metamagic options:/i.test(String(item.name || '')) && !/channel divinity|abjure foes|devious strikes|dragon wings|^(font of magic|sorcery incarnate)$/i.test(String(item.name || '')));
+         const filtered = list.filter((item: any) => item.source?.type !== 'Metamagic' && !metamagicNames.test(String(item.name || '')) && !/^metamagic (?:options|calibration):/i.test(String(item.name || '')) && !/channel divinity|abjure foes|devious strikes|dragon wings|^(font of magic|sorcery incarnate)$/i.test(String(item.name || '')));
          return character.activeWildShape
              ? filtered.filter((item: any) => !item.source?.weapon_category && (!item.source?.school || canCastSpellInWildShape(character, item.source)))
              : filtered;

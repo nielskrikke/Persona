@@ -285,7 +285,7 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
                 </div>
                 <div className="flex gap-3">
                     <button onClick={onBack} className="rounded-xl border border-gray-700 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-white hover:border-gray-500 transition-colors">Back</button>
-                    <button onClick={finish} className="rounded-xl bg-dnd-gold px-8 py-3 text-[10px] font-black uppercase tracking-widest text-black hover:bg-yellow-600 transition-colors">Continue to Origin</button>
+                    <button onClick={finish} className="rounded-xl bg-dnd-gold px-8 py-3 text-[10px] font-black uppercase tracking-widest text-black hover:bg-yellow-600 transition-colors">Continue</button>
                 </div>
             </div>
         );
