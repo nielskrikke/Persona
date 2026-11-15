@@ -2203,8 +2203,9 @@ const ManageCharacterModal = ({
                             <section className="space-y-6 pt-8 border-t border-gray-800">
                                 <div className="flex items-center gap-3">
                                     <Activity size={18} className="text-dnd-gold" />
-                                    <h3 className="text-[10px] font-black text-dnd-gold uppercase tracking-[0.2em]">Base Ability Scores</h3>
+                                    <h3 className="text-[10px] font-black text-dnd-gold uppercase tracking-[0.2em]">Final Ability Scores</h3>
                                 </div>
+                                <p className="text-[10px] text-gray-500 italic -mt-3">Includes background, feat, ASI and item bonuses. Prefer the Choices tab when correcting those sources.</p>
                                 <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
                                     {ABILITY_NAMES.map(stat => (
                                         <div key={stat} className="bg-black/20 p-4 rounded-2xl border border-gray-800 text-center space-y-3">

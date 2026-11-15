@@ -10,7 +10,7 @@ const withCustom = (entries: any[] | undefined) => (entries || []).map(entry => 
 const stripHomebrewSuffix = (name: any) => typeof name === 'string' ? name.replace(/\s*\(HB\)\s*$/i, '').trim() : name;
 
 const dedupeEffects = (effects: any[] | undefined) => Array.from(new Map((effects || []).map((effect: any) => [
-    `${String(effect?.name || effect?.spell || '').toLowerCase()}|${String(effect?.spell || '').toLowerCase()}`,
+    `${String(effect?.type || '').toLowerCase()}|${String(effect?.name || effect?.spell || '').toLowerCase()}|${String(effect?.spell || '').toLowerCase()}|${String(effect?.vs || effect?.condition || '').toLowerCase()}`,
     effect,
 ])).values());
 

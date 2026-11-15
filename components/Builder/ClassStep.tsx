@@ -59,7 +59,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
               ? masteryWeapons.filter(weapon => allowed.some((name: string) => normalized(name) === normalized(weapon.name) || normalized(name) === normalized(weapon.index)))
               : masteryWeapons;
           return classIndex === 'paladin'
-              ? options.filter((weapon: any) => !/ranged/i.test(String(weapon.weapon_range || '')) && !/longbow|crossbow|sling|dart/i.test(String(weapon.name || '')))
+              ? options.filter((weapon: any) => !/ranged/i.test(String(weapon.weapon_range || '')) && !/longbow|shortbow|blowgun|crossbow|sling|dart|gun/i.test(String(weapon.name || '')))
               : options;
       }
       const expanded = (choice.options || []).flatMap((option: any) => {

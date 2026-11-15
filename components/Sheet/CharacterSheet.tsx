@@ -2480,7 +2480,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                  <span className="text-[9px] font-bold text-gray-500 uppercase block mb-1">Situational Advantages</span>
                                  <div className="flex flex-wrap gap-1">
                                      {situationalSaves.map((m, i) => (
-                                         <span key={i} className="text-[8px] bg-gray-800/60 text-gray-500 px-1.5 py-0.5 rounded border border-gray-700/50">Adv vs {m.filter || m.condition}</span>
+                                         <span key={i} className="text-[8px] bg-gray-800/60 text-gray-500 px-1.5 py-0.5 rounded border border-gray-700/50">Adv vs {String(m.filter || m.condition).replace(/^against\s+/i, '')}</span>
                                      ))}
                                  </div>
                              </div>
@@ -2997,6 +2997,20 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     .forEach((m: any) => {
                         if (modifiers.some((modifier: any) => modifier.name === 'Elemental Adept')) return;
                         modifiers.push({ name: 'Elemental Adept', desc: `Your ${m.damage_type} spells ignore Resistance, and 1s on ${m.damage_type} damage dice count as 2s.` });
+                    });
+            }
+
+            // Weapon-local conditional riders (for example Holy Avenger's
+            // extra Radiant damage against Fiends and Undead).
+            if (isWeapon && source?.effects) {
+                source.effects
+                    .filter((effect: any) => effect?.type === 'attack_rider' && (effect.scope === 'this_weapon' || effect.vs))
+                    .forEach((effect: any) => {
+                        if (modifiers.some((modifier: any) => modifier.name === (effect.name || 'Attack Rider'))) return;
+                        modifiers.push({
+                            name: effect.name || 'Attack Rider',
+                            desc: `${effect.damage ? `Adds ${effect.damage} ` : ''}${effect.damage_type || ''} damage${effect.vs ? ` vs ${effect.vs}` : ''}.`.replace('  ', ' ').trim(),
+                        });
                     });
             }
 
@@ -3718,20 +3732,6 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 source: { name: 'Smite of Protection', activationType: 'action', desc: ['Protective half cover after Divine Smite.'] },
             });
         }
-        if (hasFeature('sacred weapon')) {
-            pushMonkAction({
-                id: 'paladin-sacred-weapon', name: 'Sacred Weapon', range: 'Self', hit: null, save: null, damage: '-', type: 'Channel Divinity',
-                notes: ['Spend 1 Channel Divinity use; add CHA modifier to attack rolls with one melee weapon for 10 minutes.'],
-                source: { name: 'Sacred Weapon', activationType: 'action', desc: ['Imbue a melee weapon with positive energy.'] },
-            });
-        }
-        if (hasFeature('smite of protection')) {
-            pushMonkAction({
-                id: 'paladin-smite-of-protection', name: 'Smite of Protection', range: 'Aura', hit: null, save: null, damage: '-', type: 'Divine Smite',
-                notes: ['After Divine Smite, you and allies in your Aura of Protection have Half Cover until the start of your next turn.'],
-                source: { name: 'Smite of Protection', activationType: 'action', desc: ['Protective half cover after Divine Smite.'] },
-            });
-        }
         character.customActions?.forEach(action => {
             let hit: number | null = null;
             let save: { type: string, dc: number } | null = null;
@@ -4143,9 +4143,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             }
         });
 
+         const filtered = list.filter((item: any) => !/^(channel divinity|abjure foes)$/i.test(String(item.name || '')));
          return character.activeWildShape
-             ? list.filter((item: any) => !item.source?.weapon_category && (!item.source?.school || canCastSpellInWildShape(character, item.source)))
-             : list;
+             ? filtered.filter((item: any) => !item.source?.weapon_category && (!item.source?.school || canCastSpellInWildShape(character, item.source)))
+             : filtered;
     };
 
 
