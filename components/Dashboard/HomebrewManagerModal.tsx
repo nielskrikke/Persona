@@ -1049,7 +1049,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     // Spell Forge
     const [spellLevel, setSpellLevel] = useState(0);
     const [spellSchool, setSpellSchool] = useState('Evocation');
-    const [spellCastTime, setSpellCastTime] = useState('1 Action');
+    const [spellCastTime, setSpellCastTime] = useState('1 action');
     const [spellRange, setSpellRange] = useState('60 feet');
     const [spellDuration, setSpellDuration] = useState('Instantaneous');
     const [spellRitual, setSpellRitual] = useState(false);
@@ -1061,6 +1061,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     const [spellAttackType, setSpellAttackType] = useState('Ranged');
     const [spellHasSave, setSpellHasSave] = useState(false);
     const [spellSaveType, setSpellSaveType] = useState('DEX');
+    const [spellSaveEffect, setSpellSaveEffect] = useState<'half' | 'none'>('half');
     const [spellDmgFormula, setSpellDmgFormula] = useState('');
     const [spellSecondaryDamage, setSpellSecondaryDamage] = useState('');
     const [spellDmgType, setSpellDmgType] = useState('');
@@ -1091,6 +1092,8 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
     const [bgSkills, setBgSkills] = useState<string[]>([]);
     const [bgTools, setBgTools] = useState<string[]>([]);
     const [bgFeatureName, setBgFeatureName] = useState('');
+    const [bgFeatureDesc, setBgFeatureDesc] = useState('');
+    const [bgLanguageCount, setBgLanguageCount] = useState(0);
     const [bgEquipment, setBgEquipment] = useState('');
     const [bgEquipmentOptions, setBgEquipmentOptions] = useState<{ label: string, equipment: string, gp: number }[]>([]);
     const [bgCurrency, setBgCurrency] = useState({ gp: 0, sp: 0, cp: 0 });
@@ -1223,7 +1226,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
         setAbilityBonuses([]); setTraits([]); setSize('Medium');
         setSaves([]); setLevelFeatures([]); setHitDie(8);
         setCasterType('none'); setCasterAbility('int'); setSubclassLevel(3); setSubclassLabel('Subclass'); setAdvancedJson(''); setEditingIndex(null); setEditingIsHomebrew(true); setContentResources([]); setContentChoices([]); initialChoicesJsonRef.current = '';
-        setBgSkills([]); setBgFeatureName(''); setBgTools([]); setBgEquipment(''); setBgEquipmentOptions([]); setBgCurrency({ gp: 0, sp: 0, cp: 0 }); setBgEffects([]);
+        setBgSkills([]); setBgFeatureName(''); setBgFeatureDesc(''); setBgLanguageCount(0); setBgTools([]); setBgEquipment(''); setBgEquipmentOptions([]); setBgCurrency({ gp: 0, sp: 0, cp: 0 }); setBgEffects([]);
         setArmorProfs([]); setWeaponProfs([]); setMulticlassProfs(''); setMulticlassChoices('');
         setSpellLevel(0); setSpellSchool('Evocation'); setSpellCastTime('1 Action'); setSpellRange('60 feet'); setSpellDuration('Instantaneous'); setSpellRitual(false); setSpellConcentration(false);
         setSpellComponents(['V', 'S']); setSpellMaterial(''); setSpellHigherLevel(''); setSpellHasAttack(false); setSpellHasSave(false); setSpellDmgFormula(''); setSpellSecondaryDamage('');
@@ -1324,7 +1327,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
             setSpellClasses(Array.isArray(item.classes) ? item.classes.map((c: any) => typeof c === 'string' ? c : (c.name || c.index)).filter(Boolean) : []);
             setSpellLevel(item.level || 0);
             setSpellSchool(item.school?.name || 'Evocation');
-            setSpellCastTime(item.casting_time || '1 Action');
+            setSpellCastTime(String(item.casting_time || '1 action').replace(/^1 Action$/i, '1 action').replace(/^1 Bonus Action$/i, '1 bonus action').replace(/^1 Reaction$/i, '1 reaction').replace(/^(\d+) Minutes?$/i, (m, n) => `${n} minute${Number(n) === 1 ? '' : 's'}`).replace(/^(\d+) Hours?$/i, (m, n) => `${n} hour${Number(n) === 1 ? '' : 's'}`));
             setSpellRange(item.range || '60 feet');
             setSpellDuration(item.duration ? String(item.duration).replace(/^(?:Concentration,\s*)+/i, '') : 'Instantaneous');
             setSpellConcentration(item.concentration || false);
@@ -1336,6 +1339,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
             setSpellAttackType(item.attack_type ? item.attack_type.charAt(0).toUpperCase() + item.attack_type.slice(1) : 'Ranged');
             setSpellHasSave(!!item.dc);
             setSpellSaveType(item.dc?.dc_type?.name?.toUpperCase() || 'DEX');
+            setSpellSaveEffect(item.dc?.dc_success === 'none' ? 'none' : 'half');
             setSpellSecondaryDamage(item.secondary_damage || item.damage?.secondary_damage || '');
             if (item.damage) {
                 const dmgAtLevel = item.damage.damage_at_slot_level || item.damage.damage_at_character_level;
@@ -1397,6 +1401,8 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
             setBgSkills(item.skill_proficiencies || []);
             setBgTools((item.tool_proficiencies || []).map((tool: any) => String(tool).trim()).filter(Boolean));
             setBgFeatureName(item.feature?.name || '');
+            setBgFeatureDesc(Array.isArray(item.feature?.desc) ? item.feature.desc.join('\n') : (item.feature?.desc || ''));
+            setBgLanguageCount(Number(item.languages || 0));
             setBgEquipment(Array.isArray(item.equipment) ? item.equipment.join(', ') : (item.equipment || ''));
             setBgEquipmentOptions((item.equipment_options || []).map((option: any) => ({
                 label: option.label || 'Option',
@@ -1590,7 +1596,8 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     })) } : {}),
                     currency: { ...bgCurrency, ep: 0, pp: 0 },
                     effects: bgEffects,
-                    feature: { name: bgFeatureName || 'Custom Feature', desc: [description], effects: bgEffects }
+                    languages: bgLanguageCount,
+                    feature: { name: bgFeatureName || 'Custom Feature', desc: [bgFeatureDesc || description], effects: bgEffects }
                 };
             } else if (activeTab === 'spell') {
                 const previous = spellOriginal || {};
@@ -1636,7 +1643,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     damage: nextDamage,
                     scaling: scalingConfig,
                     secondary_damage: spellSecondaryDamage || undefined,
-                    dc: spellHasSave ? { ...(previous.dc || {}), dc_type: { name: spellSaveType, index: spellSaveType.toLowerCase() }, dc_success: previous.dc?.dc_success || 'half' } : previous.dc
+                    dc: spellHasSave ? { ...(previous.dc || {}), dc_type: { name: spellSaveType, index: spellSaveType.toLowerCase() }, dc_success: spellSaveEffect } : previous.dc
                 };
             } else if (activeTab === 'item') {
                 payload = {
@@ -2050,13 +2057,13 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                             <div>
                                                 <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Base Casting Time</label>
                                                 <select value={spellCastTime} onChange={e => setSpellCastTime(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-white outline-none focus:border-dnd-gold">
-                                                    <option>1 Action</option>
-                                                    <option>1 Bonus Action</option>
-                                                    <option>1 Reaction</option>
-                                                    <option>1 Minute</option>
-                                                    <option>10 Minutes</option>
-                                                    <option>1 Hour</option>
-                                                    <option>8 Hours</option>
+                                                    <option>1 action</option>
+                                                    <option>1 bonus action</option>
+                                                    <option>1 reaction</option>
+                                                    <option>1 minute</option>
+                                                    <option>10 minutes</option>
+                                                    <option>1 hour</option>
+                                                    <option>8 hours</option>
                                                     <option>Special</option>
                                                 </select>
                                             </div>
@@ -2223,9 +2230,15 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Saving Throw</span>
                                                     </label>
                                                     {spellHasSave && (
-                                                        <select value={spellSaveType} onChange={e => setSpellSaveType(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-white outline-none">
-                                                            {['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'].map(s => <option key={s} value={s}>{s}</option>)}
-                                                        </select>
+                                                        <div className="space-y-2">
+                                                            <select value={spellSaveType} onChange={e => setSpellSaveType(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-white outline-none">
+                                                                {['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'].map(s => <option key={s} value={s}>{s}</option>)}
+                                                            </select>
+                                                            <select value={spellSaveEffect} onChange={e => setSpellSaveEffect(e.target.value as 'half' | 'none')} className="w-full bg-[#0b0c0e] border border-gray-700 rounded p-2 text-xs text-white outline-none">
+                                                                <option value="half">Successful save: half damage</option>
+                                                                <option value="none">Successful save: no effect</option>
+                                                            </select>
+                                                        </div>
                                                     )}
                                                 </div>
 
@@ -2720,6 +2733,14 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                                             <div>
                                                 <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Special Feature Name</label>
                                                 <input type="text" value={bgFeatureName} onChange={e => setBgFeatureName(e.target.value)} className="w-full bg-[#0b0c0e] border border-gray-800 rounded p-3 text-white text-sm font-serif" placeholder="e.g. Position of Privilege" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Special Feature Description</label>
+                                                <textarea value={bgFeatureDesc} onChange={e => setBgFeatureDesc(e.target.value)} rows={4} className="w-full bg-[#0b0c0e] border border-gray-800 rounded p-3 text-white text-sm" placeholder="Describe the background feature..." />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Additional Languages</label>
+                                                <input type="number" min={0} max={5} value={bgLanguageCount} onChange={e => setBgLanguageCount(Math.max(0, Number(e.target.value) || 0))} className="w-full bg-[#0b0c0e] border border-gray-800 rounded p-3 text-white text-sm" />
                                             </div>
                                             <div>
                                                 <label className="text-[10px] uppercase font-black text-gray-600 tracking-widest block mb-2">Mechanical Effects & Choices</label>

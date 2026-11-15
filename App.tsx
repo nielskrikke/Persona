@@ -13,7 +13,7 @@ import { CharacterSheet } from './components/Sheet/CharacterSheet';
 import ErrorBoundary from './components/ErrorBoundary';
 import { getSpellSlots, SKILL_LIST, getCasterProfileFor, calculateMaxHp, mergeSpellSlotCurrents } from './utils/rules';
 import { getClassProficiencies, isToolProficiency } from './utils/multiclass';
-import { STANDARD_LANGUAGES, ARTISAN_TOOLS, GAMING_SETS, ALL_TOOLS } from './data/constants';
+import { STANDARD_LANGUAGES, ARTISAN_TOOLS, GAMING_SETS, MUSICAL_INSTRUMENTS, ALL_TOOLS } from './data/constants';
 import { hydrateCharacterClasses, fetchAllSpells, hydrateGrantedSpells, fetchEquipment, fetchEquipmentDetail } from './data/index';
 import { saveCharacterToDb, loginUser } from './services/supabase';
 import AuthModal from './components/Auth/AuthModal';
@@ -554,9 +554,16 @@ const App: React.FC = () => {
     const allItems = await fetchEquipment(currentUser?.id);
     const byName = new Map(allItems.map(item => [item.name.toLowerCase(), item]));
     const gamingSetPick = (extraData.tools || []).find(tool => GAMING_SETS.some(set => String(set).toLowerCase() === String(tool).toLowerCase()));
-    const resolvedBackgroundEquipment = (extraData.equipment || background.equipment || []).map((item: any) =>
-        /same as the one chosen/i.test(String(item)) ? (gamingSetPick || 'Gaming Set') : item
-    );
+    const instrumentPick = (extraData.tools || []).find(tool => MUSICAL_INSTRUMENTS.some(instrument => String(instrument).toLowerCase() === String(tool).toLowerCase()));
+    const artisanToolPick = (extraData.tools || []).find(tool => ARTISAN_TOOLS.some(artisan => String(artisan).toLowerCase() === String(tool).toLowerCase()));
+    const resolvedBackgroundEquipment = (extraData.equipment || background.equipment || []).map((item: any) => {
+        const text = String(item);
+        if (!/same as (?:the )?ones? chosen|same as chosen/i.test(text)) return item;
+        if (/instrument/i.test(text)) return instrumentPick || 'Musical Instrument';
+        if (/gaming/i.test(text)) return gamingSetPick || 'Gaming Set';
+        if (/artisan|tool/i.test(text)) return artisanToolPick || "Artisan's Tools";
+        return gamingSetPick || instrumentPick || artisanToolPick || 'Tool';
+    });
     for (const rawItem of resolvedBackgroundEquipment) {
         const itemStr = String(rawItem).trim();
         if (!itemStr) continue;
@@ -568,7 +575,7 @@ const App: React.FC = () => {
                 type: 'tool',
                 label: itemStr,
                 value: [],
-                options: /gaming set/i.test(itemStr) ? GAMING_SETS : ARTISAN_TOOLS,
+                options: /gaming set/i.test(itemStr) ? GAMING_SETS : /instrument/i.test(itemStr) ? MUSICAL_INSTRUMENTS : ARTISAN_TOOLS,
                 count: 1,
             });
             continue;

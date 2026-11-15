@@ -425,10 +425,24 @@ export const getSubclassLevel = (definition: any): number => {
 
 export const getSubclassLabel = (definition: any): string => {
     const label = String(definition?.subclass_label || '');
-    if (/martial archetype/i.test(label) && /fighter/i.test(String(definition?.name || definition?.index || ''))) return 'Fighter Subclass';
-    if (/monastic tradition/i.test(label) && /monk/i.test(String(definition?.name || definition?.index || ''))) return 'Monk Subclass';
-    if (/sacred oath/i.test(label) && /paladin/i.test(String(definition?.name || definition?.index || ''))) return 'Paladin Subclass';
-    if (/ranger archetype/i.test(label) && /ranger/i.test(String(definition?.name || definition?.index || ''))) return 'Ranger Subclass';
+    const className = String(definition?.name || definition?.index || '');
+    const aliases: Array<[RegExp, RegExp]> = [
+        [/martial archetype/i, /fighter/i],
+        [/monastic tradition/i, /monk/i],
+        [/sacred oath/i, /paladin/i],
+        [/ranger archetype/i, /ranger/i],
+        [/bard college/i, /bard/i],
+        [/divine domain/i, /cleric/i],
+        [/druidic circle|druid circle/i, /druid/i],
+        [/sorcerous origin/i, /sorcerer/i],
+        [/otherworldly patron/i, /warlock/i],
+        [/arcane tradition/i, /wizard/i],
+        [/primal path/i, /barbarian/i],
+        [/roguish archetype/i, /rogue/i],
+        [/artificer specialist/i, /artificer/i],
+    ];
+    const alias = aliases.find(([pattern, classPattern]) => pattern.test(label) && classPattern.test(className));
+    if (alias) return `${className} Subclass`;
     if (label) return label;
     return 'Subclass';
 };
@@ -949,7 +963,7 @@ export const getWeaponMasteryData = (mastery: string, proficiency: number, strMo
 
 export const isFeatAvailableForCharacter = (feat: any, character: CharacterState): boolean => {
     if (!isFeatAvailableForLevel(feat, character.level)) return false;
-    if (['weapon master', 'heavily armored', 'moderately armored'].includes(String(feat?.name || '').toLowerCase())) return false;
+    if (['weapon master', 'heavily armored', 'moderately armored', 'mobile'].includes(String(feat?.name || '').toLowerCase())) return false;
     const requirements = String(feat?.prerequisite || '').toLowerCase();
     const text = `${requirements} ${Array.isArray(feat?.desc) ? feat.desc.join(' ') : (feat?.desc || '')}`.toLowerCase();
     const race = String(character.race?.name || character.race?.index || '').toLowerCase();
