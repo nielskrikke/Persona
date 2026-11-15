@@ -45,7 +45,7 @@ const LayOnHandsWidget: React.FC<LayOnHandsWidgetProps> = ({ usage, onChange }) 
                         className="w-16 bg-transparent text-center text-xl font-serif font-bold text-white outline-none border-b border-transparent focus:border-dnd-gold/60 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         aria-label="Lay on Hands remaining HP"
                     />
-                    <span className="text-[10px] text-gray-500">/ {usage.max} HP</span>
+                    <span className="text-[10px] text-gray-500">/ {usage.max}</span>
                 </div>
                 <button type="button" onClick={() => commit(stepBase + 1)} className="h-8 w-8 rounded border border-gray-700/70 bg-black/20 text-sm font-bold text-gray-400 hover:text-white hover:border-gray-500 transition-colors" aria-label="Restore 1 HP to Lay on Hands">+</button>
                 <button type="button" onClick={() => commit(stepBase + 5)} className="h-8 min-w-8 px-2 rounded border border-gray-700/70 bg-black/20 text-[10px] font-bold text-gray-400 hover:text-white hover:border-gray-500 transition-colors" aria-label="Restore 5 HP to Lay on Hands">+5</button>
