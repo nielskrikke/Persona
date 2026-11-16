@@ -249,7 +249,11 @@ const ManageCharacterModal = ({
                 }
             }
             const evoker = String(wizard.subclass?.index || '').toLowerCase().includes('evoc') || /evoc/i.test(String(wizard.subclass?.name || ''));
-            const evocationSpells = wizardSpells.filter((spell: any) => /evocation/i.test(String(spell.school?.name || spell.school || '')) && Number(spell.level) <= 2);
+            const existingSavantValues = new Set((Array.isArray(next.find((choice: any) => choice.id === 'evocation-savant')?.value) ? next.find((choice: any) => choice.id === 'evocation-savant').value : []).map((value: any) => String(value)));
+            const baseBookSet = new Set(currentBook.map((entry: any) => String(entry)));
+            const evocationSpells = wizardSpells.filter((spell: any) => /evocation/i.test(String(spell.school?.name || spell.school || ''))
+                && Number(spell.level) <= 2
+                && (!baseBookSet.has(String(spell.index)) || existingSavantValues.has(String(spell.index))));
             if (evoker && Number(wizard.level) >= 2 && !next.some((choice: any) => choice.id === 'evocation-savant')) {
                 next.push({
                     id: 'evocation-savant', level: 2, source: 'Evoker', type: 'spell',
@@ -1195,7 +1199,7 @@ const ManageCharacterModal = ({
                     c.definition.index === classIndex ? { ...c, subclass: undefined } : c
                 );
             }
-        } else if (choice.type === 'spell' && !choice.revertData?.invocationCantrip) {
+        } else if (choice.type === 'spell' && !choice.revertData?.invocationCantrip && !choice.revertData?.isWizardSpellbook && !choice.revertData?.isEvocationSavant) {
             const spellsToRemove = Array.isArray(choice.value) ? choice.value : [choice.value];
             temp.spells = temp.spells.filter((s: any) => !spellsToRemove.includes(s.name) && !spellsToRemove.includes(s.index));
         }
@@ -1250,6 +1254,15 @@ const ManageCharacterModal = ({
         hasUserEditsRef.current = true;
         const choice = localChoices.find(c => c.id === choiceId);
         if (!choice) return;
+
+        if (choice.revertData?.isWizardSpellbook) {
+            const wizard = (localClasses || []).find((cls: any) => cls.definition?.index === 'wizard');
+            const capacity = Math.max(1, 6 + 2 * Number(wizard?.level || 1));
+            const savantValues = new Set((Array.isArray(localChoices.find((c: any) => c.revertData?.isEvocationSavant)?.value) ? localChoices.find((c: any) => c.revertData?.isEvocationSavant)!.value : []).map((value: any) => String(value)));
+            const currentBook = (character.spellbook || []).filter((entry: any) => !savantValues.has(String(entry))).slice(0, capacity);
+            setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: currentBook, count: capacity, revertData: { ...c.revertData, pendingConfirm: true } } : c));
+            return;
+        }
 
         if (choice.revertData?.invocationCantrip) {
             const invocationName = String(choice.revertData.invocationName || '');
@@ -1725,10 +1738,12 @@ const ManageCharacterModal = ({
             return;
         }
         if (choice.revertData?.isWizardSpellbook || choice.revertData?.isEvocationSavant) {
+            const wizard = (localClasses || []).find((cls: any) => cls.definition?.index === 'wizard');
+            const dynamicMax = choice.revertData?.isWizardSpellbook ? Math.max(1, 6 + 2 * Number(wizard?.level || 1)) : null;
             setLocalChoices(prev => prev.map(c => {
                 if (c.id !== choiceId) return c;
                 const current = Array.isArray(c.value) ? c.value : [];
-                const max = c.count || 1;
+                const max = dynamicMax || c.count || 1;
                 const next = current.includes(newValue) ? current.filter((entry: any) => entry !== newValue) : (current.length < max ? [...current, newValue] : current);
                 return { ...c, value: next, revertData: { ...c.revertData, pendingConfirm: true } };
             }));
@@ -3592,9 +3607,12 @@ const ManageCharacterModal = ({
                                                                     (() => {
                                                                         if (choice.revertData?.isWizardSpellbook) {
                                                                             const selected = Array.isArray(choice.value) ? choice.value : [];
-                                                                            const capacity = choice.count || 34;
-                                                                            const levels = Array.from(new Set((choice.options || []).map((spell: any) => Number(spell.level)))).sort((a, b) => a - b);
-                                                                            const filtered = (choice.options || []).filter((spell: any) => !spellbookSearch || String(spell.name).toLowerCase().includes(spellbookSearch.toLowerCase()));
+                                                                            const wizard = (localClasses || []).find((cls: any) => cls.definition?.index === 'wizard');
+                                                                            const capacity = Math.max(1, 6 + 2 * Number(wizard?.level || 1));
+                                                                            const maxLevel = Math.max(1, ...Object.keys(getSpellSlots(localClasses || [])).map(Number));
+                                                                            const bookOptions = (choice.options || []).filter((spell: any) => Number(spell.level) <= maxLevel);
+                                                                            const levels = Array.from(new Set(bookOptions.map((spell: any) => Number(spell.level)))).sort((a, b) => a - b);
+                                                                            const filtered = bookOptions.filter((spell: any) => !spellbookSearch || String(spell.name).toLowerCase().includes(spellbookSearch.toLowerCase()));
                                                                             return (
                                                                                 <div className="space-y-4">
                                                                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -3847,7 +3865,9 @@ const ManageCharacterModal = ({
                                                                     <button
                                                                         onClick={() => handleConfirmChoice(choice.id)}
                                                                         disabled={
-                                                                            choice.revertData?.isMetamagicMatrix
+                                                                            choice.revertData?.isWizardSpellbook
+                                                                                ? !Array.isArray(choice.value) || choice.value.length === 0
+                                                                                : choice.revertData?.isMetamagicMatrix
                                                                                 ? (choice.revertData.isProgression
                                                                                     ? !Array.isArray(choice.value) || choice.value.length < (choice.count || 2)
                                                                                     : !(choice.revertData?.toReplace && choice.revertData?.newOption))
