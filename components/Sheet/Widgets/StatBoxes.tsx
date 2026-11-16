@@ -28,8 +28,9 @@ export const SquareStatBox: React.FC<{
     value: string, 
     tooltip?: React.ReactNode,
     tooltipPosition?: 'top' | 'bottom',
-    shape?: 'square' | 'shield'
-}> = ({ label, subLabel, value, tooltip, tooltipPosition = 'top', shape = 'square' }) => {
+    shape?: 'square' | 'shield',
+    alignHeader?: boolean
+}> = ({ label, subLabel, value, tooltip, tooltipPosition = 'top', shape = 'square', alignHeader = false }) => {
     const [isHovered, setIsHovered] = React.useState(false);
     const [coords, setCoords] = React.useState({ top: 0, left: 0 });
     const containerRef = React.useRef<HTMLDivElement>(null);
@@ -77,9 +78,11 @@ export const SquareStatBox: React.FC<{
                     <path d="M50 2 L95 15 L95 55 Q95 84 50 98 Q5 84 5 55 L5 15 Z" fill="#1b1c20" stroke="#4b5563" strokeWidth="2" className="transition-colors group-hover:stroke-dnd-gold" />
                 </svg>
             )}
-            <div className={`relative z-10 h-full flex flex-col items-center justify-center text-center pointer-events-none ${shape === 'shield' ? 'px-2' : 'px-1'}`}>
-                <div className={`${fontSizeClass} font-bold text-white text-center break-words w-full`}>{value}</div>
-                <div className="text-[9px] font-bold text-gray-500 uppercase mt-1 text-center leading-tight shrink-0">{label}<br/>{subLabel}</div>
+            <div className={`relative z-10 h-full flex flex-col items-center text-center pointer-events-none ${shape === 'shield' ? 'px-2' : 'px-1'} ${alignHeader ? 'justify-between pt-2 pb-1' : 'justify-center'}`}>
+                <div className={alignHeader ? 'flex-1 flex items-center justify-center w-full' : 'w-full'}>
+                    <div className={`${fontSizeClass} font-bold text-white text-center break-words w-full`}>{value}</div>
+                </div>
+                <div className={`text-[9px] font-bold text-gray-500 uppercase text-center leading-tight shrink-0 ${alignHeader ? '' : 'mt-1'}`}>{label}<br/>{subLabel}</div>
             </div>
             
             {tooltip && isHovered && createPortal(
