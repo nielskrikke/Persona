@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Markdown from 'react-markdown';
-import { Sparkles, Plus, X, Maximize, Search, Info, Heart, Skull, AlertOctagon } from 'lucide-react';
+import { Sparkles, Plus, X, Maximize, Search, Info, Heart, Skull, AlertOctagon, ChevronDown } from 'lucide-react';
 import { CharacterState, ABILITY_NAMES, ABILITY_LABELS, RollResult, AbilityName, SpellDetail, InventoryItem, Currency, RuleEntry, CreatureDetail, EldritchCannonDetail, SteelDefenderDetail, EquipmentDetail, ItemModifier, DiceCustomizationOptions } from '../../types';
 import { calculateModifier, formatModifier, calculateProficiency, SKILL_LIST, getSpellSlots, getSpellDamageString, isSpell, getEffectiveAbilities, getSpellsKnownCount, getSpellAbilityForClass, getResourceDefinitions, mergeSpellSlotCurrents, hasUiWidget, getClassWithUiWidget, resolveDamageFormula, appendMinDie, getWeaponMasteryData, getSpellCastLevel, calculateMaxHp, formatResourceName, getWildShapeRules, canCastSpellInWildShape, getSubclassLabel, getCasterProfileFor } from '../../utils/rules';
 import { rollDice } from '../../utils/dice';
@@ -2825,10 +2825,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             {hasFiendishResilience && (
                                 <label className="flex items-center gap-1.5 text-[9px] text-gray-500 font-bold uppercase tracking-wide">
                                     Fiendish Resilience
-                                    <select value={fiendishDamage} onChange={e => setCharacter(prev => ({ ...prev, fiendishResilience: e.target.value }))} className="bg-black/40 border border-gray-700/60 rounded px-1.5 py-0.5 text-[9px] font-normal normal-case tracking-normal text-gray-300 outline-none" aria-label="Fiendish Resilience damage type">
-                                        <option value="">Choose type…</option>
-                                        {['Acid','Cold','Fire','Lightning','Necrotic','Poison','Psychic','Radiant','Thunder'].map(type => <option key={type} value={type}>{type}</option>)}
-                                    </select>
+                                    <span className="relative inline-flex items-center">
+                                        <select value={fiendishDamage} onChange={e => setCharacter(prev => ({ ...prev, fiendishResilience: e.target.value }))} className="appearance-none bg-black/40 border border-gray-700/60 rounded h-6 pl-2 pr-5 text-[9px] font-normal normal-case tracking-normal text-gray-300 outline-none" aria-label="Fiendish Resilience damage type">
+                                            <option value="">Choose type…</option>
+                                            {['Acid','Cold','Fire','Lightning','Necrotic','Poison','Psychic','Radiant','Thunder'].map(type => <option key={type} value={type}>{type}</option>)}
+                                        </select>
+                                        <ChevronDown size={10} className="pointer-events-none absolute right-1 text-gray-500" />
+                                    </span>
                                 </label>
                             )}
                             {advDef.map(a => (<span key={`adv-${a}`} className="bg-green-900/30 border border-green-800/50 px-1.5 py-0.5 rounded text-[9px] text-green-200 font-bold uppercase">Adv vs {a}</span>))}
