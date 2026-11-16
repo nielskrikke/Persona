@@ -2791,7 +2791,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             case 'defenses':
                 const hasFiendishResilience = (character.classFeatures || []).some((feature: any) => /fiendish resilience/i.test(feature.name || ''));
                 const fiendishDamage = hasFiendishResilience ? String(character.fiendishResilience || '') : '';
-                const res = Array.from(new Set([...activeModifiers.filter(m => m.type === 'resistance').map(m => String(m.value)), ...(fiendishDamage ? [fiendishDamage] : [])]));
+                const res = Array.from(new Set(activeModifiers.filter(m => m.type === 'resistance').map(m => String(m.value))));
                 const imm = Array.from(new Set(activeModifiers.filter(m => m.type === 'immunity').map(m => String(m.value))));
                 const advDef: string[] = [];
 
@@ -2823,10 +2823,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             {res.map(r => (<span key={`res-${r}`} className="bg-blue-900/30 border border-blue-800/50 px-1.5 py-0.5 rounded text-[9px] text-blue-200 font-bold uppercase">Resist: {r}</span>))}
                             {imm.map(i => (<span key={`imm-${i}`} className="bg-purple-900/30 border border-purple-800/50 px-1.5 py-0.5 rounded text-[9px] text-purple-200 font-bold uppercase">Immune: {i}</span>))}
                             {hasFiendishResilience && (
-                                <select value={fiendishDamage} onChange={e => setCharacter(prev => ({ ...prev, fiendishResilience: e.target.value }))} className="bg-black/40 border border-gray-700/60 rounded px-1.5 py-0.5 text-[9px] text-gray-300 outline-none" aria-label="Fiendish Resilience damage type">
-                                    <option value="">Fiendish Resilience…</option>
-                                    {['Acid','Cold','Fire','Lightning','Necrotic','Poison','Psychic','Radiant','Thunder'].map(type => <option key={type} value={type}>{type}</option>)}
-                                </select>
+                                <label className="flex items-center gap-1.5 text-[9px] text-gray-500 font-bold uppercase tracking-wide">
+                                    Fiendish Resilience
+                                    <select value={fiendishDamage} onChange={e => setCharacter(prev => ({ ...prev, fiendishResilience: e.target.value }))} className="bg-black/40 border border-gray-700/60 rounded px-1.5 py-0.5 text-[9px] font-normal normal-case tracking-normal text-gray-300 outline-none" aria-label="Fiendish Resilience damage type">
+                                        <option value="">Choose type…</option>
+                                        {['Acid','Cold','Fire','Lightning','Necrotic','Poison','Psychic','Radiant','Thunder'].map(type => <option key={type} value={type}>{type}</option>)}
+                                    </select>
+                                </label>
                             )}
                             {advDef.map(a => (<span key={`adv-${a}`} className="bg-green-900/30 border border-green-800/50 px-1.5 py-0.5 rounded text-[9px] text-green-200 font-bold uppercase">Adv vs {a}</span>))}
                             {defensiveFeatures.map(f => (
@@ -2838,7 +2841,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     </div>
                                 </div>
                             ))}
-                            {res.length === 0 && imm.length === 0 && advDef.length === 0 && defensiveFeatures.length === 0 && <span className="text-gray-600 text-xs italic">No special defenses.</span>}
+                            {res.length === 0 && imm.length === 0 && advDef.length === 0 && defensiveFeatures.length === 0 && !hasFiendishResilience && <span className="text-gray-600 text-xs italic">No special defenses.</span>}
                         </div>
                     </div>
                 );
