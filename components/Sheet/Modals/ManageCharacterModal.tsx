@@ -207,7 +207,7 @@ const ManageCharacterModal = ({
             });
             return changed ? next : prev;
         });
-    }, [isOpen, allSpellCatalog, localSpells]);
+    }, [isOpen, allSpellCatalog, localSpells, localChoices]);
 
     // Initialization
     useEffect(() => {
@@ -1123,7 +1123,7 @@ const ManageCharacterModal = ({
                     c.definition.index === classIndex ? { ...c, subclass: undefined } : c
                 );
             }
-        } else if (choice.type === 'spell') {
+        } else if (choice.type === 'spell' && !choice.revertData?.invocationCantrip) {
             const spellsToRemove = Array.isArray(choice.value) ? choice.value : [choice.value];
             temp.spells = temp.spells.filter((s: any) => !spellsToRemove.includes(s.name) && !spellsToRemove.includes(s.index));
         }
@@ -1179,6 +1179,17 @@ const ManageCharacterModal = ({
         const choice = localChoices.find(c => c.id === choiceId);
         if (!choice) return;
 
+        if (choice.revertData?.invocationCantrip) {
+            const invocationName = String(choice.revertData.invocationName || '');
+            setInvocationCantrips(prev => {
+                const next = { ...prev };
+                delete next[invocationName];
+                return next;
+            });
+            setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: null, revertData: { ...c.revertData, pendingConfirm: false } } : c));
+            return;
+        }
+
         if (choice.revertData?.isMetamagicMatrix && !choice.revertData.isProgression) {
             const toReplace = choice.revertData?.toReplace;
             const newOption = choice.revertData?.newOption;
@@ -1208,6 +1219,14 @@ const ManageCharacterModal = ({
         
         // Remove any virtual features added by this choice or its children
         const allRevertIds = [choiceId, ...subChoices.map(s => s.id)];
+        const invocationNamesToClear = subChoices.filter((sub: any) => sub.revertData?.invocationCantrip).map((sub: any) => String(sub.revertData.invocationName || ''));
+        if (invocationNamesToClear.length > 0) {
+            setInvocationCantrips(prev => {
+                const next = { ...prev };
+                invocationNamesToClear.forEach((name: string) => delete next[name]);
+                return next;
+            });
+        }
         setLocalClassFeatures(prev => prev.filter(f => !f.revertData?.choiceId || !allRevertIds.includes(f.revertData.choiceId)));
 
         // Update localChoices: set parent to null, remove children
@@ -1564,10 +1583,18 @@ const ManageCharacterModal = ({
 
     const invocationCantripOptionsFor = (invocationName: string) => {
         const isRepelling = /repelling blast/i.test(invocationName);
+        const bookCantrips = new Set(localChoices
+            .filter((choice: any) => /Book of Shadows cantrips/i.test(choice.label || ''))
+            .flatMap((choice: any) => Array.isArray(choice.value) ? choice.value : [choice.value])
+            .filter(Boolean)
+            .map((value: any) => String(value).toLowerCase()));
         return localSpells.filter((spell: any) => {
             if (Number(spell.level) !== 0) return false;
             const classes = (spell.classes || []).map((entry: any) => String(entry.name || entry.index || '').toLowerCase());
-            const isWarlockSpell = classes.includes('warlock') || String(spell.sourceClassIndex || '').toLowerCase() === 'warlock';
+            const isWarlockSpell = classes.includes('warlock')
+                || String(spell.sourceClassIndex || '').toLowerCase() === 'warlock'
+                || bookCantrips.has(String(spell.index || '').toLowerCase())
+                || bookCantrips.has(String(spell.name || '').toLowerCase());
             if (!isWarlockSpell) return false;
             if (!spell.damage) return false;
             if (!isRepelling) return true;
