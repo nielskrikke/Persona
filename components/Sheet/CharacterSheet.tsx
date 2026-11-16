@@ -2001,7 +2001,25 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Experimental Elixir</h3>
                             <span className="text-[9px] text-gray-500 font-bold uppercase">Alchemist</span>
                         </div>
-                        <button onClick={() => setCharacter(prev => ({ ...prev, experimentalElixir: table[Math.floor(Math.random() * table.length)] }))} className="w-full py-2 bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold text-[10px] font-black uppercase rounded hover:bg-dnd-gold hover:text-black transition-colors">
+                        <button onClick={() => setCharacter(prev => {
+                            const result = table[Math.floor(Math.random() * table.length)];
+                            const featureName = `Experimental Elixir: ${result}`;
+                            const effects = result === 'Swiftness' ? [{ type: 'bonus', target: 'speed', value: 10 }]
+                                : result === 'Resilience' ? [{ type: 'bonus', target: 'ac', value: 1 }]
+                                : result === 'Boldness' ? [{ type: 'bonus', target: 'saves', value: '1d4' }]
+                                : result === 'Flight' ? [{ type: 'bonus', target: 'speed', value: 10 }]
+                                : [];
+                            const heal = result === 'Healing' ? 2 * (1 + Math.floor(Math.random() * 4)) + intMod : 0;
+                            return {
+                                ...prev,
+                                experimentalElixir: result,
+                                currentHp: heal > 0 ? Math.min(Number(prev.maxHp || 0), Number(prev.currentHp || 0) + Math.max(0, heal)) : prev.currentHp,
+                                classFeatures: [...(prev.classFeatures || []).filter((feature: any) => !/^Experimental Elixir:/i.test(feature.name || '')), {
+                                    index: `experimental-elixir-${result.toLowerCase()}`, name: featureName, level: 3, source: 'Alchemist', type: 'Class',
+                                    desc: [result === 'Healing' ? `Restored ${heal} HP.` : `${result} elixir; lasts 1 hour.`], effects,
+                                } as any],
+                            };
+                        })} className="w-full py-2 bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold text-[10px] font-black uppercase rounded hover:bg-dnd-gold hover:text-black transition-colors">
                             Roll d6 Elixir
                         </button>
                         <div className="mt-3 text-center">
@@ -2074,9 +2092,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             <span className="text-[9px] text-gray-500 font-bold uppercase">Cartographer</span>
                         </div>
                         <div className="flex items-center justify-between">
-                            <button onClick={() => setCharacter(prev => ({ ...prev, mapHolders: Math.max(0, Number(prev.mapHolders || 0) - 1) }))} className="w-8 h-8 rounded bg-gray-800 text-white text-lg">−</button>
+                            <button onClick={() => setCharacter(prev => {
+                                const entries = (prev.inventory || []).filter((item: any) => String(item.name) !== 'Map Holder');
+                                return { ...prev, mapHolders: Math.max(0, Number(prev.mapHolders || 0) - 1), inventory: entries };
+                            })} className="w-8 h-8 rounded bg-gray-800 text-white text-lg">−</button>
                             <span className="text-2xl font-black text-white">{count}</span>
-                            <button onClick={() => setCharacter(prev => ({ ...prev, mapHolders: Number(prev.mapHolders || 0) + 1 }))} className="w-8 h-8 rounded bg-dnd-gold text-black text-lg">+</button>
+                            <button onClick={() => setCharacter(prev => ({ ...prev, mapHolders: Number(prev.mapHolders || 0) + 1, inventory: [...(prev.inventory || []), { id: `map-holder-${Date.now()}`, name: 'Map Holder', quantity: 1, weight: 0, equipped: false, attuned: false }] }))} className="w-8 h-8 rounded bg-dnd-gold text-black text-lg">+</button>
                         </div>
                         <p className="text-[9px] text-gray-500 mt-2">Portal Jump can target a map holder within 30 ft.</p>
                     </div>
