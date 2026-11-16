@@ -2401,7 +2401,8 @@ const ManageCharacterModal = ({
         if (choice.revertData?.isWizardSpellbook) {
             const wizard = (localClasses || []).find((cls: any) => cls.definition?.index === 'wizard');
             const capacity = Math.max(1, 6 + 2 * Math.max(0, Number(wizard?.level || 1) - 1));
-            const selected = (Array.isArray(choice.value) ? choice.value : []).slice(0, capacity);
+            const savantPicks = new Set((Array.isArray(localChoices.find((c: any) => c.revertData?.isEvocationSavant)?.value) ? localChoices.find((c: any) => c.revertData?.isEvocationSavant)!.value : []).map((value: any) => String(value)));
+            const selected = (Array.isArray(choice.value) ? choice.value : []).filter((value: any) => !savantPicks.has(String(value))).slice(0, capacity);
             setSpellbook(selected.map((value: any) => typeof value === 'string' ? value : value.index || value.name));
             setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: selected, count: capacity, revertData: { ...c.revertData, pendingConfirm: false } } : c));
             return;
@@ -3623,7 +3624,8 @@ const ManageCharacterModal = ({
                                                                             const wizard = (localClasses || []).find((cls: any) => cls.definition?.index === 'wizard');
                                                                             const capacity = Math.max(1, 6 + 2 * Math.max(0, Number(wizard?.level || 1) - 1));
                                                                             const maxLevel = Math.max(1, ...Object.keys(getSpellSlots(localClasses || [])).map(Number));
-                                                                            const bookOptions = (choice.options || []).filter((spell: any) => Number(spell.level) <= maxLevel);
+                                                                            const savantPickValues = new Set((Array.isArray(localChoices.find((c: any) => c.revertData?.isEvocationSavant)?.value) ? localChoices.find((c: any) => c.revertData?.isEvocationSavant)!.value : []).map((value: any) => String(value)));
+                                                                            const bookOptions = (choice.options || []).filter((spell: any) => Number(spell.level) <= maxLevel && !savantPickValues.has(String(spell.index)));
                                                                             const levels = Array.from(new Set(bookOptions.map((spell: any) => Number(spell.level)))).sort((a, b) => a - b);
                                                                             const filtered = bookOptions.filter((spell: any) => !spellbookSearch || String(spell.name).toLowerCase().includes(spellbookSearch.toLowerCase()));
                                                                             return (
