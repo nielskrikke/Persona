@@ -63,6 +63,7 @@ const ManageCharacterModal = ({
     const [localChoices, setLocalChoices] = useState<LevelChoice[]>(character.choices || []);
     const [localFeats, setLocalFeats] = useState<FeatDetail[]>(character.feats);
     const [localSpells, setLocalSpells] = useState<SpellDetail[]>(character.spells);
+    const [invocationCantrips, setInvocationCantrips] = useState<Record<string, string>>(character.invocationCantrips || {});
     const [localClasses, setLocalClasses] = useState(character.classes);
     const [localClassFeatures, setLocalClassFeatures] = useState(character.classFeatures);
     const [localMaxHp, setLocalMaxHp] = useState(character.maxHp);
@@ -171,6 +172,44 @@ const ManageCharacterModal = ({
         });
     }, [isOpen, allSpellCatalog, character.classes]);
 
+    // Backfill cantrip choices for existing Agonizing/Repelling Blast invocations.
+    useEffect(() => {
+        if (!isOpen || allSpellCatalog.length === 0) return;
+        setLocalChoices(prev => {
+            let changed = false;
+            const next = [...prev];
+            prev.filter((choice: any) => /Eldritch Invocations/i.test(choice.label || '') && choice.value).forEach((choice: any) => {
+                const values = Array.isArray(choice.value) ? choice.value : [choice.value];
+                values.forEach((value: string) => {
+                    if (!/^(agonizing blast|repelling blast)$/i.test(String(value))) return;
+                    const choiceId = `invocation-cantrip-${choice.id}-${String(value).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+                    const cantripOptions = localSpells.filter((spell: any) => Number(spell.level) === 0 && (spell.damage || /eldritch blast/i.test(spell.name)));
+                    const options = cantripOptions.length > 0 ? cantripOptions : allSpellCatalog.filter((spell: any) => Number(spell.level) === 0);
+                    const existing = next.find((entry: any) => entry.id === choiceId);
+                    if (!existing) {
+                        next.push({
+                            id: choiceId,
+                            level: choice.level || 1,
+                            source: choice.source,
+                            type: 'spell',
+                            label: `${value}: Cantrip`,
+                            value: null,
+                            options,
+                            count: 1,
+                            revertData: { parentChoiceId: choice.id, invocationCantrip: true, invocationName: value },
+                        });
+                        changed = true;
+                    } else if ((existing.options || []).length === 0) {
+                        const index = next.indexOf(existing);
+                        next[index] = { ...existing, options };
+                        changed = true;
+                    }
+                });
+            });
+            return changed ? next : prev;
+        });
+    }, [isOpen, allSpellCatalog, localSpells]);
+
     // Initialization
     useEffect(() => {
         if (isOpen) {
@@ -253,6 +292,7 @@ const ManageCharacterModal = ({
             }));
             setLocalFeats(character.feats || []);
             setLocalSpells(character.spells || []);
+            setInvocationCantrips(character.invocationCantrips || {});
             setLocalClasses(character.classes || []);
             setLocalClassFeatures((character.classFeatures || []).map((feature: any) => {
                 if (/^metamagic (?:options|calibration):/i.test(String(feature.name || ''))) {
@@ -960,6 +1000,7 @@ const ManageCharacterModal = ({
             return choice;
         }),
         spells: overrides.spells || localSpells,
+        invocationCantrips,
         classes: overrides.classes || localClasses,
         classFeatures: overrides.classFeatures || localClassFeatures,
         maxHp: overrides.maxHp || calculateMaxHp(projected),
@@ -1567,6 +1608,10 @@ const ManageCharacterModal = ({
         hasUserEditsRef.current = true;
         const choice = localChoices.find(c => c.id === choiceId);
         if (!choice) return;
+        if (choice.revertData?.invocationCantrip) {
+            setLocalChoices(prev => prev.map(c => c.id === choiceId ? { ...c, value: newValue, revertData: { ...c.revertData, pendingConfirm: true } } : c));
+            return;
+        }
         setLocalChoices(prev => prev.map(c => c.id === choiceId ? { ...c, revertData: { ...c.revertData, pendingConfirm: true } } : c));
 
         if (choice.revertData?.isClassChoice) {
@@ -1683,6 +1728,30 @@ const ManageCharacterModal = ({
             const valStr = typeof val === 'string' ? val : (val?.name || val?.index || '');
             return { name: valStr, desc: '', effects: [] };
         }).filter(o => o && o.name);
+
+        const invocationCantripChoices: any[] = [];
+        matchingOptions.forEach(selectedOption => {
+            if (!/^(agonizing blast|repelling blast)$/i.test(selectedOption.name)) return;
+            const cantripOptions = localSpells.filter((spell: any) => Number(spell.level) === 0 && (spell.damage || /eldritch blast/i.test(spell.name)));
+            if (cantripOptions.length === 0) return;
+            invocationCantripChoices.push({
+                id: `invocation-cantrip-${choiceId}-${selectedOption.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+                level: choice.level || 1,
+                source: choice.source,
+                type: 'spell',
+                label: `${selectedOption.name}: Cantrip`,
+                value: null,
+                options: cantripOptions,
+                count: 1,
+                revertData: { parentChoiceId: choiceId, invocationCantrip: true, invocationName: selectedOption.name },
+            });
+        });
+        if (invocationCantripChoices.length > 0) {
+            setLocalChoices(prev => {
+                const existingIds = new Set(prev.map((entry: any) => entry.id));
+                return [...prev, ...invocationCantripChoices.filter((entry: any) => !existingIds.has(entry.id))];
+            });
+        }
 
         if (matchingOptions.length > 0) {
             const allSpells = await fetchAllSpells();
@@ -2180,6 +2249,17 @@ const ManageCharacterModal = ({
     const handleConfirmChoice = async (choiceId: string) => {
         const choice = localChoices.find(c => c.id === choiceId);
         if (!choice) return;
+
+        if (choice.revertData?.invocationCantrip) {
+            const invocationName = String(choice.revertData.invocationName || '');
+            const selectedSpell = typeof choice.value === 'string' ? choice.value : (choice.value?.name || choice.value?.index || '');
+            if (!invocationName || !selectedSpell) return;
+            const spell = localSpells.find((entry: any) => entry.index === selectedSpell || entry.name.toLowerCase() === String(selectedSpell).toLowerCase());
+            const chosenName = spell?.name || selectedSpell;
+            setInvocationCantrips(prev => ({ ...prev, [invocationName]: chosenName }));
+            setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: chosenName, revertData: { ...c.revertData, pendingConfirm: false } } : c));
+            return;
+        }
 
         if (choice.revertData?.isMysticArcanum) {
             const spellName = String(choice.value || '').trim();
@@ -3421,7 +3501,7 @@ const ManageCharacterModal = ({
                                                                         });
                                                                         let options = /skilled/i.test(choice.label || '')
                                                                             ? Array.from(new Set([...baseOptions, ...ALL_TOOLS.filter((tool: string) => selectedValues.includes(tool) || !(character.toolProficiencies || []).includes(tool))]))
-                                                                            : (choice.type === 'spell'
+                                                                            : (choice.type === 'spell' && !choice.revertData?.invocationCantrip
                                                                                 ? baseOptions.filter((option: any) => {
                                                                                     const value = typeof option === 'string' ? option : (option.index || option.name || '');
                                                                                     const label = typeof option === 'string' ? option : (option.name || option.index || '');
@@ -3908,7 +3988,7 @@ const ManageCharacterModal = ({
                                                                                                     });
                                                                                                     let options = /skilled/i.test(choice.label || '')
                                                                                                         ? Array.from(new Set([...baseOptions, ...ALL_TOOLS.filter((tool: string) => selectedValues.includes(tool) || !(character.toolProficiencies || []).includes(tool))]))
-                                                                                                        : (choice.type === 'spell'
+                                                                                                        : (choice.type === 'spell' && !choice.revertData?.invocationCantrip
                                                                                                             ? baseOptions.filter((option: any) => {
                                                                                                                 const value = typeof option === 'string' ? option : (option.index || option.name || '');
                                                                                                                 const label = typeof option === 'string' ? option : (option.name || option.index || '');

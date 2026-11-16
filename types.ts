@@ -607,6 +607,7 @@ export interface CharacterState {
     show3DDice: boolean;
     encumbranceEnabled?: boolean;
     fiendishResilience?: string;
+    invocationCantrips?: Record<string, string>;
     diceColor?: string;
     diceEffect?: string;
     diceCustomization?: DiceCustomizationOptions;

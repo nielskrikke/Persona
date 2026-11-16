@@ -3124,7 +3124,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             }
             activeModifiers.filter((m: any) => m.type === 'attack_rider').forEach((m: any) => {
                 if (/lifedrinker/i.test(String(m.name || '')) && !source?.isPactWeapon) return;
-                if (!riderMatches(m.condition)) return;
+                const invocationCantrip = /^(agonizing blast|repelling blast)$/i.test(String(m.name || ''))
+                    ? character.invocationCantrips?.[m.name]
+                    : undefined;
+                const riderCondition = invocationCantrip && /^spell:/i.test(String(m.condition || ''))
+                    ? `spell:${invocationCantrip}`
+                    : m.condition;
+                if (!riderMatches(riderCondition)) return;
                 let damage = m.damage;
                 if (m.scaling?.type === 'class_table' && m.scaling.key) {
                     damage = classTableValue(m.scaling.key) || damage;
@@ -3621,8 +3627,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 // Data-declared spell damage bonuses (e.g. Agonizing Blast).
                 const spellDamageBonuses = character.classFeatures
                     .flatMap(feature => feature.effects || [])
-                    .filter((effect: any) => effect.type === 'spell_damage_bonus'
-                        && (!effect.spell || String(effect.spell).toLowerCase() === spell.name.toLowerCase()));
+                    .filter((effect: any) => {
+                        if (effect.type !== 'spell_damage_bonus') return false;
+                        const chosenCantrip = effect.name ? character.invocationCantrips?.[effect.name] : undefined;
+                        const targetSpell = chosenCantrip || effect.spell;
+                        return !targetSpell || String(targetSpell).toLowerCase() === spell.name.toLowerCase();
+                    });
                 spellDamageBonuses.forEach((effect: any) => {
                     if (effect.ability) spellFlatBonus += calculateModifier(getStat(effect.ability));
                     else spellFlatBonus += Number(effect.value || 0);

@@ -847,7 +847,15 @@ export const getSpellDamageString = (spell: SpellDetail, characterLevel: number 
 };
 
 export const getSpellSecondaryDamageString = (spell: SpellDetail, characterLevel: number = 1, slotLevel: number = 1): string => {
-    if (spell.secondary_damage) return primaryDamagePart(spell.secondary_damage);
+    if (spell.secondary_damage) {
+        let secondary = String(spell.secondary_damage);
+        const higherText = (spell.higher_level || []).join(' ');
+        if (/each increase by .*1d6/i.test(higherText)) {
+            const increment = Math.max(0, Number(slotLevel) - Number(spell.level || slotLevel));
+            secondary = secondary.replace(/(\d+)d6/i, (_match, count) => `${Number(count) + increment}d6`);
+        }
+        return primaryDamagePart(secondary);
+    }
     const damage = spell.damage;
     if (!damage) return '';
     const raw = damage.damage_at_character_level
