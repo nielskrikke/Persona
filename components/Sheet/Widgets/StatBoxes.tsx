@@ -69,7 +69,7 @@ export const SquareStatBox: React.FC<{
     return (
         <div 
             ref={containerRef}
-            className={`relative w-16 h-16 lg:w-20 lg:h-20 transition-all duration-200 outline-none select-none group ${shape === 'square' ? `rounded border bg-[#1b1c20] ${alignHeader ? 'p-0' : 'p-1'} ${tooltip ? 'cursor-help border-gray-500 hover:border-dnd-gold hover:shadow-[0_0_15px_rgba(201,173,106,0.2)]' : 'border-gray-600'}` : 'cursor-help'}`}
+            className={`relative w-16 h-16 lg:w-20 lg:h-20 transition-all duration-200 outline-none select-none group ${shape === 'square' ? `rounded border bg-[#1b1c20] p-1 ${tooltip ? 'cursor-help border-gray-500 hover:border-dnd-gold hover:shadow-[0_0_15px_rgba(201,173,106,0.2)]' : 'border-gray-600'}` : 'cursor-help'}`}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
         >

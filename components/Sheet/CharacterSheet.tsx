@@ -4755,7 +4755,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                  <div
                                     onClick={() => roll(initAdv ? `2d20kh1${formatModifier(totalInitMod)}` : `1d20${formatModifier(totalInitMod)}`, "Initiative Roll")}
                                     onContextMenu={(e) => triggerRollMenu(e, initAdv ? `2d20kh1${formatModifier(totalInitMod)}` : `1d20${formatModifier(totalInitMod)}`, "Initiative Roll")}
-                                    className="flex flex-col items-center justify-between w-16 h-16 lg:w-20 lg:h-20 border border-gray-600 rounded bg-[#1b1c20]/80 cursor-pointer hover:border-dnd-gold group transition-colors relative pt-2 pb-1 px-1"
+                                    className="flex flex-col items-center justify-between w-16 h-16 lg:w-20 lg:h-20 border border-gray-600 rounded bg-[#1b1c20]/80 cursor-pointer hover:border-dnd-gold group transition-colors relative pt-3 pb-2 px-1"
                                  >
                                     {initAdv && <span className="absolute top-1 right-1 text-[7px] bg-gray-800/60 text-gray-500 px-0.5 rounded border border-gray-700/50">ADV</span>}
                                     <div className="flex-1 flex items-center justify-center w-full">
