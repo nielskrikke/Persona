@@ -119,7 +119,7 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
     const isInSpellbook = (spell: SpellDetail) => Boolean(bookSet.has(String(spell.index).toLowerCase()) || bookSet.has(String(spell.name).toLowerCase()));
     const wizardLevel = Number((character.classes || []).find((cls: any) => cls.definition?.index === 'wizard')?.level || 0);
     const savantCount = Number(((character.choices || []).find((choice: any) => choice.revertData?.isEvocationSavant)?.value || []).length || 0);
-    const spellbookCapacity = Math.max(1, 6 + 2 * wizardLevel) + savantCount;
+    const spellbookCapacity = Math.max(1, 6 + 2 * Math.max(0, wizardLevel - 1)) + savantCount;
     const toggleSpellbook = (spell: SpellDetail) => {
         if (!onUpdateSpellbook) return;
         const existing = character.spellbook || [];

@@ -1230,7 +1230,7 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         spellbook: (() => {
             const wizard = (classes || []).find((cls: any) => cls.definition?.index === 'wizard');
             if (!wizard) return character.spellbook;
-            const capacity = Math.max(1, 6 + 2 * Number(wizard.level || 1));
+            const capacity = Math.max(1, 6 + 2 * Math.max(0, Number(wizard.level || 1) - 1));
             const bookChoice = (choices || []).find((choice: any) => choice.revertData?.isWizardSpellbook);
             const savantChoice = (choices || []).find((choice: any) => choice.revertData?.isEvocationSavant);
             const baseBook = (Array.isArray(bookChoice?.value) ? bookChoice.value : (character.spellbook || [])).slice(0, capacity);

@@ -219,11 +219,11 @@ const ManageCharacterModal = ({
         const wizardSlots = getSpellSlots(localClasses || []);
         const maxWizardSpellLevel = Math.max(1, ...Object.keys(wizardSlots).map(Number));
         const wizardSpells = allSpellCatalog.filter((spell: any) => Number(spell.level) >= 1 && Number(spell.level) <= maxWizardSpellLevel && (spell.classes || []).some((entry: any) => /wizard/i.test(String(entry.name || entry.index || ''))));
-        const baseCapacity = Math.max(1, 6 + 2 * Number(wizard.level || 1));
+        const baseCapacity = Math.max(1, 6 + 2 * Math.max(0, Number(wizard.level || 1) - 1));
         const savantChoiceForBook = localChoices.find((choice: any) => choice.revertData?.isEvocationSavant);
         const savantValuesForBook = new Set((Array.isArray(savantChoiceForBook?.value) ? savantChoiceForBook.value : []).map((value: any) => String(value)));
-        const currentBook = (character.spellbook && character.spellbook.length > 0)
-            ? character.spellbook.filter((entry: any) => !savantValuesForBook.has(String(entry)))
+        const currentBook = (spellbook && spellbook.length > 0)
+            ? spellbook.filter((entry: any) => !savantValuesForBook.has(String(entry)))
             : localSpells.filter((spell: any) => Number(spell.level) >= 1 && String(spell.sourceClassIndex || '').toLowerCase() === 'wizard').map((spell: any) => spell.index);
         setLocalChoices(prev => {
             let changed = false;
@@ -273,7 +273,7 @@ const ManageCharacterModal = ({
             }
             return changed ? next : prev;
         });
-    }, [isOpen, allSpellCatalog, localClasses, localSpells, character.spellbook]);
+    }, [isOpen, allSpellCatalog, localClasses, localSpells, character.spellbook, spellbook]);
 
     // Initialization
     useEffect(() => {
@@ -1069,7 +1069,7 @@ const ManageCharacterModal = ({
         invocationCantrips,
         spellbook: (() => {
             const wizard = (localClasses || []).find((cls: any) => cls.definition?.index === 'wizard');
-            const capacity = Math.max(1, 6 + 2 * Number(wizard?.level || 1));
+            const capacity = Math.max(1, 6 + 2 * Math.max(0, Number(wizard?.level || 1) - 1));
             const bookChoice = localChoices.find((choice: any) => choice.revertData?.isWizardSpellbook);
             const savantChoice = localChoices.find((choice: any) => choice.revertData?.isEvocationSavant);
             const baseBook = Array.isArray(bookChoice?.value) ? bookChoice.value.slice(0, capacity) : spellbook.slice(0, capacity);
@@ -1255,9 +1255,20 @@ const ManageCharacterModal = ({
         const choice = localChoices.find(c => c.id === choiceId);
         if (!choice) return;
 
+        if (choice.revertData?.isEvocationSavant) {
+            const selected = Array.isArray(choice.value) ? choice.value : [];
+            const baseBookChoice = localChoices.find((c: any) => c.revertData?.isWizardSpellbook);
+            const baseBook = new Set((Array.isArray(baseBookChoice?.value) ? baseBookChoice.value : []).map((value: any) => String(value)));
+            const removable = selected.filter((value: any) => !baseBook.has(String(value)));
+            if (removable.length > 0) setSpellbook(prev => prev.filter((entry: any) => !removable.map(String).includes(String(entry))));
+            setLocalClassFeatures(prev => prev.filter((feature: any) => feature.name !== 'Evocation Savant'));
+            setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: null, revertData: { ...c.revertData, pendingConfirm: true } } : c));
+            return;
+        }
+
         if (choice.revertData?.isWizardSpellbook) {
             const wizard = (localClasses || []).find((cls: any) => cls.definition?.index === 'wizard');
-            const capacity = Math.max(1, 6 + 2 * Number(wizard?.level || 1));
+            const capacity = Math.max(1, 6 + 2 * Math.max(0, Number(wizard?.level || 1) - 1));
             const savantValues = new Set((Array.isArray(localChoices.find((c: any) => c.revertData?.isEvocationSavant)?.value) ? localChoices.find((c: any) => c.revertData?.isEvocationSavant)!.value : []).map((value: any) => String(value)));
             const currentBook = (character.spellbook || []).filter((entry: any) => !savantValues.has(String(entry))).slice(0, capacity);
             setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: currentBook, count: capacity, revertData: { ...c.revertData, pendingConfirm: true } } : c));
@@ -1739,7 +1750,7 @@ const ManageCharacterModal = ({
         }
         if (choice.revertData?.isWizardSpellbook || choice.revertData?.isEvocationSavant) {
             const wizard = (localClasses || []).find((cls: any) => cls.definition?.index === 'wizard');
-            const dynamicMax = choice.revertData?.isWizardSpellbook ? Math.max(1, 6 + 2 * Number(wizard?.level || 1)) : null;
+            const dynamicMax = choice.revertData?.isWizardSpellbook ? Math.max(1, 6 + 2 * Math.max(0, Number(wizard?.level || 1) - 1)) : null;
             setLocalChoices(prev => prev.map(c => {
                 if (c.id !== choiceId) return c;
                 const current = Array.isArray(c.value) ? c.value : [];
@@ -2388,9 +2399,11 @@ const ManageCharacterModal = ({
         if (!choice) return;
 
         if (choice.revertData?.isWizardSpellbook) {
-            const selected = Array.isArray(choice.value) ? choice.value : [];
+            const wizard = (localClasses || []).find((cls: any) => cls.definition?.index === 'wizard');
+            const capacity = Math.max(1, 6 + 2 * Math.max(0, Number(wizard?.level || 1) - 1));
+            const selected = (Array.isArray(choice.value) ? choice.value : []).slice(0, capacity);
             setSpellbook(selected.map((value: any) => typeof value === 'string' ? value : value.index || value.name));
-            setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: selected, revertData: { ...c.revertData, pendingConfirm: false } } : c));
+            setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: selected, count: capacity, revertData: { ...c.revertData, pendingConfirm: false } } : c));
             return;
         }
 
@@ -3608,7 +3621,7 @@ const ManageCharacterModal = ({
                                                                         if (choice.revertData?.isWizardSpellbook) {
                                                                             const selected = Array.isArray(choice.value) ? choice.value : [];
                                                                             const wizard = (localClasses || []).find((cls: any) => cls.definition?.index === 'wizard');
-                                                                            const capacity = Math.max(1, 6 + 2 * Number(wizard?.level || 1));
+                                                                            const capacity = Math.max(1, 6 + 2 * Math.max(0, Number(wizard?.level || 1) - 1));
                                                                             const maxLevel = Math.max(1, ...Object.keys(getSpellSlots(localClasses || [])).map(Number));
                                                                             const bookOptions = (choice.options || []).filter((spell: any) => Number(spell.level) <= maxLevel);
                                                                             const levels = Array.from(new Set(bookOptions.map((spell: any) => Number(spell.level)))).sort((a, b) => a - b);
