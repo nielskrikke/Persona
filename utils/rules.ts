@@ -721,6 +721,7 @@ export const getResourceDefinitions = (character: CharacterState): CharacterReso
             ...((characterClass.subclass as any)?.resources || []),
         ];
         definitions.forEach(resource => {
+            if (/^mystic arcanum/i.test(String(resource.name || resource.key || ''))) return;
             if (resource.level && characterClass.level < resource.level) return;
             const max = getResourceMax(resource, characterClass.level, abilities, character.level);
             if (max <= 0) return;

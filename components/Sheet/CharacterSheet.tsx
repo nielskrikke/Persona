@@ -625,6 +625,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         });
 
         Object.keys(newUsage).forEach(key => {
+            if (/^mystic arcanum/i.test(key)) {
+                delete newUsage[key];
+                hasChanges = true;
+                return;
+            }
             const entry = newUsage[key];
             const ownedItemPrefix = (character.inventory || []).some((item: any) =>
                 key.startsWith(`${item.name}: `) || key.startsWith(`${item.name} `)

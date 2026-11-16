@@ -223,6 +223,15 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
             }));
             return;
         }
+        if ((spell as any).isArcanum) {
+            if (freeCastRemaining(spell) <= 0) return;
+            setCharacter(prev => ({
+                ...prev,
+                freeCastUsage: { ...(prev.freeCastUsage || {}), [spell.index]: Number(prev.freeCastUsage?.[spell.index] || 0) + 1 },
+                activeConcentration: spell.concentration ? spell : prev.activeConcentration,
+            }));
+            return;
+        }
         const remaining = freeCastRemaining(spell);
         if (remaining > 0) {
             setCharacter(prev => ({
@@ -430,8 +439,9 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                         const effectLabel = getSpellEffectLabel(spell, displayDmg);
                                         const healing = isHealingSpell(spell);
                                         const resultDmg = displayDmg ? `${isHealingSpell(spell) ? healingResult(displayDmg, spell) : damageResult(displayDmg, spell)}${damageTypeSuffix(spell)}` : '';
+                                        const arcanumSpent = Boolean((spell as any).isArcanum) && freeCastRemaining(spell) <= 0;
                                         return (
-                                            <div key={spell.index} onClick={() => setSelectedDetail(spell)} className={`grid gap-2 items-center px-6 py-4 hover:bg-[#2e3036]/50 cursor-pointer group transition-colors grid-cols-[1fr_70px_80px_60px] md:grid-cols-[1fr_110px_120px_80px]`}>
+                                            <div key={spell.index} onClick={() => setSelectedDetail(spell)} className={`grid gap-2 items-center px-6 py-4 hover:bg-[#2e3036]/50 cursor-pointer group transition-colors grid-cols-[1fr_70px_80px_60px] md:grid-cols-[1fr_110px_120px_80px] ${arcanumSpent ? 'opacity-40' : ''}`}>
                                                 <div className="min-w-0">
                                                     <div className="font-bold text-gray-200 text-sm group-hover:text-white truncate flex items-center gap-1.5">
                                                         {spell.name}
@@ -491,15 +501,16 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                         <span className="inline-block text-[10px] font-bold uppercase bg-blue-900/20 border border-blue-800/50 text-blue-300 px-2 py-1.5 rounded w-full">Active</span>
                                                     ) : (
                                                         <button
-                                                            onClick={(e) => { e.stopPropagation(); castSpell(spell, lvl); }}
+                                                            onClick={(e) => { e.stopPropagation(); if (!arcanumSpent) castSpell(spell, lvl); }}
+                                                            disabled={arcanumSpent}
                                                             onContextMenu={(e) => {
                                                                 e.preventDefault();
                                                                 e.stopPropagation();
                                                                 if (spell.desc?.join(' ').toLowerCase().includes('spell attack')) triggerRollMenu(e, `1d20${spellAttackFor(spell)}`, `Attack: ${spell.name}`);
                                                             }}
-                                                            className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full"
+                                                            className="text-[10px] font-bold uppercase bg-black/40 border border-gray-600/50 text-gray-400 hover:text-white px-2 py-1.5 rounded transition-colors w-full disabled:opacity-40 disabled:cursor-not-allowed"
                                                         >
-                                                            Cast
+                                                            {arcanumSpent ? 'Used' : 'Cast'}
                                                         </button>
                                                     )}
                                                 </div>
@@ -521,8 +532,9 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                     const healing = isHealingSpell(spell);
                                     const resultDmg = displayDmg ? `${isHealingSpell(spell) ? healingResult(displayDmg, spell) : damageResult(displayDmg, spell)}${damageTypeSuffix(spell)}` : '';
                                     const ebCount = spell.name === 'Eldritch Blast' ? (character.level >= 17 ? 4 : character.level >= 11 ? 3 : character.level >= 5 ? 2 : 1) : 0;
+                                    const arcanumSpent = Boolean((spell as any).isArcanum) && freeCastRemaining(spell) <= 0;
                                     return (
-                                        <div key={spell.index} onClick={() => setSelectedDetail(spell)} className="flex items-center gap-3 px-4 py-3 active:bg-[#2e3036]/60 transition-colors cursor-pointer">
+                                        <div key={spell.index} onClick={() => setSelectedDetail(spell)} className={`flex items-center gap-3 px-4 py-3 active:bg-[#2e3036]/60 transition-colors cursor-pointer ${arcanumSpent ? 'opacity-40' : ''}`}>
                                             <div className="flex-1 min-w-0">
                                                 <div className="font-bold text-sm text-gray-200 truncate flex items-center gap-1.5">
                                                     {spell.name}
@@ -548,10 +560,11 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                 <span className="text-[10px] font-bold uppercase bg-blue-900/20 border border-blue-800/50 text-blue-300 px-4 py-2 rounded-lg shrink-0">Active</span>
                                             ) : (
                                                 <button
-                                                    onClick={(e) => { e.stopPropagation(); castSpell(spell, lvl); }}
-                                                    className="text-[10px] font-bold uppercase bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold active:bg-dnd-gold active:text-black px-4 py-2 rounded-lg transition-colors shrink-0"
+                                                    onClick={(e) => { e.stopPropagation(); if (!arcanumSpent) castSpell(spell, lvl); }}
+                                                    disabled={arcanumSpent}
+                                                    className="text-[10px] font-bold uppercase bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold active:bg-dnd-gold active:text-black px-4 py-2 rounded-lg transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                                                 >
-                                                    Cast
+                                                    {arcanumSpent ? 'Used' : 'Cast'}
                                                 </button>
                                             )}
                                         </div>
