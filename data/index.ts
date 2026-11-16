@@ -1227,9 +1227,16 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         classFeatures,
         inventory,
         languages: isRogue ? Array.from(new Set([...(character.languages || []), "Thieves' Cant"])) : character.languages,
-        spellbook: (character.spellbook && character.spellbook.length > 0)
-            ? character.spellbook
-            : (character.spells || []).filter((spell: any) => Number(spell.level) >= 1 && String(spell.sourceClassIndex || '').toLowerCase() === 'wizard').map((spell: any) => spell.index),
+        spellbook: (() => {
+            const wizard = (classes || []).find((cls: any) => cls.definition?.index === 'wizard');
+            if (!wizard) return character.spellbook;
+            const capacity = Math.max(1, 6 + 2 * Number(wizard.level || 1));
+            const bookChoice = (choices || []).find((choice: any) => choice.revertData?.isWizardSpellbook);
+            const savantChoice = (choices || []).find((choice: any) => choice.revertData?.isEvocationSavant);
+            const baseBook = (Array.isArray(bookChoice?.value) ? bookChoice.value : (character.spellbook || [])).slice(0, capacity);
+            const savantSpells = Array.isArray(savantChoice?.value) ? savantChoice.value : [];
+            return Array.from(new Set([...baseBook, ...savantSpells]));
+        })(),
         choices: filteredSpellChoices,
         skills: Array.from(derivedSkills),
         toolProficiencies: Array.from(derivedTools),

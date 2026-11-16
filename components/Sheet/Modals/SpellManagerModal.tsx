@@ -110,6 +110,10 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
         loadSpells();
     }, [isOpen, activeClassIndex, activeClass, hasExpandedSpellList, hasMagicalSecrets, hasMagicalDiscoveries]);
 
+    const isWizardSpellbook = activeClassIndex === 'wizard';
+    const bookSet = new Set((character.spellbook || []).map((entry: any) => String(entry).toLowerCase()));
+    const isInSpellbook = (spell: SpellDetail) => Boolean(bookSet.has(String(spell.index).toLowerCase()) || bookSet.has(String(spell.name).toLowerCase()));
+
     const isGranted = (spell: SpellDetail) => character.spells.some(s => s.index === spell.index && s.isGranted);
     const isKnown = (spell: SpellDetail) => {
         return character.spells.some(s => s.index === spell.index && s.sourceClassIndex === activeClassIndex);
@@ -120,6 +124,10 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
         if (!profile || profile.type === 'none') return;
         if (isKnown(spell)) {
             onUpdateSpells(character.spells.filter(s => !(s.index === spell.index && s.sourceClassIndex === activeClassIndex)));
+            return;
+        }
+        if (isWizardSpellbook && spell.level > 0 && !isInSpellbook(spell)) {
+            alert('Add this spell to your spellbook before preparing it.');
             return;
         }
 
@@ -373,6 +381,11 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
                                                     <span className="px-1.5 py-0.5 rounded bg-gray-800 text-[8px] font-black uppercase tracking-tighter text-gray-400">
                                                         {spell.level === 0 ? 'Cantrip' : `Level ${spell.level}`}
                                                     </span>
+                                                    {isWizardSpellbook && spell.level > 0 && (
+                                                        <span className={`px-1.5 py-0.5 rounded border text-[8px] font-black uppercase tracking-tighter ${isInSpellbook(spell) ? 'bg-blue-900/20 border-blue-800/50 text-blue-300' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>
+                                                            {isInSpellbook(spell) ? 'In Book' : 'Not in Book'}
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <div className="flex items-center gap-3 mt-1 flex-wrap">
                                                     <span className="text-[10px] text-gray-500 uppercase tracking-widest font-black">
@@ -408,15 +421,19 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
                                                         <Trash2 size={14} />
                                                         {isPrepared ? 'Unprepare' : 'Forget'}
                                                     </button>
-                                                ) : (
-                                                    <button 
-                                                        onClick={(e) => { e.stopPropagation(); tryAddSpell(spell); }}
-                                                        className="flex items-center gap-2 px-4 py-2 bg-dnd-gold text-black rounded-lg text-xs font-black uppercase hover:bg-white transition-all shadow-lg shadow-dnd-gold/10"
-                                                    >
-                                                        <Plus size={14} />
-                                                        {isPrepared ? 'Prepare' : 'Learn'}
-                                                    </button>
-                                                )}
+                                                ) : (() => {
+                                                    const blocked = isWizardSpellbook && spell.level > 0 && !isInSpellbook(spell);
+                                                    return (
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); if (!blocked) tryAddSpell(spell); }}
+                                                            disabled={blocked}
+                                                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black uppercase transition-all shadow-lg ${blocked ? 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700' : 'bg-dnd-gold text-black hover:bg-white shadow-dnd-gold/10'}`}
+                                                        >
+                                                            <Plus size={14} />
+                                                            {blocked ? 'Not in Book' : (isPrepared ? 'Prepare' : 'Learn')}
+                                                        </button>
+                                                    );
+                                                })()}
                                             </div>
                                         </div>
 

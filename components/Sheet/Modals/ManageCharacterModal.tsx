@@ -64,6 +64,7 @@ const ManageCharacterModal = ({
     const [localFeats, setLocalFeats] = useState<FeatDetail[]>(character.feats);
     const [localSpells, setLocalSpells] = useState<SpellDetail[]>(character.spells);
     const [invocationCantrips, setInvocationCantrips] = useState<Record<string, string>>(character.invocationCantrips || {});
+    const [spellbookSearch, setSpellbookSearch] = useState('');
     const [spellbook, setSpellbook] = useState<string[]>((character.spellbook && character.spellbook.length > 0) ? character.spellbook : (character.spells || []).filter((spell: any) => Number(spell.level) >= 1 && String(spell.sourceClassIndex || '').toLowerCase() === 'wizard').map((spell: any) => spell.index));
     const [localClasses, setLocalClasses] = useState(character.classes);
     const [localClassFeatures, setLocalClassFeatures] = useState(character.classFeatures);
@@ -215,7 +216,10 @@ const ManageCharacterModal = ({
         if (!isOpen || allSpellCatalog.length === 0) return;
         const wizard = (localClasses || []).find((cls: any) => cls.definition?.index === 'wizard');
         if (!wizard) return;
-        const wizardSpells = allSpellCatalog.filter((spell: any) => Number(spell.level) >= 1 && (spell.classes || []).some((entry: any) => /wizard/i.test(String(entry.name || entry.index || ''))));
+        const wizardSlots = getSpellSlots(localClasses || []);
+        const maxWizardSpellLevel = Math.max(1, ...Object.keys(wizardSlots).map(Number));
+        const wizardSpells = allSpellCatalog.filter((spell: any) => Number(spell.level) >= 1 && Number(spell.level) <= maxWizardSpellLevel && (spell.classes || []).some((entry: any) => /wizard/i.test(String(entry.name || entry.index || ''))));
+        const baseCapacity = Math.max(1, 6 + 2 * Number(wizard.level || 1));
         const currentBook = (character.spellbook && character.spellbook.length > 0)
             ? character.spellbook
             : localSpells.filter((spell: any) => Number(spell.level) >= 1 && String(spell.sourceClassIndex || '').toLowerCase() === 'wizard').map((spell: any) => spell.index);
@@ -227,19 +231,22 @@ const ManageCharacterModal = ({
             if (!bookChoice) {
                 next.push({
                     id: bookId, level: 1, source: 'Wizard', type: 'spell',
-                    label: 'Wizard Spellbook', value: currentBook,
-                    options: wizardSpells, count: Math.max(1, 6 + 2 * Number(wizard.level || 1)),
+                    label: 'Wizard Spellbook', value: currentBook.slice(0, baseCapacity),
+                    options: wizardSpells, count: baseCapacity,
                     optional: true, revertData: { classIndex: 'wizard', isWizardSpellbook: true },
                 });
                 changed = true;
-            } else if (!Array.isArray(bookChoice.value) || bookChoice.value.length === 0) {
-                const index = next.indexOf(bookChoice);
-                next[index] = { ...bookChoice, value: currentBook };
-                changed = true;
+            } else {
+                const nextValue = (Array.isArray(bookChoice.value) ? bookChoice.value : currentBook).slice(0, baseCapacity);
+                if (bookChoice.count !== baseCapacity || JSON.stringify(nextValue) !== JSON.stringify(bookChoice.value)) {
+                    const index = next.indexOf(bookChoice);
+                    next[index] = { ...bookChoice, value: nextValue, count: baseCapacity, options: wizardSpells };
+                    changed = true;
+                }
             }
             const evoker = String(wizard.subclass?.index || '').toLowerCase().includes('evoc') || /evoc/i.test(String(wizard.subclass?.name || ''));
+            const evocationSpells = wizardSpells.filter((spell: any) => /evocation/i.test(String(spell.school?.name || spell.school || '')) && Number(spell.level) <= 2);
             if (evoker && Number(wizard.level) >= 2 && !next.some((choice: any) => choice.id === 'evocation-savant')) {
-                const evocationSpells = wizardSpells.filter((spell: any) => /evocation/i.test(String(spell.school?.name || spell.school || '')));
                 next.push({
                     id: 'evocation-savant', level: 2, source: 'Evoker', type: 'spell',
                     label: 'Evocation Savant', value: [],
@@ -247,6 +254,14 @@ const ManageCharacterModal = ({
                     revertData: { classIndex: 'wizard', isEvocationSavant: true },
                 });
                 changed = true;
+            } else if (evoker && Number(wizard.level) >= 2) {
+                const savant = next.find((choice: any) => choice.id === 'evocation-savant');
+                const index = next.indexOf(savant);
+                const nextOptions = evocationSpells;
+                if (JSON.stringify((savant.options || []).map((opt: any) => opt.index)) !== JSON.stringify(nextOptions.map((opt: any) => opt.index))) {
+                    next[index] = { ...savant, options: nextOptions };
+                    changed = true;
+                }
             }
             return changed ? next : prev;
         });
@@ -1044,7 +1059,15 @@ const ManageCharacterModal = ({
         }),
         spells: overrides.spells || localSpells,
         invocationCantrips,
-        spellbook,
+        spellbook: (() => {
+            const wizard = (localClasses || []).find((cls: any) => cls.definition?.index === 'wizard');
+            const capacity = Math.max(1, 6 + 2 * Number(wizard?.level || 1));
+            const bookChoice = localChoices.find((choice: any) => choice.revertData?.isWizardSpellbook);
+            const savantChoice = localChoices.find((choice: any) => choice.revertData?.isEvocationSavant);
+            const baseBook = Array.isArray(bookChoice?.value) ? bookChoice.value.slice(0, capacity) : spellbook.slice(0, capacity);
+            const savantSpells = Array.isArray(savantChoice?.value) ? savantChoice.value : [];
+            return Array.from(new Set([...baseBook, ...savantSpells]));
+        })(),
         classes: overrides.classes || localClasses,
         classFeatures: overrides.classFeatures || localClassFeatures,
         maxHp: overrides.maxHp || calculateMaxHp(projected),
@@ -3414,9 +3437,11 @@ const ManageCharacterModal = ({
                                                                         )}
                                                                     </div>
                                                                 </div>
-                                                                <div className="shrink-0 text-[10px] font-black text-gray-500 bg-black/40 px-3 py-1 rounded-full border border-gray-800">
-                                                                    LEVEL {choice.level}
-                                                                </div>
+                                                                {!choice.revertData?.isWizardSpellbook && (
+                                                                    <div className="shrink-0 text-[10px] font-black text-gray-500 bg-black/40 px-3 py-1 rounded-full border border-gray-800">
+                                                                        LEVEL {choice.level}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                             
                                                             <div className="mt-4">
@@ -3561,6 +3586,40 @@ const ManageCharacterModal = ({
                                                                     </div>
                                                                 ) : (
                                                                     (() => {
+                                                                        if (choice.revertData?.isWizardSpellbook) {
+                                                                            const selected = Array.isArray(choice.value) ? choice.value : [];
+                                                                            const capacity = choice.count || 34;
+                                                                            const levels = Array.from(new Set((choice.options || []).map((spell: any) => Number(spell.level)))).sort((a, b) => a - b);
+                                                                            const filtered = (choice.options || []).filter((spell: any) => !spellbookSearch || String(spell.name).toLowerCase().includes(spellbookSearch.toLowerCase()));
+                                                                            return (
+                                                                                <div className="space-y-4">
+                                                                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                                                                        <p className="text-[10px] text-gray-500">Spells currently in your spellbook. Level {levels[levels.length - 1] || 1} is the highest available.</p>
+                                                                                        <span className={`text-[10px] font-black uppercase tracking-widest ${selected.length >= capacity ? 'text-dnd-gold' : 'text-gray-500'}`}>{selected.length} / {capacity}</span>
+                                                                                    </div>
+                                                                                    <input type="text" value={spellbookSearch} onChange={e => setSpellbookSearch(e.target.value)} placeholder="Search spellbook..." className="w-full bg-black/40 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-dnd-gold/50" />
+                                                                                    {levels.map(level => {
+                                                                                        const spells = filtered.filter((spell: any) => Number(spell.level) === level);
+                                                                                        if (spells.length === 0) return null;
+                                                                                        return (
+                                                                                            <div key={level} className="space-y-2">
+                                                                                                <div className="text-[9px] font-black uppercase tracking-widest text-gray-500 border-b border-gray-800 pb-1">Level {level}</div>
+                                                                                                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2">
+                                                                                                    {spells.map((spell: any) => {
+                                                                                                        const isSelected = selected.includes(spell.index);
+                                                                                                        return (
+                                                                                                            <button key={spell.index} onClick={() => handleChoiceChange(choice.id, spell.index)} className={`px-2 py-1.5 rounded-lg border text-[10px] font-bold text-left transition-all ${isSelected ? 'bg-dnd-gold/20 border-dnd-gold text-white' : 'bg-black/40 border-gray-800 text-gray-400 hover:border-gray-600'}`}>
+                                                                                                                {spell.name}
+                                                                                                            </button>
+                                                                                                        );
+                                                                                                    })}
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        );
+                                                                                    })}
+                                                                                </div>
+                                                                            );
+                                                                        }
                                                                         if (choice.revertData?.isMetamagicMatrix) {
                                                                             const isProgression = Boolean(choice.revertData.isProgression);
                                                                             const options = getMetamagicOptionList(choice);
