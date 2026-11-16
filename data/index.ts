@@ -1058,6 +1058,11 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
             inventory.push({ ...(detail || {}), id: 'rogue-thieves-tools', name: detail?.name || "Thieves' Tools", quantity: 1, equipped: false, attuned: false });
         }
     }
+    if ((character.classes || []).some((cls: any) => cls.definition?.index === 'wizard')
+        && !inventory.some((item: any) => /^spellbook$/i.test(String(item.name || '')))) {
+        const detail = inventoryCatalog.find(entry => String(entry.index) === 'spellbook');
+        inventory.push({ ...(detail || {}), id: 'wizard-spellbook', name: detail?.name || 'Spellbook', quantity: 1, equipped: false, attuned: false });
+    }
     if ((character.classes || []).some((cls: any) => cls.definition?.index === 'warlock')) {
         if (!inventory.some((item: any) => /^sickle$/i.test(String(item.name || '')))) {
             const detail = inventoryCatalog.find(entry => String(entry.index) === 'sickle');
@@ -1222,6 +1227,9 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         classFeatures,
         inventory,
         languages: isRogue ? Array.from(new Set([...(character.languages || []), "Thieves' Cant"])) : character.languages,
+        spellbook: (character.spellbook && character.spellbook.length > 0)
+            ? character.spellbook
+            : (character.spells || []).filter((spell: any) => Number(spell.level) >= 1 && String(spell.sourceClassIndex || '').toLowerCase() === 'wizard').map((spell: any) => spell.index),
         choices: filteredSpellChoices,
         skills: Array.from(derivedSkills),
         toolProficiencies: Array.from(derivedTools),

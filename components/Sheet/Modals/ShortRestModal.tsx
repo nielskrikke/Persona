@@ -20,12 +20,18 @@ const ShortRestModal = ({
 }) => {
     const [rollingSize, setRollingSize] = useState<string | null>(null);
     const [restorationAmount, setRestorationAmount] = useState(0);
+    const [arcaneRecovery, setArcaneRecovery] = useState<Record<number, number>>({});
+    const arcaneFeature = character.featureUsage['Arcane Recovery'];
+    const wizardClass = character.classes.find((cls: any) => cls.definition?.index === 'wizard');
+    const arcaneMaxTotal = wizardClass ? Math.max(1, Math.ceil(Number(wizardClass.level) / 2)) : 0;
+    const arcaneUsedTotal = Object.entries(arcaneRecovery).reduce((sum, [level, count]) => sum + Number(level) * Number(count || 0), 0);
+    const arcaneAvailable = Boolean(arcaneFeature && Number(arcaneFeature.current) > 0 && wizardClass);
     const restorationFeature = character.featureUsage['Sorcerous Restoration'];
     const sorceryPoints = character.featureUsage['Sorcery Points'];
     const restorationAvailable = Boolean(restorationFeature && restorationFeature.current > 0 && sorceryPoints);
     const maxRestoration = restorationAvailable ? Math.min(7, Math.max(0, Number(sorceryPoints.max || 0) - Number(sorceryPoints.current || 0))) : 0;
 
-    useEffect(() => { if (isOpen) setRestorationAmount(0); }, [isOpen]);
+    useEffect(() => { if (isOpen) { setRestorationAmount(0); setArcaneRecovery({}); } }, [isOpen]);
 
     if (!isOpen) return null;
 
@@ -84,7 +90,7 @@ const ShortRestModal = ({
         // pact slots with other slots, so only reset them when every caster in
         // the character is a pact caster; otherwise leave them alone rather
         // than giving a multiclass wizard all of its slots back.
-        const newSlots = {...character.spellSlots};
+        let newSlots = {...character.spellSlots};
         const casterProfiles = character.classes
             .map(c => getCasterProfileFor(c))
             .filter((profile): profile is NonNullable<typeof profile> => !!profile && profile.type !== 'none');
@@ -106,6 +112,17 @@ const ShortRestModal = ({
         Object.keys(newFreeCastUsage).forEach(index => {
             if (shortRestSpells.has(index)) delete newFreeCastUsage[index];
         });
+
+        if (arcaneAvailable && arcaneUsedTotal > 0) {
+            const slots = { ...newSlots };
+            Object.entries(arcaneRecovery).forEach(([level, count]) => {
+                const slotLevel = Number(level);
+                if (!slots[slotLevel] || Number(count) <= 0) return;
+                slots[slotLevel] = { ...slots[slotLevel], current: Math.min(Number(slots[slotLevel].max || 0), Number(slots[slotLevel].current || 0) + Number(count)) };
+            });
+            newSlots = slots;
+            newFeatures['Arcane Recovery'] = { ...newFeatures['Arcane Recovery'], current: 0 };
+        }
 
         if (restorationAvailable && restorationAmount > 0) {
             newFeatures['Sorcery Points'] = {
@@ -156,6 +173,35 @@ const ShortRestModal = ({
                     ))}
                 </div>
 
+                {arcaneAvailable && (
+                    <div className="bg-blue-950/20 border border-blue-900/50 rounded-lg p-4 mb-6">
+                        <div className="flex items-center justify-between gap-3 mb-2">
+                            <div>
+                                <h3 className="text-[10px] font-bold text-blue-300 uppercase tracking-widest">Arcane Recovery</h3>
+                                <p className="text-[10px] text-gray-500 mt-1">Recover up to {arcaneMaxTotal} slot levels, none above 5th. Once per Long Rest.</p>
+                            </div>
+                            <span className="text-[10px] text-gray-500">{arcaneUsedTotal} / {arcaneMaxTotal}</span>
+                        </div>
+                        <div className="space-y-1.5">
+                            {[1,2,3,4,5].map(level => {
+                                const slot = character.spellSlots?.[level];
+                                if (!slot || Number(slot.max) <= 0 || Number(slot.current) >= Number(slot.max)) return null;
+                                const count = Number(arcaneRecovery[level] || 0);
+                                const canAdd = arcaneUsedTotal + level <= arcaneMaxTotal;
+                                return (
+                                    <div key={level} className="flex items-center justify-between text-[10px] text-gray-400">
+                                        <span>Level {level} slots ({slot.current}/{slot.max})</span>
+                                        <div className="flex items-center gap-2">
+                                            <button type="button" onClick={() => setArcaneRecovery(prev => ({ ...prev, [level]: Math.max(0, Number(prev[level] || 0) - 1) }))} className="w-5 h-5 rounded border border-gray-700 bg-black/30 text-gray-400">−</button>
+                                            <span className="w-4 text-center text-white">{count}</span>
+                                            <button type="button" disabled={!canAdd} onClick={() => setArcaneRecovery(prev => ({ ...prev, [level]: Number(prev[level] || 0) + 1 }))} className="w-5 h-5 rounded border border-gray-700 bg-black/30 text-gray-400 disabled:opacity-30">+</button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
                 {restorationAvailable && (
                     <div className="bg-purple-950/20 border border-purple-900/50 rounded-lg p-4 mb-6">
                         <div className="flex items-center justify-between gap-3 mb-2">

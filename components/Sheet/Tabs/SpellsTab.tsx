@@ -68,7 +68,12 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
     const agonizingBonus = (spell: SpellDetail) => hasAgonizingBlast && String(spell.name).toLowerCase() === String(agonizingCantrip).toLowerCase()
         ? calculateModifier(effectiveAbilities.cha)
         : 0;
-    const damageResult = (damage: string, spell: SpellDetail) => `${damage}${spellModifierText(isHealingSpell(spell) ? healingBonus(spell) : (Number(spell.level) === 0 ? cantripBonus(spell) : (addsCastingModifier(spell) ? spellMod : 0)) + affinityBonus(spell) + agonizingBonus(spell))}`;
+    const hasEmpoweredEvocation = (character.classFeatures || []).some((feature: any) => /empowered evocation/i.test(feature.name || ''));
+    const empoweredEvocationBonus = (spell: SpellDetail) => hasEmpoweredEvocation
+        && String(spell.school?.name || '').toLowerCase() === 'evocation'
+        ? calculateModifier(effectiveAbilities.int)
+        : 0;
+    const damageResult = (damage: string, spell: SpellDetail) => `${damage}${spellModifierText(isHealingSpell(spell) ? healingBonus(spell) : (Number(spell.level) === 0 ? cantripBonus(spell) : (addsCastingModifier(spell) ? spellMod : 0)) + affinityBonus(spell) + agonizingBonus(spell) + empoweredEvocationBonus(spell))}`;
     const damageTypeSuffix = (spell: SpellDetail) => {
         const type = spell.damage?.damage_type?.name;
         return type && !/healing/i.test(type) ? ` ${String(type).toLowerCase()}` : '';

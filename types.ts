@@ -608,6 +608,7 @@ export interface CharacterState {
     encumbranceEnabled?: boolean;
     fiendishResilience?: string;
     invocationCantrips?: Record<string, string>;
+    spellbook?: string[];
     diceColor?: string;
     diceEffect?: string;
     diceCustomization?: DiceCustomizationOptions;

@@ -28,7 +28,7 @@ const CLASS_STARTING_KITS: Record<string, string[]> = {
     rogue: ['Leather Armor', 'Dagger', 'Dagger', 'Shortsword', 'Shortbow', 'Arrows (20)', 'Quiver', "Thieves' Tools", "Burglar's Pack"],
     sorcerer: ['Spear', 'Dagger', 'Dagger', 'Arcane Focus', "Dungeoneer's Pack"],
     warlock: ['Leather Armor', 'Sickle', 'Dagger', 'Dagger', 'Arcane Focus', 'Book', "Scholar's Pack"],
-    wizard: ['Robe', 'Dagger', 'Dagger', 'Arcane Focus', "Scholar's Pack"],
+    wizard: ['Robes', 'Dagger', 'Dagger', 'Arcane Focus', 'Spellbook', "Scholar's Pack"],
 };
 
 const CLASS_OPTION_B_KITS: Record<string, string[]> = {

@@ -64,6 +64,7 @@ const ManageCharacterModal = ({
     const [localFeats, setLocalFeats] = useState<FeatDetail[]>(character.feats);
     const [localSpells, setLocalSpells] = useState<SpellDetail[]>(character.spells);
     const [invocationCantrips, setInvocationCantrips] = useState<Record<string, string>>(character.invocationCantrips || {});
+    const [spellbook, setSpellbook] = useState<string[]>((character.spellbook && character.spellbook.length > 0) ? character.spellbook : (character.spells || []).filter((spell: any) => Number(spell.level) >= 1 && String(spell.sourceClassIndex || '').toLowerCase() === 'wizard').map((spell: any) => spell.index));
     const [localClasses, setLocalClasses] = useState(character.classes);
     const [localClassFeatures, setLocalClassFeatures] = useState(character.classFeatures);
     const [localMaxHp, setLocalMaxHp] = useState(character.maxHp);
@@ -209,6 +210,48 @@ const ManageCharacterModal = ({
         });
     }, [isOpen, allSpellCatalog, localSpells, localChoices]);
 
+    // Ensure Wizard spellbook and Evocation Savant choices exist.
+    useEffect(() => {
+        if (!isOpen || allSpellCatalog.length === 0) return;
+        const wizard = (localClasses || []).find((cls: any) => cls.definition?.index === 'wizard');
+        if (!wizard) return;
+        const wizardSpells = allSpellCatalog.filter((spell: any) => Number(spell.level) >= 1 && (spell.classes || []).some((entry: any) => /wizard/i.test(String(entry.name || entry.index || ''))));
+        const currentBook = (character.spellbook && character.spellbook.length > 0)
+            ? character.spellbook
+            : localSpells.filter((spell: any) => Number(spell.level) >= 1 && String(spell.sourceClassIndex || '').toLowerCase() === 'wizard').map((spell: any) => spell.index);
+        setLocalChoices(prev => {
+            let changed = false;
+            const next = [...prev];
+            const bookId = 'wizard-spellbook';
+            const bookChoice = next.find((choice: any) => choice.id === bookId);
+            if (!bookChoice) {
+                next.push({
+                    id: bookId, level: 1, source: 'Wizard', type: 'spell',
+                    label: 'Wizard Spellbook', value: currentBook,
+                    options: wizardSpells, count: Math.max(1, 6 + 2 * Number(wizard.level || 1)),
+                    optional: true, revertData: { classIndex: 'wizard', isWizardSpellbook: true },
+                });
+                changed = true;
+            } else if (!Array.isArray(bookChoice.value) || bookChoice.value.length === 0) {
+                const index = next.indexOf(bookChoice);
+                next[index] = { ...bookChoice, value: currentBook };
+                changed = true;
+            }
+            const evoker = String(wizard.subclass?.index || '').toLowerCase().includes('evoc') || /evoc/i.test(String(wizard.subclass?.name || ''));
+            if (evoker && Number(wizard.level) >= 2 && !next.some((choice: any) => choice.id === 'evocation-savant')) {
+                const evocationSpells = wizardSpells.filter((spell: any) => /evocation/i.test(String(spell.school?.name || spell.school || '')));
+                next.push({
+                    id: 'evocation-savant', level: 2, source: 'Evoker', type: 'spell',
+                    label: 'Evocation Savant', value: [],
+                    options: evocationSpells, count: 2, optional: true,
+                    revertData: { classIndex: 'wizard', isEvocationSavant: true },
+                });
+                changed = true;
+            }
+            return changed ? next : prev;
+        });
+    }, [isOpen, allSpellCatalog, localClasses, localSpells, character.spellbook]);
+
     // Initialization
     useEffect(() => {
         if (isOpen) {
@@ -292,6 +335,7 @@ const ManageCharacterModal = ({
             setLocalFeats(character.feats || []);
             setLocalSpells(character.spells || []);
             setInvocationCantrips(character.invocationCantrips || {});
+            setSpellbook(character.spellbook || []);
             setLocalClasses(character.classes || []);
             setLocalClassFeatures((character.classFeatures || []).map((feature: any) => {
                 if (/^metamagic (?:options|calibration):/i.test(String(feature.name || ''))) {
@@ -1000,6 +1044,7 @@ const ManageCharacterModal = ({
         }),
         spells: overrides.spells || localSpells,
         invocationCantrips,
+        spellbook,
         classes: overrides.classes || localClasses,
         classFeatures: overrides.classFeatures || localClassFeatures,
         maxHp: overrides.maxHp || calculateMaxHp(projected),
@@ -1178,6 +1223,24 @@ const ManageCharacterModal = ({
         hasUserEditsRef.current = true;
         const choice = localChoices.find(c => c.id === choiceId);
         if (!choice) return;
+
+        if (choice.revertData?.isWizardSpellbook) {
+            const selected = Array.isArray(choice.value) ? choice.value : [];
+            setSpellbook(selected.map((value: any) => typeof value === 'string' ? value : value.index || value.name));
+            setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: selected, revertData: { ...c.revertData, pendingConfirm: false } } : c));
+            return;
+        }
+
+        if (choice.revertData?.isEvocationSavant) {
+            const selected = Array.isArray(choice.value) ? choice.value : [];
+            setSpellbook(prev => Array.from(new Set([...prev, ...selected.map((value: any) => typeof value === 'string' ? value : value.index || value.name)])));
+            setLocalClassFeatures(prev => [...prev.filter((feature: any) => feature.name !== 'Evocation Savant'), {
+                index: 'evocation-savant', name: 'Evocation Savant', level: 2, source: 'Evoker', type: 'Class',
+                desc: ['You can add two Wizard Evocation spells to your spellbook without copying them.'], effects: [], revertData: { choiceId },
+            }]);
+            setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: selected, revertData: { ...c.revertData, pendingConfirm: false } } : c));
+            return;
+        }
 
         if (choice.revertData?.invocationCantrip) {
             const invocationName = String(choice.revertData.invocationName || '');
@@ -1650,6 +1713,16 @@ const ManageCharacterModal = ({
         if (!choice) return;
         if (choice.revertData?.invocationCantrip) {
             setLocalChoices(prev => prev.map(c => c.id === choiceId ? { ...c, value: newValue, revertData: { ...c.revertData, pendingConfirm: true } } : c));
+            return;
+        }
+        if (choice.revertData?.isWizardSpellbook || choice.revertData?.isEvocationSavant) {
+            setLocalChoices(prev => prev.map(c => {
+                if (c.id !== choiceId) return c;
+                const current = Array.isArray(c.value) ? c.value : [];
+                const max = c.count || 1;
+                const next = current.includes(newValue) ? current.filter((entry: any) => entry !== newValue) : (current.length < max ? [...current, newValue] : current);
+                return { ...c, value: next, revertData: { ...c.revertData, pendingConfirm: true } };
+            }));
             return;
         }
         setLocalChoices(prev => prev.map(c => c.id === choiceId ? { ...c, revertData: { ...c.revertData, pendingConfirm: true } } : c));
@@ -3575,6 +3648,13 @@ const ManageCharacterModal = ({
                                                                             options = options.filter((option: any) => {
                                                                                 const value = typeof option === 'string' ? option : (option.name || option.index || '');
                                                                                 return selectedValues.includes(value) || !expertise.some((known: string) => String(known).toLowerCase() === String(value).toLowerCase());
+                                                                            });
+                                                                        }
+                                                                        if (/scholar/i.test(choice.label || '')) {
+                                                                            const scholarSkills = ['Arcana', 'History', 'Investigation', 'Medicine', 'Nature', 'Religion'];
+                                                                            options = options.filter((option: any) => {
+                                                                                const value = String(typeof option === 'string' ? option : (option.name || option.index || ''));
+                                                                                return selectedValues.includes(value) || (scholarSkills.includes(value) && skills.includes(value));
                                                                             });
                                                                         }
                                                                         if (/musician/i.test(choice.label || '') && options.some((option: any) => /^(bagpipes|drum|dulcimer|flute|horn|lute|lyre|pan flute|shawm|viol)$/i.test(String(typeof option === 'string' ? option : option.name || '')))) {

@@ -3648,6 +3648,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 if (affinityType && spellDamageType === affinityType) {
                     spellFlatBonus += chaMod;
                 }
+                const hasEmpoweredEvocation = (character.classFeatures || []).some((feature: any) => /empowered evocation/i.test(feature.name || ''));
+                const spellSchool = String((spell as any).school?.name || (spell as any).school || '').toLowerCase();
+                if (hasEmpoweredEvocation && spellSchool === 'evocation') {
+                    spellFlatBonus += intMod;
+                }
 
                 const dc = (spell as any).dc?.dc_type?.name?.substring(0, 3).toUpperCase();
                 const spellAbility = (spell as any).spellcastingAbility as AbilityName | undefined;

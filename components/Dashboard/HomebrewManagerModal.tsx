@@ -1529,7 +1529,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
             let payload: any = {
                 name,
                 index: editingIndex || name.toLowerCase().replace(/\s+/g, '-'),
-                desc: [description],
+                desc: description.split(/\n{2,}/).map((part: string) => part.trim()).filter(Boolean),
                 is_public: isSharedGlobally,
                 is_homebrew: editingIsHomebrew
             };
@@ -1618,7 +1618,7 @@ const HomebrewManagerModal: React.FC<HomebrewManagerModalProps> = ({ isOpen, onC
                     ...previousDamage,
                     damage_type: spellDmgType ? { name: spellDmgType, index: spellDmgType.toLowerCase() } : previousDamage.damage_type,
                     [damageKey]: damageTable,
-                } : (Object.keys(previousDamage).length > 0 ? previousDamage : undefined);
+                } : undefined;
                 const scalingConfig = spellLevel > 0 && (spellAdvancedScaling || spellScaling.trim() || Number(spellUpcastTargets) > 0) ? {
                     mode: spellAdvancedScaling && spellScalingMode === 'table' ? 'table' : 'linear',
                     per_slot: spellAdvancedScaling && spellScalingMode === 'table' ? undefined : (spellScaling.trim() || undefined),
