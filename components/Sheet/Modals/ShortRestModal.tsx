@@ -137,6 +137,13 @@ const ShortRestModal = ({
                 }
             }
         }
+        const artificerLevel = Number((character.classes || []).find((cls: any) => cls.definition?.index === 'artificer')?.level || 0);
+        if (artificerLevel >= 14 && newFeatures['Flash of Genius']) {
+            newFeatures['Flash of Genius'] = {
+                ...newFeatures['Flash of Genius'],
+                current: Math.min(Number(newFeatures['Flash of Genius'].max || 0), Number(newFeatures['Flash of Genius'].current || 0) + 1),
+            };
+        }
         const newFreeCastUsage = { ...(character.freeCastUsage || {}) };
         Object.keys(newFreeCastUsage).forEach(index => {
             if (shortRestSpells.has(index)) delete newFreeCastUsage[index];

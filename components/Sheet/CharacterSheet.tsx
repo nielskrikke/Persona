@@ -865,6 +865,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         }
     });
 
+    const artificerLevel = Number((character.classes || []).find((cls: any) => cls.definition?.index === 'artificer')?.level || 0);
+    const maxAttunements = artificerLevel >= 14 ? 5 : artificerLevel >= 10 ? 4 : 3;
     const innateSorceryActive = character.activeConditions?.['innate-sorcery'] === true;
     const spellAttack = prof + spellMod + extraSpellAttack;
     const spellAttackStr = formatModifier(spellAttack);
@@ -1871,7 +1873,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const item = prev.inventory.find(i => i.id === id);
             if (!item) return prev;
             if (item.attuned && (item as any).cursed) { alert(`${item.name} is cursed; you cannot end attunement.`); return prev; }
-            if (!item.attuned && prev.inventory.filter(i => i.attuned).length >= 3) { alert("Maximum attunement slots (3) reached."); return prev; }
+            if (!item.attuned && prev.inventory.filter(i => i.attuned).length >= maxAttunements) { alert(`Maximum attunement slots (${maxAttunements}) reached.`); return prev; }
             const allowedClasses = (item as any).attunement_classes || [];
             if (!item.attuned && allowedClasses.length > 0) {
                 const classNames = character.classes.map(entry => entry.definition.name.toLowerCase());
@@ -3357,7 +3359,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
             // Special Attack Modifiers
             const isMagic = Boolean((item as any).is_magic || item.requires_attunement || (item.modifiers && item.modifiers.length > 0) || item.isInfusion);
-            const canUseInt = item.isBattleReady && isMagic;
+            const hasBattleReady = (character.classFeatures || []).some((feature: any) => /battle ready/i.test(feature.name || ''));
+            const canUseInt = (item.isBattleReady || hasBattleReady) && isMagic;
             const canUseCha = item.isHexWeapon || item.isPactWeapon;
             const canUseWis = item.isShillelagh;
 
@@ -3442,7 +3445,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             if (item.isKenseiWeapon) notes.push('Kensei Weapon');
             if (item.isHexWeapon) notes.push('Hex Weapon');
             if (item.isShillelagh) notes.push('Shillelagh');
-            if (item.isBattleReady) notes.push('Battle Ready');
+            if (item.isBattleReady || (hasBattleReady && isMagic)) notes.push('Battle Ready');
             if (item.isInfusion) notes.push('Infusion');
             if (hasTWF) notes.push('Two-Weapon Fighting');
             if (isThrown && !notes.includes('Thrown')) notes.push('Thrown');
@@ -4308,7 +4311,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         });
 
          const metamagicNames = /^(careful|distant|empowered|extended|heightened|quickened|seeking|subtle|transmuted|twinned) spell$/i;
-         const filtered = list.filter((item: any) => item.source?.type !== 'Metamagic' && !metamagicNames.test(String(item.name || '')) && !/^metamagic (?:options|calibration):/i.test(String(item.name || '')) && !/^eldritch invocations:/i.test(String(item.name || '')) && !/channel divinity|abjure foes|devious strikes|dragon wings|^(font of magic|sorcery incarnate)$/i.test(String(item.name || '')));
+         const filtered = list.filter((item: any) => item.source?.type !== 'Metamagic' && !metamagicNames.test(String(item.name || '')) && !/^metamagic (?:options|calibration):/i.test(String(item.name || '')) && !/^eldritch invocations:/i.test(String(item.name || '')) && !/channel divinity|abjure foes|devious strikes|dragon wings|^(font of magic|sorcery incarnate|magic item tinker|steel defender)$/i.test(String(item.name || '')));
          return character.activeWildShape
              ? filtered.filter((item: any) => !item.source?.weapon_category && (!item.source?.school || canCastSpellInWildShape(character, item.source)))
              : filtered;
@@ -5002,7 +5005,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             </ErrorBoundary>
                         )}
                         {activeTab === 'spells' && <SpellsTab character={character} setCharacter={setCharacter} roll={roll} triggerRollMenu={triggerRollMenu} setSelectedDetail={setSelectedDetail} spellSave={spellSave} spellAttackStr={spellAttackStr} spellMod={spellMod} setShowSpellManager={setShowSpellManager} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} onPolymorphCast={() => { setCreatureModalMode('polymorph'); setShowCreatureModal(true); }} />}
-                        {activeTab === 'inventory' && <InventoryTab character={character} currentWeight={currentWeight} maxWeight={maxWeight} encumbranceEnabled={character.encumbranceEnabled !== false} updateQuantity={updateQuantity} toggleAttunement={toggleAttunement} setSelectedDetail={setSelectedDetail} setShowItemSearchModal={(val, mode) => { setItemSearchMode(mode || 'search'); setShowItemSearchModal(val); }} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} setCharacter={setCharacter} />}
+                        {activeTab === 'inventory' && <InventoryTab character={character} currentWeight={currentWeight} maxWeight={maxWeight} maxAttunements={maxAttunements} encumbranceEnabled={character.encumbranceEnabled !== false} updateQuantity={updateQuantity} toggleAttunement={toggleAttunement} setSelectedDetail={setSelectedDetail} setShowItemSearchModal={(val, mode) => { setItemSearchMode(mode || 'search'); setShowItemSearchModal(val); }} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} setCharacter={setCharacter} />}
                         {activeTab === 'features' && <FeaturesTab character={character} setCharacter={setCharacter} getAllFeatures={getAllFeaturesSorted} setSelectedDetail={setSelectedDetail} onTabChange={setActiveTab} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} setShowCardOptionsModal={setShowCardOptionsModal} onShowFullScreen={() => setShowFullScreenFeatures(true)} />}
                         {activeTab === 'rules' && <RulesTab visibleRules={visibleRules} setSelectedDetail={setSelectedDetail} />}
                         {activeTab === 'log' && <LogTab character={character} setCharacter={setCharacter} onOpenVault={onOpenVault} setShowLayoutManager={setShowLayoutManager} handleRest={handleRest} />}

@@ -9,6 +9,7 @@ interface InventoryTabProps {
     character: CharacterState;
     currentWeight: number;
     maxWeight: number;
+    maxAttunements?: number;
     encumbranceEnabled?: boolean;
     updateQuantity: (id: string, newQty: number) => void;
     toggleAttunement: (id: string) => void;
@@ -19,7 +20,7 @@ interface InventoryTabProps {
 }
 
 const InventoryTab: React.FC<InventoryTabProps> = ({ 
-    character, currentWeight, maxWeight, encumbranceEnabled = true, updateQuantity, toggleAttunement, setSelectedDetail, setShowItemSearchModal, setShowHomebrewModal, setCharacter 
+    character, currentWeight, maxWeight, maxAttunements = 3, encumbranceEnabled = true, updateQuantity, toggleAttunement, setSelectedDetail, setShowItemSearchModal, setShowHomebrewModal, setCharacter 
 }) => {
     const [inventorySearch, setInventorySearch] = useState('');
     const [inventoryMode, setInventoryMode] = useState<'personal' | 'party'>('personal');
@@ -345,7 +346,7 @@ const InventoryTab: React.FC<InventoryTabProps> = ({
                 <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center w-full md:w-auto">
                     {inventoryMode === 'personal' && (
                         <div className="flex items-center justify-between sm:justify-start gap-1.5 text-[9px] font-semibold uppercase tracking-wide text-gray-600 bg-black/20 px-2.5 py-1 rounded border border-gray-800/80">
-                            <span className="text-gray-500">{character.inventory.filter(i => i.attuned).length} / 3</span>
+                            <span className="text-gray-500">{character.inventory.filter(i => i.attuned).length} / {maxAttunements}</span>
                             <span>attuned</span>
                         </div>
                     )}

@@ -511,7 +511,11 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
     const allSpells = await fetchAllSpells();
     if (!allSpells?.length) return character;
 
-    const grants: { effect: any; source: string; defaultMinLevel: number; item?: any; itemResourceName?: string; storage?: any }[] = [];
+    const grants: { effect: any; source: string; defaultMinLevel: number; levelCap?: number; item?: any; itemResourceName?: string; storage?: any }[] = [];
+    const levelCapForSource = (source: string) => {
+        const owner = (character.classes || []).find((cls: any) => cls.definition?.name === source || cls.definition?.index === source || cls.subclass?.name === source);
+        return owner ? Number(owner.level || 0) : Number(character.level || 0);
+    };
     const collect = (effects: any[], source: string, defaultMinLevel: number = 0, abilityOverride?: string) => {
         (effects || []).forEach(effect => {
             if (effect?.type !== 'spell_access' || !effect.spell) return;
@@ -526,6 +530,7 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
                 },
                 source,
                 defaultMinLevel,
+                levelCap: levelCapForSource(source),
             });
         });
     };
@@ -621,9 +626,9 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
     });
 
     const grantedByIndex = new Map<string, any>();
-    grants.forEach(({ effect, source, defaultMinLevel, item: grantItem, itemResourceName: grantResourceName, storage }) => {
+    grants.forEach(({ effect, source, defaultMinLevel, levelCap, item: grantItem, itemResourceName: grantResourceName, storage }) => {
         const minLevel = Number(effect.min_level || defaultMinLevel || 0);
-        if (minLevel > character.level) return;
+        if (minLevel > (levelCap ?? character.level)) return;
         const spell = allSpells.find(candidate =>
             candidate.index === effect.spell
             || candidate.name.toLowerCase() === String(effect.spell).toLowerCase()
@@ -860,6 +865,35 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         return next;
     });
 
+    // Drop stale class/subclass feature snapshots whose live definition no
+    // longer contains them. Choice-generated features are preserved.
+    {
+        const liveFeatureNames = new Set<string>();
+        const liveSources = new Set<string>();
+        (classes || []).forEach((cls: any) => {
+            liveSources.add(cls.definition?.name);
+            if (cls.subclass?.name) liveSources.add(cls.subclass.name);
+            (cls.definition?.feature_details || []).forEach((feature: any) => liveFeatureNames.add(String(feature.name || '')));
+            (cls.subclass?.feature_details || []).forEach((feature: any) => liveFeatureNames.add(String(feature.name || '')));
+        });
+        const staleNames = new Set<string>();
+        classFeatures = classFeatures.filter((feature: any) => {
+            if (feature.revertData?.choiceId || feature.revertData?.parentChoiceId) return true;
+            if (feature.source && liveSources.has(feature.source) && !liveFeatureNames.has(String(feature.name || ''))) {
+                staleNames.add(String(feature.name || ''));
+                return false;
+            }
+            return true;
+        });
+        if (staleNames.size > 0) {
+            // Stale feature usage is cleared later by the sheet sync; remove it
+            // here so old trackers don't survive a reload.
+            Object.keys(character.featureUsage || {}).forEach(key => {
+                if (staleNames.has(key)) delete (character.featureUsage as any)[key];
+            });
+        }
+    }
+
     // Re-resolve the race/subrace so ancestry choices and resources come from
     // the live content library, not a stale character snapshot.
     let race = character.race;
@@ -1057,6 +1091,15 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
             const detail = inventoryCatalog.find(entry => /thieves' tools/i.test(String(entry.name || '')));
             inventory.push({ ...(detail || {}), id: 'rogue-thieves-tools', name: detail?.name || "Thieves' Tools", quantity: 1, equipped: false, attuned: false });
         }
+    }
+    if ((character.classes || []).some((cls: any) => cls.definition?.index === 'artificer')) {
+        const addIfMissing = (name: string, index: string, fallbackName: string) => {
+            if (inventory.some((item: any) => String(item.name || '').toLowerCase() === name.toLowerCase())) return;
+            const detail = inventoryCatalog.find(entry => String(entry.index) === index);
+            inventory.push({ ...(detail || {}), id: `artificer-${index}`, name: detail?.name || fallbackName, quantity: 1, equipped: false, attuned: false });
+        };
+        addIfMissing("Tinker's Tools", 'tinkers-tools', "Tinker's Tools");
+        addIfMissing('Dagger', 'dagger', 'Dagger');
     }
     if ((character.classes || []).some((cls: any) => cls.definition?.index === 'wizard')
         && !inventory.some((item: any) => /^spellbook$/i.test(String(item.name || '')))) {

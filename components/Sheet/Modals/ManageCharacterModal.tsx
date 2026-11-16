@@ -856,9 +856,31 @@ const ManageCharacterModal = ({
         );
         setLocalClasses(updatedClasses);
 
-        // Update Local Features: Remove old subclass features, add new ones up to current level
+        // Update Local Features: remove every feature belonging to any
+        // previous subclass of this class, not only the currently stored one.
         const oldSubclassName = clsDef.subclass?.name;
-        let updatedFeatures = localClassFeatures.filter(f => f.source !== oldSubclassName);
+        const allSubclassNames = new Set([
+            ...((classSubclassOptions[classIndex] || []).map((sub: any) => sub.name)),
+            ...(oldSubclassName ? [oldSubclassName] : []),
+            ...(newSubclass.name ? [newSubclass.name] : []),
+        ]);
+        const removedFeatures = localClassFeatures.filter((f: any) => allSubclassNames.has(f.source) && f.source !== newSubclass.name);
+        const removedFeatureNames = new Set(removedFeatures.map((f: any) => String(f.name || '')));
+        const removedTools = new Set(removedFeatures.flatMap((f: any) => (f.effects || []).filter((effect: any) => effect.type === 'proficiency' && effect.category === 'tool').map((effect: any) => String(effect.target || effect.value || ''))));
+        let updatedFeatures = localClassFeatures.filter((f: any) => !allSubclassNames.has(f.source));
+
+        if (removedFeatures.length > 0) {
+            setLocalFeatures(prev => {
+                const next = { ...prev };
+                Object.keys(next).forEach(key => {
+                    if (removedFeatureNames.has(key) || removedFeatureNames.has(key.replace(/\s*\(.*$/, ''))) delete next[key];
+                });
+                return next;
+            });
+            setLocalSpells(prev => prev.filter((spell: any) => !(spell.isGranted && allSubclassNames.has(String(spell.grantedBy || '')) && String(spell.grantedBy || '') !== String(newSubclass.name))));
+            setLocalChoices(prev => prev.filter((choice: any) => choice.type === 'subclass' || (!allSubclassNames.has(String(choice.source || '')) && !removedFeatureNames.has(String(choice.label || '')))));
+            if (removedTools.size > 0) setToolProficiencies(prev => prev.filter((tool: string) => !removedTools.has(tool)));
+        }
         
         const subLevels = await fetchSubclassLevels(subclassIndex);
         const newFeats = subLevels
@@ -877,6 +899,11 @@ const ManageCharacterModal = ({
         });
 
         setLocalClassFeatures(updatedFeatures);
+        const newSubclassTools = Array.from(new Set(newFeats.flatMap((feature: any) => (feature.effects || [])
+            .filter((effect: any) => effect.type === 'proficiency' && effect.category === 'tool')
+            .map((effect: any) => String(effect.target || effect.value || ''))
+            .filter(Boolean))));
+        if (newSubclassTools.length > 0) setToolProficiencies(prev => Array.from(new Set([...prev, ...newSubclassTools])));
 
         // Subclass features that declare choices (Battle Master maneuvers,
         // Deft Explorer expertise, Student of War, etc.) need choice cards.
@@ -3757,6 +3784,13 @@ const ManageCharacterModal = ({
                                                                             options = options.filter((option: any) => {
                                                                                 const value = typeof option === 'string' ? option : (option.name || option.index || '');
                                                                                 return selectedValues.includes(value) || !toolProficiencies.some((known: string) => String(known).toLowerCase() === String(value).toLowerCase());
+                                                                            });
+                                                                        }
+                                                                        if (/tool/i.test(choice.label || '') && !/Tools of the Trade/i.test(choice.label || '')) {
+                                                                            const knownToolSet = new Set([...toolProficiencies, ...(character.toolProficiencies || [])].map((tool: any) => String(tool).toLowerCase()));
+                                                                            options = options.filter((option: any) => {
+                                                                                const value = String(typeof option === 'string' ? option : (option.name || option.index || ''));
+                                                                                return selectedValues.includes(value) || !knownToolSet.has(value.toLowerCase());
                                                                             });
                                                                         }
                                                                         if (/Book of Shadows rituals/i.test(choice.label || '')) {
