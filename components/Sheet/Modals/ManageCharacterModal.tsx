@@ -1290,6 +1290,28 @@ const ManageCharacterModal = ({
                             : [],
                 } as any);
             });
+            // Repair replicated items created by earlier builds: restore the
+            // weapon/armor shape and keep their local bonuses on the item.
+            existing.forEach((item: any, index: number) => {
+                const planName = String(item.sourcePlan || item.name || '');
+                if (!/weapon|shield|armor/i.test(planName)) return;
+                const plus = Number(planName.match(/\+([123])/)?.[1] || 0);
+                if (/weapon \+[123]/i.test(planName)) {
+                    existing[index] = {
+                        ...item,
+                        weapon_category: item.weapon_category || 'martial',
+                        equipment_category: item.equipment_category || { index: 'weapon', name: 'Weapon' },
+                        range: item.range || 'Melee',
+                        damage: item.damage || { damage_dice: '1d8', damage_type: { name: 'Bludgeoning' } },
+                        properties: item.properties || ['Versatile'],
+                        modifiers: [{ type: 'bonus', target: 'attack', value: plus }, { type: 'bonus', target: 'damage', value: plus }],
+                    } as any;
+                } else if (/shield \+[123]/i.test(planName)) {
+                    existing[index] = { ...item, armor_category: 'shield', armor_class: { base: 2, dex_bonus: false }, modifiers: [{ type: 'bonus', target: 'ac', value: plus }] } as any;
+                } else if (/armor \+[123]/i.test(planName)) {
+                    existing[index] = { ...item, armor_category: 'medium', armor_class: { base: 14, dex_bonus: true, max_bonus: 2 }, modifiers: [{ type: 'bonus', target: 'ac', value: plus }] } as any;
+                }
+            });
             return existing;
         })(),
         spellSlots: mergeSpellSlotCurrents(getSpellSlots(overrides.classes || localClasses), character.spellSlots)
