@@ -929,6 +929,12 @@ const ManageCharacterModal = ({
         );
         setLocalClasses(updatedClasses);
 
+        const previousReplacement = localChoices.find((choice: any) => choice.revertData?.isToolsOfTradeReplacement);
+        if (typeof previousReplacement?.value === 'string' && previousReplacement.value) {
+            setToolProficiencies(prev => prev.filter((tool: string) => tool !== previousReplacement.value));
+        }
+        setLocalChoices(prev => prev.filter((choice: any) => !choice.revertData?.isToolsOfTradeReplacement));
+
         // Update Local Features: remove every feature belonging to any
         // previous subclass of this class, not only the currently stored one.
         const oldSubclassName = clsDef.subclass?.name;
@@ -1179,7 +1185,6 @@ const ManageCharacterModal = ({
         expertise: overrides.expertise || expertise,
         toolProficiencies: overrides.toolProficiencies || Array.from(derivedTools),
         savingThrowProficiencies: overrides.savingThrowProficiencies || savingThrowProficiencies,
-        featureUsage: overrides.featureUsage || localFeatures,
         fontScale,
         backgroundImageUrl,
         backgroundColor,
@@ -1202,7 +1207,29 @@ const ManageCharacterModal = ({
         replicatedItems: chosenItems,
         spellStoringItem: (() => {
             const choice = localChoices.find((entry: any) => entry.revertData?.isSpellStoringItem);
-            return typeof choice?.value === 'string' && choice.value ? { spell: choice.value } : (spellStoringItem ? { spell: spellStoringItem } : undefined);
+            const raw = typeof choice?.value === 'string' && choice.value ? choice.value : spellStoringItem;
+            if (!raw) return undefined;
+            const found = allSpellCatalog.find((spell: any) => spell.index === raw || spell.name.toLowerCase() === String(raw).toLowerCase());
+            return { spell: found?.name || raw };
+        })(),
+        featureUsage: (() => {
+            const base = { ...(overrides.featureUsage || localFeatures) };
+            const choice = localChoices.find((entry: any) => entry.revertData?.isSpellStoringItem);
+            const raw = typeof choice?.value === 'string' && choice.value ? choice.value : spellStoringItem;
+            if (raw) {
+                const found = allSpellCatalog.find((spell: any) => spell.index === raw || spell.name.toLowerCase() === String(raw).toLowerCase());
+                const name = found?.name || raw;
+                const key = `Spell-Storing Item (${name})`;
+                const existingKey = Object.keys(base).find(existing => /^Spell-Storing Item/i.test(existing));
+                if (existingKey !== key) {
+                    Object.keys(base).forEach(existing => { if (/^Spell-Storing Item/i.test(existing)) delete base[existing]; });
+                }
+                if (!base[key]) {
+                    const max = Math.max(1, 2 * calculateModifier(abilities.int));
+                    base[key] = { max, current: max, reset: 'long', source: 'Artificer' };
+                }
+            }
+            return base;
         })(),
         mapHolders: character.mapHolders,
         experimentalElixir: character.experimentalElixir,
@@ -1230,26 +1257,37 @@ const ManageCharacterModal = ({
                 const plan = planObjects.find((entry: any) => String(entry?.name || entry) === name);
                 const armoryName = String(name).replace(/^(Weapon|Shield|Armor)\s+\+([123])$/i, '$1, +$2');
                 const plus = Number(name.match(/\+([123])/)?.[1] || 0);
+                const isWeaponPlan = /weapon \+[123]/i.test(name);
+                const isShieldPlan = /shield \+[123]/i.test(name);
+                const isArmorPlan = /armor \+[123]/i.test(name);
+                const modifiers: any[] = isWeaponPlan
+                    ? [{ type: 'bonus', target: 'attack', value: plus }, { type: 'bonus', target: 'damage', value: plus }]
+                    : /wand of the war mage \+[123]/i.test(name)
+                        ? [{ type: 'bonus', target: 'spell_attack', value: plus }]
+                        : /cloak of elvenkind|boots of elvenkind/i.test(name)
+                            ? [{ type: 'advantage', target: 'stealth', value: 1, name }]
+                            : isShieldPlan || isArmorPlan
+                                ? [{ type: 'bonus', target: 'ac', value: plus }]
+                                : [];
                 existing.push({
                     id: `replicated-${String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
-                    name: armoryName, sourcePlan: name, quantity: 1, weight: 0, equipped: false, attuned: false,
+                    name: armoryName, sourcePlan: name, quantity: 1, weight: isWeaponPlan ? 3 : 0, equipped: false, attuned: false,
                     is_magic: true,
                     requires_attunement: plan?.attunement === true || plan?.attunement === 'varies',
-                    rarity: plan?.rarity,
-                    maxCharges: 10,
-                    modifiers: /weapon \+[123]/i.test(name)
-                        ? [{ type: 'bonus', target: 'attack', value: plus }, { type: 'bonus', target: 'damage', value: plus }]
-                        : /wand of the war mage \+[123]/i.test(name)
-                            ? [{ type: 'bonus', target: 'spell_attack', value: plus }]
-                            : /cloak of elvenkind|boots of elvenkind/i.test(name)
-                                ? [{ type: 'advantage', target: 'stealth', value: 1, name }]
-                                : [],
+                    rarity: plan?.rarity || (/goggles of night|bag of holding|rope of climbing|sending stones|wand of magic detection|wand of secrets|alchemy jug|cap of water breathing|manifold tool/i.test(name) ? 'Common' : undefined),
+                    equipment_category: isWeaponPlan ? { index: 'weapon', name: 'Weapon' } : undefined,
+                    weapon_category: isWeaponPlan ? 'martial' : undefined,
+                    range: isWeaponPlan ? 'Melee' : undefined,
+                    damage: isWeaponPlan ? { damage_dice: '1d8', damage_type: { name: 'Bludgeoning' } } : undefined,
+                    properties: isWeaponPlan ? ['Versatile'] : undefined,
+                    armor_category: isShieldPlan ? 'shield' : isArmorPlan ? 'medium' : undefined,
+                    armor_class: isShieldPlan ? { base: 2, dex_bonus: false } : isArmorPlan ? { base: 14, dex_bonus: true, max_bonus: 2 } : undefined,
+                    modifiers,
                     effects: /goggles of night/i.test(name)
                         ? [{ name: 'Darkvision', type: 'sense', sense: 'darkvision', value: 60 }]
                         : /sending stones/i.test(name)
                             ? [{ name: 'Sending', type: 'action', description: 'Cast Sending once per day.' }]
                             : [],
-                    ac_bonus: /(armor|shield) \+[123]/i.test(name) ? plus : undefined,
                 } as any);
             });
             return existing;
@@ -1428,6 +1466,33 @@ const ManageCharacterModal = ({
         hasUserEditsRef.current = true;
         const choice = localChoices.find(c => c.id === choiceId);
         if (!choice) return;
+
+        if (choice.revertData?.isReplicatePlans) {
+            setReplicatePlans([]);
+            setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: null, revertData: { ...c.revertData, pendingConfirm: true } } : c));
+            return;
+        }
+        if (choice.revertData?.isReplicatedItems) {
+            setReplicatedItems([]);
+            setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: null, revertData: { ...c.revertData, pendingConfirm: true } } : c));
+            return;
+        }
+        if (choice.revertData?.isSpellStoringItem) {
+            setSpellStoringItem('');
+            setLocalFeatures(prev => {
+                const next = { ...prev };
+                Object.keys(next).forEach(key => { if (/^Spell-Storing Item/i.test(key)) delete next[key]; });
+                return next;
+            });
+            setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: null, revertData: { ...c.revertData, pendingConfirm: true } } : c));
+            return;
+        }
+        if (choice.revertData?.isToolsOfTradeReplacement) {
+            const selected = typeof choice.value === 'string' ? choice.value : '';
+            if (selected) setToolProficiencies(prev => prev.filter((tool: string) => tool !== selected));
+            setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: null, revertData: { ...c.revertData, pendingConfirm: true } } : c));
+            return;
+        }
 
         if (choice.revertData?.isEvocationSavant) {
             const selected = Array.isArray(choice.value) ? choice.value : [];
@@ -1976,6 +2041,17 @@ const ManageCharacterModal = ({
             }));
             return;
         }
+        if (choice.revertData?.isReplicatePlans || choice.revertData?.isReplicatedItems || choice.revertData?.isSpellStoringItem) {
+            const current = Array.isArray(choice.value) ? choice.value : [];
+            const max = choice.count || 1;
+            const next = choice.revertData?.isSpellStoringItem ? newValue : (current.includes(newValue) ? current.filter((entry: any) => entry !== newValue) : (current.length < max ? [...current, newValue] : current));
+            if (choice.revertData?.isReplicatePlans) setReplicatePlans(next);
+            if (choice.revertData?.isReplicatedItems) setReplicatedItems(next);
+            if (choice.revertData?.isSpellStoringItem) setSpellStoringItem(String(newValue));
+            setLocalChoices(prev => prev.map(c => c.id === choiceId ? { ...c, value: next, revertData: { ...c.revertData, pendingConfirm: true } } : c));
+            return;
+        }
+
         setLocalChoices(prev => prev.map(c => c.id === choiceId ? { ...c, revertData: { ...c.revertData, pendingConfirm: true } } : c));
 
         if (choice.revertData?.isClassChoice) {

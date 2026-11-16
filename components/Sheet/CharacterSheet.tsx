@@ -1760,14 +1760,17 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         if (artificerLevel >= 6) widgets.push('magicItemTinker');
         if (/cartographer/i.test(String(character.classes?.[0]?.subclass?.name || ''))) widgets.push('mapHolders');
         if (/alchemist/i.test(String(character.classes?.[0]?.subclass?.name || ''))) widgets.push('experimentalElixir');
+        const managed = ['steelDefender', 'eldritchCannon', 'magicItemTinker', 'mapHolders', 'experimentalElixir'];
         const missing = widgets.filter(widget => !(character.layout.right || []).includes(widget) && !(character.layout.left || []).includes(widget) && !(character.layout.mobile || []).includes(widget));
-        if (missing.length === 0) return;
+        const stale = managed.filter(widget => !widgets.includes(widget) && ((character.layout.right || []).includes(widget) || (character.layout.left || []).includes(widget) || (character.layout.mobile || []).includes(widget)));
+        if (missing.length === 0 && stale.length === 0) return;
         setCharacter(prev => ({
             ...prev,
             layout: {
                 ...prev.layout,
-                right: [...missing, ...(prev.layout.right || []).filter(id => !missing.includes(id))],
-                mobile: [...missing, ...(prev.layout.mobile || []).filter(id => !missing.includes(id))],
+                left: (prev.layout.left || []).filter(id => !stale.includes(id)),
+                right: [...missing, ...(prev.layout.right || []).filter(id => !missing.includes(id) && !stale.includes(id))],
+                mobile: [...missing, ...(prev.layout.mobile || []).filter(id => !missing.includes(id) && !stale.includes(id))],
             },
         }));
     }, [character.classes, character.classFeatures?.map((feature: any) => feature.name).join('|'), character.level, character.armorModel, character.replicatedItems, character.choices.length]);
@@ -2026,6 +2029,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         <div className="mt-3 text-center">
                             <div className="text-[9px] uppercase text-gray-500 font-bold">Current Elixir</div>
                             <div className="text-sm font-bold text-white">{character.experimentalElixir || '—'}</div>
+                            <div className="text-[9px] text-gray-500 mt-1">{character.experimentalElixir === 'Healing' ? 'Restore 2d4 + INT HP.' : character.experimentalElixir === 'Swiftness' ? '+10 ft. walking speed for 1 hour.' : character.experimentalElixir === 'Resilience' ? '+1 AC for 1 hour.' : character.experimentalElixir === 'Boldness' ? 'Add 1d4 to attack rolls and saving throws for 1 hour.' : character.experimentalElixir === 'Flight' ? 'Fly speed 10 ft. for 1 hour.' : character.experimentalElixir === 'Transformation' ? 'Alter your appearance for 1 hour.' : ''}</div>
                         </div>
                         <div className="text-[8px] text-gray-600 mt-2">1 Healing · 2 Swiftness · 3 Resilience · 4 Boldness · 5 Flight · 6 Transformation</div>
                     </div>
@@ -2036,13 +2040,15 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const drainKey = Object.keys(character.featureUsage || {}).find(key => /drain magic item/i.test(key));
                 const drain = drainKey ? character.featureUsage[drainKey] : null;
                 const replicated = character.replicatedItems || [];
+                const selectedRarity = String((character.inventory || []).find((item: any) => String((item as any).sourcePlan || item.name).toLowerCase() === tinkerItem.toLowerCase())?.rarity || '');
+                const isCommonItem = /common/i.test(selectedRarity) || /common/i.test(tinkerItem);
                 const selectedItem = (character.inventory || []).find((item: any) => String((item as any).sourcePlan || item.name).toLowerCase() === tinkerItem.toLowerCase());
                 const spendSlot = () => {
                     if (!tinkerItem || !character.spellSlots?.[tinkerSlot] || character.spellSlots[tinkerSlot].current <= 0) return;
                     setCharacter(prev => ({
                         ...prev,
                         spellSlots: { ...prev.spellSlots, [tinkerSlot]: { ...prev.spellSlots[tinkerSlot], current: Math.max(0, prev.spellSlots[tinkerSlot].current - 1) } },
-                        inventory: (prev.inventory || []).map((item: any) => String((item as any).sourcePlan || item.name).toLowerCase() === tinkerItem.toLowerCase() ? { ...item, charges: Math.min(Number(item.maxCharges || 10), Number(item.charges || 0) + tinkerSlot) } : item),
+                        inventory: (prev.inventory || []).map((item: any) => String((item as any).sourcePlan || item.name).toLowerCase() === tinkerItem.toLowerCase() ? { ...item, charges: item.maxCharges ? Math.min(Number(item.maxCharges), Number(item.charges || 0) + tinkerSlot) : Number(item.charges || 0) + tinkerSlot } : item),
                     }));
                 };
                 const drainFor = (level: number) => {
@@ -2054,6 +2060,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         featureUsage: drainKey ? { ...prev.featureUsage, [drainKey]: { ...prev.featureUsage[drainKey], current: Math.max(0, Number(prev.featureUsage[drainKey].current) - 1) } } : prev.featureUsage,
                         spellSlots: { ...prev.spellSlots, [level]: { ...prev.spellSlots[level], current: Number(prev.spellSlots[level].current) + 1 } },
                         replicatedItems: (prev.replicatedItems || []).filter(name => name !== tinkerItem),
+                        choices: (prev.choices || []).map((choice: any) => choice.revertData?.isReplicatedItems && Array.isArray(choice.value) ? { ...choice, value: choice.value.filter((name: string) => name !== tinkerItem) } : choice),
                         inventory: (prev.inventory || []).filter(item => !tinkerItem || String((item as any).sourcePlan || item.name).toLowerCase() !== tinkerItem.toLowerCase()),
                     }));
                 };
@@ -2069,16 +2076,16 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         </select>
                         <div className="flex items-center gap-2">
                             <span className="text-[9px] text-gray-500 uppercase font-bold">Slot</span>
-                            {[1,2,3,4,5].map(level => (
+                            {[1,2,3,4].map(level => (
                                 <button key={level} onClick={() => setTinkerSlot(level)} className={`w-6 h-6 rounded text-[9px] font-black ${tinkerSlot === level ? 'bg-dnd-gold text-black' : 'bg-gray-800 text-gray-400'}`}>{level}</button>
                             ))}
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                             <button onClick={spendSlot} className="py-2 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[9px] font-black uppercase hover:border-dnd-gold">Charge (Spend Slot)</button>
-                            <button onClick={() => drainFor(1)} disabled={!drain?.current || !tinkerItem} className="py-2 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[9px] font-black uppercase disabled:opacity-40">Drain → 1st</button>
-                            <button onClick={() => drainFor(2)} disabled={!drain?.current || !tinkerItem} className="col-span-2 py-2 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[9px] font-black uppercase disabled:opacity-40">Drain → 2nd (Uncommon/Rare)</button>
+                            {isCommonItem && <button onClick={() => drainFor(1)} disabled={!drain?.current || !tinkerItem} className="py-2 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[9px] font-black uppercase disabled:opacity-40">Drain → 1st</button>}
+                            <button onClick={() => drainFor(2)} disabled={!drain?.current || !tinkerItem} className={`${isCommonItem ? 'col-span-1' : 'col-span-2'} py-2 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[9px] font-black uppercase disabled:opacity-40`}>Drain → 2nd (Uncommon/Rare)</button>
                         </div>
-                        <div className="text-[9px] text-gray-500">Drain uses: {drain ? `${drain.current} / ${drain.max}` : '0'}{selectedItem ? ` · Charges: ${Number((selectedItem as any).charges || 0)} / ${Number((selectedItem as any).maxCharges || 10)}` : ''}</div>
+                        <div className="text-[9px] text-gray-500">Drain uses: {drain ? `${drain.current} / ${drain.max}` : '0'}{selectedItem ? ((selectedItem as any).maxCharges ? ` · Charges: ${Number((selectedItem as any).charges || 0)} / ${Number((selectedItem as any).maxCharges)}` : ' · No charge track') : ''}</div>
                     </div>
                 );
             }
@@ -2163,6 +2170,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                          <div className="text-orange-400 font-bold text-sm">{defender.hp}/{defender.maxHp}</div>
                                      </div>
                                  </div>
+                                 <div className="grid grid-cols-2 gap-2">
+                                     <button onClick={(e) => { e.stopPropagation(); setCharacter(p => { const d = p.activeSteelDefender; return d ? { ...p, activeSteelDefender: { ...d, hp: Math.max(0, d.hp - 1) } } : p; }); }} className="py-1.5 bg-red-900/20 border border-red-900/50 text-red-400 rounded text-[9px] font-bold uppercase">Damage</button>
+                                     <button onClick={(e) => { e.stopPropagation(); setCharacter(p => { const d = p.activeSteelDefender; return d ? { ...p, activeSteelDefender: { ...d, hp: Math.min(d.maxHp, d.hp + 1) } } : p; }); }} className="py-1.5 bg-green-900/20 border border-green-900/50 text-green-400 rounded text-[9px] font-bold uppercase">Heal</button>
+                                 </div>
                                  <button
                                     onClick={(e) => { e.stopPropagation(); roll(`1d20${formatModifier(spellAttack)}`, 'Steel Defender Rend Attack'); roll(`1d8${formatModifier(2 + intMod)}`, 'Force-Empowered Rend Damage'); }}
                                     className="w-full py-1.5 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[10px] font-bold uppercase hover:bg-gray-700 transition-colors"
@@ -2170,8 +2181,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                      Force-Empowered Rend
                                  </button>
                                  <div className="grid grid-cols-2 gap-2">
-                                     <button onClick={(e) => { e.stopPropagation(); const key = Object.keys(character.featureUsage || {}).find(k => /steel defender: repair/i.test(k)); const usage = key ? character.featureUsage[key] : null; if (usage && usage.current > 0) setCharacter(p => ({ ...p, featureUsage: { ...p.featureUsage, [key!]: { ...usage, current: usage.current - 1 } } })); }} className="py-1.5 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[9px] font-bold uppercase">Repair</button>
-                                     <button onClick={(e) => { e.stopPropagation(); setSelectedDetail({ name: 'Deflect Attack', desc: ['Reaction: impose disadvantage on an attack against another creature within 5 ft.'] } as any); }} className="py-1.5 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[9px] font-bold uppercase">Deflect</button>
+                                     <button onClick={(e) => { e.stopPropagation(); const key = Object.keys(character.featureUsage || {}).find(k => /steel defender: repair/i.test(k)); const usage = key ? character.featureUsage[key] : null; if (usage && usage.current > 0) { setCharacter(p => ({ ...p, featureUsage: { ...p.featureUsage, [key!]: { ...usage, current: usage.current - 1 } } })); roll(`2d8+${prof}`, 'Steel Defender Repair'); } }} className="py-1.5 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[9px] font-bold uppercase">Repair</button>
+                                     <button onClick={(e) => { e.stopPropagation(); setSelectedDetail({ name: 'Deflect Attack', desc: ['Reaction: impose disadvantage on an attack against another creature within 5 ft.'] } as any); roll(`1d4${formatModifier(intMod)}`, 'Deflect Attack'); }} className="py-1.5 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[9px] font-bold uppercase">Deflect</button>
                                  </div>
                              </div>
                          ) : <div className="text-center py-4 text-gray-600 italic text-[10px]">No defender active.</div>}
@@ -2256,7 +2267,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             if(cannon.type === 'Flamethrower') roll('3d8', 'Flamethrower Fire Damage');
-                                            else if(cannon.type === 'Force Ballista') roll(`1d20${spellAttackStr}`, 'Force Ballista Attack');
+                                            else if(cannon.type === 'Force Ballista') { roll(`1d20${spellAttackStr}`, 'Force Ballista Attack'); roll('3d8', 'Force Ballista Damage'); }
                                             else roll('1d8' + formatModifier(spellMod), 'Protector Temp HP Pulse');
                                         }}
                                         className="py-1.5 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[10px] font-bold uppercase hover:border-dnd-gold transition-colors"
@@ -3389,13 +3400,14 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 ? { name: 'Force Demolisher', range: '10 ft.', damage: `1d10 + ${intMod}`, type: 'Force' }
                 : armorModel === 'guardian'
                     ? { name: 'Thunder Pulse', range: '5 ft.', damage: `1d8 + ${intMod}`, type: 'Thunder' }
-                    : { name: 'Lightning Launcher', range: '90 ft.', damage: `1d6 + ${intMod}`, type: 'Lightning' };
+                    : { name: 'Lightning Launcher', range: '90 ft.', damage: `${character.level >= 15 ? '2d6' : '1d6'} + ${intMod}`, type: 'Lightning' };
             attacks.push({
                 id: `armorer-${armorModel}`,
                 name: modelAttack.name,
                 range: modelAttack.range,
                 hit: prof + intMod,
                 damage: modelAttack.damage,
+                attackCount: (character.classFeatures || []).some((feature: any) => /extra attack/i.test(feature.name || '')) ? 2 : 1,
                 type: modelAttack.type,
                 notes: [`Armor Model (${character.armorModel}); uses INT.`],
                 source: { name: 'Armor Model', activationType: 'action', desc: ['Armorer model weapon.'] },
@@ -4450,7 +4462,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                  ? enriched.desc.join(' ').toLowerCase()
                  : (enriched.desc || '').toLowerCase();
 
-             if (descStr.includes('bonus action') && !/^(martial arts|monk's focus|eldritch cannon|fortified position|magic item tinker|steel defender)$/i.test(String(enriched.name || '')) && !list.some(item => item.name === enriched.name)) {
+             if (descStr.includes('bonus action') && !/^(martial arts|monk's focus|eldritch cannon|fortified position|magic item tinker|steel defender|spell-storing item)$/i.test(String(enriched.name || '')) && !list.some(item => item.name === enriched.name)) {
                  list.push({
                      ...enriched,
                      id: enriched.id || `feature-${enriched.index || enriched.name.toLowerCase().replace(/\s+/g, '-')}`,
