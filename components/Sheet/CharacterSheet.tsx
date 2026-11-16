@@ -1758,6 +1758,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         if (hasUiWidget(character, 'eldritchCannon')) widgets.push('eldritchCannon');
         if (artificerLevel >= 6) widgets.push('magicItemTinker');
         if (/cartographer/i.test(String(character.classes?.[0]?.subclass?.name || ''))) widgets.push('mapHolders');
+        if (/alchemist/i.test(String(character.classes?.[0]?.subclass?.name || ''))) widgets.push('experimentalElixir');
         const missing = widgets.filter(widget => !(character.layout.right || []).includes(widget) && !(character.layout.left || []).includes(widget) && !(character.layout.mobile || []).includes(widget));
         if (missing.length === 0) return;
         setCharacter(prev => ({
@@ -1990,14 +1991,40 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const renderWidget = (type: string, key?: string) => {
         const widgetKey = key || type;
         switch (type) {
+            case 'experimentalElixir': {
+                const isAlchemist = /alchemist/i.test(String(character.classes?.[0]?.subclass?.name || ''));
+                if (!isAlchemist) return null;
+                const table = ['Healing', 'Swiftness', 'Resilience', 'Boldness', 'Flight', 'Transformation'];
+                return (
+                    <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
+                        <div className="flex justify-between items-center mb-2">
+                            <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Experimental Elixir</h3>
+                            <span className="text-[9px] text-gray-500 font-bold uppercase">Alchemist</span>
+                        </div>
+                        <button onClick={() => setCharacter(prev => ({ ...prev, experimentalElixir: table[Math.floor(Math.random() * table.length)] }))} className="w-full py-2 bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold text-[10px] font-black uppercase rounded hover:bg-dnd-gold hover:text-black transition-colors">
+                            Roll d6 Elixir
+                        </button>
+                        <div className="mt-3 text-center">
+                            <div className="text-[9px] uppercase text-gray-500 font-bold">Current Elixir</div>
+                            <div className="text-sm font-bold text-white">{character.experimentalElixir || '—'}</div>
+                        </div>
+                        <div className="text-[8px] text-gray-600 mt-2">1 Healing · 2 Swiftness · 3 Resilience · 4 Boldness · 5 Flight · 6 Transformation</div>
+                    </div>
+                );
+            }
             case 'magicItemTinker': {
                 if (artificerLevel < 6) return null;
                 const drainKey = Object.keys(character.featureUsage || {}).find(key => /drain magic item/i.test(key));
                 const drain = drainKey ? character.featureUsage[drainKey] : null;
                 const replicated = character.replicatedItems || [];
+                const selectedItem = (character.inventory || []).find((item: any) => String(item.name).toLowerCase() === tinkerItem.toLowerCase());
                 const spendSlot = () => {
-                    if (!character.spellSlots?.[tinkerSlot] || character.spellSlots[tinkerSlot].current <= 0) return;
-                    setCharacter(prev => ({ ...prev, spellSlots: { ...prev.spellSlots, [tinkerSlot]: { ...prev.spellSlots[tinkerSlot], current: Math.max(0, prev.spellSlots[tinkerSlot].current - 1) } } }));
+                    if (!tinkerItem || !character.spellSlots?.[tinkerSlot] || character.spellSlots[tinkerSlot].current <= 0) return;
+                    setCharacter(prev => ({
+                        ...prev,
+                        spellSlots: { ...prev.spellSlots, [tinkerSlot]: { ...prev.spellSlots[tinkerSlot], current: Math.max(0, prev.spellSlots[tinkerSlot].current - 1) } },
+                        inventory: (prev.inventory || []).map((item: any) => String(item.name).toLowerCase() === tinkerItem.toLowerCase() ? { ...item, charges: Number(item.charges || 0) + tinkerSlot } : item),
+                    }));
                 };
                 const drainFor = (level: number) => {
                     if (!drain || drain.current <= 0) return;
@@ -2032,7 +2059,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             <button onClick={() => drainFor(1)} disabled={!drain?.current || !tinkerItem} className="py-2 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[9px] font-black uppercase disabled:opacity-40">Drain → 1st</button>
                             <button onClick={() => drainFor(2)} disabled={!drain?.current || !tinkerItem} className="col-span-2 py-2 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[9px] font-black uppercase disabled:opacity-40">Drain → 2nd (Uncommon/Rare)</button>
                         </div>
-                        <div className="text-[9px] text-gray-500">Drain uses: {drain ? `${drain.current} / ${drain.max}` : '0'}</div>
+                        <div className="text-[9px] text-gray-500">Drain uses: {drain ? `${drain.current} / ${drain.max}` : '0'}{selectedItem ? ` · Charges: ${Number((selectedItem as any).charges || 0)}` : ''}</div>
                     </div>
                 );
             }

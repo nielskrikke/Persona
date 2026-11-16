@@ -1188,9 +1188,21 @@ const ManageCharacterModal = ({
         level: (overrides.classes || localClasses).reduce((sum: number, c: any) => sum + c.level, 0),
         inventory: (() => {
             const existing = [...(character.inventory || [])];
+            const artificerDef: any = (localClasses || []).find((cls: any) => cls.definition?.index === 'artificer')?.definition;
+            const planObjects: any[] = Object.values(artificerDef?.options?.replicate_plans || {}).flat() as any[];
             replicatedItems.filter(Boolean).forEach((name: string) => {
                 if (existing.some((item: any) => String(item.name || '').toLowerCase() === String(name).toLowerCase())) return;
-                existing.push({ id: `replicated-${String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, name, quantity: 1, weight: 0, equipped: false, attuned: false });
+                const plan = planObjects.find((entry: any) => String(entry?.name || entry) === name);
+                const plus = Number(name.match(/\+([123])/)?.[1] || 0);
+                existing.push({
+                    id: `replicated-${String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+                    name, quantity: 1, weight: 0, equipped: false, attuned: false,
+                    is_magic: true,
+                    requires_attunement: plan?.attunement === true || plan?.attunement === 'varies',
+                    rarity: plan?.rarity,
+                    modifiers: /weapon \+[123]/i.test(name) ? [{ type: 'bonus', target: 'attack', value: plus }, { type: 'bonus', target: 'damage', value: plus }] : [],
+                    ac_bonus: /(armor|shield) \+[123]/i.test(name) ? plus : undefined,
+                } as any);
             });
             return existing;
         })(),
