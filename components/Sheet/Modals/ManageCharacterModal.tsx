@@ -220,8 +220,10 @@ const ManageCharacterModal = ({
         const maxWizardSpellLevel = Math.max(1, ...Object.keys(wizardSlots).map(Number));
         const wizardSpells = allSpellCatalog.filter((spell: any) => Number(spell.level) >= 1 && Number(spell.level) <= maxWizardSpellLevel && (spell.classes || []).some((entry: any) => /wizard/i.test(String(entry.name || entry.index || ''))));
         const baseCapacity = Math.max(1, 6 + 2 * Number(wizard.level || 1));
+        const savantChoiceForBook = localChoices.find((choice: any) => choice.revertData?.isEvocationSavant);
+        const savantValuesForBook = new Set((Array.isArray(savantChoiceForBook?.value) ? savantChoiceForBook.value : []).map((value: any) => String(value)));
         const currentBook = (character.spellbook && character.spellbook.length > 0)
-            ? character.spellbook
+            ? character.spellbook.filter((entry: any) => !savantValuesForBook.has(String(entry)))
             : localSpells.filter((spell: any) => Number(spell.level) >= 1 && String(spell.sourceClassIndex || '').toLowerCase() === 'wizard').map((spell: any) => spell.index);
         setLocalChoices(prev => {
             let changed = false;
@@ -239,7 +241,7 @@ const ManageCharacterModal = ({
             } else {
                 const nextValue = bookChoice.value === null
                     ? null
-                    : (Array.isArray(bookChoice.value) ? bookChoice.value : currentBook).slice(0, baseCapacity);
+                    : currentBook.slice(0, baseCapacity);
                 if (bookChoice.count !== baseCapacity || bookChoice.value === undefined || (!Array.isArray(bookChoice.value) && bookChoice.value !== null) || JSON.stringify(nextValue) !== JSON.stringify(bookChoice.value)) {
                     const index = next.indexOf(bookChoice);
                     next[index] = { ...bookChoice, value: nextValue, count: baseCapacity, options: wizardSpells };
@@ -1248,24 +1250,6 @@ const ManageCharacterModal = ({
         hasUserEditsRef.current = true;
         const choice = localChoices.find(c => c.id === choiceId);
         if (!choice) return;
-
-        if (choice.revertData?.isWizardSpellbook) {
-            const selected = Array.isArray(choice.value) ? choice.value : [];
-            setSpellbook(selected.map((value: any) => typeof value === 'string' ? value : value.index || value.name));
-            setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: selected, revertData: { ...c.revertData, pendingConfirm: false } } : c));
-            return;
-        }
-
-        if (choice.revertData?.isEvocationSavant) {
-            const selected = Array.isArray(choice.value) ? choice.value : [];
-            setSpellbook(prev => Array.from(new Set([...prev, ...selected.map((value: any) => typeof value === 'string' ? value : value.index || value.name)])));
-            setLocalClassFeatures(prev => [...prev.filter((feature: any) => feature.name !== 'Evocation Savant'), {
-                index: 'evocation-savant', name: 'Evocation Savant', level: 2, source: 'Evoker', type: 'Class',
-                desc: ['You can add two Wizard Evocation spells to your spellbook without copying them.'], effects: [], revertData: { choiceId },
-            }]);
-            setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: selected, revertData: { ...c.revertData, pendingConfirm: false } } : c));
-            return;
-        }
 
         if (choice.revertData?.invocationCantrip) {
             const invocationName = String(choice.revertData.invocationName || '');
@@ -2387,6 +2371,24 @@ const ManageCharacterModal = ({
     const handleConfirmChoice = async (choiceId: string) => {
         const choice = localChoices.find(c => c.id === choiceId);
         if (!choice) return;
+
+        if (choice.revertData?.isWizardSpellbook) {
+            const selected = Array.isArray(choice.value) ? choice.value : [];
+            setSpellbook(selected.map((value: any) => typeof value === 'string' ? value : value.index || value.name));
+            setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: selected, revertData: { ...c.revertData, pendingConfirm: false } } : c));
+            return;
+        }
+
+        if (choice.revertData?.isEvocationSavant) {
+            const selected = Array.isArray(choice.value) ? choice.value : [];
+            setSpellbook(prev => Array.from(new Set([...prev, ...selected.map((value: any) => typeof value === 'string' ? value : value.index || value.name)])));
+            setLocalClassFeatures(prev => [...prev.filter((feature: any) => feature.name !== 'Evocation Savant'), {
+                index: 'evocation-savant', name: 'Evocation Savant', level: 2, source: 'Evoker', type: 'Class',
+                desc: ['You can add two Wizard Evocation spells to your spellbook without copying them.'], effects: [], revertData: { choiceId },
+            }]);
+            setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: selected, revertData: { ...c.revertData, pendingConfirm: false } } : c));
+            return;
+        }
 
         if (choice.revertData?.invocationCantrip) {
             const invocationName = String(choice.revertData.invocationName || '');

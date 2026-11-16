@@ -33,6 +33,7 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
     const [confirmSpell, setConfirmSpell] = useState<SpellDetail | null>(null);
     const [expandedSpellId, setExpandedSpellId] = useState<string | null>(null);
     const [editSpellbook, setEditSpellbook] = useState(false);
+    const [bookMessage, setBookMessage] = useState('');
     const [showKnownOnly, setShowKnownOnly] = useState(false);
 
     useEffect(() => {
@@ -117,18 +118,23 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
     const bookSet = new Set((character.spellbook || []).map((entry: any) => String(entry).toLowerCase()));
     const isInSpellbook = (spell: SpellDetail) => Boolean(bookSet.has(String(spell.index).toLowerCase()) || bookSet.has(String(spell.name).toLowerCase()));
     const wizardLevel = Number((character.classes || []).find((cls: any) => cls.definition?.index === 'wizard')?.level || 0);
-    const spellbookCapacity = Math.max(1, 6 + 2 * wizardLevel);
+    const savantCount = Number(((character.choices || []).find((choice: any) => choice.revertData?.isEvocationSavant)?.value || []).length || 0);
+    const spellbookCapacity = Math.max(1, 6 + 2 * wizardLevel) + savantCount;
     const toggleSpellbook = (spell: SpellDetail) => {
         if (!onUpdateSpellbook) return;
         const existing = character.spellbook || [];
         const already = isInSpellbook(spell);
         if (!already && existing.length >= spellbookCapacity) {
-            alert(`Your spellbook is full (${spellbookCapacity} spells).`);
+            setBookMessage(`Spellbook full: ${existing.length} / ${spellbookCapacity}. Remove a spell first.`);
             return;
         }
         const next = already
             ? existing.filter((entry: string) => String(entry).toLowerCase() !== String(spell.index).toLowerCase() && String(entry).toLowerCase() !== String(spell.name).toLowerCase())
             : [...existing, spell.index];
+        if (already && isKnown(spell)) {
+            onUpdateSpells(character.spells.filter((entry: any) => !(entry.index === spell.index && entry.sourceClassIndex === activeClassIndex)));
+        }
+        setBookMessage(already ? `${spell.name} removed from spellbook.` : `${spell.name} added to spellbook.`);
         onUpdateSpellbook(next);
     };
 
@@ -247,7 +253,7 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
                                 className={`px-4 py-2 border rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${editSpellbook ? 'bg-dnd-gold text-black border-dnd-gold' : 'bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-500'}`}
                             >
                                 <Book size={14} />
-                                {editSpellbook ? 'Done Editing Book' : 'Edit Spellbook'}
+                                {editSpellbook ? `Done · ${bookSet.size}/${spellbookCapacity}` : `Edit Spellbook · ${bookSet.size}/${spellbookCapacity}`}
                             </button>
                         )}
                         <button 
@@ -265,6 +271,10 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
                         </button>
                     </div>
                 </div>
+
+                {bookMessage && editSpellbook && (
+                    <div className="px-6 py-2 bg-black/30 border-b border-gray-800 text-[10px] font-bold text-gray-400">{bookMessage}</div>
+                )}
 
                 {/* Search & Class Tabs */}
                 <div className="p-6 space-y-4 bg-[#16171a] border-b border-gray-800">
