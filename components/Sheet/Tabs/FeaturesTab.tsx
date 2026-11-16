@@ -3,6 +3,7 @@ import { CharacterState } from '@/types';
 import LayOnHandsWidget from '../Shared/LayOnHandsWidget';
 import FontOfMagicWidget from '../Shared/FontOfMagicWidget';
 import DragonWingsWidget from '../Shared/DragonWingsWidget';
+import MagicalCunningWidget from '../Shared/MagicalCunningWidget';
 import { WIDGET_BG } from '../../../data/constants';
 import { formatResourceName } from '../../../utils/rules';
 import { Maximize, X, Search, Filter } from 'lucide-react';
@@ -90,6 +91,7 @@ const FeaturesTab: React.FC<FeaturesTabProps> = ({ character, setCharacter, getA
             {Object.keys(character.featureUsage).length > 0 && (
                 <section className="animate-in fade-in slide-in-from-top-4 duration-500">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 items-start gap-4">
+                        <MagicalCunningWidget character={character} setCharacter={setCharacter} />
                         <DragonWingsWidget character={character} setCharacter={setCharacter} />
                         {(character.classFeatures || []).some((feature: any) => /font of magic/i.test(feature.name || '')) && (
                             <FontOfMagicWidget character={character} setCharacter={setCharacter} />
@@ -106,7 +108,7 @@ const FeaturesTab: React.FC<FeaturesTabProps> = ({ character, setCharacter, getA
                                 }))}
                             />
                         )}
-                        {Object.entries(character.featureUsage).filter(([name]) => name !== 'Lay on Hands' && name !== 'Sorcery Points' && name !== 'Dragon Wings').map(([name, usage]: [string, any]) => {
+                        {Object.entries(character.featureUsage).filter(([name]) => name !== 'Lay on Hands' && name !== 'Sorcery Points' && name !== 'Dragon Wings' && name !== 'Magical Cunning').map(([name, usage]: [string, any]) => {
                             const usedCount = usage.max - usage.current;
                             return (
                                 <div key={name} className={`${WIDGET_BG} border border-[#3e4149]/50 hover:border-gray-600 rounded-xl p-4 shadow-xl transition-all group`}>
@@ -270,6 +272,6 @@ const FeaturesTab: React.FC<FeaturesTabProps> = ({ character, setCharacter, getA
     );
 };
 
-const featureDisplayName = (name: string) => String(name || '').replace(/^metamagic options:\s*/i, '');
+const featureDisplayName = (name: string) => String(name || '').replace(/^metamagic (?:options|calibration):\s*/i, '').replace(/^eldritch invocations:\s*/i, '');
 
 export default FeaturesTab;

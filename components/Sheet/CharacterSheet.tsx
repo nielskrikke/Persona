@@ -11,6 +11,7 @@ import DiceRoller3D, { DiceBoxRollRequest } from './Shared/DiceRoller3D';
 import LayOnHandsWidget from './Shared/LayOnHandsWidget';
 import FontOfMagicWidget from './Shared/FontOfMagicWidget';
 import DragonWingsWidget from './Shared/DragonWingsWidget';
+import MagicalCunningWidget from './Shared/MagicalCunningWidget';
 import { DiceBoxGroupResult } from '@3d-dice/dice-box';
 import { parseRollFormula, evaluateParsedFormula, evaluateFallbackRoll, ParsedRollFormula } from '../../utils/diceNotation';
 import { saveCharacterToDb, addPartyRoll, loadPartyInventory, savePartyInventory } from '../../services/supabase';
@@ -2309,6 +2310,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                  </div>
                              </div>
                         )}
+                        <MagicalCunningWidget character={character} setCharacter={setCharacter} />
                         <DragonWingsWidget character={character} setCharacter={setCharacter} />
                         {(character.classFeatures || []).some((feature: any) => /font of magic/i.test(feature.name || '')) && (
                             <FontOfMagicWidget character={character} setCharacter={setCharacter} />
@@ -2325,7 +2327,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 }))}
                             />
                         )}
-                        {Object.entries(character.featureUsage).filter(([name, usage]) => name !== 'Wild Shape' && name !== 'Lay on Hands' && name !== 'Sorcery Points' && name !== 'Dragon Wings' && !usage.hidden && !(name === 'Eldritch Cannon' && character.activeEldritchCannon)).map(([name, usage]: [string, any]) => {
+                        {Object.entries(character.featureUsage).filter(([name, usage]) => name !== 'Wild Shape' && name !== 'Lay on Hands' && name !== 'Sorcery Points' && name !== 'Dragon Wings' && name !== 'Magical Cunning' && !usage.hidden && !(name === 'Eldritch Cannon' && character.activeEldritchCannon)).map(([name, usage]: [string, any]) => {
                             const usedCount = usage.max - usage.current;
                             const detailTarget = findResourceDetailsTarget(name, usage);
                             return (
@@ -2727,7 +2729,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const dv = senseValue('darkvision');
                 const blindsight = senseValue('blindsight');
                 const tremorsense = senseValue('tremorsense');
-                const truesight = senseValue('truesight');
+                const hasWitchSight = (character.classFeatures || []).some((feature: any) => /witch sight/i.test(feature.name || ''));
+                const truesight = Math.max(senseValue('truesight'), hasWitchSight ? 30 : 0);
                 return (
                     <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
                          <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest mb-2">Senses</h3>
@@ -2781,7 +2784,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     </div>
                 );
             case 'defenses':
-                const res = Array.from(new Set(activeModifiers.filter(m => m.type === 'resistance').map(m => String(m.value))));
+                const hasFiendishResilience = (character.classFeatures || []).some((feature: any) => /fiendish resilience/i.test(feature.name || ''));
+                const fiendishDamage = hasFiendishResilience ? String(character.fiendishResilience || '') : '';
+                const res = Array.from(new Set([...activeModifiers.filter(m => m.type === 'resistance').map(m => String(m.value)), ...(fiendishDamage ? [fiendishDamage] : [])]));
                 const imm = Array.from(new Set(activeModifiers.filter(m => m.type === 'immunity').map(m => String(m.value))));
                 const advDef: string[] = [];
 
@@ -2812,6 +2817,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         <div className="flex flex-wrap gap-1">
                             {res.map(r => (<span key={`res-${r}`} className="bg-blue-900/30 border border-blue-800/50 px-1.5 py-0.5 rounded text-[9px] text-blue-200 font-bold uppercase">Resist: {r}</span>))}
                             {imm.map(i => (<span key={`imm-${i}`} className="bg-purple-900/30 border border-purple-800/50 px-1.5 py-0.5 rounded text-[9px] text-purple-200 font-bold uppercase">Immune: {i}</span>))}
+                            {hasFiendishResilience && (
+                                <select value={fiendishDamage} onChange={e => setCharacter(prev => ({ ...prev, fiendishResilience: e.target.value }))} className="bg-black/40 border border-gray-700/60 rounded px-1.5 py-0.5 text-[9px] text-gray-300 outline-none" aria-label="Fiendish Resilience damage type">
+                                    <option value="">Fiendish Resilience…</option>
+                                    {['Acid','Cold','Fire','Lightning','Necrotic','Poison','Psychic','Radiant','Thunder'].map(type => <option key={type} value={type}>{type}</option>)}
+                                </select>
+                            )}
                             {advDef.map(a => (<span key={`adv-${a}`} className="bg-green-900/30 border border-green-800/50 px-1.5 py-0.5 rounded text-[9px] text-green-200 font-bold uppercase">Adv vs {a}</span>))}
                             {defensiveFeatures.map(f => (
                                 <div key={f.name} className="group/def relative">
@@ -3097,6 +3108,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             };
 
             activeModifiers.filter((m: any) => m.type === 'attack_rider').forEach((m: any) => {
+                if (/lifedrinker/i.test(String(m.name || '')) && !source?.isPactWeapon) return;
                 if (!riderMatches(m.condition)) return;
                 let damage = m.damage;
                 if (m.scaling?.type === 'class_table' && m.scaling.key) {
@@ -3116,7 +3128,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 modifiers.push({ name: 'Battle Ready', desc: 'When you attack with a magic weapon, you can use your Intelligence modifier, instead of Strength or Dexterity, for the attack and damage rolls.' });
             }
             if (attack.notes?.includes('Pact Weapon')) {
-                modifiers.push({ name: 'Pact Weapon', desc: 'You are proficient with this weapon, it counts as magical for overcoming resistance, and you can use it as a spellcasting focus.' });
+                modifiers.push({ name: 'Pact Weapon', desc: 'You can use your Charisma modifier for attack and damage rolls, and the weapon counts as a Spellcasting Focus.' });
             }
             if (attack.notes?.includes('Hex Weapon')) {
                 modifiers.push({ name: 'Hex Warrior', desc: 'You can use your Charisma modifier instead of Strength or Dexterity for attack and damage rolls with this weapon.' });
@@ -3131,6 +3143,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
         let additionalAttackBonus = 0;
         let maxSetAttacks = attackCount;
+        let pactAttackCount = 1;
 
         activeModifiers.forEach((m: any) => {
             const type = m.type;
@@ -3148,6 +3161,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             ) {
                 if (checkModifierRule(m)) {
                     const val = Number(m.value !== undefined ? m.value : (m.count !== undefined ? m.count : 1));
+                    if (/thirsting blade|devouring blade/i.test(String(m.name || ''))) {
+                        if (m.mode === 'set' || m.mode === 'override') pactAttackCount = Math.max(pactAttackCount, val);
+                        else pactAttackCount += (val > 0 ? val : 1);
+                        return;
+                    }
                     if (m.mode === 'set' || m.mode === 'override') {
                         maxSetAttacks = Math.max(maxSetAttacks, val);
                     } else {
@@ -3538,7 +3556,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 hit: finalHit,
                 damage: displayDamage,
                 type: [damageType, ...Array.from(riderDamageTypes)].join(' + '),
-                attackCount,
+                attackCount: item.isPactWeapon ? Math.max(attackCount, pactAttackCount) : attackCount,
                 notes: finalNotes,
                 source: item
             };
@@ -4241,7 +4259,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         });
 
          const metamagicNames = /^(careful|distant|empowered|extended|heightened|quickened|seeking|subtle|transmuted|twinned) spell$/i;
-         const filtered = list.filter((item: any) => item.source?.type !== 'Metamagic' && !metamagicNames.test(String(item.name || '')) && !/^metamagic (?:options|calibration):/i.test(String(item.name || '')) && !/channel divinity|abjure foes|devious strikes|dragon wings|^(font of magic|sorcery incarnate)$/i.test(String(item.name || '')));
+         const filtered = list.filter((item: any) => item.source?.type !== 'Metamagic' && !metamagicNames.test(String(item.name || '')) && !/^metamagic (?:options|calibration):/i.test(String(item.name || '')) && !/^eldritch invocations:/i.test(String(item.name || '')) && !/channel divinity|abjure foes|devious strikes|dragon wings|^(font of magic|sorcery incarnate)$/i.test(String(item.name || '')));
          return character.activeWildShape
              ? filtered.filter((item: any) => !item.source?.weapon_category && (!item.source?.school || canCastSpellInWildShape(character, item.source)))
              : filtered;

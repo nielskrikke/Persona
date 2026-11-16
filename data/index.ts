@@ -819,6 +819,9 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
                 type: 'Metamagic',
             };
         }
+        if (/^eldritch invocations:\s*/i.test(String(next.name || ''))) {
+            next = { ...next, name: String(next.name).replace(/^eldritch invocations:\s*/i, ''), source: 'Eldritch Invocations' };
+        }
         if (/^font of magic$/i.test(next.name || '') && liveFontOfMagic?.desc) {
             next = { ...next, desc: liveFontOfMagic.desc, effects: liveFontOfMagic.effects || next.effects };
         }
@@ -1024,6 +1027,16 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         if (!inventory.some((item: any) => /thieves' tools/i.test(String(item.name || '')))) {
             const detail = inventoryCatalog.find(entry => /thieves' tools/i.test(String(entry.name || '')));
             inventory.push({ ...(detail || {}), id: 'rogue-thieves-tools', name: detail?.name || "Thieves' Tools", quantity: 1, equipped: false, attuned: false });
+        }
+    }
+    if ((character.classes || []).some((cls: any) => cls.definition?.index === 'warlock')) {
+        if (!inventory.some((item: any) => /^sickle$/i.test(String(item.name || '')))) {
+            const detail = inventoryCatalog.find(entry => String(entry.index) === 'sickle');
+            inventory.push({ ...(detail || {}), id: 'warlock-sickle', name: detail?.name || 'Sickle', quantity: 1, equipped: false, attuned: false });
+        }
+        if (!inventory.some((item: any) => /^book$/i.test(String(item.name || '')))) {
+            const detail = inventoryCatalog.find(entry => String(entry.index) === 'book');
+            inventory.push({ ...(detail || {}), id: 'warlock-book', name: detail?.name || 'Book', quantity: 1, equipped: false, attuned: false });
         }
     }
     if ((character.classes || []).some((cls: any) => cls.definition?.index === 'ranger')

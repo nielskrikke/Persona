@@ -83,6 +83,7 @@ const ManageCharacterModal = ({
     const [allClasses, setAllClasses] = useState<APIReference[]>([]);
     const [allFeats, setAllFeats] = useState<FeatDetail[]>([]);
     const [racialSpellOptions, setRacialSpellOptions] = useState<SpellDetail[]>([]);
+    const [allSpellCatalog, setAllSpellCatalog] = useState<SpellDetail[]>([]);
     const [loadingSubraces, setLoadingSubraces] = useState(false);
 
     // Selections
@@ -129,6 +130,47 @@ const ManageCharacterModal = ({
         damageOverride: null
     });
 
+    // Backfill Mystic Arcanum choice cards for existing Warlocks.
+    useEffect(() => {
+        if (!isOpen || allSpellCatalog.length === 0) return;
+        const warlock = (character.classes || []).find((cls: any) => cls.definition?.index === 'warlock');
+        if (!warlock) return;
+        const specs = (warlock.definition?.feature_details || [])
+            .flatMap((feature: any) => (feature.effects || []).filter((effect: any) =>
+                effect.type === 'spell_access' && !effect.spell && Number(effect.level) >= 6 && Number(feature.level || 0) <= warlock.level
+            ).map((effect: any) => ({ level: Number(effect.level), featureLevel: Number(feature.level || 11) })));
+        if (specs.length === 0) return;
+        setLocalChoices(prev => {
+            let changed = false;
+            const next = [...prev];
+            specs.forEach(spec => {
+                const existing = next.find((choice: any) => choice.revertData?.isMysticArcanum && Number(choice.revertData.spellLevel) === spec.level)
+                    || next.find((choice: any) => choice.id === `mystic-arcanum-${spec.level}`);
+                const classSpells = allSpellCatalog.filter((spell: any) => Number(spell.level) === spec.level && (spell.classes || []).some((entry: any) => /warlock/i.test(String(entry.name || entry.index || ''))));
+                const options = classSpells.length > 0 ? classSpells : allSpellCatalog.filter((spell: any) => Number(spell.level) === spec.level);
+                if (!existing) {
+                    next.push({
+                        id: `mystic-arcanum-${spec.level}`,
+                        level: spec.featureLevel,
+                        source: 'Warlock',
+                        type: 'spell',
+                        label: `Mystic Arcanum (${spec.level}th level)`,
+                        value: null,
+                        options,
+                        count: 1,
+                        revertData: { classIndex: 'warlock', isMysticArcanum: true, spellLevel: spec.level },
+                    });
+                    changed = true;
+                } else if ((existing.options || []).length === 0) {
+                    const index = next.indexOf(existing);
+                    next[index] = { ...existing, options };
+                    changed = true;
+                }
+            });
+            return changed ? next : prev;
+        });
+    }, [isOpen, allSpellCatalog, character.classes]);
+
     // Initialization
     useEffect(() => {
         if (isOpen) {
@@ -159,6 +201,7 @@ const ManageCharacterModal = ({
                 // Load cantrips for racial spell swapping from the content
                 // library rather than a hardcoded class spell list.
                 const spells = await fetchAllSpells();
+                setAllSpellCatalog(spells);
                 setRacialSpellOptions(spells.filter(spell => spell.level === 0));
             };
             loadData();
@@ -212,13 +255,13 @@ const ManageCharacterModal = ({
             setLocalSpells(character.spells || []);
             setLocalClasses(character.classes || []);
             setLocalClassFeatures((character.classFeatures || []).map((feature: any) => {
-                if (!/^metamagic (?:options|calibration):/i.test(String(feature.name || ''))) return feature;
-                return {
-                    ...feature,
-                    name: String(feature.name).replace(/^metamagic (?:options|calibration):\s*/i, ''),
-                    source: 'Metamagic',
-                    type: 'Metamagic',
-                };
+                if (/^metamagic (?:options|calibration):/i.test(String(feature.name || ''))) {
+                    return { ...feature, name: String(feature.name).replace(/^metamagic (?:options|calibration):\s*/i, ''), source: 'Metamagic', type: 'Metamagic' };
+                }
+                if (/^eldritch invocations:/i.test(String(feature.name || ''))) {
+                    return { ...feature, name: String(feature.name).replace(/^eldritch invocations:\s*/i, ''), source: 'Eldritch Invocations' };
+                }
+                return feature;
             }));
             setLocalMaxHp(character.maxHp || 10);
 
@@ -1465,6 +1508,37 @@ const ManageCharacterModal = ({
         return Array.from(new Set([...fromChoices, ...fromFeatures].map((name: any) => String(name))));
     };
 
+    const getWarlockLevel = () => Number((localClasses || []).find((cls: any) => cls.definition?.index === 'warlock')?.level || 0);
+
+    const getKnownInvocations = (excludeChoiceId?: string) => {
+        const fromChoices = localChoices
+            .filter((c: any) => c.id !== excludeChoiceId && /Eldritch Invocations/i.test(c.label || '') && c.value)
+            .flatMap((c: any) => Array.isArray(c.value) ? c.value : [c.value]);
+        const activeChoiceIds = new Set(localChoices.filter((c: any) => c.value).map((c: any) => c.id));
+        const fromFeatures = localClassFeatures
+            .filter((feature: any) => !feature.revertData?.choiceId || activeChoiceIds.has(feature.revertData.choiceId))
+            .map((feature: any) => String(feature.name || '').replace(/^eldritch invocations:\s*/i, ''))
+            .filter((name: string) => name && !/^eldritch invocations$/i.test(name));
+        return Array.from(new Set([...fromChoices, ...fromFeatures].map((name: any) => String(name))));
+    };
+
+    const isInvocationEligible = (option: any, choice: any) => {
+        const name = String(option?.name || option || '');
+        const prerequisite = String(option?.prerequisite || '');
+        const known = getKnownInvocations(choice.id);
+        const selected = Array.isArray(choice.value) ? choice.value : (choice.value ? [choice.value] : []);
+        const repeatable = /^(agonizing blast|repelling blast|eldritch spear|armor of shadows|fiendish vigor)$/i.test(name);
+        if (known.some(knownName => knownName.toLowerCase() === name.toLowerCase()) && !repeatable && !selected.includes(name)) return false;
+        const levelMatch = prerequisite.match(/Level\s+(\d+)\+/i);
+        const evaluationLevel = Number(choice.level || 0) || getWarlockLevel();
+        if (levelMatch && Number(levelMatch[1]) > evaluationLevel) return false;
+        if (/Pact of the Blade/i.test(prerequisite) && !known.some(knownName => /pact of the blade/i.test(knownName))) return false;
+        if (/Pact of the Tome/i.test(prerequisite) && !known.some(knownName => /pact of the tome/i.test(knownName))) return false;
+        if (/Pact of the Chain/i.test(prerequisite) && !known.some(knownName => /pact of the chain/i.test(knownName))) return false;
+        if (/Thirsting Blade invocation/i.test(prerequisite) && !known.some(knownName => /thirsting blade/i.test(knownName))) return false;
+        return true;
+    };
+
     const handleMetamagicSelect = (choiceId: string, value: string, part: 'progression' | 'replace' | 'new') => {
         hasUserEditsRef.current = true;
         setLocalChoices(prev => prev.map((choice: any) => {
@@ -1658,7 +1732,7 @@ const ManageCharacterModal = ({
                 if (passiveEffects.length > 0 || selectedOption.desc) {
                     const virtualFeature = {
                         index: `${choiceId}-${selectedOption.name}`.toLowerCase().replace(/[^a-z0-9]/g, '-'),
-                        name: `${choice.label}: ${selectedOption.name}`,
+                        name: /Eldritch Invocations/i.test(choice.label || '') ? selectedOption.name : `${choice.label}: ${selectedOption.name}`,
                         level: choice.level,
                         source: choice.source,
                         desc: selectedOption.desc ? [selectedOption.desc] : [],
@@ -2103,9 +2177,33 @@ const ManageCharacterModal = ({
         }
     };
 
-    const handleConfirmChoice = (choiceId: string) => {
+    const handleConfirmChoice = async (choiceId: string) => {
         const choice = localChoices.find(c => c.id === choiceId);
         if (!choice) return;
+
+        if (choice.revertData?.isMysticArcanum) {
+            const spellName = String(choice.value || '').trim();
+            if (!spellName) return;
+            const allSpells = await fetchAllSpells();
+            const spell = allSpells.find((entry: any) => entry.index === spellName || entry.name.toLowerCase() === spellName.toLowerCase());
+            if (!spell) return;
+            const level = Number(choice.revertData.spellLevel || spell.level);
+            setLocalSpells(prev => [
+                ...prev.filter((existing: any) => !existing.isArcanum && Number(existing.arcanumLevel || 0) !== level),
+                {
+                    ...spell,
+                    sourceClassIndex: 'arcanum',
+                    isPrepared: true,
+                    isGranted: true,
+                    freeCasts: 1,
+                    freeCastReset: 'long',
+                    isArcanum: true,
+                    arcanumLevel: level,
+                } as any,
+            ]);
+            setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: spell.name, revertData: { ...c.revertData, pendingConfirm: false } } : c));
+            return;
+        }
 
         if (choice.revertData?.isMetamagicMatrix) {
             const options = getMetamagicOptionList(choice);
@@ -3365,6 +3463,16 @@ const ManageCharacterModal = ({
                                                                                 return selectedValues.includes(value) || !toolProficiencies.some((known: string) => String(known).toLowerCase() === String(value).toLowerCase());
                                                                             });
                                                                         }
+                                                                        if (/Book of Shadows rituals/i.test(choice.label || '')) {
+                                                                            options = options.filter((option: any) => {
+                                                                                const value = typeof option === 'string' ? option : (option.index || option.name || '');
+                                                                                const spell = allSpellCatalog.find((entry: any) => String(entry.index).toLowerCase() === String(value).toLowerCase() || String(entry.name).toLowerCase() === String(value).toLowerCase());
+                                                                                return Boolean(spell?.ritual);
+                                                                            });
+                                                                        }
+                                                                        if (/Eldritch Invocations/i.test(choice.label || '')) {
+                                                                            options = options.filter((option: any) => isInvocationEligible(option, choice));
+                                                                        }
                                                                         if (choice.type === 'skill' && /rogue/i.test(String(choice.label || choice.source || ''))) {
                                                                             options = options.filter((option: any) => String(typeof option === 'string' ? option : option.name || '').toLowerCase() !== 'nature');
                                                                         }
@@ -3375,7 +3483,7 @@ const ManageCharacterModal = ({
                                                                                 return selectedValues.includes(value) || !legacy.has(String(value).toLowerCase());
                                                                             });
                                                                         }
-                                                                        const hasDescriptions = options.some((opt: any) => typeof opt !== 'string' && opt.desc);
+                                                                        const hasDescriptions = options.some((opt: any) => typeof opt !== 'string' && (opt.desc || opt.prerequisite));
                                                                         
                                                                         return (
                                                                             <div className={hasDescriptions ? 'grid grid-cols-1 xl:grid-cols-2 gap-3' : 'grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2'}>
@@ -3420,6 +3528,9 @@ const ManageCharacterModal = ({
                                                                                                     <p className="text-[10px] text-gray-400 mt-2 leading-relaxed opacity-80 group-hover:opacity-100 transition-opacity">
                                                                                                         {Array.isArray(desc) ? desc.join(' ') : desc}
                                                                                                     </p>
+                                                                                                )}
+                                                                                                {typeof opt === 'object' && opt?.prerequisite && (
+                                                                                                    <p className="text-[9px] text-amber-400/70 mt-1 leading-relaxed">Prerequisite: {opt.prerequisite}</p>
                                                                                                 )}
                                                                                             </div>
                                                                                         </button>
@@ -3849,7 +3960,7 @@ const ManageCharacterModal = ({
                                                                                                             return selectedValues.includes(value) || !legacy.has(String(value).toLowerCase());
                                                                                                         });
                                                                                                     }
-                                                                                                    const hasDescriptions = options.some((opt: any) => typeof opt !== 'string' && opt.desc);
+                                                                                                    const hasDescriptions = options.some((opt: any) => typeof opt !== 'string' && (opt.desc || opt.prerequisite));
 
                                                                                                     return (
                                                                                                         <div className={hasDescriptions ? 'grid grid-cols-1 xl:grid-cols-2 gap-3' : 'grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2'}>

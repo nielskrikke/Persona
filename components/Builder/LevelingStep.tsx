@@ -133,6 +133,7 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
             setStatus(`Processing ${item.className} Level ${item.level}...`);
             
             const features = await fetchLevelFeatures(item.classIndex, item.level);
+            const allSpells = await fetchAllSpells();
             
             // Add non-choice features directly
             features.forEach((f: any) => {
@@ -150,6 +151,24 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
                 // Identify choices and add as PENDING
                 if (f.effects) {
                     f.effects.forEach((eff: FeatureEffect) => {
+                        if (eff.type === 'spell_access' && !eff.spell && Number(eff.level) >= 6) {
+                            const choiceId = `mystic-arcanum-${eff.level}`;
+                            if (!accumulator.current.choices.some((choice: any) => choice.id === choiceId)) {
+                                const classSpells = allSpells.filter((spell: any) => Number(spell.level) === Number(eff.level) && (spell.classes || []).some((entry: any) => /warlock/i.test(String(entry.name || entry.index || ''))));
+                                accumulator.current.choices.push({
+                                    id: choiceId,
+                                    level: item.level,
+                                    source: item.className,
+                                    type: 'spell',
+                                    label: f.name,
+                                    value: null,
+                                    options: classSpells.length > 0 ? classSpells : allSpells.filter((spell: any) => Number(spell.level) === Number(eff.level)),
+                                    count: 1,
+                                    revertData: { classIndex: item.classIndex, isMysticArcanum: true, spellLevel: Number(eff.level) },
+                                });
+                            }
+                            return;
+                        }
                         if (['expertise_choice', 'proficiency_choice', 'feature_choice'].includes(eff.type)) {
                             const choiceId = `${f.index}-${eff.type}-${item.level}`;
                             if (!accumulator.current.choices.some(c => c.id === choiceId)) {

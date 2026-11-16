@@ -27,7 +27,7 @@ const CLASS_STARTING_KITS: Record<string, string[]> = {
     ranger: ['Studded Leather', 'Scimitar', 'Shortsword', 'Longbow', 'Arrows (20)', 'Quiver', 'Druidic Focus (Mistletoe)', "Explorer's Pack"],
     rogue: ['Leather Armor', 'Dagger', 'Dagger', 'Shortsword', 'Shortbow', 'Arrows (20)', 'Quiver', "Thieves' Tools", "Burglar's Pack"],
     sorcerer: ['Spear', 'Dagger', 'Dagger', 'Arcane Focus', "Dungeoneer's Pack"],
-    warlock: ['Leather Armor', 'Dagger', 'Dagger', 'Arcane Focus', "Scholar's Pack"],
+    warlock: ['Leather Armor', 'Sickle', 'Dagger', 'Dagger', 'Arcane Focus', 'Book', "Scholar's Pack"],
     wizard: ['Robe', 'Dagger', 'Dagger', 'Arcane Focus', "Scholar's Pack"],
 };
 

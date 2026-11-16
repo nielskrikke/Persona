@@ -85,7 +85,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
         return base.replace(match[1], String(increased));
     };
 
-    const displayCastLevelFor = (spell: SpellDetail, sectionLevel: number) => (spell as any).itemSpell ? castLevelFor(spell) : (spell.level === 0 ? character.level : sectionLevel);
+    const displayCastLevelFor = (spell: SpellDetail, sectionLevel: number) => (spell as any).itemSpell ? castLevelFor(spell) : (spell.level === 0 ? character.level : Math.max(sectionLevel, getSpellCastLevel(character, spell)));
     const hasUpcastBenefit = (spell: SpellDetail): boolean => {
         if (Number(spell.level) <= 0) return false;
         const table: any = (spell as any).heal_at_slot_level || spell.damage?.damage_at_slot_level;

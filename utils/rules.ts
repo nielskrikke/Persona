@@ -572,6 +572,7 @@ export const getSpellsKnownCount = (characterClass: CharacterClass, abilities: A
         feature?.effects?.forEach((effect: any) => {
             if (effect.type !== 'spell_access') return;
             if (effect.spell) return;
+            if (/mystic arcanum/i.test(String(effect.name || feature.name || ''))) return;
             if (typeof effect.level !== 'number') return;
             if (effect.filter_class && String(effect.filter_class).toLowerCase() !== String(definition?.index).toLowerCase()) return;
             if (effect.level === 0) cantrips += (effect.count || 1);
