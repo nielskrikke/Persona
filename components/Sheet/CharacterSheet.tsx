@@ -1775,6 +1775,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 ...prev,
                 currentHp: prev.maxHp,
                 activeConditions: clearedConditions,
+                activeConcentration: null,
                 spellSlots: newSlots,
                 featureUsage: newFeatures,
                 freeCastUsage: {},
@@ -2826,11 +2827,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 <label className="flex items-center gap-1.5 text-[9px] text-gray-500 font-bold uppercase tracking-wide">
                                     Fiendish Resilience
                                     <span className="relative inline-flex items-center">
-                                        <select value={fiendishDamage} onChange={e => setCharacter(prev => ({ ...prev, fiendishResilience: e.target.value }))} className="appearance-none bg-black/40 border border-gray-700/60 rounded h-6 pl-2 pr-5 text-[9px] font-normal normal-case tracking-normal text-gray-300 outline-none" aria-label="Fiendish Resilience damage type">
-                                            <option value="">Choose type…</option>
-                                            {['Acid','Cold','Fire','Lightning','Necrotic','Poison','Psychic','Radiant','Thunder'].map(type => <option key={type} value={type}>{type}</option>)}
+                                        <select value={fiendishDamage} onChange={e => setCharacter(prev => ({ ...prev, fiendishResilience: e.target.value }))} className={`appearance-none border rounded h-6 pl-2 pr-5 text-[9px] uppercase outline-none ${fiendishDamage ? 'bg-blue-900/30 border-blue-800/50 text-blue-200 font-bold' : 'bg-black/40 border-gray-700/60 text-gray-400 font-normal'}`} aria-label="Fiendish Resilience damage type">
+                                            <option value="">Resist…</option>
+                                            {['Acid','Cold','Fire','Lightning','Necrotic','Poison','Psychic','Radiant','Thunder'].map(type => <option key={type} value={type}>Resist: {type}</option>)}
                                         </select>
-                                        <ChevronDown size={10} className="pointer-events-none absolute right-1 text-gray-500" />
+                                        <ChevronDown size={10} className={`pointer-events-none absolute right-1 ${fiendishDamage ? 'text-blue-300/70' : 'text-gray-500'}`} />
                                     </span>
                                 </label>
                             )}
@@ -3669,7 +3670,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     damage: spellDmg,
                     type: spell.damage?.damage_type?.name || 'Magic',
                     attackCount: spellAttackCount,
-                    notes: [spell.level === 0 ? 'Cantrip' : `Lvl ${spell.level}`],
+                    notes: [spell.level === 0 ? 'Cantrip' : `Lvl ${getSpellCastLevel(character, spell)}`],
                     source: spell
                 };
                 (spellAttackObj as any).modifiers = getAttackModifiers(spellAttackObj);

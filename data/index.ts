@@ -1063,9 +1063,12 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
             const detail = inventoryCatalog.find(entry => String(entry.index) === 'sickle');
             inventory.push({ ...(detail || {}), id: 'warlock-sickle', name: detail?.name || 'Sickle', quantity: 1, equipped: false, attuned: false });
         }
-        if (!inventory.some((item: any) => /^book$/i.test(String(item.name || '')))) {
+        const books = inventory.filter((item: any) => /^book$/i.test(String(item.name || '')));
+        if (books.length === 0) {
             const detail = inventoryCatalog.find(entry => String(entry.index) === 'book');
             inventory.push({ ...(detail || {}), id: 'warlock-book', name: detail?.name || 'Book', quantity: 1, equipped: false, attuned: false });
+        } else if (books.length === 1 && /acolyte/i.test(String(character.background || '')) && Number(books[0].quantity || 1) < 2) {
+            inventory = inventory.map((item: any) => item.id === books[0].id ? { ...item, quantity: 2 } : item);
         }
     }
     if ((character.classes || []).some((cls: any) => cls.definition?.index === 'ranger')
