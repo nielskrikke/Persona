@@ -744,6 +744,35 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
         };
     });
 
+    const arcanumChoices = (character.choices || []).filter((choice: any) => choice.revertData?.isMysticArcanum && choice.value);
+    if (arcanumChoices.length > 0) {
+        const chosenIndexes = new Set<string>();
+        const canonical: any[] = [];
+        arcanumChoices.forEach((choice: any) => {
+            const spell = allSpells.find((entry: any) => entry.index === choice.value || entry.name.toLowerCase() === String(choice.value).toLowerCase());
+            if (!spell) return;
+            chosenIndexes.add(String(spell.index).toLowerCase());
+            canonical.push({
+                ...spell,
+                sourceClassIndex: 'arcanum',
+                isPrepared: true,
+                isGranted: true,
+                freeCasts: 1,
+                freeCastReset: 'long',
+                isArcanum: true,
+                arcanumLevel: Number(choice.revertData.spellLevel || spell.level),
+            });
+        });
+        spells = spells.filter((spell: any) => !spell.isArcanum && !chosenIndexes.has(String(spell.index).toLowerCase()));
+        spells.push(...canonical);
+        const canonicalByIndex = new Map(canonical.map((spell: any) => [String(spell.index).toLowerCase(), spell]));
+        spells = spells.filter((spell: any, index: number) => {
+            const key = String(spell.index).toLowerCase();
+            if (!canonicalByIndex.has(key)) return true;
+            return spells.findIndex((entry: any) => String(entry.index).toLowerCase() === key) === index;
+        });
+    }
+
     return { ...character, spells };
 };
 

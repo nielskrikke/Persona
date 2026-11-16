@@ -3054,7 +3054,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const isMonkWeapon = attack.notes?.includes('Monk Weapon') || attack.notes?.includes('Kensei Weapon');
             const isMagic = Boolean(source?.is_magic || source?.requires_attunement || (source?.modifiers && source.modifiers.length > 0) || source?.isInfusion || source?.isPactWeapon || (isMonkWeapon && activeModifiers.some((m: any) => m.type === 'attack_rider' && m.name === 'Empowered Strikes')));
             if (isMagic && isWeapon && !isSpell) {
-                modifiers.push({ name: 'Magical Attack', desc: 'This attack counts as magical for the purpose of overcoming resistance and immunity to nonmagical attacks and damage.' });
+                modifiers.push({ name: 'Magical Attack', desc: 'This is a magical weapon.' });
             }
 
             if (isSpell) {
@@ -3107,6 +3107,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 return undefined;
             };
 
+            if (source?.isPactWeapon && activeModifiers.some((m: any) => /lifedrinker/i.test(String(m.name || ''))) && !modifiers.some((modifier: any) => /lifedrinker/i.test(modifier.name))) {
+                modifiers.push({ name: 'Lifedrinker', desc: 'Once per turn when you hit with your pact weapon, add 1d6 Necrotic, Psychic, or Radiant damage (your choice).' });
+            }
             activeModifiers.filter((m: any) => m.type === 'attack_rider').forEach((m: any) => {
                 if (/lifedrinker/i.test(String(m.name || '')) && !source?.isPactWeapon) return;
                 if (!riderMatches(m.condition)) return;
@@ -3642,6 +3645,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     if (lvl >= 17) spellAttackCount = 4;
                     else if (lvl >= 11) spellAttackCount = 3;
                     else if (lvl >= 5) spellAttackCount = 2;
+                } else if (/scorching ray/i.test(spell.name)) {
+                    spellAttackCount = Math.max(3, 3 + Math.max(0, getSpellCastLevel(character, spell) - 2));
                 }
 
                 const spellAttackObj = {
@@ -4300,7 +4305,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         // 1. Gather all unique features from character.classFeatures
         const skipNames = ["Subclass feature", "Subclass Feature", "Divine Domain", "Divine Order", "Subclass choice", "Subclass Selection"];
         const enrichedFeatures = character.classFeatures
-            .filter(f => !skipNames.includes(f.name))
+            .filter(f => !skipNames.includes(f.name) && !/^Selected:/i.test(String(f.name || '')))
             .map(f => {
                 const enriched = enrichFeature(f);
                 if (!enriched.type) enriched.type = 'Class';

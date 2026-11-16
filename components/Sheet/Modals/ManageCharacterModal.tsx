@@ -2189,7 +2189,7 @@ const ManageCharacterModal = ({
             if (!spell) return;
             const level = Number(choice.revertData.spellLevel || spell.level);
             setLocalSpells(prev => [
-                ...prev.filter((existing: any) => !existing.isArcanum && Number(existing.arcanumLevel || 0) !== level),
+                ...prev.filter((existing: any) => !(existing.isArcanum && Number(existing.arcanumLevel || 0) === level)),
                 {
                     ...spell,
                     sourceClassIndex: 'arcanum',
