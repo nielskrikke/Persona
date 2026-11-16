@@ -55,6 +55,19 @@ import LogTab from './Tabs/LogTab';
 import StatsTab from './Tabs/StatsTab';
 import ChoicesTab from './Tabs/ChoicesTab';
 
+const HeroicD20Icon: React.FC<{ active?: boolean }> = ({ active = false }) => (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={`w-4 h-4 lg:w-5 lg:h-5 transition-colors ${active ? 'text-dnd-gold' : 'text-gray-500 group-hover:text-gray-400'}`}>
+        <path d="M12 1.4 21.3 6.3 23 16.2 12 23 1 16.2 2.7 6.3Z" fill="currentColor" />
+        <g fill="none" stroke="#141518" strokeWidth="1.1" strokeLinejoin="round" strokeLinecap="round">
+            <path d="M12 1.4 7.1 8.1 12 13.2 16.9 8.1Z" />
+            <path d="M7.1 8.1 3.4 15.6 12 23 20.6 15.6 16.9 8.1Z" />
+            <path d="M3.4 15.6H20.6" />
+            <path d="M7.1 8.1 12 23 16.9 8.1" />
+            <path d="M2.7 6.3 7.1 8.1M21.3 6.3 16.9 8.1M1 16.2 3.4 15.6M23 16.2 20.6 15.6" />
+        </g>
+    </svg>
+);
+
 const cleanProficiencyName = (name: string) => {
     if (!name) return '';
     return name.replace(/^(Skill|Musical Instrument|Gaming Set|Tool|Armor|Weapon|Other):\s*/i, '')
@@ -4824,13 +4837,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                  className="flex flex-col items-center justify-between w-16 h-16 lg:w-20 lg:h-20 p-1.5 lg:p-2 border rounded cursor-pointer transition-all duration-200 select-none group bg-[#1b1c20]/80 border-gray-600 hover:border-dnd-gold/70 hover:bg-[#1f2025]"
                              >
                                  <div className="flex-1 flex items-center justify-center">
-                                     <div
-                                         className={`w-3.5 h-3.5 lg:w-4 lg:h-4 border-2 transform rotate-45 transition-all duration-200 ${
-                                             character.inspiration
-                                                 ? 'bg-dnd-gold border-dnd-gold'
-                                                 : 'border-gray-500 group-hover:border-dnd-gold group-hover:scale-105'
-                                         }`}
-                                     />
+                                     <HeroicD20Icon active={character.inspiration} />
                                  </div>
                                  <div className="text-[8px] lg:text-[9px] font-bold uppercase text-center leading-tight text-gray-500 group-hover:text-gray-400">
                                      Heroic<br/>Inspiration
