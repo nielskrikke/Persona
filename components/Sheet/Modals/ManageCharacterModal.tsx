@@ -1200,7 +1200,19 @@ const ManageCharacterModal = ({
                     is_magic: true,
                     requires_attunement: plan?.attunement === true || plan?.attunement === 'varies',
                     rarity: plan?.rarity,
-                    modifiers: /weapon \+[123]/i.test(name) ? [{ type: 'bonus', target: 'attack', value: plus }, { type: 'bonus', target: 'damage', value: plus }] : [],
+                    maxCharges: 10,
+                    modifiers: /weapon \+[123]/i.test(name)
+                        ? [{ type: 'bonus', target: 'attack', value: plus }, { type: 'bonus', target: 'damage', value: plus }]
+                        : /wand of the war mage \+[123]/i.test(name)
+                            ? [{ type: 'bonus', target: 'spell_attack', value: plus }]
+                            : /cloak of elvenkind|boots of elvenkind/i.test(name)
+                                ? [{ type: 'advantage', target: 'stealth', value: 1, name }]
+                                : [],
+                    effects: /goggles of night/i.test(name)
+                        ? [{ name: 'Darkvision', type: 'sense', sense: 'darkvision', value: 60 }]
+                        : /sending stones/i.test(name)
+                            ? [{ name: 'Sending', type: 'action', description: 'Cast Sending once per day.' }]
+                            : [],
                     ac_bonus: /(armor|shield) \+[123]/i.test(name) ? plus : undefined,
                 } as any);
             });

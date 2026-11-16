@@ -2007,7 +2007,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             const effects = result === 'Swiftness' ? [{ type: 'bonus', target: 'speed', value: 10 }]
                                 : result === 'Resilience' ? [{ type: 'bonus', target: 'ac', value: 1 }]
                                 : result === 'Boldness' ? [{ type: 'bonus', target: 'saves', value: '1d4' }]
-                                : result === 'Flight' ? [{ type: 'bonus', target: 'speed', value: 10 }]
+                                : result === 'Flight' ? [{ type: 'bonus', target: 'fly_speed', value: 10 }]
                                 : [];
                             const heal = result === 'Healing' ? 2 * (1 + Math.floor(Math.random() * 4)) + intMod : 0;
                             return {
@@ -2041,7 +2041,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     setCharacter(prev => ({
                         ...prev,
                         spellSlots: { ...prev.spellSlots, [tinkerSlot]: { ...prev.spellSlots[tinkerSlot], current: Math.max(0, prev.spellSlots[tinkerSlot].current - 1) } },
-                        inventory: (prev.inventory || []).map((item: any) => String(item.name).toLowerCase() === tinkerItem.toLowerCase() ? { ...item, charges: Number(item.charges || 0) + tinkerSlot } : item),
+                        inventory: (prev.inventory || []).map((item: any) => String(item.name).toLowerCase() === tinkerItem.toLowerCase() ? { ...item, charges: Math.min(Number(item.maxCharges || 10), Number(item.charges || 0) + tinkerSlot) } : item),
                     }));
                 };
                 const drainFor = (level: number) => {
@@ -2077,7 +2077,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             <button onClick={() => drainFor(1)} disabled={!drain?.current || !tinkerItem} className="py-2 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[9px] font-black uppercase disabled:opacity-40">Drain → 1st</button>
                             <button onClick={() => drainFor(2)} disabled={!drain?.current || !tinkerItem} className="col-span-2 py-2 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[9px] font-black uppercase disabled:opacity-40">Drain → 2nd (Uncommon/Rare)</button>
                         </div>
-                        <div className="text-[9px] text-gray-500">Drain uses: {drain ? `${drain.current} / ${drain.max}` : '0'}{selectedItem ? ` · Charges: ${Number((selectedItem as any).charges || 0)}` : ''}</div>
+                        <div className="text-[9px] text-gray-500">Drain uses: {drain ? `${drain.current} / ${drain.max}` : '0'}{selectedItem ? ` · Charges: ${Number((selectedItem as any).charges || 0)} / ${Number((selectedItem as any).maxCharges || 10)}` : ''}</div>
                     </div>
                 );
             }
