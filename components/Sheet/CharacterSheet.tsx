@@ -58,7 +58,7 @@ import ChoicesTab from './Tabs/ChoicesTab';
 const HeroicD20Icon: React.FC<{ active?: boolean }> = ({ active = false }) => (
     <span
         aria-hidden="true"
-        className={`block w-8 h-8 lg:w-9 lg:h-9 transition-colors ${active ? 'bg-dnd-gold' : 'bg-gray-500 group-hover:bg-gray-400'}`}
+        className={`block w-[27px] h-[27px] lg:w-[31px] lg:h-[31px] transition-colors ${active ? 'bg-dnd-gold' : 'bg-gray-500 group-hover:bg-gray-400'}`}
         style={{
             WebkitMaskImage: 'url(/d20-inspiration.png)',
             maskImage: 'url(/d20-inspiration.png)',
