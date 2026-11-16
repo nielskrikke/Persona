@@ -66,6 +66,9 @@ const ManageCharacterModal = ({
     const [invocationCantrips, setInvocationCantrips] = useState<Record<string, string>>(character.invocationCantrips || {});
     const [spellbookSearch, setSpellbookSearch] = useState('');
     const [armorModel, setArmorModel] = useState(character.armorModel || '');
+    const [replicatePlans, setReplicatePlans] = useState<string[]>(character.replicatePlans || []);
+    const [replicatedItems, setReplicatedItems] = useState<string[]>(character.replicatedItems || []);
+    const [spellStoringItem, setSpellStoringItem] = useState(character.spellStoringItem?.spell || '');
     const [spellbook, setSpellbook] = useState<string[]>((character.spellbook && character.spellbook.length > 0) ? character.spellbook : (character.spells || []).filter((spell: any) => Number(spell.level) >= 1 && String(spell.sourceClassIndex || '').toLowerCase() === 'wizard').map((spell: any) => spell.index));
     const [localClasses, setLocalClasses] = useState(character.classes);
     const [localClassFeatures, setLocalClassFeatures] = useState(character.classFeatures);
@@ -292,6 +295,48 @@ const ManageCharacterModal = ({
         });
     }, [isOpen, localClasses, armorModel]);
 
+    useEffect(() => {
+        if (!isOpen || allSpellCatalog.length === 0) return;
+        const artificer = (localClasses || []).find((cls: any) => cls.definition?.index === 'artificer');
+        if (!artificer) return;
+        const level = Number(artificer.level || 1);
+        const table = (artificer.definition as any)?.level_table?.find((row: any) => row.level === level)?.class_specific || {};
+        const plansKnown = Number(table.plans_known || 0);
+        const itemsKnown = Number(table.magic_items || 0);
+        const planOptions = Object.entries((artificer.definition as any)?.options?.replicate_plans || {})
+            .filter(([planLevel]) => Number(planLevel) <= level)
+            .flatMap(([, plans]: any) => plans)
+            .map((plan: any) => typeof plan === 'string' ? plan : plan.name)
+            .filter(Boolean);
+        setLocalChoices(prev => {
+            let changed = false;
+            const next = [...prev];
+            const planChoiceIndex = next.findIndex((choice: any) => choice.id === 'replicate-plans');
+            if (plansKnown > 0 && planChoiceIndex === -1) {
+                next.push({ id: 'replicate-plans', level: 2, source: 'Artificer', type: 'feature_choice', label: 'Replicate Magic Item: Known Plans', value: replicatePlans, options: Array.from(new Set(planOptions)), count: plansKnown, optional: true, revertData: { classIndex: 'artificer', isReplicatePlans: true } });
+                changed = true;
+            } else if (planChoiceIndex >= 0 && (next[planChoiceIndex].count !== plansKnown || JSON.stringify((next[planChoiceIndex].options || []).length) !== JSON.stringify(Array.from(new Set(planOptions)).length))) {
+                next[planChoiceIndex] = { ...next[planChoiceIndex], count: plansKnown, options: Array.from(new Set(planOptions)) };
+                changed = true;
+            }
+            const known = replicatePlans.length > 0 ? replicatePlans : planOptions;
+            const itemChoiceIndex = next.findIndex((choice: any) => choice.id === 'replicated-items');
+            if (itemsKnown > 0 && itemChoiceIndex === -1) {
+                next.push({ id: 'replicated-items', level: 2, source: 'Artificer', type: 'feature_choice', label: 'Replicated Items (Made)', value: replicatedItems, options: known, count: itemsKnown, optional: true, revertData: { classIndex: 'artificer', isReplicatedItems: true } });
+                changed = true;
+            } else if (itemChoiceIndex >= 0 && (next[itemChoiceIndex].count !== itemsKnown || JSON.stringify(next[itemChoiceIndex].options || []) !== JSON.stringify(known))) {
+                next[itemChoiceIndex] = { ...next[itemChoiceIndex], count: itemsKnown, options: known };
+                changed = true;
+            }
+            if (level >= 11 && !next.some((choice: any) => choice.id === 'spell-storing-item')) {
+                const artSpells = allSpellCatalog.filter((spell: any) => Number(spell.level) >= 1 && Number(spell.level) <= 3 && (spell.classes || []).some((entry: any) => /artificer/i.test(String(entry.name || entry.index || ''))));
+                next.push({ id: 'spell-storing-item', level: 11, source: 'Artificer', type: 'spell', label: 'Spell-Storing Item', value: spellStoringItem || null, options: artSpells, count: 1, optional: true, revertData: { classIndex: 'artificer', isSpellStoringItem: true } });
+                changed = true;
+            }
+            return changed ? next : prev;
+        });
+    }, [isOpen, allSpellCatalog, localClasses, replicatePlans, replicatedItems, spellStoringItem]);
+
     // Initialization
     useEffect(() => {
         if (isOpen) {
@@ -377,6 +422,9 @@ const ManageCharacterModal = ({
             setInvocationCantrips(character.invocationCantrips || {});
             setSpellbook(character.spellbook || []);
             setArmorModel(character.armorModel || '');
+            setReplicatePlans(character.replicatePlans || []);
+            setReplicatedItems(character.replicatedItems || []);
+            setSpellStoringItem(character.spellStoringItem?.spell || '');
             setLocalClasses(character.classes || []);
             setLocalClassFeatures((character.classFeatures || []).map((feature: any) => {
                 if (/^metamagic (?:options|calibration):/i.test(String(feature.name || ''))) {
@@ -921,7 +969,20 @@ const ManageCharacterModal = ({
             .filter((effect: any) => effect.type === 'proficiency' && effect.category === 'tool')
             .map((effect: any) => String(effect.target || effect.value || ''))
             .filter(Boolean))));
-        if (newSubclassTools.length > 0) setToolProficiencies(prev => Array.from(new Set([...prev, ...newSubclassTools])));
+        if (newSubclassTools.length > 0) {
+            const remainingTools = toolProficiencies.filter((tool: string) => !removedTools.has(tool));
+            const duplicates = newSubclassTools.filter(tool => remainingTools.some(existing => String(existing).toLowerCase() === tool.toLowerCase()));
+            setToolProficiencies(prev => Array.from(new Set([...prev, ...newSubclassTools.filter(tool => !duplicates.some(dup => String(dup).toLowerCase() === tool.toLowerCase()))])));
+            if (duplicates.length > 0) {
+                const replacementOptions = ARTISAN_TOOLS.filter(tool => !remainingTools.some(existing => String(existing).toLowerCase() === tool.toLowerCase()));
+                setLocalChoices(prev => [...prev.filter((choice: any) => choice.id !== 'tools-of-trade-replacement'), {
+                    id: 'tools-of-trade-replacement', level: clsDef.level, source: newSubclass.name, type: 'other',
+                    label: `${newSubclass.name}: Tools of the Trade Replacement`, value: null,
+                    options: replacementOptions, count: 1, optional: true,
+                    revertData: { classIndex, isToolsOfTradeReplacement: true },
+                }]);
+            }
+        }
 
         // Subclass features that declare choices (Battle Master maneuvers,
         // Deft Explorer expertise, Student of War, etc.) need choice cards.
@@ -1308,6 +1369,41 @@ const ManageCharacterModal = ({
             if (removable.length > 0) setSpellbook(prev => prev.filter((entry: any) => !removable.map(String).includes(String(entry))));
             setLocalClassFeatures(prev => prev.filter((feature: any) => feature.name !== 'Evocation Savant'));
             setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: null, revertData: { ...c.revertData, pendingConfirm: true } } : c));
+            return;
+        }
+
+        if (choice.revertData?.isToolsOfTradeReplacement) {
+            const selected = typeof choice.value === 'string' ? choice.value : '';
+            if (!selected) return;
+            setToolProficiencies(prev => Array.from(new Set([...prev, selected])));
+            setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: selected, revertData: { ...c.revertData, pendingConfirm: false } } : c));
+            return;
+        }
+        if (choice.revertData?.isReplicatePlans) {
+            const selected = Array.isArray(choice.value) ? choice.value : [];
+            setReplicatePlans(selected);
+            setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: selected, revertData: { ...c.revertData, pendingConfirm: false } } : c));
+            return;
+        }
+        if (choice.revertData?.isReplicatedItems) {
+            const selected = Array.isArray(choice.value) ? choice.value : [];
+            setReplicatedItems(selected);
+            setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: selected, revertData: { ...c.revertData, pendingConfirm: false } } : c));
+            return;
+        }
+        if (choice.revertData?.isSpellStoringItem) {
+            const selected = typeof choice.value === 'string' ? choice.value : '';
+            const spell = allSpellCatalog.find((entry: any) => entry.index === selected || entry.name.toLowerCase() === String(selected).toLowerCase());
+            if (!spell) return;
+            setSpellStoringItem(spell.name);
+            const uses = Math.max(1, 2 * calculateModifier(abilities.int));
+            setLocalFeatures(prev => {
+                const next = { ...prev };
+                Object.keys(next).forEach(key => { if (/^Spell-Storing Item/i.test(key)) delete next[key]; });
+                next[`Spell-Storing Item (${spell.name})`] = { max: uses, current: uses, reset: 'long', source: 'Artificer' };
+                return next;
+            });
+            setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: spell.name, revertData: { ...c.revertData, pendingConfirm: false } } : c));
             return;
         }
 

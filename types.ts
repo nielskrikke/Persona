@@ -610,6 +610,9 @@ export interface CharacterState {
     invocationCantrips?: Record<string, string>;
     spellbook?: string[];
     armorModel?: string;
+    replicatePlans?: string[];
+    replicatedItems?: string[];
+    spellStoringItem?: { spell: string; };
     diceColor?: string;
     diceEffect?: string;
     diceCustomization?: DiceCustomizationOptions;

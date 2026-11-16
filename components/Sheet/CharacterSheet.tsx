@@ -3837,7 +3837,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     healing: isSecondWind || isHandOfHealing || isHealingHands,
                     notes: isDivineSpark
                         ? ['Channel Divinity: 1d8 + WIS at level 2, 2d8 at level 7, 3d8 at level 13; CON save for half.']
-                        : (monkActionDescription ? [monkActionDescription] : []),
+                        : /experimental elixir/i.test(actionName)
+                            ? ['Roll 1d6: 1 Healing, 2 Swiftness, 3 Resilience, 4 Boldness, 5 Flight, 6 Transformation.']
+                            : (monkActionDescription ? [monkActionDescription] : []),
                     source: {
                         ...feature,
                         name: actionName,
@@ -3848,6 +3850,36 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 });
             });
         });
+
+        if ((character.classFeatures || []).some((feature: any) => /spell-storing item/i.test(feature.name || ''))) {
+            const storedName = character.spellStoringItem?.spell;
+            if (storedName) {
+                const storageKey = Object.keys(character.featureUsage || {}).find(key => /^Spell-Storing Item/i.test(key));
+                const storage = storageKey ? character.featureUsage[storageKey] : null;
+                attacks.push({
+                    id: 'spell-storing-item',
+                    name: `Spell-Storing Item: ${storedName}`,
+                    range: 'Touch',
+                    hit: null,
+                    damage: '-',
+                    type: 'Artificer',
+                    notes: [`Cast ${storedName} from the stored item. Uses: ${storage ? `${storage.current} / ${storage.max}` : '2 × INT'}.`],
+                    source: { name: 'Spell-Storing Item', activationType: 'action', desc: ['The stored spell can be cast by the holder without expending a spell slot.'] },
+                });
+            }
+        }
+        if ((character.replicatedItems || []).length > 0) {
+            attacks.push({
+                id: 'replicated-items',
+                name: 'Replicated Magic Items',
+                range: '-',
+                hit: null,
+                damage: '-',
+                type: 'Artificer',
+                notes: [character.replicatedItems.filter(Boolean).join(', ')],
+                source: { name: 'Replicate Magic Item', activationType: 'action', desc: ['Items created from your known plans.'] },
+            });
+        }
 
         const hasFeature = (name: string) => (character.classFeatures || []).some((feature: any) =>
             String(feature.name || '').toLowerCase().includes(String(name).toLowerCase())
