@@ -56,16 +56,20 @@ import StatsTab from './Tabs/StatsTab';
 import ChoicesTab from './Tabs/ChoicesTab';
 
 const HeroicD20Icon: React.FC<{ active?: boolean }> = ({ active = false }) => (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className={`w-4 h-4 lg:w-5 lg:h-5 transition-colors ${active ? 'text-dnd-gold' : 'text-gray-500 group-hover:text-gray-400'}`}>
-        <path d="M12 1.4 21.3 6.3 23 16.2 12 23 1 16.2 2.7 6.3Z" fill="currentColor" />
-        <g fill="none" stroke="#141518" strokeWidth="1.1" strokeLinejoin="round" strokeLinecap="round">
-            <path d="M12 1.4 7.1 8.1 12 13.2 16.9 8.1Z" />
-            <path d="M7.1 8.1 3.4 15.6 12 23 20.6 15.6 16.9 8.1Z" />
-            <path d="M3.4 15.6H20.6" />
-            <path d="M7.1 8.1 12 23 16.9 8.1" />
-            <path d="M2.7 6.3 7.1 8.1M21.3 6.3 16.9 8.1M1 16.2 3.4 15.6M23 16.2 20.6 15.6" />
-        </g>
-    </svg>
+    <span
+        aria-hidden="true"
+        className={`block w-8 h-8 lg:w-9 lg:h-9 transition-colors ${active ? 'bg-dnd-gold' : 'bg-gray-500 group-hover:bg-gray-400'}`}
+        style={{
+            WebkitMaskImage: 'url(/d20-inspiration.png)',
+            maskImage: 'url(/d20-inspiration.png)',
+            WebkitMaskSize: 'contain',
+            maskSize: 'contain',
+            WebkitMaskRepeat: 'no-repeat',
+            maskRepeat: 'no-repeat',
+            WebkitMaskPosition: 'center',
+            maskPosition: 'center',
+        }}
+    />
 );
 
 const cleanProficiencyName = (name: string) => {
