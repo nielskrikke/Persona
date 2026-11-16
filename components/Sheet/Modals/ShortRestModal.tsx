@@ -4,6 +4,7 @@ import { CharacterState, RollResult } from '@/types';
 import { calculateModifier, formatModifier, getEffectiveAbilities } from '@/utils/rules';
 import { getCasterProfileFor } from '../../../utils/rules';
 import { rollDice } from '../../../utils/dice';
+import { fetchAllSpells } from '../../../data/index';
 
 const ShortRestModal = ({ 
     isOpen, 
@@ -21,17 +22,35 @@ const ShortRestModal = ({
     const [rollingSize, setRollingSize] = useState<string | null>(null);
     const [restorationAmount, setRestorationAmount] = useState(0);
     const [arcaneRecovery, setArcaneRecovery] = useState<Record<number, number>>({});
+    const [spellCatalog, setSpellCatalog] = useState<any[]>([]);
+    const [memorizeOut, setMemorizeOut] = useState('');
+    const [memorizeIn, setMemorizeIn] = useState('');
     const arcaneFeature = character.featureUsage['Arcane Recovery'];
     const wizardClass = character.classes.find((cls: any) => cls.definition?.index === 'wizard');
     const arcaneMaxTotal = wizardClass ? Math.max(1, Math.ceil(Number(wizardClass.level) / 2)) : 0;
     const arcaneUsedTotal = Object.entries(arcaneRecovery).reduce((sum, [level, count]) => sum + Number(level) * Number(count || 0), 0);
     const arcaneAvailable = Boolean(arcaneFeature && Number(arcaneFeature.current) > 0 && wizardClass);
+    const hasMemorizeSpell = Boolean(wizardClass && Number(wizardClass.level) >= 5 && (character.classFeatures || []).some((feature: any) => /memorize spell/i.test(feature.name || '')));
+    const preparedWizardSpells = (character.spells || []).filter((spell: any) => Number(spell.level) > 0 && String(spell.sourceClassIndex || '').toLowerCase() === 'wizard');
+    const bookKeys = new Set((character.spellbook || []).map((entry: any) => String(entry).toLowerCase()));
+    const bookSpells = spellCatalog.filter((spell: any) => Number(spell.level) > 0
+        && (bookKeys.has(String(spell.index).toLowerCase()) || bookKeys.has(String(spell.name).toLowerCase()))
+        && !preparedWizardSpells.some((known: any) => known.index === spell.index));
     const restorationFeature = character.featureUsage['Sorcerous Restoration'];
     const sorceryPoints = character.featureUsage['Sorcery Points'];
     const restorationAvailable = Boolean(restorationFeature && restorationFeature.current > 0 && sorceryPoints);
     const maxRestoration = restorationAvailable ? Math.min(7, Math.max(0, Number(sorceryPoints.max || 0) - Number(sorceryPoints.current || 0))) : 0;
 
-    useEffect(() => { if (isOpen) { setRestorationAmount(0); setArcaneRecovery({}); } }, [isOpen]);
+    useEffect(() => {
+        if (!isOpen) return;
+        setRestorationAmount(0);
+        setArcaneRecovery({});
+        setMemorizeOut('');
+        setMemorizeIn('');
+        if (hasMemorizeSpell && spellCatalog.length === 0) {
+            fetchAllSpells().then(setSpellCatalog).catch(() => {});
+        }
+    }, [isOpen, hasMemorizeSpell]);
 
     if (!isOpen) return null;
 
@@ -108,6 +127,16 @@ const ShortRestModal = ({
                 .filter(spell => spell.freeCasts && (spell.freeCastReset || 'long') === 'short')
                 .map(spell => spell.index)
         );
+        let newSpells = [...character.spells];
+        if (hasMemorizeSpell && memorizeOut && memorizeIn) {
+            const replacement = spellCatalog.find((spell: any) => spell.index === memorizeIn);
+            if (replacement) {
+                newSpells = newSpells.filter((spell: any) => !(spell.index === memorizeOut && String(spell.sourceClassIndex || '').toLowerCase() === 'wizard'));
+                if (!newSpells.some((spell: any) => spell.index === replacement.index)) {
+                    newSpells.push({ ...replacement, sourceClassIndex: 'wizard', isPrepared: true });
+                }
+            }
+        }
         const newFreeCastUsage = { ...(character.freeCastUsage || {}) };
         Object.keys(newFreeCastUsage).forEach(index => {
             if (shortRestSpells.has(index)) delete newFreeCastUsage[index];
@@ -132,7 +161,7 @@ const ShortRestModal = ({
             newFeatures['Sorcerous Restoration'] = { ...newFeatures['Sorcerous Restoration'], current: 0 };
         }
 
-        onUpdate({ featureUsage: newFeatures, spellSlots: newSlots, freeCastUsage: newFreeCastUsage });
+        onUpdate({ featureUsage: newFeatures, spellSlots: newSlots, freeCastUsage: newFreeCastUsage, spells: newSpells });
         onClose();
     };
 
@@ -214,6 +243,22 @@ const ShortRestModal = ({
                         <div className="flex items-center gap-3">
                             <input type="range" min={0} max={maxRestoration} value={restorationAmount} onChange={e => setRestorationAmount(Number(e.target.value))} className="flex-grow accent-purple-500" />
                             <input type="number" min={0} max={maxRestoration} value={restorationAmount} onChange={e => setRestorationAmount(Math.max(0, Math.min(maxRestoration, Number(e.target.value) || 0)))} className="w-16 bg-black/40 border border-purple-900/50 rounded p-2 text-center text-sm text-white outline-none" />
+                        </div>
+                    </div>
+                )}
+                {hasMemorizeSpell && bookSpells.length > 0 && preparedWizardSpells.length > 0 && (
+                    <div className="bg-blue-950/20 border border-blue-900/50 rounded-lg p-4 mb-6">
+                        <h3 className="text-[10px] font-bold text-blue-300 uppercase tracking-widest mb-1">Memorize Spell</h3>
+                        <p className="text-[10px] text-gray-500 mb-3">Replace one prepared Wizard spell with a spell from your spellbook.</p>
+                        <div className="space-y-2">
+                            <select value={memorizeOut} onChange={e => setMemorizeOut(e.target.value)} className="w-full bg-black/40 border border-gray-700 rounded p-2 text-xs text-white">
+                                <option value="">Replace prepared spell…</option>
+                                {preparedWizardSpells.map((spell: any) => <option key={spell.index} value={spell.index}>{spell.name}</option>)}
+                            </select>
+                            <select value={memorizeIn} onChange={e => setMemorizeIn(e.target.value)} className="w-full bg-black/40 border border-gray-700 rounded p-2 text-xs text-white">
+                                <option value="">With spellbook spell…</option>
+                                {bookSpells.map((spell: any) => <option key={spell.index} value={spell.index}>{spell.name}</option>)}
+                            </select>
                         </div>
                     </div>
                 )}

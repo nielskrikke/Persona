@@ -1,7 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { CharacterState, SpellDetail } from '../../../types';
 import { WIDGET_BG } from '../../../data/constants';
+import { fetchAllSpells } from '../../../data/index';
 import { getSpellDamageString, getSpellSecondaryDamageString, calculateModifier, calculateProficiency, formatModifier, getEffectiveAbilities, resolveDamageFormula, appendMinDie, getSpellCastLevel, getSpellUpcastCount, getConditionLabelsFromText, canCastSpellInWildShape, getWildShapeRules } from '../../../utils/rules';
 
 interface SpellsTabProps {
@@ -281,10 +282,30 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
         if (descText.includes('spell attack')) roll(`1d20${spellAttackFor(spell)}`, `Attack: ${spell.name}`);
         if (spell.name.toLowerCase() === 'polymorph' && onPolymorphCast) onPolymorphCast();
     };
+    const castRitual = (spell: SpellDetail) => {
+        setCharacter(prev => ({ ...prev, activeConcentration: spell.concentration ? spell : prev.activeConcentration }));
+    };
     const [spellSearch, setSpellSearch] = useState('');
     const [itemCostSelections, setItemCostSelections] = useState<Record<string, number>>({});
     const [ritualOnly, setRitualOnly] = useState(false);
     const [concentrationOnly, setConcentrationOnly] = useState(false);
+    const [spellbookCatalog, setSpellbookCatalog] = useState<SpellDetail[]>([]);
+
+    useEffect(() => {
+        if (!character.spellbook || character.spellbook.length === 0) return;
+        let cancelled = false;
+        fetchAllSpells().then((spells: SpellDetail[]) => {
+            if (!cancelled) setSpellbookCatalog(spells);
+        }).catch(() => {});
+        return () => { cancelled = true; };
+    }, [character.spellbook]);
+
+    const spellbookKeys = new Set((character.spellbook || []).map((entry: any) => String(entry).toLowerCase()));
+    const knownSpellKeys = new Set((character.spells || []).map((spell: any) => String(spell.index).toLowerCase()));
+    const hasRitualAdept = (character.classFeatures || []).some((feature: any) => /ritual adept/i.test(feature.name || ''));
+    const bookRituals = hasRitualAdept
+        ? spellbookCatalog.filter((spell: SpellDetail) => spell.ritual && Number(spell.level) > 0 && !knownSpellKeys.has(String(spell.index).toLowerCase()) && (spellbookKeys.has(String(spell.index).toLowerCase()) || spellbookKeys.has(String(spell.name).toLowerCase())))
+        : [];
 
     const getDcType = (spell: SpellDetail) => spell.dc?.dc_type?.name?.substring(0, 3).toUpperCase() || null;
     const getSpellEffectLabel = (spell: SpellDetail, damage: string) => {
@@ -585,6 +606,32 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                     );
                 })}
             </div>
+
+            {bookRituals.length > 0 && (
+                <div className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-xl overflow-hidden shadow-sm`}>
+                    <div className="bg-[#121316]/80 px-6 py-3 border-b border-[#3e4149]/30">
+                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Spellbook Rituals</h4>
+                        <p className="text-[10px] text-gray-600 mt-1">Cast with Ritual Adept in 10 minutes without preparing or spending a slot.</p>
+                    </div>
+                    <div className="divide-y divide-[#2e3036]/60">
+                        {bookRituals.map((spell: SpellDetail) => (
+                            <div key={spell.index} className="flex items-center gap-3 px-6 py-3">
+                                <div className="flex-1 min-w-0">
+                                    <div className="font-bold text-sm text-gray-200 flex items-center gap-2">
+                                        {spell.name}
+                                        <span className="text-[8px] bg-yellow-900/40 text-yellow-500 border border-yellow-800/60 px-1 rounded">R</span>
+                                        <span className="text-[9px] text-gray-500">Level {spell.level}</span>
+                                    </div>
+                                    <div className="text-[10px] text-gray-500 truncate">{spell.casting_time} • {spell.duration}</div>
+                                </div>
+                                <button onClick={() => castRitual(spell)} className="text-[10px] font-bold uppercase bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold hover:bg-dnd-gold hover:text-black px-3 py-1.5 rounded-lg transition-colors shrink-0">
+                                    Cast Ritual
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
