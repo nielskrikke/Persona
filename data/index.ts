@@ -638,10 +638,11 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
         grantedByIndex.set(spell.index, {
             ...spell,
             sourceClassIndex: 'granted',
-            isPrepared: true,
+            isPrepared: !effect.free_cast_only,
             isGranted: true,
             grantedBy: source,
             freeCasts: effect.free_casts,
+            freeCastOnly: Boolean(effect.free_cast_only),
             freeCastReset: effect.free_cast_reset || effect.reset,
             minLevel,
             spellcastingAbility: effect.ability || character.spellcastingAbility,

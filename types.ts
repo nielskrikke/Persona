@@ -609,6 +609,7 @@ export interface CharacterState {
     fiendishResilience?: string;
     invocationCantrips?: Record<string, string>;
     spellbook?: string[];
+    armorModel?: string;
     diceColor?: string;
     diceEffect?: string;
     diceCustomization?: DiceCustomizationOptions;

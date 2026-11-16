@@ -65,6 +65,7 @@ const ManageCharacterModal = ({
     const [localSpells, setLocalSpells] = useState<SpellDetail[]>(character.spells);
     const [invocationCantrips, setInvocationCantrips] = useState<Record<string, string>>(character.invocationCantrips || {});
     const [spellbookSearch, setSpellbookSearch] = useState('');
+    const [armorModel, setArmorModel] = useState(character.armorModel || '');
     const [spellbook, setSpellbook] = useState<string[]>((character.spellbook && character.spellbook.length > 0) ? character.spellbook : (character.spells || []).filter((spell: any) => Number(spell.level) >= 1 && String(spell.sourceClassIndex || '').toLowerCase() === 'wizard').map((spell: any) => spell.index));
     const [localClasses, setLocalClasses] = useState(character.classes);
     const [localClassFeatures, setLocalClassFeatures] = useState(character.classFeatures);
@@ -275,6 +276,22 @@ const ManageCharacterModal = ({
         });
     }, [isOpen, allSpellCatalog, localClasses, localSpells, character.spellbook, spellbook]);
 
+    useEffect(() => {
+        if (!isOpen) return;
+        const artificer = (localClasses || []).find((cls: any) => cls.definition?.index === 'artificer');
+        const isArmorer = /armorer/i.test(String(artificer?.subclass?.index || artificer?.subclass?.name || ''));
+        if (!isArmorer) return;
+        setLocalChoices(prev => {
+            if (prev.some((choice: any) => choice.id === 'armor-model')) return prev;
+            return [...prev, {
+                id: 'armor-model', level: 3, source: 'Armorer', type: 'other',
+                label: 'Armor Model', value: armorModel || null,
+                options: ['Dreadnaught', 'Guardian', 'Infiltrator'], count: 1,
+                revertData: { classIndex: 'artificer', isArmorModel: true },
+            }];
+        });
+    }, [isOpen, localClasses, armorModel]);
+
     // Initialization
     useEffect(() => {
         if (isOpen) {
@@ -359,6 +376,7 @@ const ManageCharacterModal = ({
             setLocalSpells(character.spells || []);
             setInvocationCantrips(character.invocationCantrips || {});
             setSpellbook(character.spellbook || []);
+            setArmorModel(character.armorModel || '');
             setLocalClasses(character.classes || []);
             setLocalClassFeatures((character.classFeatures || []).map((feature: any) => {
                 if (/^metamagic (?:options|calibration):/i.test(String(feature.name || ''))) {
@@ -1290,6 +1308,13 @@ const ManageCharacterModal = ({
             if (removable.length > 0) setSpellbook(prev => prev.filter((entry: any) => !removable.map(String).includes(String(entry))));
             setLocalClassFeatures(prev => prev.filter((feature: any) => feature.name !== 'Evocation Savant'));
             setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: null, revertData: { ...c.revertData, pendingConfirm: true } } : c));
+            return;
+        }
+
+        if (choice.revertData?.isArmorModel) {
+            const selected = typeof choice.value === 'string' ? choice.value : '';
+            setArmorModel(selected);
+            setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: selected, revertData: { ...c.revertData, pendingConfirm: false } } : c));
             return;
         }
 

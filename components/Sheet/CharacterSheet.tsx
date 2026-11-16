@@ -1750,6 +1750,20 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         });
     }, [character.activeEldritchCannon]);
 
+    useEffect(() => {
+        const companionWidget = hasUiWidget(character, 'steelDefender') ? 'steelDefender' : hasUiWidget(character, 'eldritchCannon') ? 'eldritchCannon' : null;
+        if (!companionWidget) return;
+        if ((character.layout.right || []).includes(companionWidget) || (character.layout.left || []).includes(companionWidget) || (character.layout.mobile || []).includes(companionWidget)) return;
+        setCharacter(prev => ({
+            ...prev,
+            layout: {
+                ...prev.layout,
+                right: [companionWidget, ...(prev.layout.right || []).filter(id => id !== companionWidget)],
+                mobile: [companionWidget, ...(prev.layout.mobile || []).filter(id => id !== companionWidget)],
+            },
+        }));
+    }, [character.classes]);
+
     const handleSummonDefender = (defender: SteelDefenderDetail) => {
         setCharacter(prev => ({ ...prev, activeSteelDefender: defender }));
     };
@@ -2914,6 +2928,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
     const getAttacks = () => {
         const attacks: any[] = [];
+        const featureNamesLower = (character.classFeatures || []).map((feature: any) => String(feature.name || '').toLowerCase());
         const overrides = character.combatOverrides || { hitBonus: 0, damageBonus: 0, hitOverride: null, damageOverride: null };
 
         // Helper to apply overrides
@@ -3230,6 +3245,25 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         };
         (unarmedAttack as any).modifiers = getAttackModifiers(unarmedAttack);
         attacks.push(unarmedAttack);
+        const armorModel = String(character.armorModel || '').toLowerCase();
+        const armorModelFeature = featureNamesLower.includes('armor model');
+        if (armorModelFeature && ['dreadnaught','guardian','infiltrator'].includes(armorModel)) {
+            const modelAttack = armorModel === 'dreadnaught'
+                ? { name: 'Force Demolisher', range: '10 ft.', damage: `1d10 + ${intMod}`, type: 'Force' }
+                : armorModel === 'guardian'
+                    ? { name: 'Thunder Pulse', range: '5 ft.', damage: `1d8 + ${intMod}`, type: 'Thunder' }
+                    : { name: 'Lightning Launcher', range: '90 ft.', damage: `1d6 + ${intMod}`, type: 'Lightning' };
+            attacks.push({
+                id: `armorer-${armorModel}`,
+                name: modelAttack.name,
+                range: modelAttack.range,
+                hit: prof + intMod,
+                damage: modelAttack.damage,
+                type: modelAttack.type,
+                notes: [`Armor Model (${character.armorModel}); uses INT.`],
+                source: { name: 'Armor Model', activationType: 'action', desc: ['Armorer model weapon.'] },
+            });
+        }
         const hasRadiantStrikes = (character.classFeatures || []).some((feature: any) => /radiant strikes/i.test(feature.name || ''));
         if (hasRadiantStrikes) {
             attacks.push({
@@ -3602,6 +3636,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 source: item
             };
             (weaponAttack as any).modifiers = getAttackModifiers(weaponAttack);
+            if (featureNamesLower.includes('arcane jolt') && (item.is_magic || item.requires_attunement || item.isPactWeapon || (item.modifiers && item.modifiers.length > 0))) {
+                (weaponAttack as any).modifiers.push({ name: 'Arcane Jolt', desc: `On a magic-weapon hit: add ${character.level >= 15 ? '4d6' : '2d6'} Force damage or heal that amount; INT uses per Long Rest.` });
+            }
             const masteryName = mastery ? (typeof item.mastery === 'string' ? item.mastery : item.mastery.name) : null;
             const masteredWeapons = (character.choices || [])
                 .filter((choice: any) => choice.type === 'weapon_mastery')
@@ -3673,6 +3710,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 if (hasEmpoweredEvocation && spellSchool === 'evocation') {
                     spellFlatBonus += intMod;
                 }
+                const featureNamesLower = (character.classFeatures || []).map((feature: any) => String(feature.name || '').toLowerCase());
+                const hasArcaneFirearm = featureNamesLower.includes('arcane firearm');
+                const hasAlchemicalSavant = featureNamesLower.includes('alchemical savant');
+                const hasGuidedPrecision = featureNamesLower.includes('guided precision');
+                if (hasArcaneFirearm) spellExtraDice.push('1d8');
+                if (hasAlchemicalSavant && ['acid','fire','poison'].includes(spellDamageType)) spellFlatBonus += intMod;
+                if (hasGuidedPrecision && /cartographer/i.test(String(character.classes?.[0]?.subclass?.name || ''))) spellFlatBonus += intMod;
 
                 const dc = (spell as any).dc?.dc_type?.name?.substring(0, 3).toUpperCase();
                 const spellAbility = (spell as any).spellcastingAbility as AbilityName | undefined;

@@ -46,6 +46,10 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
         ...character.classes.flatMap(cls => ((cls.subclass as any)?.feature_details || []).map((feature: any) => String(feature.name || '').toLowerCase())),
     ]);
     const featureNameList = [...featureNames];
+    const hasAlchemicalSavant = (character.classFeatures || []).some((feature: any) => /alchemical savant/i.test(feature.name || ''));
+    const hasArcaneFirearm = (character.classFeatures || []).some((feature: any) => /arcane firearm/i.test(feature.name || ''));
+    const hasGuidedPrecision = (character.classFeatures || []).some((feature: any) => /guided precision/i.test(feature.name || ''));
+    const isCartographer = /cartographer/i.test(String(character.classes?.[0]?.subclass?.name || ''));
     const hasDiscipleOfLife = featureNameList.some(name => name.includes('disciple of life'));
     const hasBlessedHealer = featureNameList.some(name => name.includes('blessed healer'));
     const hasPotentSpellcasting = featureNameList.some(name => name.includes('potent spellcasting'));
@@ -55,7 +59,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
     const addsCastingModifier = (spell: SpellDetail) => /plus your spellcasting (?:ability )?modifier|plus your spellcasting modifier/i.test(spellDescription(spell));
     const discipleBonus = (spell: SpellDetail) => hasDiscipleOfLife && isHealingSpell(spell) ? 2 + Number(spell.level || 0) : 0;
     const blessedHealerBonus = (spell: SpellDetail) => hasBlessedHealer && isHealingSpell(spell) ? 2 + Number(spell.level || 0) : 0;
-    const healingBonus = (spell: SpellDetail) => spellMod * (addsCastingModifier(spell) ? 1 : 0) + discipleBonus(spell);
+    const healingBonus = (spell: SpellDetail) => spellMod * (addsCastingModifier(spell) ? 1 : 0) + discipleBonus(spell) + (hasAlchemicalSavant && isHealingSpell(spell) ? spellMod : 0);
     const cantripBonus = (spell: SpellDetail) => Number(spell.level) === 0 && hasPotentSpellcasting ? spellMod : 0;
     const healingResult = (damage: string, spell: SpellDetail) => isHealingSpell(spell) ? `${damage}${spellModifierText(healingBonus(spell))}` : damage;
     const affinityChoice = (character.choices || []).find((choice: any) => /elemental affinity/i.test(choice.label || '') && choice.value);
@@ -74,7 +78,13 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
         && String(spell.school?.name || '').toLowerCase() === 'evocation'
         ? calculateModifier(effectiveAbilities.int)
         : 0;
-    const damageResult = (damage: string, spell: SpellDetail) => `${damage}${spellModifierText(isHealingSpell(spell) ? healingBonus(spell) : (Number(spell.level) === 0 ? cantripBonus(spell) : (addsCastingModifier(spell) ? spellMod : 0)) + affinityBonus(spell) + agonizingBonus(spell) + empoweredEvocationBonus(spell))}`;
+    const damageResult = (damage: string, spell: SpellDetail) => {
+        const type = String(spell.damage?.damage_type?.name || '').toLowerCase();
+        const alchemical = hasAlchemicalSavant && ['acid', 'fire', 'poison'].includes(type) ? spellMod : 0;
+        const guided = hasGuidedPrecision && isCartographer ? spellMod : 0;
+        const flat = isHealingSpell(spell) ? healingBonus(spell) : (Number(spell.level) === 0 ? cantripBonus(spell) : (addsCastingModifier(spell) ? spellMod : 0)) + affinityBonus(spell) + agonizingBonus(spell) + empoweredEvocationBonus(spell) + alchemical + guided;
+        return `${damage}${spellModifierText(flat)}${hasArcaneFirearm ? ' + 1d8' : ''}`;
+    };
     const damageTypeSuffix = (spell: SpellDetail) => {
         const type = spell.damage?.damage_type?.name;
         return type && !/healing/i.test(type) ? ` ${String(type).toLowerCase()}` : '';
@@ -234,7 +244,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
             }));
             return;
         }
-        if ((spell as any).isArcanum) {
+        if ((spell as any).isArcanum || (spell as any).freeCastOnly) {
             if (freeCastRemaining(spell) <= 0) return;
             setCharacter(prev => ({
                 ...prev,
