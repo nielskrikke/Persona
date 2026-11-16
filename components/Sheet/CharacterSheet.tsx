@@ -4755,11 +4755,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                  <div
                                     onClick={() => roll(initAdv ? `2d20kh1${formatModifier(totalInitMod)}` : `1d20${formatModifier(totalInitMod)}`, "Initiative Roll")}
                                     onContextMenu={(e) => triggerRollMenu(e, initAdv ? `2d20kh1${formatModifier(totalInitMod)}` : `1d20${formatModifier(totalInitMod)}`, "Initiative Roll")}
-                                    className="flex flex-col items-center justify-between w-16 h-16 lg:w-20 lg:h-20 border border-gray-600 rounded bg-[#1b1c20]/80 cursor-pointer hover:border-dnd-gold group transition-colors relative pt-2 pb-1"
+                                    className="flex flex-col items-center justify-center w-16 h-16 lg:w-20 lg:h-20 border border-gray-600 rounded bg-[#1b1c20]/80 cursor-pointer hover:border-dnd-gold group transition-colors relative"
                                  >
                                     {initAdv && <span className="absolute top-1 right-1 text-[7px] bg-gray-800/60 text-gray-500 px-0.5 rounded border border-gray-700/50">ADV</span>}
                                     <div className="text-xl font-bold text-white group-hover:text-dnd-gold leading-none">{formatModifier(totalInitMod)}</div>
-                                    <div className="min-h-[22px] flex items-end justify-center text-[9px] font-bold text-gray-500 uppercase text-center leading-tight group-hover:text-dnd-gold">Initiative<br/>Roll</div>
+                                    <div className="text-[9px] font-bold text-gray-500 uppercase mt-1 text-center leading-tight group-hover:text-dnd-gold">Initiative<br/>Roll</div>
                                  </div>
                                 );
                              })()}
@@ -4802,7 +4802,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                              <div
                                  onClick={() => setCharacter(p => ({...p, inspiration: !p.inspiration}))}
                                  title={character.inspiration ? "Heroic Inspiration Active (Click to toggle)" : "Click to toggle Heroic Inspiration"}
-                                 className="flex flex-col items-center justify-between w-16 h-16 lg:w-20 lg:h-20 px-1.5 pt-2 pb-1 border rounded cursor-pointer transition-all duration-200 select-none group bg-[#1b1c20]/80 border-gray-600 hover:border-dnd-gold/70 hover:bg-[#1f2025]"
+                                 className="flex flex-col items-center justify-between w-16 h-16 lg:w-20 lg:h-20 p-1.5 lg:p-2 border rounded cursor-pointer transition-all duration-200 select-none group bg-[#1b1c20]/80 border-gray-600 hover:border-dnd-gold/70 hover:bg-[#1f2025]"
                              >
                                  <div className="flex-1 flex items-center justify-center">
                                      <div
@@ -4813,7 +4813,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                          }`}
                                      />
                                  </div>
-                                 <div className="min-h-[22px] flex items-end justify-center text-[8px] lg:text-[9px] font-bold uppercase text-center leading-tight text-gray-500 group-hover:text-gray-400">
+                                 <div className="text-[8px] lg:text-[9px] font-bold uppercase text-center leading-tight text-gray-500 group-hover:text-gray-400">
                                      Heroic<br/>Inspiration
                                  </div>
                              </div>
