@@ -867,6 +867,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
     const artificerLevel = Number((character.classes || []).find((cls: any) => cls.definition?.index === 'artificer')?.level || 0);
     const maxAttunements = artificerLevel >= 14 ? 5 : artificerLevel >= 10 ? 4 : 3;
+    const [tinkerSlot, setTinkerSlot] = useState(1);
+    const [tinkerItem, setTinkerItem] = useState('');
     const innateSorceryActive = character.activeConditions?.['innate-sorcery'] === true;
     const spellAttack = prof + spellMod + extraSpellAttack;
     const spellAttackStr = formatModifier(spellAttack);
@@ -1751,15 +1753,19 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     }, [character.activeEldritchCannon]);
 
     useEffect(() => {
-        const companionWidget = hasUiWidget(character, 'steelDefender') ? 'steelDefender' : hasUiWidget(character, 'eldritchCannon') ? 'eldritchCannon' : null;
-        if (!companionWidget) return;
-        if ((character.layout.right || []).includes(companionWidget) || (character.layout.left || []).includes(companionWidget) || (character.layout.mobile || []).includes(companionWidget)) return;
+        const widgets: string[] = [];
+        if (hasUiWidget(character, 'steelDefender')) widgets.push('steelDefender');
+        if (hasUiWidget(character, 'eldritchCannon')) widgets.push('eldritchCannon');
+        if (artificerLevel >= 6) widgets.push('magicItemTinker');
+        if (/cartographer/i.test(String(character.classes?.[0]?.subclass?.name || ''))) widgets.push('mapHolders');
+        const missing = widgets.filter(widget => !(character.layout.right || []).includes(widget) && !(character.layout.left || []).includes(widget) && !(character.layout.mobile || []).includes(widget));
+        if (missing.length === 0) return;
         setCharacter(prev => ({
             ...prev,
             layout: {
                 ...prev.layout,
-                right: [companionWidget, ...(prev.layout.right || []).filter(id => id !== companionWidget)],
-                mobile: [companionWidget, ...(prev.layout.mobile || []).filter(id => id !== companionWidget)],
+                right: [...missing, ...(prev.layout.right || []).filter(id => !missing.includes(id))],
+                mobile: [...missing, ...(prev.layout.mobile || []).filter(id => !missing.includes(id))],
             },
         }));
     }, [character.classes]);
@@ -1984,6 +1990,71 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const renderWidget = (type: string, key?: string) => {
         const widgetKey = key || type;
         switch (type) {
+            case 'magicItemTinker': {
+                if (artificerLevel < 6) return null;
+                const drainKey = Object.keys(character.featureUsage || {}).find(key => /drain magic item/i.test(key));
+                const drain = drainKey ? character.featureUsage[drainKey] : null;
+                const replicated = character.replicatedItems || [];
+                const spendSlot = () => {
+                    if (!character.spellSlots?.[tinkerSlot] || character.spellSlots[tinkerSlot].current <= 0) return;
+                    setCharacter(prev => ({ ...prev, spellSlots: { ...prev.spellSlots, [tinkerSlot]: { ...prev.spellSlots[tinkerSlot], current: Math.max(0, prev.spellSlots[tinkerSlot].current - 1) } } }));
+                };
+                const drainFor = (level: number) => {
+                    if (!drain || drain.current <= 0) return;
+                    const slot = character.spellSlots?.[level];
+                    if (!slot || slot.current >= slot.max) return;
+                    setCharacter(prev => ({
+                        ...prev,
+                        featureUsage: drainKey ? { ...prev.featureUsage, [drainKey]: { ...prev.featureUsage[drainKey], current: Math.max(0, Number(prev.featureUsage[drainKey].current) - 1) } } : prev.featureUsage,
+                        spellSlots: { ...prev.spellSlots, [level]: { ...prev.spellSlots[level], current: Number(prev.spellSlots[level].current) + 1 } },
+                        replicatedItems: (prev.replicatedItems || []).filter(name => name !== tinkerItem),
+                        inventory: (prev.inventory || []).filter(item => !tinkerItem || String(item.name).toLowerCase() !== tinkerItem.toLowerCase()),
+                    }));
+                };
+                return (
+                    <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3 space-y-3`}>
+                        <div className="flex justify-between items-center">
+                            <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Magic Item Tinker</h3>
+                            <span className="text-[9px] text-gray-500 font-bold uppercase">Artificer</span>
+                        </div>
+                        <select value={tinkerItem} onChange={e => setTinkerItem(e.target.value)} className="w-full bg-black/40 border border-gray-700 rounded px-2 py-1 text-[10px] text-white">
+                            <option value="">Select replicated item…</option>
+                            {replicated.map(name => <option key={name} value={name}>{name}</option>)}
+                        </select>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[9px] text-gray-500 uppercase font-bold">Slot</span>
+                            {[1,2,3,4,5].map(level => (
+                                <button key={level} onClick={() => setTinkerSlot(level)} className={`w-6 h-6 rounded text-[9px] font-black ${tinkerSlot === level ? 'bg-dnd-gold text-black' : 'bg-gray-800 text-gray-400'}`}>{level}</button>
+                            ))}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <button onClick={spendSlot} className="py-2 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[9px] font-black uppercase hover:border-dnd-gold">Charge (Spend Slot)</button>
+                            <button onClick={() => drainFor(1)} disabled={!drain?.current || !tinkerItem} className="py-2 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[9px] font-black uppercase disabled:opacity-40">Drain → 1st</button>
+                            <button onClick={() => drainFor(2)} disabled={!drain?.current || !tinkerItem} className="col-span-2 py-2 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[9px] font-black uppercase disabled:opacity-40">Drain → 2nd (Uncommon/Rare)</button>
+                        </div>
+                        <div className="text-[9px] text-gray-500">Drain uses: {drain ? `${drain.current} / ${drain.max}` : '0'}</div>
+                    </div>
+                );
+            }
+            case 'mapHolders': {
+                const isCartographer = /cartographer/i.test(String(character.classes?.[0]?.subclass?.name || ''));
+                if (!isCartographer) return null;
+                const count = Number(character.mapHolders || 0);
+                return (
+                    <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
+                        <div className="flex justify-between items-center mb-2">
+                            <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Map Holders</h3>
+                            <span className="text-[9px] text-gray-500 font-bold uppercase">Cartographer</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <button onClick={() => setCharacter(prev => ({ ...prev, mapHolders: Math.max(0, Number(prev.mapHolders || 0) - 1) }))} className="w-8 h-8 rounded bg-gray-800 text-white text-lg">−</button>
+                            <span className="text-2xl font-black text-white">{count}</span>
+                            <button onClick={() => setCharacter(prev => ({ ...prev, mapHolders: Number(prev.mapHolders || 0) + 1 }))} className="w-8 h-8 rounded bg-dnd-gold text-black text-lg">+</button>
+                        </div>
+                        <p className="text-[9px] text-gray-500 mt-2">Portal Jump can target a map holder within 30 ft.</p>
+                    </div>
+                );
+            }
             case 'steelDefender':
                 const isBattleSmith = hasUiWidget(character, 'steelDefender');
                 if (!isBattleSmith) return null;

@@ -613,6 +613,7 @@ export interface CharacterState {
     replicatePlans?: string[];
     replicatedItems?: string[];
     spellStoringItem?: { spell: string; };
+    mapHolders?: number;
     diceColor?: string;
     diceEffect?: string;
     diceCustomization?: DiceCustomizationOptions;
