@@ -1186,6 +1186,14 @@ const ManageCharacterModal = ({
         classFeatures: overrides.classFeatures || localClassFeatures,
         maxHp: overrides.maxHp || calculateMaxHp(projected),
         level: (overrides.classes || localClasses).reduce((sum: number, c: any) => sum + c.level, 0),
+        inventory: (() => {
+            const existing = [...(character.inventory || [])];
+            replicatedItems.filter(Boolean).forEach((name: string) => {
+                if (existing.some((item: any) => String(item.name || '').toLowerCase() === String(name).toLowerCase())) return;
+                existing.push({ id: `replicated-${String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, name, quantity: 1, weight: 0, equipped: false, attuned: false });
+            });
+            return existing;
+        })(),
         spellSlots: mergeSpellSlotCurrents(getSpellSlots(overrides.classes || localClasses), character.spellSlots)
         };
     };

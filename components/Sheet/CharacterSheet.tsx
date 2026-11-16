@@ -2055,7 +2055,20 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 );
             case 'eldritchCannon':
                 const cannon = character.activeEldritchCannon;
-                if (!cannon) return null;
+                if (!cannon) {
+                    return (
+                        <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
+                            <div className="flex justify-between items-center mb-2">
+                                <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Eldritch Cannon</h3>
+                                <span className="text-[9px] uppercase text-gray-500 font-bold">Artillerist</span>
+                            </div>
+                            <p className="text-[10px] text-gray-500 mb-3">No cannon active. Create one with your free daily use or a spell slot.</p>
+                            <button onClick={() => setShowEldritchCannonModal(true)} className="w-full py-2 bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold text-[10px] font-black uppercase rounded hover:bg-dnd-gold hover:text-black transition-colors">
+                                Create Eldritch Cannon
+                            </button>
+                        </div>
+                    );
+                }
                 return (
                     <div
                         key={widgetKey}
