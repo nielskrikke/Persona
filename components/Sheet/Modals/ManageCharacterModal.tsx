@@ -183,8 +183,7 @@ const ManageCharacterModal = ({
                 values.forEach((value: string) => {
                     if (!/^(agonizing blast|repelling blast)$/i.test(String(value))) return;
                     const choiceId = `invocation-cantrip-${choice.id}-${String(value).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
-                    const cantripOptions = localSpells.filter((spell: any) => Number(spell.level) === 0 && (spell.damage || /eldritch blast/i.test(spell.name)));
-                    const options = cantripOptions.length > 0 ? cantripOptions : allSpellCatalog.filter((spell: any) => Number(spell.level) === 0);
+                    const options = invocationCantripOptionsFor(value);
                     const existing = next.find((entry: any) => entry.id === choiceId);
                     if (!existing) {
                         next.push({
@@ -199,7 +198,7 @@ const ManageCharacterModal = ({
                             revertData: { parentChoiceId: choice.id, invocationCantrip: true, invocationName: value },
                         });
                         changed = true;
-                    } else if ((existing.options || []).length === 0) {
+                    } else if (JSON.stringify((existing.options || []).map((opt: any) => opt.index || opt.name)) !== JSON.stringify(options.map((opt: any) => opt.index || opt.name))) {
                         const index = next.indexOf(existing);
                         next[index] = { ...existing, options };
                         changed = true;
@@ -1563,6 +1562,20 @@ const ManageCharacterModal = ({
         return Array.from(new Set([...fromChoices, ...fromFeatures].map((name: any) => String(name))));
     };
 
+    const invocationCantripOptionsFor = (invocationName: string) => {
+        const isRepelling = /repelling blast/i.test(invocationName);
+        return localSpells.filter((spell: any) => {
+            if (Number(spell.level) !== 0) return false;
+            const classes = (spell.classes || []).map((entry: any) => String(entry.name || entry.index || '').toLowerCase());
+            const isWarlockSpell = classes.includes('warlock') || String(spell.sourceClassIndex || '').toLowerCase() === 'warlock';
+            if (!isWarlockSpell) return false;
+            if (!spell.damage) return false;
+            if (!isRepelling) return true;
+            const description = Array.isArray(spell.desc) ? spell.desc.join(' ').toLowerCase() : String(spell.desc || '').toLowerCase();
+            return Boolean(spell.attack_type) || description.includes('spell attack');
+        });
+    };
+
     const isInvocationEligible = (option: any, choice: any) => {
         const name = String(option?.name || option || '');
         const prerequisite = String(option?.prerequisite || '');
@@ -1732,7 +1745,7 @@ const ManageCharacterModal = ({
         const invocationCantripChoices: any[] = [];
         matchingOptions.forEach(selectedOption => {
             if (!/^(agonizing blast|repelling blast)$/i.test(selectedOption.name)) return;
-            const cantripOptions = localSpells.filter((spell: any) => Number(spell.level) === 0 && (spell.damage || /eldritch blast/i.test(spell.name)));
+            const cantripOptions = invocationCantripOptionsFor(selectedOption.name);
             if (cantripOptions.length === 0) return;
             invocationCantripChoices.push({
                 id: `invocation-cantrip-${choiceId}-${selectedOption.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,

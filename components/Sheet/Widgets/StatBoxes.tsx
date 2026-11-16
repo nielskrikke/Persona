@@ -75,7 +75,7 @@ export const SquareStatBox: React.FC<{
         >
             {shape === 'shield' && (
                 <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full pointer-events-none">
-                    <path d="M50 2 L95 15 L95 55 Q95 84 50 98 Q5 84 5 55 L5 15 Z" fill="#1b1c20" stroke="#4b5563" strokeWidth="2" className="transition-colors group-hover:stroke-dnd-gold" />
+                    <path d="M30 4 H70 Q70 14 82 18 L94 23 V52 C94 78 76 91 50 98 C24 91 6 78 6 52 V23 L18 18 Q30 14 30 4 Z" fill="#1b1c20" stroke="#4b5563" strokeWidth="2" className="transition-colors group-hover:stroke-dnd-gold" />
                 </svg>
             )}
             <div className={`relative z-10 h-full flex flex-col items-center text-center pointer-events-none ${shape === 'shield' ? 'px-2' : 'px-1'} ${alignHeader ? 'justify-between pt-2 pb-1' : 'justify-center'}`}>
