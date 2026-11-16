@@ -5352,6 +5352,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 isOpen={showSpellManager}
                 onClose={() => setShowSpellManager(false)}
                 onUpdateSpells={(spells) => setCharacter(prev => ({...prev, spells}))}
+                onUpdateSpellbook={(spellbook) => setCharacter(prev => ({...prev, spellbook}))}
                 onAddCustom={() => setShowCustomSpellModal(true)}
                 onDuplicateToHomebrew={(spell) => handleDuplicateToHomebrew('spell', spell)}
             />

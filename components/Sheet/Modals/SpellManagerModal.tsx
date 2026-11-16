@@ -13,6 +13,7 @@ interface SpellManagerModalProps {
     onUpdateSpells: (spells: SpellDetail[]) => void;
     onAddCustom: () => void;
     onDuplicateToHomebrew?: (spell: any) => void;
+    onUpdateSpellbook?: (spellbook: string[]) => void;
 }
 
 const SpellManagerModal: React.FC<SpellManagerModalProps> = ({ 
@@ -21,7 +22,8 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
     character, 
     onUpdateSpells,
     onAddCustom,
-    onDuplicateToHomebrew
+    onDuplicateToHomebrew,
+    onUpdateSpellbook
 }) => {
     const [activeClassIndex, setActiveClassIndex] = useState<string>('');
     const [availableSpells, setAvailableSpells] = useState<SpellDetail[]>([]);
@@ -30,6 +32,7 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
     const [loading, setLoading] = useState(false);
     const [confirmSpell, setConfirmSpell] = useState<SpellDetail | null>(null);
     const [expandedSpellId, setExpandedSpellId] = useState<string | null>(null);
+    const [editSpellbook, setEditSpellbook] = useState(false);
     const [showKnownOnly, setShowKnownOnly] = useState(false);
 
     useEffect(() => {
@@ -113,6 +116,21 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
     const isWizardSpellbook = activeClassIndex === 'wizard';
     const bookSet = new Set((character.spellbook || []).map((entry: any) => String(entry).toLowerCase()));
     const isInSpellbook = (spell: SpellDetail) => Boolean(bookSet.has(String(spell.index).toLowerCase()) || bookSet.has(String(spell.name).toLowerCase()));
+    const wizardLevel = Number((character.classes || []).find((cls: any) => cls.definition?.index === 'wizard')?.level || 0);
+    const spellbookCapacity = Math.max(1, 6 + 2 * wizardLevel);
+    const toggleSpellbook = (spell: SpellDetail) => {
+        if (!onUpdateSpellbook) return;
+        const existing = character.spellbook || [];
+        const already = isInSpellbook(spell);
+        if (!already && existing.length >= spellbookCapacity) {
+            alert(`Your spellbook is full (${spellbookCapacity} spells).`);
+            return;
+        }
+        const next = already
+            ? existing.filter((entry: string) => String(entry).toLowerCase() !== String(spell.index).toLowerCase() && String(entry).toLowerCase() !== String(spell.name).toLowerCase())
+            : [...existing, spell.index];
+        onUpdateSpellbook(next);
+    };
 
     const isGranted = (spell: SpellDetail) => character.spells.some(s => s.index === spell.index && s.isGranted);
     const isKnown = (spell: SpellDetail) => {
@@ -223,6 +241,15 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
+                        {isWizardSpellbook && onUpdateSpellbook && (
+                            <button
+                                onClick={() => setEditSpellbook(!editSpellbook)}
+                                className={`px-4 py-2 border rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${editSpellbook ? 'bg-dnd-gold text-black border-dnd-gold' : 'bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-500'}`}
+                            >
+                                <Book size={14} />
+                                {editSpellbook ? 'Done Editing Book' : 'Edit Spellbook'}
+                            </button>
+                        )}
                         <button 
                             onClick={onAddCustom}
                             className="px-4 py-2 bg-blue-900/20 border border-blue-800 hover:border-blue-500 text-blue-400 rounded-lg text-xs font-bold transition-all flex items-center gap-2"
@@ -398,6 +425,14 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
                                             </div>
 
                                             <div className="flex items-center gap-2 flex-wrap sm:ml-auto sm:shrink-0">
+                                                {isWizardSpellbook && editSpellbook && spell.level > 0 && (
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); toggleSpellbook(spell); }}
+                                                        className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase border transition-colors ${isInSpellbook(spell) ? 'bg-red-900/20 border-red-900/50 text-red-400 hover:bg-red-900/40' : 'bg-blue-900/20 border-blue-800/50 text-blue-300 hover:bg-blue-900/40'}`}
+                                                    >
+                                                        {isInSpellbook(spell) ? 'Remove from Book' : 'Add to Book'}
+                                                    </button>
+                                                )}
                                                 <div 
                                                     onClick={(e) => { e.stopPropagation(); onDuplicateToHomebrew?.(spell); }}
                                                     className="p-2 rounded-lg text-gray-500 hover:bg-gray-800 hover:text-dnd-gold transition-colors"

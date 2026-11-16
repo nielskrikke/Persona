@@ -237,8 +237,10 @@ const ManageCharacterModal = ({
                 });
                 changed = true;
             } else {
-                const nextValue = (Array.isArray(bookChoice.value) ? bookChoice.value : currentBook).slice(0, baseCapacity);
-                if (bookChoice.count !== baseCapacity || JSON.stringify(nextValue) !== JSON.stringify(bookChoice.value)) {
+                const nextValue = bookChoice.value === null
+                    ? null
+                    : (Array.isArray(bookChoice.value) ? bookChoice.value : currentBook).slice(0, baseCapacity);
+                if (bookChoice.count !== baseCapacity || bookChoice.value === undefined || (!Array.isArray(bookChoice.value) && bookChoice.value !== null) || JSON.stringify(nextValue) !== JSON.stringify(bookChoice.value)) {
                     const index = next.indexOf(bookChoice);
                     next[index] = { ...bookChoice, value: nextValue, count: baseCapacity, options: wizardSpells };
                     changed = true;
