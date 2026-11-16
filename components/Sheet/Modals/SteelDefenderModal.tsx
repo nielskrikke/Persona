@@ -15,12 +15,14 @@ const SteelDefenderModal: React.FC<SteelDefenderModalProps> = ({ isOpen, onClose
 
     const artificer = getClassWithUiWidget(character, 'steelDefender');
     const artificerLevel = artificer?.level || 1;
-    const maxHp = 2 + calculateModifier(character.abilities.int) + (artificerLevel * 5);
+    const intMod = calculateModifier(character.abilities.int);
+    const maxHp = 5 + (artificerLevel * 5);
+    const ac = 12 + intMod;
 
     const handleSummon = () => {
         const defender: SteelDefenderDetail = {
             id: `defender-${Date.now()}`,
-            ac: 15,
+            ac: ac,
             hp: maxHp,
             maxHp: maxHp,
             active: true
@@ -43,11 +45,11 @@ const SteelDefenderModal: React.FC<SteelDefenderModalProps> = ({ isOpen, onClose
                     <div className="bg-black/20 p-4 rounded-lg border border-gray-800 text-xs text-gray-400 space-y-2">
                         <div className="flex justify-between">
                             <span className="font-bold text-gray-500 uppercase">Armor Class</span>
-                            <span className="text-white">15 (natural armor)</span>
+                            <span className="text-white">{ac} (12 + INT)</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="font-bold text-gray-500 uppercase">Hit Points</span>
-                            <span className="text-green-400">{maxHp} (2 + Int + 5 * Lvl)</span>
+                            <span className="text-green-400">{maxHp} (5 + 5 × Lvl)</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="font-bold text-gray-500 uppercase">Speed</span>

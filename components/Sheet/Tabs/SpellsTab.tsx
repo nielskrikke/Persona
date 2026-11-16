@@ -81,7 +81,8 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
     const damageResult = (damage: string, spell: SpellDetail) => {
         const type = String(spell.damage?.damage_type?.name || '').toLowerCase();
         const alchemical = hasAlchemicalSavant && ['acid', 'fire', 'poison'].includes(type) ? spellMod : 0;
-        const guided = hasGuidedPrecision && isCartographer ? spellMod : 0;
+        const grantedByCartographer = (character.spells || []).some((known: any) => known.index === spell.index && /cartographer/i.test(String(known.grantedBy || '')));
+        const guided = hasGuidedPrecision && isCartographer && grantedByCartographer ? spellMod : 0;
         const flat = isHealingSpell(spell) ? healingBonus(spell) : (Number(spell.level) === 0 ? cantripBonus(spell) : (addsCastingModifier(spell) ? spellMod : 0)) + affinityBonus(spell) + agonizingBonus(spell) + empoweredEvocationBonus(spell) + alchemical + guided;
         return `${damage}${spellModifierText(flat)}${hasArcaneFirearm ? ' + 1d8' : ''}`;
     };
@@ -154,7 +155,20 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
         const stored = Number((spell as any).freeCasts || (spell as any).free_casts || 0);
         return stored || Number(grantMetaFor(spell)?.freeCasts || 0);
     };
-    const freeCastRemaining = (spell: SpellDetail) => Math.max(0, freeCastTotal(spell) - Number(character.freeCastUsage?.[spell.index] || 0));
+    const alchemistFreeCastPool = (spell: SpellDetail) => {
+        if (!(spell as any).freeCastOnly) return null;
+        const key = Object.keys(character.featureUsage || {}).find(name => /restorative reagents/i.test(name));
+        return key ? character.featureUsage[key] : null;
+    };
+    const freeCastRemaining = (spell: SpellDetail) => {
+        const pool = alchemistFreeCastPool(spell);
+        if (pool) return Math.max(0, Number(pool.current || 0));
+        return Math.max(0, freeCastTotal(spell) - Number(character.freeCastUsage?.[spell.index] || 0));
+    };
+    const freeCastDisplayTotal = (spell: SpellDetail) => {
+        const pool = alchemistFreeCastPool(spell);
+        return pool ? Number(pool.max || 0) : freeCastTotal(spell);
+    };
     const hasGrantBadge = (spell: SpellDetail) => Boolean(
         (spell as any).isGranted
         || (spell as any).is_granted
@@ -243,6 +257,19 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                 activeConcentration: spell.concentration ? spell : prev.activeConcentration,
             }));
             return;
+        }
+        if ((spell as any).freeCastOnly) {
+            const poolKey = Object.keys(character.featureUsage || {}).find(key => /restorative reagents/i.test(key));
+            const pool = poolKey ? character.featureUsage[poolKey] : null;
+            if (pool) {
+                if (Number(pool.current) <= 0) return;
+                setCharacter(prev => ({
+                    ...prev,
+                    featureUsage: { ...prev.featureUsage, [poolKey!]: { ...prev.featureUsage[poolKey!], current: Math.max(0, Number(prev.featureUsage[poolKey!].current) - 1) } },
+                    activeConcentration: spell.concentration ? spell : prev.activeConcentration,
+                }));
+                return;
+            }
         }
         if ((spell as any).isArcanum || (spell as any).freeCastOnly) {
             if (freeCastRemaining(spell) <= 0) return;
@@ -498,7 +525,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                             {hasGrantBadge(spell) && (<span className="text-[8px] bg-dnd-gold/10 text-dnd-gold border border-dnd-gold/40 px-1 rounded" title={spell.grantedBy}>Granted</span>)}
                                                             {spell.level > 0 && castLevelFor(spell) > spell.level && (<span className="text-[8px] bg-blue-900/40 text-blue-300 border border-blue-800/60 px-1 rounded">Cast L{castLevelFor(spell)}</span>)}
                                                             {upcast && (upcast.count > upcast.base || /ray|dart/i.test(upcast.unit)) && (<span className="text-[8px] bg-emerald-900/40 text-emerald-300 border border-emerald-800/60 px-1 rounded">{upcast.count} {upcast.unit}</span>)}
-                                                            {freeCastTotal(spell) > 0 ? (<span className="text-[8px] bg-purple-900/40 text-purple-300 border border-purple-800/60 px-1 rounded">{freeCastRemaining(spell)}/{freeCastTotal(spell)} {(spell.freeCastReset || 'long') === 'short' ? 'SR' : 'LR'}</span>) : null}
+                                                            {freeCastTotal(spell) > 0 ? (<span className="text-[8px] bg-purple-900/40 text-purple-300 border border-purple-800/60 px-1 rounded">{freeCastRemaining(spell)}/{freeCastDisplayTotal(spell)} {(spell.freeCastReset || 'long') === 'short' ? 'SR' : 'LR'}</span>) : null}
                                                             {spell.itemSpell && (<span className="text-[8px] bg-orange-900/40 text-orange-300 border border-orange-800/60 px-1 rounded">{itemCostFor(spell)} charge</span>)}
                                                             {(spell as any).itemMaxCost > itemBaseCost(spell) && (<select value={itemCostFor(spell)} onChange={e => setItemCostSelections(prev => ({ ...prev, [spell.index]: Number(e.target.value) }))} onClick={e => e.stopPropagation()} className="text-[8px] bg-black/40 border border-orange-800/50 text-orange-200 rounded px-1">{[...Array(Number((spell as any).itemMaxCost) - itemBaseCost(spell) + 1)].map((_, i) => <option key={i} value={itemBaseCost(spell) + i}>{itemBaseCost(spell) + i}</option>)}</select>)}
                                                         </div>
@@ -585,7 +612,7 @@ const SpellsTab: React.FC<SpellsTabProps> = ({
                                                     {hasGrantBadge(spell) && <span className="text-[8px] bg-dnd-gold/10 text-dnd-gold border border-dnd-gold/40 px-1 rounded" title={spell.grantedBy}>Granted</span>}
                                                     {spell.level > 0 && castLevelFor(spell) > spell.level && <span className="text-[8px] bg-blue-900/40 text-blue-300 border border-blue-800/60 px-1 rounded">Cast L{castLevelFor(spell)}</span>}
                                                     {upcast && (upcast.count > upcast.base || /ray|dart/i.test(upcast.unit)) && <span className="text-[8px] bg-emerald-900/40 text-emerald-300 border border-emerald-800/60 px-1 rounded">{upcast.count} {upcast.unit}</span>}
-                                                    {freeCastTotal(spell) > 0 ? <span className="text-[8px] bg-purple-900/40 text-purple-300 border border-purple-800/60 px-1 rounded">{freeCastRemaining(spell)}/{freeCastTotal(spell)} {(spell.freeCastReset || 'long') === 'short' ? 'SR' : 'LR'}</span> : null}
+                                                    {freeCastTotal(spell) > 0 ? <span className="text-[8px] bg-purple-900/40 text-purple-300 border border-purple-800/60 px-1 rounded">{freeCastRemaining(spell)}/{freeCastDisplayTotal(spell)} {(spell.freeCastReset || 'long') === 'short' ? 'SR' : 'LR'}</span> : null}
                                                     {spell.itemSpell && <span className="text-[8px] bg-orange-900/40 text-orange-300 border border-orange-800/60 px-1 rounded">{itemCostFor(spell)} charge</span>}
                                                     {(spell as any).itemMaxCost > itemBaseCost(spell) && <select value={itemCostFor(spell)} onChange={e => setItemCostSelections(prev => ({ ...prev, [spell.index]: Number(e.target.value) }))} onClick={e => e.stopPropagation()} className="text-[8px] bg-black/40 border border-orange-800/50 text-orange-200 rounded px-1">{[...Array(Number((spell as any).itemMaxCost) - itemBaseCost(spell) + 1)].map((_, i) => <option key={i} value={itemBaseCost(spell) + i}>{itemBaseCost(spell) + i}</option>)}</select>}
                                                 </div>

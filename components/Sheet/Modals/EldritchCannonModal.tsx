@@ -23,7 +23,7 @@ const CANNON_TYPES = [
         damageType: 'Force'
     },
     {
-        name: 'Defender',
+        name: 'Protector',
         desc: 'Emits a burst of positive energy. You and each creature of your choice within 10 feet gain 1d8 + INT temp HP.',
         damage: '1d8',
         damageType: 'Temp HP'
@@ -40,6 +40,7 @@ const EldritchCannonModal: React.FC<EldritchCannonModalProps> = ({ isOpen, onClo
     const artificer = getClassWithUiWidget(character, 'eldritchCannon');
     const artificerLevel = artificer?.level || 1;
     const maxHp = artificerLevel * 5;
+    const cannonDice = artificerLevel >= 15 ? '3d8' : '2d8';
     const cannonResource = character.featureUsage?.['Eldritch Cannon'];
     const freebieAvailable = cannonResource ? Number(cannonResource.current) > 0 : !character.eldritchCannonFreebieUsed;
 
@@ -97,7 +98,7 @@ const EldritchCannonModal: React.FC<EldritchCannonModalProps> = ({ isOpen, onClo
                                         <span className={`font-bold uppercase tracking-wide ${selectedType === t.name ? 'text-dnd-gold' : 'text-white'}`}>{t.name}</span>
                                         <span className="text-[10px] text-gray-500 font-bold">{t.damageType}</span>
                                     </div>
-                                    <p className="text-xs text-gray-400 leading-relaxed font-serif italic">"{t.desc}"</p>
+                                    <p className="text-xs text-gray-400 leading-relaxed font-serif italic">"{t.desc.replace('2d8', cannonDice)}"</p>
                                 </button>
                             ))}
                         </div>

@@ -1192,6 +1192,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         const monkMovementBonus = hasUnarmoredMovement && !hasArmorEquipped && !hasShieldEquipped
             ? (Number(monkClass?.level || character.level) >= 18 ? 30 : Number(monkClass?.level || character.level) >= 14 ? 25 : Number(monkClass?.level || character.level) >= 10 ? 20 : Number(monkClass?.level || character.level) >= 6 ? 15 : Number(monkClass?.level || character.level) >= 2 ? 10 : 0)
             : 0;
+        if (/armorer/i.test(String(character.classes?.[0]?.subclass?.name || '')) && /infiltrator/i.test(String(character.armorModel || ''))) total += 5;
         return Math.max(0, total + monkMovementBonus - (heavyArmorPenalty ? 10 : 0));
     };
 
@@ -1769,7 +1770,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 mobile: [...missing, ...(prev.layout.mobile || []).filter(id => !missing.includes(id))],
             },
         }));
-    }, [character.classes]);
+    }, [character.classes, character.classFeatures?.map((feature: any) => feature.name).join('|'), character.level, character.armorModel, character.replicatedItems, character.choices.length]);
 
     const handleSummonDefender = (defender: SteelDefenderDetail) => {
         setCharacter(prev => ({ ...prev, activeSteelDefender: defender }));
@@ -2035,13 +2036,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const drainKey = Object.keys(character.featureUsage || {}).find(key => /drain magic item/i.test(key));
                 const drain = drainKey ? character.featureUsage[drainKey] : null;
                 const replicated = character.replicatedItems || [];
-                const selectedItem = (character.inventory || []).find((item: any) => String(item.name).toLowerCase() === tinkerItem.toLowerCase());
+                const selectedItem = (character.inventory || []).find((item: any) => String((item as any).sourcePlan || item.name).toLowerCase() === tinkerItem.toLowerCase());
                 const spendSlot = () => {
                     if (!tinkerItem || !character.spellSlots?.[tinkerSlot] || character.spellSlots[tinkerSlot].current <= 0) return;
                     setCharacter(prev => ({
                         ...prev,
                         spellSlots: { ...prev.spellSlots, [tinkerSlot]: { ...prev.spellSlots[tinkerSlot], current: Math.max(0, prev.spellSlots[tinkerSlot].current - 1) } },
-                        inventory: (prev.inventory || []).map((item: any) => String(item.name).toLowerCase() === tinkerItem.toLowerCase() ? { ...item, charges: Math.min(Number(item.maxCharges || 10), Number(item.charges || 0) + tinkerSlot) } : item),
+                        inventory: (prev.inventory || []).map((item: any) => String((item as any).sourcePlan || item.name).toLowerCase() === tinkerItem.toLowerCase() ? { ...item, charges: Math.min(Number(item.maxCharges || 10), Number(item.charges || 0) + tinkerSlot) } : item),
                     }));
                 };
                 const drainFor = (level: number) => {
@@ -2053,7 +2054,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         featureUsage: drainKey ? { ...prev.featureUsage, [drainKey]: { ...prev.featureUsage[drainKey], current: Math.max(0, Number(prev.featureUsage[drainKey].current) - 1) } } : prev.featureUsage,
                         spellSlots: { ...prev.spellSlots, [level]: { ...prev.spellSlots[level], current: Number(prev.spellSlots[level].current) + 1 } },
                         replicatedItems: (prev.replicatedItems || []).filter(name => name !== tinkerItem),
-                        inventory: (prev.inventory || []).filter(item => !tinkerItem || String(item.name).toLowerCase() !== tinkerItem.toLowerCase()),
+                        inventory: (prev.inventory || []).filter(item => !tinkerItem || String((item as any).sourcePlan || item.name).toLowerCase() !== tinkerItem.toLowerCase()),
                     }));
                 };
                 return (
@@ -2117,7 +2118,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     name: 'Steel Defender',
                                     type: 'construct',
                                     size: 'Medium',
-                                    ac: 15,
+                                    ac: 12 + intMod,
                                     hp: defender.hp,
                                     maxHp: defender.maxHp,
                                     speed: '40 ft.',
@@ -2126,7 +2127,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                         { name: 'Vigilant', desc: 'The defender can\'t be surprised.' }
                                     ],
                                     actions: [
-                                        { name: 'Force-Empowered Slam', desc: `Melee Weapon Attack: +${spellAttack} to hit, reach 5 ft., one target. Hit: 1d8 + ${prof} force damage.` },
+                                        { name: 'Force-Empowered Rend', desc: `Melee Weapon Attack: +${spellAttack} to hit, reach 5 ft., one target. Hit: 1d8 + 2 + ${intMod} force damage.` },
                                         { name: 'Repair (3/Day)', desc: 'The magical mechanisms inside the defender restore 2d8 + PB hit points to itself or to one construct or object within 5 feet of it.' },
                                         { name: 'Deflect Attack (Reaction)', desc: 'The defender imposes disadvantage on the attack roll of one creature it can see that is within 5 feet of it, provided the attack roll is against a creature other than the defender.' }
                                     ]
@@ -2148,7 +2149,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                      <button onClick={(e) => { e.stopPropagation(); setCharacter(p => ({ ...p, activeSteelDefender: null })); }} className="text-gray-500 hover:text-red-500">&times;</button>
                                  </div>
                                  <div className="grid grid-cols-2 gap-2 text-center bg-gray-800/40 rounded p-2">
-                                     <div><div className="text-[9px] text-gray-500 uppercase">AC</div><div className="text-white font-bold text-sm">15</div></div>
+                                     <div><div className="text-[9px] text-gray-500 uppercase">AC</div><div className="text-white font-bold text-sm">{12 + intMod}</div></div>
                                      <div className="cursor-pointer" onClick={(e) => {
                                          e.stopPropagation();
                                          const dmg = prompt("Enter damage taken by defender:");
@@ -2163,11 +2164,15 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                      </div>
                                  </div>
                                  <button
-                                    onClick={(e) => { e.stopPropagation(); roll(`1d20${formatModifier(spellAttack)}`, 'Steel Defender Slam Attack'); roll(`1d8${formatModifier(prof)}`, 'Slam Force Damage'); }}
+                                    onClick={(e) => { e.stopPropagation(); roll(`1d20${formatModifier(spellAttack)}`, 'Steel Defender Rend Attack'); roll(`1d8${formatModifier(2 + intMod)}`, 'Force-Empowered Rend Damage'); }}
                                     className="w-full py-1.5 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[10px] font-bold uppercase hover:bg-gray-700 transition-colors"
                                  >
-                                     Force-Empowered Slam
+                                     Force-Empowered Rend
                                  </button>
+                                 <div className="grid grid-cols-2 gap-2">
+                                     <button onClick={(e) => { e.stopPropagation(); const key = Object.keys(character.featureUsage || {}).find(k => /steel defender: repair/i.test(k)); const usage = key ? character.featureUsage[key] : null; if (usage && usage.current > 0) setCharacter(p => ({ ...p, featureUsage: { ...p.featureUsage, [key!]: { ...usage, current: usage.current - 1 } } })); }} className="py-1.5 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[9px] font-bold uppercase">Repair</button>
+                                     <button onClick={(e) => { e.stopPropagation(); setSelectedDetail({ name: 'Deflect Attack', desc: ['Reaction: impose disadvantage on an attack against another creature within 5 ft.'] } as any); }} className="py-1.5 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[9px] font-bold uppercase">Deflect</button>
+                                 </div>
                              </div>
                          ) : <div className="text-center py-4 text-gray-600 italic text-[10px]">No defender active.</div>}
                     </div>
@@ -2203,8 +2208,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     maxHp: cannon.maxHp,
                                     speed: '15 ft. (Walk/Climb)',
                                     actions: [
-                                        cannon.type === 'Flamethrower' ? { name: 'Flamethrower', desc: 'The cannon exhales fire in an adjacent 15-foot cone. Each creature in that area must make a Dexterity saving throw against your spell save DC, taking 2d8 fire damage on a failed save or half as much damage on a successful one.' } :
-                                        cannon.type === 'Force Ballista' ? { name: 'Force Ballista', desc: 'Make a ranged spell attack, originating from the cannon, at one creature or object within 120 feet of it. On a hit, the target takes 2d8 force damage, and if the target is a creature, it is pushed up to 5 feet away from the cannon.' } :
+                                        cannon.type === 'Flamethrower' ? { name: 'Flamethrower', desc: 'The cannon exhales fire in an adjacent 15-foot cone. Each creature in that area must make a Dexterity saving throw against your spell save DC, taking 3d8 fire damage on a failed save or half as much damage on a successful one.' } :
+                                        cannon.type === 'Force Ballista' ? { name: 'Force Ballista', desc: 'Make a ranged spell attack, originating from the cannon, at one creature or object within 120 feet of it. On a hit, the target takes 3d8 force damage, and if the target is a creature, it is pushed up to 5 feet away from the cannon.' } :
                                         { name: 'Protector', desc: 'The cannon emits a burst of positive energy that grants itself and each creature of your choice within 10 feet of it a number of temporary hit points equal to 1d8 + your Intelligence modifier (minimum of +1).' },
                                         { name: 'Detonate (Action)', desc: 'As an action, you can command the cannon to detonate. Each creature within 20 feet of it must make a Dexterity saving throw against your spell save DC, taking 3d8 force damage on a failed save or half as much on a successful one. The cannon is destroyed.' }
                                     ]
@@ -2219,7 +2224,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                              <div className="space-y-3">
                                  <div className="flex justify-between items-start">
                                      <div>
-                                         <div className="font-bold text-white text-sm">{cannon.type}</div>
+                                         <div className="font-bold text-white text-sm">{String(cannon.type) === 'Defender' ? 'Protector' : cannon.type}</div>
                                          <div className="text-[9px] text-gray-500 uppercase">{cannon.size} Object</div>
                                      </div>
                                      <button onClick={(e) => { e.stopPropagation(); dismissEldritchCannon(); }} className="text-gray-500 hover:text-red-500">&times;</button>
@@ -2250,9 +2255,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                      <button
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            if(cannon.type === 'Flamethrower') roll('2d8', 'Flamethrower Fire Damage');
+                                            if(cannon.type === 'Flamethrower') roll('3d8', 'Flamethrower Fire Damage');
                                             else if(cannon.type === 'Force Ballista') roll(`1d20${spellAttackStr}`, 'Force Ballista Attack');
-                                            else roll('1d8' + formatModifier(spellMod), 'Defender Temp HP Pulse');
+                                            else roll('1d8' + formatModifier(spellMod), 'Protector Temp HP Pulse');
                                         }}
                                         className="py-1.5 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[10px] font-bold uppercase hover:border-dnd-gold transition-colors"
                                      >
@@ -2498,7 +2503,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 }))}
                             />
                         )}
-                        {Object.entries(character.featureUsage).filter(([name, usage]) => name !== 'Wild Shape' && name !== 'Lay on Hands' && name !== 'Sorcery Points' && name !== 'Dragon Wings' && name !== 'Magical Cunning' && !usage.hidden && !(name === 'Eldritch Cannon' && character.activeEldritchCannon)).map(([name, usage]: [string, any]) => {
+                        {Object.entries(character.featureUsage).filter(([name, usage]) => !(/giant stature/i.test(name) && !/dreadnaught/i.test(String(character.armorModel || ''))) && name !== 'Wild Shape' && name !== 'Lay on Hands' && name !== 'Sorcery Points' && name !== 'Dragon Wings' && name !== 'Magical Cunning' && !usage.hidden).map(([name, usage]: [string, any]) => {
                             const usedCount = usage.max - usage.current;
                             const detailTarget = findResourceDetailsTarget(name, usage);
                             return (
@@ -3848,7 +3853,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const hasGuidedPrecision = featureNamesLower.includes('guided precision');
                 if (hasArcaneFirearm) spellExtraDice.push('1d8');
                 if (hasAlchemicalSavant && ['acid','fire','poison'].includes(spellDamageType)) spellFlatBonus += intMod;
-                if (hasGuidedPrecision && /cartographer/i.test(String(character.classes?.[0]?.subclass?.name || ''))) spellFlatBonus += intMod;
+                if (hasGuidedPrecision && /cartographer/i.test(String(character.classes?.[0]?.subclass?.name || '')) && /cartographer/i.test(String((spell as any).grantedBy || ''))) spellFlatBonus += intMod;
 
                 const dc = (spell as any).dc?.dc_type?.name?.substring(0, 3).toUpperCase();
                 const spellAbility = (spell as any).spellcastingAbility as AbilityName | undefined;
@@ -4445,7 +4450,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                  ? enriched.desc.join(' ').toLowerCase()
                  : (enriched.desc || '').toLowerCase();
 
-             if (descStr.includes('bonus action') && !/^(martial arts|monk's focus)$/i.test(String(enriched.name || '')) && !list.some(item => item.name === enriched.name)) {
+             if (descStr.includes('bonus action') && !/^(martial arts|monk's focus|eldritch cannon|fortified position|magic item tinker|steel defender)$/i.test(String(enriched.name || '')) && !list.some(item => item.name === enriched.name)) {
                  list.push({
                      ...enriched,
                      id: enriched.id || `feature-${enriched.index || enriched.name.toLowerCase().replace(/\s+/g, '-')}`,
@@ -4519,7 +4524,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         });
 
          const metamagicNames = /^(careful|distant|empowered|extended|heightened|quickened|seeking|subtle|transmuted|twinned) spell$/i;
-         const filtered = list.filter((item: any) => item.source?.type !== 'Metamagic' && !metamagicNames.test(String(item.name || '')) && !/^metamagic (?:options|calibration):/i.test(String(item.name || '')) && !/^eldritch invocations:/i.test(String(item.name || '')) && !/channel divinity|abjure foes|devious strikes|dragon wings|^(font of magic|sorcery incarnate|magic item tinker|steel defender)$/i.test(String(item.name || '')));
+         const filtered = list.filter((item: any) => item.source?.type !== 'Metamagic' && !metamagicNames.test(String(item.name || '')) && !/^metamagic (?:options|calibration):/i.test(String(item.name || '')) && !/^eldritch invocations:/i.test(String(item.name || '')) && !/channel divinity|abjure foes|devious strikes|dragon wings|^(font of magic|sorcery incarnate|magic item tinker|steel defender|eldritch cannon|fortified position)$/i.test(String(item.name || '')));
          return character.activeWildShape
              ? filtered.filter((item: any) => !item.source?.weapon_category && (!item.source?.school || canCastSpellInWildShape(character, item.source)))
              : filtered;

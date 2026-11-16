@@ -21,9 +21,10 @@ interface BackgroundStepProps {
     onBack: () => void;
     userId?: string;
     currentSkills?: string[];
+    currentTools?: string[];
 }
 
-const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, userId, currentSkills = [] }) => {
+const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, userId, currentSkills = [], currentTools = [] }) => {
     const [name, setName] = useState('');
     const [backgrounds, setBackgrounds] = useState<APIReference[]>([]);
     const [selectedBackground, setSelectedBackground] = useState<BackgroundDetail | null>(null);
@@ -113,7 +114,15 @@ const BackgroundStep: React.FC<BackgroundStepProps> = ({ onComplete, onBack, use
             return Array.isArray(choice.options) && choice.options.length > 0 ? choice.options : allFeats;
         }
         if (choice.kind === 'spellcasting_ability') return Array.isArray(choice.options) && choice.options.length > 0 ? choice.options : ['int', 'wis', 'cha'];
-        return Array.isArray(choice.options) ? choice.options : [];
+        const raw = Array.isArray(choice.options) ? choice.options : [];
+        if (choice.kind === 'tool') {
+            const known = new Set((currentTools || []).map((tool: string) => String(tool).toLowerCase()));
+            return raw.filter((option: any) => {
+                const value = typeof option === 'string' ? option : (option.name || option.index || '');
+                return !known.has(String(value).toLowerCase());
+            });
+        }
+        return raw;
     };
 
     const optionValue = (option: any): string => {

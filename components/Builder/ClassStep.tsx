@@ -172,7 +172,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
               kind: 'tool',
               count: 1,
               label: "Artisan's Tools",
-              options: ARTISAN_TOOLS.map(name => ({ name, category: 'tool' })),
+              options: ARTISAN_TOOLS.filter(name => !/tinker/i.test(name)).map(name => ({ name, category: 'tool' })),
           } as any);
       }
       return choices;

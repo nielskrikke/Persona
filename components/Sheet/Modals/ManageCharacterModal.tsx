@@ -329,7 +329,14 @@ const ManageCharacterModal = ({
                 changed = true;
             }
             if (level >= 11 && !next.some((choice: any) => choice.id === 'spell-storing-item')) {
-                const artSpells = allSpellCatalog.filter((spell: any) => Number(spell.level) >= 1 && Number(spell.level) <= 3 && (spell.classes || []).some((entry: any) => /artificer/i.test(String(entry.name || entry.index || ''))));
+                const artSpells = allSpellCatalog.filter((spell: any) => {
+                    const casting = String(spell.casting_time || '').toLowerCase().trim();
+                    const consumed = Boolean(spell.material?.consumed || spell.materials?.consumed || /consumed/i.test(String(spell.material || '')));
+                    return Number(spell.level) >= 1 && Number(spell.level) <= 3
+                        && casting === '1 action'
+                        && !consumed
+                        && (spell.classes || []).some((entry: any) => /artificer/i.test(String(entry.name || entry.index || '')));
+                });
                 next.push({ id: 'spell-storing-item', level: 11, source: 'Artificer', type: 'spell', label: 'Spell-Storing Item', value: spellStoringItem || null, options: artSpells, count: 1, optional: true, revertData: { classIndex: 'artificer', isSpellStoringItem: true } });
                 changed = true;
             }
@@ -936,6 +943,15 @@ const ManageCharacterModal = ({
         let updatedFeatures = localClassFeatures.filter((f: any) => !allSubclassNames.has(f.source));
 
         if (removedFeatures.length > 0) {
+            const subclassTrackerPattern = /giant stature|conjured cauldron|mapping magic|unerring path|steel defender|arcane jolt|experimental elixir|restorative reagents|perfected armor|eldritch cannon|fortified position/i;
+            setLocalFeatures(prev => {
+                const next = { ...prev };
+                Object.keys(next).forEach(key => {
+                    const usage: any = next[key];
+                    if (subclassTrackerPattern.test(key) || (usage?.source && allSubclassNames.has(String(usage.source)))) delete next[key];
+                });
+                return next;
+            });
             setLocalFeatures(prev => {
                 const next = { ...prev };
                 Object.keys(next).forEach(key => {
@@ -976,7 +992,7 @@ const ManageCharacterModal = ({
             if (duplicates.length > 0) {
                 const replacementOptions = ARTISAN_TOOLS.filter(tool => !remainingTools.some(existing => String(existing).toLowerCase() === tool.toLowerCase()));
                 setLocalChoices(prev => [...prev.filter((choice: any) => choice.id !== 'tools-of-trade-replacement'), {
-                    id: 'tools-of-trade-replacement', level: clsDef.level, source: newSubclass.name, type: 'other',
+                    id: 'tools-of-trade-replacement', level: 3, source: newSubclass.name, type: 'other',
                     label: `${newSubclass.name}: Tools of the Trade Replacement`, value: null,
                     options: replacementOptions, count: 1, optional: true,
                     revertData: { classIndex, isToolsOfTradeReplacement: true },
@@ -1097,6 +1113,14 @@ const ManageCharacterModal = ({
 
     // Global Save Helper
     const getGlobalUpdates = (overrides: any = {}) => {
+        const chosenPlans = (() => {
+            const choice = localChoices.find((entry: any) => entry.revertData?.isReplicatePlans);
+            return Array.isArray(choice?.value) ? choice.value : replicatePlans;
+        })();
+        const chosenItems = (() => {
+            const choice = localChoices.find((entry: any) => entry.revertData?.isReplicatedItems);
+            return Array.isArray(choice?.value) ? choice.value : replicatedItems;
+        })();
         const pendingChoices = localChoices.filter((choice: any) => choice.revertData?.pendingConfirm);
         const pendingSkillValues = new Set<string>();
         const pendingToolValues = new Set<string>();
@@ -1173,6 +1197,17 @@ const ManageCharacterModal = ({
         }),
         spells: overrides.spells || localSpells,
         invocationCantrips,
+        armorModel: (() => { const choice = localChoices.find((entry: any) => entry.revertData?.isArmorModel); return typeof choice?.value === 'string' ? choice.value : armorModel; })(),
+        replicatePlans: chosenPlans,
+        replicatedItems: chosenItems,
+        spellStoringItem: (() => {
+            const choice = localChoices.find((entry: any) => entry.revertData?.isSpellStoringItem);
+            return typeof choice?.value === 'string' && choice.value ? { spell: choice.value } : (spellStoringItem ? { spell: spellStoringItem } : undefined);
+        })(),
+        mapHolders: character.mapHolders,
+        experimentalElixir: character.experimentalElixir,
+        activeEldritchCannon: (localClasses || []).some((cls: any) => /artillerist/i.test(cls.subclass?.name || '')) ? character.activeEldritchCannon : null,
+        activeSteelDefender: (localClasses || []).some((cls: any) => /battle smith/i.test(cls.subclass?.name || '')) ? character.activeSteelDefender : null,
         spellbook: (() => {
             const wizard = (localClasses || []).find((cls: any) => cls.definition?.index === 'wizard');
             const capacity = Math.max(1, 6 + 2 * Math.max(0, Number(wizard?.level || 1) - 1));
@@ -1190,13 +1225,14 @@ const ManageCharacterModal = ({
             const existing = [...(character.inventory || [])];
             const artificerDef: any = (localClasses || []).find((cls: any) => cls.definition?.index === 'artificer')?.definition;
             const planObjects: any[] = Object.values(artificerDef?.options?.replicate_plans || {}).flat() as any[];
-            replicatedItems.filter(Boolean).forEach((name: string) => {
-                if (existing.some((item: any) => String(item.name || '').toLowerCase() === String(name).toLowerCase())) return;
+            chosenItems.filter(Boolean).forEach((name: string) => {
+                if (existing.some((item: any) => String((item as any).sourcePlan || item.name || '').toLowerCase() === String(name).toLowerCase())) return;
                 const plan = planObjects.find((entry: any) => String(entry?.name || entry) === name);
+                const armoryName = String(name).replace(/^(Weapon|Shield|Armor)\s+\+([123])$/i, '$1, +$2');
                 const plus = Number(name.match(/\+([123])/)?.[1] || 0);
                 existing.push({
                     id: `replicated-${String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
-                    name, quantity: 1, weight: 0, equipped: false, attuned: false,
+                    name: armoryName, sourcePlan: name, quantity: 1, weight: 0, equipped: false, attuned: false,
                     is_magic: true,
                     requires_attunement: plan?.attunement === true || plan?.attunement === 'varies',
                     rarity: plan?.rarity,
