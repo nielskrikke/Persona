@@ -27,8 +27,9 @@ export const SquareStatBox: React.FC<{
     subLabel: string, 
     value: string, 
     tooltip?: React.ReactNode,
-    tooltipPosition?: 'top' | 'bottom'
-}> = ({ label, subLabel, value, tooltip, tooltipPosition = 'top' }) => {
+    tooltipPosition?: 'top' | 'bottom',
+    shape?: 'square' | 'shield'
+}> = ({ label, subLabel, value, tooltip, tooltipPosition = 'top', shape = 'square' }) => {
     const [isHovered, setIsHovered] = React.useState(false);
     const [coords, setCoords] = React.useState({ top: 0, left: 0 });
     const containerRef = React.useRef<HTMLDivElement>(null);
@@ -67,12 +68,19 @@ export const SquareStatBox: React.FC<{
     return (
         <div 
             ref={containerRef}
-            className={`flex flex-col items-center justify-center w-16 h-16 lg:w-20 lg:h-20 border rounded bg-[#1b1c20] p-1 relative transition-all duration-200 outline-none select-none ${tooltip ? 'cursor-help border-gray-500 hover:border-dnd-gold hover:shadow-[0_0_15px_rgba(201,173,106,0.2)]' : 'border-gray-600'}`}
+            className={`relative w-16 h-16 lg:w-20 lg:h-20 transition-all duration-200 outline-none select-none group ${shape === 'square' ? `rounded border bg-[#1b1c20] p-1 ${tooltip ? 'cursor-help border-gray-500 hover:border-dnd-gold hover:shadow-[0_0_15px_rgba(201,173,106,0.2)]' : 'border-gray-600'}` : 'cursor-help'}`}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
         >
-            <div className={`${fontSizeClass} font-bold text-white text-center break-words w-full pointer-events-none`}>{value}</div>
-            <div className="text-[9px] font-bold text-gray-500 uppercase mt-1 text-center leading-tight shrink-0 pointer-events-none">{label}<br/>{subLabel}</div>
+            {shape === 'shield' && (
+                <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full pointer-events-none">
+                    <path d="M50 2 L95 15 L95 55 Q95 84 50 98 Q5 84 5 55 L5 15 Z" fill="#1b1c20" stroke="#4b5563" strokeWidth="2" className="transition-colors group-hover:stroke-dnd-gold" />
+                </svg>
+            )}
+            <div className={`relative z-10 h-full flex flex-col items-center justify-between text-center pointer-events-none ${shape === 'shield' ? 'px-2 pt-3 pb-1' : 'pt-2 pb-1'}`}>
+                <div className={`${fontSizeClass} font-bold text-white text-center break-words w-full`}>{value}</div>
+                <div className="min-h-[22px] flex items-end justify-center text-[9px] font-bold text-gray-500 uppercase text-center leading-tight shrink-0">{label}<br/>{subLabel}</div>
+            </div>
             
             {tooltip && isHovered && createPortal(
                 <div 

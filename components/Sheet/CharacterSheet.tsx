@@ -4730,6 +4730,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 label="Armor"
                                 subLabel="Class"
                                 value={`${acValue}`}
+                                shape="shield"
                                 tooltipPosition="bottom"
                                 tooltip={
                                     <div className="space-y-1">
@@ -4754,11 +4755,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                  <div
                                     onClick={() => roll(initAdv ? `2d20kh1${formatModifier(totalInitMod)}` : `1d20${formatModifier(totalInitMod)}`, "Initiative Roll")}
                                     onContextMenu={(e) => triggerRollMenu(e, initAdv ? `2d20kh1${formatModifier(totalInitMod)}` : `1d20${formatModifier(totalInitMod)}`, "Initiative Roll")}
-                                    className="flex flex-col items-center justify-center w-16 h-16 lg:w-20 lg:h-20 border border-gray-600 rounded bg-[#1b1c20]/80 cursor-pointer hover:border-dnd-gold group transition-colors relative"
+                                    className="flex flex-col items-center justify-between w-16 h-16 lg:w-20 lg:h-20 border border-gray-600 rounded bg-[#1b1c20]/80 cursor-pointer hover:border-dnd-gold group transition-colors relative pt-2 pb-1"
                                  >
                                     {initAdv && <span className="absolute top-1 right-1 text-[7px] bg-gray-800/60 text-gray-500 px-0.5 rounded border border-gray-700/50">ADV</span>}
                                     <div className="text-xl font-bold text-white group-hover:text-dnd-gold leading-none">{formatModifier(totalInitMod)}</div>
-                                    <div className="text-[9px] font-bold text-gray-500 uppercase mt-1 text-center leading-tight group-hover:text-dnd-gold">Initiative<br/>Roll</div>
+                                    <div className="min-h-[22px] flex items-end justify-center text-[9px] font-bold text-gray-500 uppercase text-center leading-tight group-hover:text-dnd-gold">Initiative<br/>Roll</div>
                                  </div>
                                 );
                              })()}
@@ -4801,24 +4802,18 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                              <div
                                  onClick={() => setCharacter(p => ({...p, inspiration: !p.inspiration}))}
                                  title={character.inspiration ? "Heroic Inspiration Active (Click to toggle)" : "Click to toggle Heroic Inspiration"}
-                                 className={`flex flex-col items-center justify-between w-16 h-16 lg:w-20 lg:h-20 p-1.5 lg:p-2 border rounded cursor-pointer transition-all duration-200 select-none group ${
-                                     character.inspiration
-                                         ? 'bg-[#232018] border-dnd-gold shadow-[0_0_12px_rgba(201,173,106,0.25)]'
-                                         : 'bg-[#1b1c20]/80 border-gray-600 hover:border-dnd-gold/70 hover:bg-[#1f2025]'
-                                 }`}
+                                 className="flex flex-col items-center justify-between w-16 h-16 lg:w-20 lg:h-20 px-1.5 pt-2 pb-1 border rounded cursor-pointer transition-all duration-200 select-none group bg-[#1b1c20]/80 border-gray-600 hover:border-dnd-gold/70 hover:bg-[#1f2025]"
                              >
                                  <div className="flex-1 flex items-center justify-center">
                                      <div
                                          className={`w-3.5 h-3.5 lg:w-4 lg:h-4 border-2 transform rotate-45 transition-all duration-200 ${
                                              character.inspiration
-                                                 ? 'bg-dnd-gold border-dnd-gold scale-110 shadow-[0_0_8px_rgba(201,173,106,0.8)]'
+                                                 ? 'bg-dnd-gold border-dnd-gold'
                                                  : 'border-gray-500 group-hover:border-dnd-gold group-hover:scale-105'
                                          }`}
                                      />
                                  </div>
-                                 <div className={`text-[8px] lg:text-[9px] font-bold uppercase text-center leading-tight transition-colors ${
-                                     character.inspiration ? 'text-dnd-gold' : 'text-gray-500 group-hover:text-gray-400'
-                                 }`}>
+                                 <div className="min-h-[22px] flex items-end justify-center text-[8px] lg:text-[9px] font-bold uppercase text-center leading-tight text-gray-500 group-hover:text-gray-400">
                                      Heroic<br/>Inspiration
                                  </div>
                              </div>
