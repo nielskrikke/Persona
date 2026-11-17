@@ -1256,7 +1256,7 @@ const ManageCharacterModal = ({
                     name: armoryName, sourcePlan: name, quantity: 1, weight: isWeaponPlan ? 3 : 0, equipped: false, attuned: false,
                     is_magic: true,
                     requires_attunement: plan?.attunement === true || plan?.attunement === 'varies',
-                    rarity: plan?.rarity || (/bag of holding|rope of climbing|wand of magic detection|wand of secrets|alchemy jug|cap of water breathing|manifold tool/i.test(name) ? 'Common' : undefined),
+                    rarity: plan?.rarity || 'Uncommon',
                     equipment_category: isWeaponPlan ? { index: 'weapon', name: 'Weapon' } : undefined,
                     weapon_category: isWeaponPlan ? 'martial' : undefined,
                     range: isWeaponPlan ? 'Melee' : undefined,
@@ -1282,7 +1282,7 @@ const ManageCharacterModal = ({
                 const plus = Number(planName.match(/\+([123])/)?.[1] || 0);
                 if (/wand of magic missiles/i.test(planName)) existing[index] = { ...item, maxCharges: 7, charges: Number(item.charges ?? 7), rarity: 'Uncommon' } as any;
                 else if (/wand of magic detection|wand of secrets/i.test(planName)) existing[index] = { ...item, maxCharges: 3, charges: Number(item.charges ?? 3), rarity: 'Uncommon' } as any;
-                else if (/goggles of night|bag of holding|rope of climbing|alchemy jug|cap of water breathing|manifold tool/i.test(planName)) existing[index] = { ...item, maxCharges: undefined, charges: undefined, rarity: 'Common' } as any;
+                else if (/goggles of night|bag of holding|rope of climbing|alchemy jug|cap of water breathing|manifold tool/i.test(planName)) existing[index] = { ...item, maxCharges: undefined, charges: undefined, rarity: 'Uncommon' } as any;
                 else if (/sending stones|boots of elvenkind|cloak of elvenkind|shield \+[123]|armor \+[123]|weapon \+[123]/i.test(planName)) existing[index] = { ...item, maxCharges: undefined, charges: undefined, rarity: 'Uncommon' } as any;
                 if (/weapon \+[123]/i.test(planName)) {
                     existing[index] = {

@@ -425,6 +425,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const [showSpellManager, setShowSpellManager] = useState(false);
     const [showHealthManager, setShowHealthManager] = useState(false);
     const [showShortRestModal, setShowShortRestModal] = useState(false);
+    const [showLongRestConfirm, setShowLongRestConfirm] = useState(false);
     const [showCustomActionModal, setShowCustomActionModal] = useState(false);
     const [showManageCharacterModal, setShowManageCharacterModal] = useState(false);
     const [showItemSearchModal, setShowItemSearchModal] = useState(false);
@@ -1794,6 +1795,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
     const handleRest = (type: 'short' | 'long') => {
         if (type === 'short') { setShowShortRestModal(true); return; }
+        setShowLongRestConfirm(true);
+    };
+
+    const performRest = (type: 'short' | 'long') => {
         setCharacter(prev => {
             const newSlots = {...prev.spellSlots};
             Object.keys(newSlots).forEach(lvl => { newSlots[parseInt(lvl)].current = newSlots[parseInt(lvl)].max; });
@@ -1843,6 +1848,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     return { ...item, charges: Math.min(Number(item.maxCharges), Number(item.charges || 0) + regain) };
                 }),
                 activeSteelDefender: prev.activeSteelDefender ? { ...prev.activeSteelDefender, hp: prev.activeSteelDefender.maxHp } : prev.activeSteelDefender,
+                exhaustion: Math.max(0, Number(prev.exhaustion || 0) - 1),
                 eldritchCannonFreebieUsed: false,
                 inspiration: hasResourceful ? true : prev.inspiration
             };
@@ -2140,7 +2146,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         name: armoryName, sourcePlan: name, quantity: 1, weight: isWeapon ? 3 : 0, equipped: false, attuned: false,
                         is_magic: true,
                         requires_attunement: /wand of the war mage|boots of the winding path|eyes of charming|mind sharpener|dazzling weapon/i.test(name),
-                        rarity: /bag of holding|rope of climbing|wand of magic detection|wand of secrets|alchemy jug|cap of water breathing|manifold tool/i.test(name) ? 'Common' : 'Uncommon',
+                        rarity: 'Uncommon',
                         equipment_category: baseDetail?.equipment_category || (isWeapon ? { index: 'weapon', name: 'Weapon' } : undefined),
                         weapon_category: baseDetail?.weapon_category || (isWeapon ? 'martial' : undefined),
                         range: baseDetail?.range || (isWeapon ? 'Melee' : undefined),
@@ -2182,7 +2188,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         <div className="space-y-2">
                             {made.map((name: string) => {
                                 const item: any = (character.inventory || []).find((entry: any) => String(entry.sourcePlan || entry.name).toLowerCase() === name.toLowerCase());
-                                const rarity = String(item?.rarity || (/bag of holding|rope of climbing|wand of magic detection|wand of secrets|alchemy jug|cap of water breathing|manifold tool/i.test(name) ? 'Common' : 'Uncommon'));
+                                const rarity = String(item?.rarity || 'Uncommon');
                                 const common = /^common\b/i.test(rarity);
                                 const charges = Number(item?.charges || 0);
                                 const maxCharges = Number(item?.maxCharges || 0);
@@ -4877,6 +4883,18 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     roll(formula, label, undefined, callback);
                 }}
             />
+            {showLongRestConfirm && (
+                <div className="fixed inset-0 z-[500] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowLongRestConfirm(false)}>
+                    <div className="w-full max-w-md bg-[#1b1c20] border border-gray-700 rounded-xl p-6 space-y-4" onClick={e => e.stopPropagation()}>
+                        <h2 className="text-xl font-serif text-dnd-gold">Take a Long Rest?</h2>
+                        <p className="text-xs text-gray-400 leading-relaxed">Restore all HP, spell slots, Hit Dice recovery, class resources, item charges and the Steel Defender. Transmute and other long-rest uses reset, and exhaustion decreases by 1.</p>
+                        <div className="flex justify-end gap-2">
+                            <button onClick={() => setShowLongRestConfirm(false)} className="px-4 py-2 text-[10px] font-bold uppercase border border-gray-600 text-gray-400 rounded">Cancel</button>
+                            <button onClick={() => { setShowLongRestConfirm(false); performRest('long'); }} className="px-4 py-2 text-[10px] font-black uppercase bg-dnd-gold text-black rounded">Long Rest</button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <ShortRestModal isOpen={showShortRestModal} character={character} onUpdate={(updates) => setCharacter(prev => ({...prev, ...updates}))} onClose={() => setShowShortRestModal(false)} onRoll={roll} />
             <CustomActionModal
                 isOpen={showCustomActionModal}
