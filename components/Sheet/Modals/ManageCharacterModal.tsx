@@ -1034,6 +1034,14 @@ const ManageCharacterModal = ({
                 revertData: { classIndex, isDogHoundReplacement: true },
             }]);
         }
+        const isArenaRoyale = /arena royale/i.test(newSubclass.name);
+        if (isArenaRoyale && Number(clsDef.level) >= 3 && skills.some((skill: string) => /performance/i.test(skill)) && !localChoices.some((choice: any) => choice.id === 'arena-royale-replacement-skill')) {
+            setLocalChoices(prev => [...prev, {
+                id: 'arena-royale-replacement-skill', level: 3, source: newSubclass.name, type: 'skill',
+                label: 'Arena Royale: Bonus Proficiency Replacement', value: null, options: ['Intimidation', 'Persuasion'], count: 1,
+                revertData: { classIndex, isArenaRoyaleReplacement: true },
+            }]);
+        }
         if (newSubclassTools.length > 0) {
             const remainingTools = toolProficiencies.filter((tool: string) => !removedTools.has(tool) && tool !== previousReplacement?.value);
             const chosenToolValues = new Set(localChoices
@@ -1550,6 +1558,12 @@ const ManageCharacterModal = ({
         const choice = localChoices.find(c => c.id === choiceId);
         if (!choice) return;
 
+        if (choice.revertData?.isArenaRoyaleReplacement) {
+            const selected = typeof choice.value === 'string' ? choice.value : '';
+            if (selected) setSkills(prev => Array.from(new Set([...prev, selected])));
+            setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: selected, revertData: { ...c.revertData, pendingConfirm: false } } : c));
+            return;
+        }
         if (choice.revertData?.isDogHoundReplacement) {
             const selected = typeof choice.value === 'string' ? choice.value : '';
             if (selected) setSkills(prev => Array.from(new Set([...prev, selected])));

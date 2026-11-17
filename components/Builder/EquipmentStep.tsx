@@ -21,6 +21,7 @@ const CLASS_STARTING_KITS: Record<string, string[]> = {
     cleric: ['Chain Shirt', 'Shield', 'Mace', 'Holy Symbol', "Priest's Pack"],
     druid: ['Leather Armor', 'Shield', 'Sickle', 'Quarterstaff', "Explorer's Pack", 'Herbalism Kit'],
     artificer: ['Studded Leather', 'Dagger', "Thieves' Tools", "Tinker's Tools", "Dungeoneer's Pack"],
+    pugilist: ['Leather Armor', 'Dagger', 'Dagger', "Dungeoneer's Pack"],
     fighter: ['Chain Mail', 'Greatsword', 'Flail', 'Javelin', 'Javelin', 'Javelin', 'Javelin', 'Javelin', 'Javelin', 'Javelin', 'Javelin', "Dungeoneer's Pack"],
     monk: ['Spear', 'Dagger', 'Dagger', 'Dagger', 'Dagger', 'Dagger', 'Musical Instrument', "Explorer's Pack"],
     paladin: ['Chain Mail', 'Shield', 'Longsword', 'Javelin', 'Javelin', 'Javelin', 'Javelin', 'Javelin', 'Javelin', 'Holy Symbol', "Priest's Pack"],
@@ -38,12 +39,12 @@ const CLASS_OPTION_B_KITS: Record<string, string[]> = {
 const CLASS_OPTION_B_KIT_GOLD: Record<string, number> = { fighter: 11 };
 
 const CLASS_KIT_GOLD: Record<string, number> = {
-    artificer: 16, barbarian: 15, bard: 19, cleric: 7, druid: 9, fighter: 4, monk: 11,
+    artificer: 16, pugilist: 10, barbarian: 15, bard: 19, cleric: 7, druid: 9, fighter: 4, monk: 11,
     paladin: 9, ranger: 7, rogue: 8, sorcerer: 28, warlock: 15, wizard: 5,
 };
 
 const CLASS_OPTION_B_GOLD: Record<string, number> = {
-    artificer: 150, barbarian: 75, bard: 90, cleric: 110, druid: 50, fighter: 155, monk: 50,
+    artificer: 150, pugilist: 50, barbarian: 75, bard: 90, cleric: 110, druid: 50, fighter: 155, monk: 50,
     paladin: 150, ranger: 150, rogue: 100, sorcerer: 50, warlock: 100, wizard: 55,
 };
 
