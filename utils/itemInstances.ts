@@ -51,6 +51,9 @@ export const mergeInventoryItem = (
         isShillelagh: entry.isShillelagh,
         isBattleReady: entry.isBattleReady,
         wieldedTwoHanded: entry.wieldedTwoHanded,
+        sourcePlan: (entry as any).sourcePlan,
+        is_magic: (entry as any).is_magic,
+        rarity: (entry as any).rarity,
     };
     if (!dbRecord) return { ...entry, name: stripHomebrewSuffix(entry.name), overrides: customized ? overrides : undefined, customized };
     if (!customized) {

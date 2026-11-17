@@ -993,7 +993,11 @@ const ManageCharacterModal = ({
             .filter(Boolean))));
         if (newSubclassTools.length > 0) {
             const remainingTools = toolProficiencies.filter((tool: string) => !removedTools.has(tool) && tool !== previousReplacement?.value);
-            const duplicates = newSubclassTools.filter(tool => remainingTools.some(existing => String(existing).toLowerCase() === tool.toLowerCase()));
+            const chosenToolValues = new Set(localChoices
+                .filter((choice: any) => ['tool', 'other', 'feature_choice'].includes(choice.type))
+                .flatMap((choice: any) => Array.isArray(choice.value) ? choice.value : [choice.value])
+                .map((value: any) => String(typeof value === 'string' ? value : value?.name || '').toLowerCase()));
+            const duplicates = newSubclassTools.filter(tool => remainingTools.some(existing => String(existing).toLowerCase() === tool.toLowerCase()) && chosenToolValues.has(tool.toLowerCase()));
             setToolProficiencies(prev => Array.from(new Set([...prev, ...newSubclassTools.filter(tool => !duplicates.some(dup => String(dup).toLowerCase() === tool.toLowerCase()))])));
             if (duplicates.length > 0) {
                 const replacementOptions = ARTISAN_TOOLS.filter(tool => !remainingTools.some(existing => String(existing).toLowerCase() === tool.toLowerCase()));
@@ -1244,6 +1248,20 @@ const ManageCharacterModal = ({
             const savantSpells = Array.isArray(savantChoice?.value) ? savantChoice.value : [];
             return Array.from(new Set([...baseBook, ...savantSpells]));
         })(),
+        layout: (() => {
+            const artificer = (localClasses || []).find((cls: any) => cls.definition?.index === 'artificer');
+            const subclass = String(artificer?.subclass?.name || '');
+            const desired: string[] = [];
+            if (/battle smith/i.test(subclass)) desired.push('steelDefender');
+            if (/artillerist/i.test(subclass)) desired.push('eldritchCannon');
+            if (Number(artificer?.level || 0) >= 6) desired.push('magicItemTinker');
+            if (/cartographer/i.test(subclass)) desired.push('mapHolders');
+            if (/alchemist/i.test(subclass)) desired.push('experimentalElixir');
+            const managed = ['steelDefender', 'eldritchCannon', 'magicItemTinker', 'mapHolders', 'experimentalElixir'];
+            const stale = managed.filter(widget => !desired.includes(widget));
+            const add = (entries: string[]) => [...desired.filter(widget => !entries.includes(widget)), ...entries.filter(id => !stale.includes(id))];
+            return { ...(character.layout || {}), left: (character.layout?.left || []).filter(id => !stale.includes(id)), right: add(character.layout?.right || []), mobile: add(character.layout?.mobile || []) };
+        })(),
         classes: overrides.classes || localClasses,
         classFeatures: overrides.classFeatures || localClassFeatures,
         maxHp: overrides.maxHp || calculateMaxHp(projected),
@@ -1252,6 +1270,7 @@ const ManageCharacterModal = ({
             const chosenSet = new Set(chosenItems.filter(Boolean).map((name: string) => String(name).toLowerCase()));
             const chosenIds = new Set(chosenItems.filter(Boolean).map((name: string) => `replicated-${String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`));
             const existing = (character.inventory || []).filter((item: any) => {
+                if (item.customized || item.overrides) return true;
                 if (String(item.id || '').startsWith('replicated-')) return chosenIds.has(String(item.id));
                 const planName = String((item as any).sourcePlan || '');
                 return !planName || chosenSet.has(planName.toLowerCase());
@@ -1290,6 +1309,7 @@ const ManageCharacterModal = ({
                     armor_category: isShieldPlan ? 'shield' : isArmorPlan ? 'medium' : undefined,
                     armor_class: isShieldPlan ? { base: 2, dex_bonus: false } : isArmorPlan ? { base: 14, dex_bonus: true, max_bonus: 2 } : undefined,
                     maxCharges: /wand of magic missiles/i.test(name) ? 7 : /wand of magic detection|wand of secrets/i.test(name) ? 3 : undefined,
+                    charges: /wand of magic missiles/i.test(name) ? 7 : /wand of magic detection|wand of secrets/i.test(name) ? 3 : undefined,
                     modifiers,
                     effects: /goggles of night/i.test(name)
                         ? [{ name: 'Darkvision', type: 'sense', sense: 'darkvision', value: 60 }]
@@ -1304,10 +1324,10 @@ const ManageCharacterModal = ({
                 const planName = String(item.sourcePlan || item.name || '');
                 if (!/weapon|shield|armor/i.test(planName)) return;
                 const plus = Number(planName.match(/\+([123])/)?.[1] || 0);
-                if (/wand of magic missiles/i.test(planName)) existing[index] = { ...item, maxCharges: 7 } as any;
-                else if (/wand of magic detection|wand of secrets/i.test(planName)) existing[index] = { ...item, maxCharges: 3 } as any;
-                else if (/goggles of night|bag of holding|rope of climbing|alchemy jug|cap of water breathing|manifold tool/i.test(planName)) existing[index] = { ...item, rarity: 'Common' } as any;
-                else if (/sending stones|boots of elvenkind|cloak of elvenkind/i.test(planName)) existing[index] = { ...item, rarity: 'Uncommon' } as any;
+                if (/wand of magic missiles/i.test(planName)) existing[index] = { ...item, maxCharges: 7, charges: Number(item.charges ?? 7), rarity: 'Uncommon' } as any;
+                else if (/wand of magic detection|wand of secrets/i.test(planName)) existing[index] = { ...item, maxCharges: 3, charges: Number(item.charges ?? 3), rarity: 'Uncommon' } as any;
+                else if (/goggles of night|bag of holding|rope of climbing|alchemy jug|cap of water breathing|manifold tool/i.test(planName)) existing[index] = { ...item, maxCharges: undefined, charges: undefined, rarity: 'Common' } as any;
+                else if (/sending stones|boots of elvenkind|cloak of elvenkind|shield \+[123]|armor \+[123]|weapon \+[123]/i.test(planName)) existing[index] = { ...item, maxCharges: undefined, charges: undefined, rarity: 'Uncommon' } as any;
                 if (/weapon \+[123]/i.test(planName)) {
                     existing[index] = {
                         ...item,

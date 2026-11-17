@@ -869,6 +869,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const maxAttunements = artificerLevel >= 14 ? 5 : artificerLevel >= 10 ? 4 : 3;
     const [tinkerSlot, setTinkerSlot] = useState(1);
     const [tinkerItem, setTinkerItem] = useState('');
+    const [defenderHpDelta, setDefenderHpDelta] = useState(5);
     const innateSorceryActive = character.activeConditions?.['innate-sorcery'] === true;
     const spellAttack = prof + spellMod + extraSpellAttack;
     const spellAttackStr = formatModifier(spellAttack);
@@ -2179,9 +2180,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                          <div className="text-orange-400 font-bold text-sm">{defender.hp}/{defender.maxHp}</div>
                                      </div>
                                  </div>
-                                 <div className="grid grid-cols-2 gap-2">
-                                     <button onClick={(e) => { e.stopPropagation(); setCharacter(p => { const d = p.activeSteelDefender; return d ? { ...p, activeSteelDefender: { ...d, hp: Math.max(0, d.hp - 1) } } : p; }); }} className="py-1.5 bg-red-900/20 border border-red-900/50 text-red-400 rounded text-[9px] font-bold uppercase">Damage</button>
-                                     <button onClick={(e) => { e.stopPropagation(); setCharacter(p => { const d = p.activeSteelDefender; return d ? { ...p, activeSteelDefender: { ...d, hp: Math.min(d.maxHp, d.hp + 1) } } : p; }); }} className="py-1.5 bg-green-900/20 border border-green-900/50 text-green-400 rounded text-[9px] font-bold uppercase">Heal</button>
+                                 <div className="flex items-center gap-2">
+                                     <input type="number" value={defenderHpDelta} onChange={e => setDefenderHpDelta(Math.max(1, Number(e.target.value) || 1))} className="w-14 bg-black/40 border border-gray-700 rounded px-2 py-1 text-[10px] text-white" />
+                                     <button onClick={(e) => { e.stopPropagation(); setCharacter(p => { const d = p.activeSteelDefender; return d ? { ...p, activeSteelDefender: { ...d, hp: Math.max(0, d.hp - defenderHpDelta) } } : p; }); }} className="flex-1 py-1.5 bg-red-900/20 border border-red-900/50 text-red-400 rounded text-[9px] font-bold uppercase">Damage</button>
+                                     <button onClick={(e) => { e.stopPropagation(); setCharacter(p => { const d = p.activeSteelDefender; return d ? { ...p, activeSteelDefender: { ...d, hp: Math.min(d.maxHp, d.hp + defenderHpDelta) } } : p; }); }} className="flex-1 py-1.5 bg-green-900/20 border border-green-900/50 text-green-400 rounded text-[9px] font-bold uppercase">Heal</button>
                                  </div>
                                  <button
                                     onClick={(e) => { e.stopPropagation(); roll(`1d20${formatModifier(spellAttack)}`, 'Steel Defender Rend Attack'); roll(`1d8${formatModifier(2 + intMod)}`, 'Force-Empowered Rend Damage'); }}
@@ -2190,7 +2192,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                      Force-Empowered Rend
                                  </button>
                                  <div className="grid grid-cols-2 gap-2">
-                                     <button onClick={(e) => { e.stopPropagation(); const key = Object.keys(character.featureUsage || {}).find(k => /steel defender: repair/i.test(k)); const usage = key ? character.featureUsage[key] : null; if (usage && usage.current > 0) { setCharacter(p => ({ ...p, featureUsage: { ...p.featureUsage, [key!]: { ...usage, current: usage.current - 1 } } })); roll(`2d8+${prof}`, 'Steel Defender Repair'); } }} className="py-1.5 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[9px] font-bold uppercase">Repair</button>
+                                     <button onClick={(e) => { e.stopPropagation(); const key = Object.keys(character.featureUsage || {}).find(k => /steel defender: repair/i.test(k)); const usage = key ? character.featureUsage[key] : null; if (usage && usage.current > 0) { setCharacter(p => ({ ...p, featureUsage: { ...p.featureUsage, [key!]: { ...usage, current: usage.current - 1 } } })); roll(`2d8+${prof}`, 'Steel Defender Repair', (result) => { setCharacter(p => { const d = p.activeSteelDefender; return d ? { ...p, activeSteelDefender: { ...d, hp: Math.min(d.maxHp, d.hp + result.total) } } : p; }); }); } }} className="py-1.5 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[9px] font-bold uppercase">Repair</button>
                                      <button onClick={(e) => { e.stopPropagation(); setSelectedDetail({ name: 'Deflect Attack', desc: ['Reaction: impose disadvantage on an attack against another creature within 5 ft.'] } as any); roll(`1d4${formatModifier(intMod)}`, 'Deflect Attack'); }} className="py-1.5 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[9px] font-bold uppercase">Deflect</button>
                                  </div>
                              </div>
