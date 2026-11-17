@@ -1841,7 +1841,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     return { ...item, charges: Math.min(Number(item.maxCharges), Number(item.charges || 0) + regain) };
                 }),
                 activeSteelDefender: prev.activeSteelDefender ? { ...prev.activeSteelDefender, hp: prev.activeSteelDefender.maxHp } : prev.activeSteelDefender,
-                pugilistHound: prev.pugilistHound ? { ...prev.pugilistHound, hp: prev.pugilistHound.maxHp } : prev.pugilistHound,
+                pugilistHound: prev.pugilistHound ? { ...prev.pugilistHound, hp: prev.pugilistHound.maxHp, tempHp: 0 } : prev.pugilistHound,
                 experimentalElixirs: [],
                 experimentalElixir: undefined,
                 classFeatures: (prev.classFeatures || []).filter((feature: any) => !/^Experimental Elixir:/i.test(feature.name || '')),
@@ -2297,7 +2297,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 <div className="flex justify-between text-[10px] text-gray-400"><span>Wolf · Medium</span><span>AC {houndAc}</span></div>
                                 <div className="flex items-center gap-2">
                                     <button onClick={() => setCharacter(prev => ({ ...prev, pugilistHound: prev.pugilistHound ? { ...prev.pugilistHound, hp: Math.max(0, prev.pugilistHound.hp - 1) } : null }))} className="w-5 h-5 rounded bg-red-900/30 text-red-400">−</button>
-                                    <span className="text-sm font-bold text-white">{hound.hp}/{hound.maxHp} HP</span>
+                                    <span className="text-sm font-bold text-white">{hound.hp}/{hound.maxHp} HP{Number((hound as any).tempHp || 0) > 0 ? ` + ${(hound as any).tempHp} temp` : ''}</span>
                                     <button onClick={() => setCharacter(prev => ({ ...prev, pugilistHound: prev.pugilistHound ? { ...prev.pugilistHound, hp: Math.min(prev.pugilistHound.maxHp, prev.pugilistHound.hp + 1) } : null }))} className="w-5 h-5 rounded bg-green-900/30 text-green-400">+</button>
                                 </div>
                                 <button onClick={() => { roll(`1d20${formatModifier(biteHit)}`, 'Hound Bite Attack'); roll(biteDamage, 'Hound Bite Damage'); }} className="w-full py-1.5 bg-gray-800 border border-gray-700 rounded text-[9px] font-black uppercase text-gray-300">Bite ({formatModifier(biteHit)}, {biteDamage})</button>
@@ -4301,18 +4301,38 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 });
             };
             addPug('Brace Up', 'bonus_action', 1, 'Spend 1 Moxie: gain temporary HP (1d8 + CON).', () => {
-                roll(`1d8+${conModPug}`, 'Brace Up Temporary HP', (result) => setCharacter(prev => ({ ...prev, tempHp: Math.max(Number(prev.tempHp || 0), result.total) })));
+                roll(`1d8+${conModPug}`, 'Brace Up Temporary HP', (result) => setCharacter(prev => ({
+                    ...prev,
+                    tempHp: Math.max(Number(prev.tempHp || 0), result.total),
+                    pugilistHound: prev.pugilistHound && /dog\s*&\s*hound/i.test(String(pugilistClass.subclass?.name || '')) ? { ...prev.pugilistHound, tempHp: Math.max(Number((prev.pugilistHound as any).tempHp || 0), result.total) } : prev.pugilistHound,
+                })));
             });
             addPug('The Old One-Two', 'bonus_action', 1, 'Spend 1 Moxie: make two unarmed strikes.', () => {
                 const unarmed = attacks.find(attack => attack.name === 'Unarmed Strike');
                 if (!unarmed) return;
                 roll(`1d20${formatModifier(unarmed.hit)}`, 'Old One-Two Attack 1');
                 roll(`1d20${formatModifier(unarmed.hit)}`, 'Old One-Two Attack 2');
+                if (character.pugilistHound) roll(`1d20${formatModifier(prof + 3)}`, 'Old One-Two: Hound Bite');
             });
             addPug('Stick and Move', 'bonus_action', 1, 'Spend 1 Moxie: take the Dash or Shove action.');
             addPug('Haymaker', 'bonus_action', 0, 'Toggle: pugilist weapon attacks have disadvantage and deal maximum damage.', () => {
                 setCharacter(prev => ({ ...prev, activeConditions: { ...(prev.activeConditions || {}), haymaker: !prev.activeConditions?.haymaker } }));
             });
+            if (/arena royale/i.test(String(pugilistClass.subclass?.name || ''))) {
+                addPug('Adopt/Discard Persona', 'bonus_action', 0, 'Toggle your alternate persona.', () => {
+                    setCharacter(prev => ({ ...prev, activeConditions: { ...(prev.activeConditions || {}), 'arena-persona': !prev.activeConditions?.['arena-persona'] } }));
+                });
+            }
+            if (Boolean(character.activeConditions?.['dread-hand']) && /hand of dread/i.test(String(pugilistClass.subclass?.name || ''))) {
+                addPug('End Dread Hand', 'bonus_action', 0, 'End the Dread Hand transformation.', () => {
+                    setCharacter(prev => ({ ...prev, activeConditions: { ...(prev.activeConditions || {}), 'dread-hand': false } }));
+                });
+                addPug('Dread Hand: Three Strikes', 'bonus_action', 2, 'Spend 2 Moxie: make three unarmed strikes.', () => {
+                    const unarmed = attacks.find(attack => attack.name === 'Unarmed Strike');
+                    if (!unarmed) return;
+                    [1,2,3].forEach(index => roll(`1d20${formatModifier(unarmed.hit)}`, `Dread Hand Strike ${index}`));
+                });
+            }
             addPug('Unbreakable', 'reaction', 1, 'Spend 1 Moxie: when reduced to 0 HP, set your HP to 1.', () => {
                 setCharacter(prev => ({ ...prev, currentHp: 1 }));
             });
@@ -4332,9 +4352,14 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             addPug('Work the Crowd', 'action', 0, 'Once per long rest: WIS save DC 8 + PB + STR.', () => {
                 setSelectedDetail({ name: 'Work the Crowd', desc: [`WIS save DC ${8 + prof + strMod}.`] } as any);
             }, 'Work the Crowd');
-            addPug('Heelstomper', 'feature', 0, 'Dirty Trick: DEX save or speed halved.', undefined, 'Heelstomper');
-            addPug('Low Blow', 'feature', 0, 'Dirty Trick: STR save or knocked prone.', undefined, 'Low Blow');
-            addPug('Pocket Sand', 'bonus_action', 0, 'Dirty Trick: CON save or blinded until end of next turn.', undefined, 'Pocket Sand');
+            const dirtyTrick = (name: string, description: string) => addPug(name, name === 'Pocket Sand' ? 'bonus_action' : 'feature', 0, description, () => {
+                setCharacter(prev => ({ ...prev, featureUsage: { ...prev.featureUsage, Moxie: { ...prev.featureUsage.Moxie, current: Math.min(prev.featureUsage.Moxie.max, Number(prev.featureUsage.Moxie.current) + 1) } } }));
+            }, name);
+            dirtyTrick('Heelstomper', 'Dirty Trick: DEX save or speed halved. Regain 1 Moxie.');
+            dirtyTrick('Low Blow', 'Dirty Trick: STR save or knocked prone. Regain 1 Moxie.');
+            dirtyTrick('Pocket Sand', 'Dirty Trick: CON save or blinded until end of next turn. Regain 1 Moxie.');
+            const workCrowd = attacks.find(attack => /work the crowd/i.test(String(attack.name)));
+            if (workCrowd) workCrowd.requiresCondition = 'arena-persona';
             const digDeep = attacks.find(attack => attack.name === 'Dig Deep');
             if (digDeep) {
                 digDeep.onUse = () => setCharacter(prev => {

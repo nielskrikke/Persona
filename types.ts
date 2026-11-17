@@ -614,7 +614,7 @@ export interface CharacterState {
     replicatedItems?: string[];
     spellStoringItem?: { spell: string; };
     mapHolders?: number;
-    pugilistHound?: { hp: number; maxHp: number; } | null;
+    pugilistHound?: { hp: number; maxHp: number; tempHp?: number; } | null;
     experimentalElixir?: string;
     experimentalElixirs?: string[];
     diceColor?: string;
