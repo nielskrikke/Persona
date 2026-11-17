@@ -1287,6 +1287,7 @@ const ManageCharacterModal = ({
                 if (/weapon \+[123]/i.test(planName)) {
                     existing[index] = {
                         ...item,
+                        weight: /warhammer/i.test(String(item.name)) ? 5 : Math.max(5, Number(item.weight || 0)),
                         weapon_category: item.weapon_category || 'martial',
                         equipment_category: item.equipment_category || { index: 'weapon', name: 'Weapon' },
                         range: item.range || 'Melee',
@@ -1297,7 +1298,7 @@ const ManageCharacterModal = ({
                 } else if (/shield \+[123]/i.test(planName)) {
                     existing[index] = { ...item, armor_category: 'shield', armor_class: { base: 2, dex_bonus: false }, modifiers: [{ type: 'bonus', target: 'ac', value: plus }] } as any;
                 } else if (/armor \+[123]/i.test(planName)) {
-                    existing[index] = { ...item, armor_category: 'medium', armor_class: { base: 14, dex_bonus: true, max_bonus: 2 }, modifiers: [{ type: 'bonus', target: 'ac', value: plus }] } as any;
+                    existing[index] = { ...item, weight: /studded leather/i.test(String(item.name)) ? 13 : Number(item.weight || 0), armor_category: 'medium', armor_class: { base: 14, dex_bonus: true, max_bonus: 2 }, modifiers: [{ type: 'bonus', target: 'ac', value: plus }] } as any;
                 }
             });
             return existing;
@@ -3944,7 +3945,7 @@ const ManageCharacterModal = ({
                                                                                                     return (
                                                                                                         <button key={name} onClick={() => handleChoiceChange(choice.id, name)} className={`px-2 py-2 rounded-lg border text-left transition-all ${picked ? 'bg-dnd-gold/20 border-dnd-gold text-white' : 'bg-black/40 border-gray-800 text-gray-400 hover:border-gray-600'}`}>
                                                                                                             <div className="text-[10px] font-bold">{name}</div>
-                                                                                                            <div className="text-[8px] uppercase text-gray-500">{plan.rarity || 'Uncommon'}{plan.attunement ? ' · Attunement' : ''}</div>
+                                                                                                            <div className="text-[8px] uppercase text-gray-500">{plan.rarity || 'Uncommon'}{plan.attunement === true ? ' · Attunement' : plan.attunement === 'varies' ? ' · Attunement varies' : ''}</div>
                                                                                                         </button>
                                                                                                     );
                                                                                                 })}

@@ -60,7 +60,7 @@ const LayoutManagerModal = ({
             refreshUnused(dedupe(layout.left), dedupe(layout.right));
             setSearch('');
         }
-    }, [isOpen, layout]);
+    }, [isOpen, layout, character.classes, character.level]);
 
     const refreshUnused = (left: string[], right: string[]) => {
         const used = new Set([...left, ...right]);

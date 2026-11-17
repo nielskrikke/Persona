@@ -487,6 +487,16 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             mobile: Array.from(new Set(initial.mobile || []))
         };
     });
+    useEffect(() => {
+        if (!character.layout) return;
+        const initial = character.layout;
+        const seen = new Set<string>();
+        setLayout({
+            left: (initial.left || []).filter(w => { if (seen.has(w)) return false; seen.add(w); return true; }),
+            right: (initial.right || []).filter(w => { if (seen.has(w)) return false; seen.add(w); return true; }),
+            mobile: Array.from(new Set(initial.mobile || [])),
+        });
+    }, [character.layout]);
 
     useEffect(() => {
         if (hasUiWidget(character, 'activeCards')) {
@@ -2219,7 +2229,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     {allEquipment.filter((entry: any) => !entry.is_magic && (pendingReplicate.plan.toLowerCase().startsWith('weapon') ? !!entry.weapon_category : pendingReplicate.plan.toLowerCase().startsWith('shield') ? String(entry.armor_category || '').toLowerCase().includes('shield') : !!entry.armor_category && !String(entry.armor_category || '').toLowerCase().includes('shield'))).map((entry: any) => <option key={entry.index} value={entry.name}>{entry.name}</option>)}
                                 </select>
                                 <div className="flex gap-1">
-                                    <button disabled={!pendingBase} onClick={() => { const next = pendingReplicate.oldName ? made.map(entry => entry === pendingReplicate.oldName ? pendingReplicate.plan : entry) : [...made, pendingReplicate.plan]; setMade(next, pendingReplicate.oldName, pendingReplicate.plan, Boolean(transmute?.current), pendingBase); setPendingReplicate(null); setPendingBase(''); }} className="flex-1 py-1 bg-dnd-gold text-black rounded text-[8px] font-black uppercase disabled:opacity-40">Make Item</button>
+                                    <button disabled={!pendingBase} onClick={() => { const next = pendingReplicate.oldName ? made.map(entry => entry === pendingReplicate.oldName ? pendingReplicate.plan : entry) : [...made, pendingReplicate.plan]; setMade(next, pendingReplicate.oldName, pendingReplicate.plan, false, pendingBase); setPendingReplicate(null); setPendingBase(''); }} className="flex-1 py-1 bg-dnd-gold text-black rounded text-[8px] font-black uppercase disabled:opacity-40">Make Item</button>
                                     <button onClick={() => { setPendingReplicate(null); setPendingBase(''); }} className="px-2 py-1 bg-gray-800 text-gray-400 rounded text-[8px] font-bold uppercase">Cancel</button>
                                 </div>
                             </div>
