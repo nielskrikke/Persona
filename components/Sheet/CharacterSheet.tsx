@@ -1755,11 +1755,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
     useEffect(() => {
         const widgets: string[] = [];
-        if (hasUiWidget(character, 'steelDefender')) widgets.push('steelDefender');
-        if (hasUiWidget(character, 'eldritchCannon')) widgets.push('eldritchCannon');
+        const artificerClass = (character.classes || []).find((cls: any) => cls.definition?.index === 'artificer');
+        const subclassName = String(artificerClass?.subclass?.name || '');
+        if (/battle smith/i.test(subclassName)) widgets.push('steelDefender');
+        if (/artillerist/i.test(subclassName)) widgets.push('eldritchCannon');
         if (artificerLevel >= 6) widgets.push('magicItemTinker');
-        if (/cartographer/i.test(String(character.classes?.[0]?.subclass?.name || ''))) widgets.push('mapHolders');
-        if (/alchemist/i.test(String(character.classes?.[0]?.subclass?.name || ''))) widgets.push('experimentalElixir');
+        if (/cartographer/i.test(subclassName)) widgets.push('mapHolders');
+        if (/alchemist/i.test(subclassName)) widgets.push('experimentalElixir');
         const managed = ['steelDefender', 'eldritchCannon', 'magicItemTinker', 'mapHolders', 'experimentalElixir'];
         const missing = widgets.filter(widget => !(character.layout.right || []).includes(widget) && !(character.layout.left || []).includes(widget) && !(character.layout.mobile || []).includes(widget));
         const stale = managed.filter(widget => !widgets.includes(widget) && ((character.layout.right || []).includes(widget) || (character.layout.left || []).includes(widget) || (character.layout.mobile || []).includes(widget)));
@@ -2093,6 +2095,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const isCartographer = /cartographer/i.test(String(character.classes?.[0]?.subclass?.name || ''));
                 if (!isCartographer) return null;
                 const count = Number(character.mapHolders || 0);
+                const maxMapHolders = Math.max(1, intMod);
                 return (
                     <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
                         <div className="flex justify-between items-center mb-2">
@@ -2101,13 +2104,19 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         </div>
                         <div className="flex items-center justify-between">
                             <button onClick={() => setCharacter(prev => {
-                                const entries = (prev.inventory || []).filter((item: any) => String(item.name) !== 'Map Holder');
+                                const entries = (prev.inventory || []).map((item: any) => item.name === 'Map Holder' ? { ...item, quantity: Number(item.quantity || 1) - 1 } : item).filter((item: any) => item.name !== 'Map Holder' || Number(item.quantity || 0) > 0);
                                 return { ...prev, mapHolders: Math.max(0, Number(prev.mapHolders || 0) - 1), inventory: entries };
                             })} className="w-8 h-8 rounded bg-gray-800 text-white text-lg">−</button>
                             <span className="text-2xl font-black text-white">{count}</span>
-                            <button onClick={() => setCharacter(prev => ({ ...prev, mapHolders: Number(prev.mapHolders || 0) + 1, inventory: [...(prev.inventory || []), { id: `map-holder-${Date.now()}`, name: 'Map Holder', quantity: 1, weight: 0, equipped: false, attuned: false }] }))} className="w-8 h-8 rounded bg-dnd-gold text-black text-lg">+</button>
+                            <button disabled={count >= maxMapHolders} onClick={() => setCharacter(prev => {
+                                const items = [...(prev.inventory || [])];
+                                const holderIndex = items.findIndex((item: any) => item.name === 'Map Holder');
+                                if (holderIndex >= 0) items[holderIndex] = { ...items[holderIndex], quantity: Number(items[holderIndex].quantity || 0) + 1 };
+                                else items.push({ id: 'map-holder', name: 'Map Holder', quantity: 1, weight: 0, equipped: false, attuned: false });
+                                return { ...prev, mapHolders: Number(prev.mapHolders || 0) + 1, inventory: items };
+                            })} className="w-8 h-8 rounded bg-dnd-gold text-black text-lg disabled:opacity-30">+</button>
                         </div>
-                        <p className="text-[9px] text-gray-500 mt-2">Portal Jump can target a map holder within 30 ft.</p>
+                        <p className="text-[9px] text-gray-500 mt-2">Max {maxMapHolders}. Portal Jump can target a map holder within 30 ft.</p>
                     </div>
                 );
             }
