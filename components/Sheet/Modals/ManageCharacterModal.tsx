@@ -957,12 +957,13 @@ const ManageCharacterModal = ({
         let updatedFeatures = localClassFeatures.filter((f: any) => !allSubclassNames.has(f.source));
 
         if (removedFeatures.length > 0) {
-            const subclassTrackerPattern = /giant stature|conjured cauldron|mapping magic|unerring path|steel defender|arcane jolt|experimental elixir|restorative reagents|perfected armor|eldritch cannon|fortified position/i;
+            const oldSubclassResourceNames = new Set(((clsDef.subclass as any)?.resources || []).map((resource: any) => String(resource.name || '')));
+            const subclassTrackerPattern = /giant stature|conjured cauldron|mapping magic|unerring path|steel defender|arcane jolt|experimental elixir|restorative reagents|perfected armor|eldritch cannon|fortified position|persona points|dread hand|work the crowd|heelstomper|low blow|pocket sand/i;
             setLocalFeatures(prev => {
                 const next = { ...prev };
                 Object.keys(next).forEach(key => {
                     const usage: any = next[key];
-                    if (subclassTrackerPattern.test(key) || (usage?.source && allSubclassNames.has(String(usage.source)))) delete next[key];
+                    if (subclassTrackerPattern.test(key) || oldSubclassResourceNames.has(key) || (usage?.source && allSubclassNames.has(String(usage.source)))) delete next[key];
                 });
                 return next;
             });
@@ -995,10 +996,44 @@ const ManageCharacterModal = ({
         });
 
         setLocalClassFeatures(updatedFeatures);
+        const newSubclassResources = (newSubclass as any)?.resources || [];
+        if (newSubclassResources.length > 0) {
+            setLocalFeatures(prev => {
+                const next = { ...prev };
+                newSubclassResources.forEach((resource: any) => {
+                    if (!next[resource.name]) {
+                        const values = resource.max?.values || [];
+                        const max = resource.max?.type === 'fixed' ? Number(resource.max.value || 0) : resource.max?.type === 'table' ? Number(values[Math.max(0, Number(clsDef.level || 1) - 1)] || 0) : Number(resource.max?.value || 1);
+                        next[resource.name] = { max: Math.max(1, max), current: Math.max(1, max), reset: resource.reset || 'long', source: newSubclass.name };
+                    }
+                });
+                return next;
+            });
+        }
         const newSubclassTools = Array.from(new Set(newFeats.flatMap((feature: any) => (feature.effects || [])
             .filter((effect: any) => effect.type === 'proficiency' && effect.category === 'tool')
             .map((effect: any) => String(effect.target || effect.value || ''))
             .filter(Boolean))));
+        const isHandOfDread = /hand of dread/i.test(newSubclass.name);
+        if (isHandOfDread && Number(clsDef.level) >= 6 && !localChoices.some((choice: any) => choice.id === 'hand-of-dread-invocation')) {
+            const warlock = await fetchClassDetail('warlock');
+            const invocations = (warlock as any)?.options?.invocations || [];
+            if (invocations.length > 0) {
+                setLocalChoices(prev => [...prev, {
+                    id: 'hand-of-dread-invocation', level: 6, source: newSubclass.name, type: 'feature_choice',
+                    label: 'Deal With the Devil: Eldritch Invocation', value: null, options: invocations, count: 1,
+                    revertData: { classIndex, isHandOfDreadInvocation: true },
+                }]);
+            }
+        }
+        const isDogHound = /dog\s*&\s*hound/i.test(newSubclass.name);
+        if (isDogHound && Number(clsDef.level) >= 3 && skills.some((skill: string) => /animal handling/i.test(skill)) && !localChoices.some((choice: any) => choice.id === 'dog-hound-replacement-skill')) {
+            setLocalChoices(prev => [...prev, {
+                id: 'dog-hound-replacement-skill', level: 3, source: newSubclass.name, type: 'skill',
+                label: 'Dog & Hound: Bonus Proficiency Replacement', value: null, options: ['Perception', 'Survival'], count: 1,
+                revertData: { classIndex, isDogHoundReplacement: true },
+            }]);
+        }
         if (newSubclassTools.length > 0) {
             const remainingTools = toolProficiencies.filter((tool: string) => !removedTools.has(tool) && tool !== previousReplacement?.value);
             const chosenToolValues = new Set(localChoices
@@ -1231,6 +1266,7 @@ const ManageCharacterModal = ({
             return base;
         })(),
         mapHolders: character.mapHolders,
+        pugilistHound: character.pugilistHound,
         experimentalElixir: character.experimentalElixir,
         experimentalElixirs: character.experimentalElixirs,
         activeEldritchCannon: (localClasses || []).some((cls: any) => /artillerist/i.test(cls.subclass?.name || '')) ? character.activeEldritchCannon : null,
@@ -1514,6 +1550,16 @@ const ManageCharacterModal = ({
         const choice = localChoices.find(c => c.id === choiceId);
         if (!choice) return;
 
+        if (choice.revertData?.isDogHoundReplacement) {
+            const selected = typeof choice.value === 'string' ? choice.value : '';
+            if (selected) setSkills(prev => Array.from(new Set([...prev, selected])));
+            setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: selected, revertData: { ...c.revertData, pendingConfirm: false } } : c));
+            return;
+        }
+        if (choice.revertData?.isHandOfDreadInvocation) {
+            setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, revertData: { ...c.revertData, pendingConfirm: false } } : c));
+            return;
+        }
         if (choice.revertData?.isArmorModel) {
             setArmorModel('');
             setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: null, revertData: { ...c.revertData, pendingConfirm: true } } : c));

@@ -1,18 +1,20 @@
 import { CharacterState } from '../types';
 
-const MANAGED_WIDGETS = ['steelDefender', 'eldritchCannon', 'magicItemTinker', 'mapHolders', 'experimentalElixir', 'spellStoringItem'];
+const MANAGED_WIDGETS = ['steelDefender', 'eldritchCannon', 'magicItemTinker', 'mapHolders', 'experimentalElixir', 'spellStoringItem', 'pugilistHound'];
 
 export const artificerWidgetIds = (character: CharacterState): string[] => {
     const artificer = (character.classes || []).find((cls: any) => cls.definition?.index === 'artificer');
-    if (!artificer) return [];
-    const subclass = String(artificer.subclass?.name || '');
+    const pugilist = (character.classes || []).find((cls: any) => cls.definition?.index === 'pugilist');
+    const subclass = String(artificer?.subclass?.name || '');
+    const pugilistSubclass = String(pugilist?.subclass?.name || '');
     const desired: string[] = [];
+    if (/dog\s*&\s*hound/i.test(pugilistSubclass)) desired.push('pugilistHound');
     if (/battle smith/i.test(subclass)) desired.push('steelDefender');
     if (/artillerist/i.test(subclass)) desired.push('eldritchCannon');
-    if (Number(artificer.level || 0) >= 2) desired.push('magicItemTinker');
+    if (Number(artificer?.level || 0) >= 2) desired.push('magicItemTinker');
     if (/cartographer/i.test(subclass)) desired.push('mapHolders');
     if (/alchemist/i.test(subclass)) desired.push('experimentalElixir');
-    if (Number(artificer.level || 0) >= 11) desired.push('spellStoringItem');
+    if (Number(artificer?.level || 0) >= 11) desired.push('spellStoringItem');
     return desired;
 };
 

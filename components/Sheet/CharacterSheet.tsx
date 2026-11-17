@@ -1106,6 +1106,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             }
         });
 
+        const hasIronChin = (character.classFeatures || []).some((feature: any) => /iron chin/i.test(feature.name || ''));
+        const armorCategory = String(armor?.armor_category || '').toLowerCase();
+        const ironChinEligible = hasIronChin && !shield && (!armor || armorCategory.includes('light'));
+        if (ironChinEligible) total = Math.max(total, 12 + calculateModifier(getStat('con')));
         return total;
     };
 
@@ -1356,7 +1360,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const specialSpeeds = getSpecialSpeeds();
     const currentWeight = character.inventory.reduce((sum: number, item) => sum + (item.weight || 0) * (item.quantity || 1), 0);
     const wildShapeSizeMultiplier = /huge/i.test(String(character.activeWildShape?.creature?.size || '')) ? 4 : /large/i.test(String(character.activeWildShape?.creature?.size || '')) ? 2 : 1;
-    const maxWeight = getStat('str') * 15 * wildShapeSizeMultiplier;
+    const hasHerculean = (character.classFeatures || []).some((feature: any) => /herculean/i.test(feature.name || ''));
+    const maxWeight = getStat('str') * 15 * wildShapeSizeMultiplier * (hasHerculean ? 2 : 1);
 
     useEffect(() => {
         if (selectedDetail && 'quantity' in selectedDetail) {
@@ -1836,6 +1841,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     return { ...item, charges: Math.min(Number(item.maxCharges), Number(item.charges || 0) + regain) };
                 }),
                 activeSteelDefender: prev.activeSteelDefender ? { ...prev.activeSteelDefender, hp: prev.activeSteelDefender.maxHp } : prev.activeSteelDefender,
+                pugilistHound: prev.pugilistHound ? { ...prev.pugilistHound, hp: prev.pugilistHound.maxHp } : prev.pugilistHound,
                 experimentalElixirs: [],
                 experimentalElixir: undefined,
                 classFeatures: (prev.classFeatures || []).filter((feature: any) => !/^Experimental Elixir:/i.test(feature.name || '')),
@@ -2268,6 +2274,39 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             </div>
                         )}
                         {canTinker && <div className="text-[9px] text-gray-500">Drain {drain ? `${drain.current} / ${drain.max}` : '0'} · Transmute {transmute ? `${transmute.current} / ${transmute.max}` : '0'}</div>}
+                    </div>
+                );
+            }
+            case 'pugilistHound': {
+                const pug = (character.classes || []).find((cls: any) => cls.definition?.index === 'pugilist');
+                const pugLevel = Number(pug?.level || 0);
+                if (!/dog\s*&\s*hound/i.test(String(pug?.subclass?.name || ''))) return null;
+                const hound = character.pugilistHound;
+                const houndMax = 11 + Math.max(0, pugLevel - 3) * 5;
+                const houndAc = 13 + prof;
+                const biteHit = prof + 3;
+                const biteDamage = `1d6+${2 + prof}`;
+                return (
+                    <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
+                        <div className="flex justify-between items-center mb-2">
+                            <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Pugilist Hound</h3>
+                            <button onClick={() => setCharacter(prev => ({ ...prev, pugilistHound: prev.pugilistHound ? null : { hp: houndMax, maxHp: houndMax } }))} className="text-[9px] uppercase font-bold border border-gray-600 px-2 py-0.5 rounded text-gray-400">{hound ? 'Dismiss' : 'Summon'}</button>
+                        </div>
+                        {hound ? (
+                            <div className="space-y-2">
+                                <div className="flex justify-between text-[10px] text-gray-400"><span>Wolf · Medium</span><span>AC {houndAc}</span></div>
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => setCharacter(prev => ({ ...prev, pugilistHound: prev.pugilistHound ? { ...prev.pugilistHound, hp: Math.max(0, prev.pugilistHound.hp - 1) } : null }))} className="w-5 h-5 rounded bg-red-900/30 text-red-400">−</button>
+                                    <span className="text-sm font-bold text-white">{hound.hp}/{hound.maxHp} HP</span>
+                                    <button onClick={() => setCharacter(prev => ({ ...prev, pugilistHound: prev.pugilistHound ? { ...prev.pugilistHound, hp: Math.min(prev.pugilistHound.maxHp, prev.pugilistHound.hp + 1) } : null }))} className="w-5 h-5 rounded bg-green-900/30 text-green-400">+</button>
+                                </div>
+                                <button onClick={() => { roll(`1d20${formatModifier(biteHit)}`, 'Hound Bite Attack'); roll(biteDamage, 'Hound Bite Damage'); }} className="w-full py-1.5 bg-gray-800 border border-gray-700 rounded text-[9px] font-black uppercase text-gray-300">Bite ({formatModifier(biteHit)}, {biteDamage})</button>
+                                <div className="grid grid-cols-2 gap-1">
+                                    {['Attack','Dash','Disengage','Dodge','Help'].map(command => <button key={command} onClick={() => setSelectedDetail({ name: `Command Hound: ${command}`, desc: [`The hound uses ${command}.`] } as any)} className="py-1 bg-gray-800 border border-gray-700 rounded text-[8px] font-bold uppercase text-gray-400">{command}</button>)}
+                                    <button onClick={() => { roll(`1d20${formatModifier(biteHit)}`, 'Coordinated Attack Bite'); roll(biteDamage, 'Coordinated Attack Damage'); }} className="py-1 bg-dnd-gold/10 border border-dnd-gold/40 rounded text-[8px] font-bold uppercase text-dnd-gold">Coordinated</button>
+                                </div>
+                            </div>
+                        ) : <div className="text-center py-3 text-[10px] text-gray-600 italic">No hound summoned.</div>}
                     </div>
                 );
             }
@@ -2705,7 +2744,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 }))}
                             />
                         )}
-                        {Object.entries(character.featureUsage).filter(([name, usage]) => !/^spell-storing item|drain magic item|steel defender: repair|eldritch cannon|experimental elixir/i.test(name) && !(/giant stature/i.test(name) && !/dreadnaught/i.test(String(character.armorModel || ''))) && name !== 'Wild Shape' && name !== 'Lay on Hands' && name !== 'Sorcery Points' && name !== 'Dragon Wings' && name !== 'Magical Cunning' && !usage.hidden).map(([name, usage]: [string, any]) => {
+                        {Object.entries(character.featureUsage).filter(([name, usage]) => !/^spell-storing item|drain magic item|steel defender: repair|eldritch cannon|experimental elixir|^bloodied but unbowed$|^down but not out$|^dread hand$|^work the crowd$|^heelstomper$|^low blow$|^pocket sand$/i.test(name) && !(/giant stature/i.test(name) && !/dreadnaught/i.test(String(character.armorModel || ''))) && name !== 'Wild Shape' && name !== 'Lay on Hands' && name !== 'Sorcery Points' && name !== 'Dragon Wings' && name !== 'Magical Cunning' && !usage.hidden).map(([name, usage]: [string, any]) => {
                             const usedCount = usage.max - usage.current;
                             const detailTarget = findResourceDetailsTarget(name, usage);
                             return (
@@ -2905,11 +2944,14 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
                              return <SavingThrowRow key={stat} label={ABILITY_LABELS[stat]} stat={stat} isProf={isProf} mod={mod} advantage={hasFullAdv} onRoll={roll} onContextMenu={triggerRollMenu} />;
                          })}</div>
-                         {situationalSaves.length > 0 && (() => {
+                         {(situationalSaves.length > 0 || initAdv) && (() => {
                              const abilityFilters = situationalSaves.map(m => String(m.filter || '')).filter(f => /^(intelligence|wisdom|charisma)$/i.test(f));
-                             const labels = abilityFilters.length === situationalSaves.length && abilityFilters.length >= 2
-                                 ? [`Adv on ${abilityFilters.map(f => f.slice(0, 3).toUpperCase()).join(', ')} saves`]
-                                 : situationalSaves.map(m => `Adv vs ${String(m.filter || m.condition).replace(/^against\s+/i, '')}`);
+                             const labels = [
+                                 ...(initAdv ? ['Adv on Initiative'] : []),
+                                 ...(abilityFilters.length === situationalSaves.length && abilityFilters.length >= 2
+                                     ? [`Adv on ${abilityFilters.map(f => f.slice(0, 3).toUpperCase()).join(', ')} saves`]
+                                     : situationalSaves.map(m => `Adv vs ${String(m.filter || m.condition).replace(/^against\s+/i, '')}`)),
+                             ];
                              return (
                                  <div className="mt-3 pt-2 border-t border-gray-800/50">
                                      <span className="text-[9px] font-bold text-gray-500 uppercase block mb-1">Situational Advantages</span>
@@ -3734,6 +3776,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 .map((property: any) => String(typeof property === 'string' ? property : property?.name || property?.index || '').toLowerCase());
             const isMonkWeapon = item.isMonkWeapon || item.isKenseiWeapon || (monk && !isRanged && (
                 String(item.weapon_category || '').toLowerCase().includes('simple')
+                || /whip/i.test(String(item.name || ''))
                 || monkProperties.some((property: string) => property.includes('light'))
                 || monkProperties.some((property: string) => property.includes('simple'))
             ));
@@ -3960,6 +4003,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             }
 
             let displayDamage = finalDamage === '0' ? 'None' : finalDamage;
+            const isPugilistWeapon = String(monk?.definition?.index || '').toLowerCase() === 'pugilist' && isMonkWeapon;
+            if (character.activeConditions?.haymaker && isPugilistWeapon) {
+                const dieMax = parseInt(String(currentDamageDice).match(/d(\d+)/)?.[1] || '0');
+                displayDamage = String((dieMax || unarmedDieVal) + totalFlatDmgMod);
+                finalNotes.push('Haymaker: disadvantage, maximum damage');
+            }
             if (isThrown && item.thrownDamage && item.thrownDamage !== currentDamageDice) {
                 const thrownBase = combineDamageParts(item.thrownDamage, totalFlatDmgMod, allExtraDice);
                 const { damage: finalThrownDamage } = applyOverrides(null, thrownBase);
@@ -4227,6 +4276,87 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 notes: [character.replicatedItems.filter(Boolean).join(', ')],
                 source: { name: 'Replicate Magic Item', activationType: 'action', desc: ['Items created from your known plans.'] },
             });
+        }
+
+        const pugilistClass = (character.classes || []).find((cls: any) => cls.definition?.index === 'pugilist');
+        if (pugilistClass) {
+            const pugLevel = Number(pugilistClass.level || 0);
+            const conModPug = calculateModifier(getStat('con'));
+            const moxie = character.featureUsage?.['Moxie'];
+            const featureBy = (name: string) => (character.classFeatures || []).find((feature: any) => String(feature.name).toLowerCase() === name.toLowerCase());
+            const addPug = (name: string, activationType: string, moxieCost: number, description: string, onUse?: () => void, useKey?: string) => {
+                const existing = attacks.find(attack => String(attack.name).toLowerCase() === name.toLowerCase());
+                if (existing) {
+                    existing.moxieCost = moxieCost;
+                    existing.onUse = onUse;
+                    existing.useKey = useKey;
+                    if (useKey) (existing.source as any).maxUses = character.featureUsage?.[useKey]?.max || 1;
+                    return;
+                }
+                attacks.push({
+                    id: `pugilist-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+                    name, range: '-', hit: null, damage: '-', type: 'Pugilist',
+                    notes: [description], moxieCost, onUse, useKey,
+                    source: { name, activationType, desc: [description], maxUses: useKey ? (character.featureUsage?.[useKey]?.max || 1) : undefined },
+                });
+            };
+            addPug('Brace Up', 'bonus_action', 1, 'Spend 1 Moxie: gain temporary HP (1d8 + CON).', () => {
+                roll(`1d8+${conModPug}`, 'Brace Up Temporary HP', (result) => setCharacter(prev => ({ ...prev, tempHp: Math.max(Number(prev.tempHp || 0), result.total) })));
+            });
+            addPug('The Old One-Two', 'bonus_action', 1, 'Spend 1 Moxie: make two unarmed strikes.', () => {
+                const unarmed = attacks.find(attack => attack.name === 'Unarmed Strike');
+                if (!unarmed) return;
+                roll(`1d20${formatModifier(unarmed.hit)}`, 'Old One-Two Attack 1');
+                roll(`1d20${formatModifier(unarmed.hit)}`, 'Old One-Two Attack 2');
+            });
+            addPug('Stick and Move', 'bonus_action', 1, 'Spend 1 Moxie: take the Dash or Shove action.');
+            addPug('Haymaker', 'bonus_action', 0, 'Toggle: pugilist weapon attacks have disadvantage and deal maximum damage.', () => {
+                setCharacter(prev => ({ ...prev, activeConditions: { ...(prev.activeConditions || {}), haymaker: !prev.activeConditions?.haymaker } }));
+            });
+            addPug('Unbreakable', 'reaction', 1, 'Spend 1 Moxie: when reduced to 0 HP, set your HP to 1.', () => {
+                setCharacter(prev => ({ ...prev, currentHp: 1 }));
+            });
+            addPug('Bloodied but Unbowed', 'reaction', 0, 'Once per short rest: regain all Moxie and gain temporary HP equal to level + CON.', () => {
+                setCharacter(prev => ({
+                    ...prev,
+                    featureUsage: { ...prev.featureUsage, Moxie: { ...prev.featureUsage.Moxie, current: prev.featureUsage.Moxie.max } },
+                    tempHp: Math.max(Number(prev.tempHp || 0), pugLevel + conModPug),
+                }));
+            }, 'Bloodied but Unbowed');
+            addPug('Down but Not Out', 'feature', 0, 'Once per long rest: add PB to damage for 1 minute.', () => {
+                setCharacter(prev => ({ ...prev, activeConditions: { ...(prev.activeConditions || {}), 'down-but-not-out': true }, classFeatures: [...(prev.classFeatures || []).filter((feature: any) => feature.name !== 'Down but Not Out (Active)'), { index: 'down-but-not-out-active', name: 'Down but Not Out (Active)', level: 9, source: 'Pugilist', desc: ['Add PB to damage for 1 minute.'], effects: [{ type: 'bonus', target: 'damage', value: prof }] } as any] }));
+            }, 'Down but Not Out');
+            addPug('Dread Hand', 'bonus_action', 0, 'Once per short rest: dread hand for 1 minute.', () => {
+                setCharacter(prev => ({ ...prev, activeConditions: { ...(prev.activeConditions || {}), 'dread-hand': true } }));
+            }, 'Dread Hand');
+            addPug('Work the Crowd', 'action', 0, 'Once per long rest: WIS save DC 8 + PB + STR.', () => {
+                setSelectedDetail({ name: 'Work the Crowd', desc: [`WIS save DC ${8 + prof + strMod}.`] } as any);
+            }, 'Work the Crowd');
+            addPug('Heelstomper', 'feature', 0, 'Dirty Trick: DEX save or speed halved.', undefined, 'Heelstomper');
+            addPug('Low Blow', 'feature', 0, 'Dirty Trick: STR save or knocked prone.', undefined, 'Low Blow');
+            addPug('Pocket Sand', 'bonus_action', 0, 'Dirty Trick: CON save or blinded until end of next turn.', undefined, 'Pocket Sand');
+            const digDeep = attacks.find(attack => attack.name === 'Dig Deep');
+            if (digDeep) {
+                digDeep.onUse = () => setCharacter(prev => {
+                    const active = Boolean(prev.activeConditions?.['dig-deep']);
+                    const conditions = { ...(prev.activeConditions || {}) };
+                    const features = (prev.classFeatures || []).filter((feature: any) => feature.name !== 'Dig Deep (Active)');
+                    if (active) {
+                        delete conditions['dig-deep'];
+                        return { ...prev, activeConditions: conditions, classFeatures: features, exhaustion: Number(prev.exhaustion || 0) + 1 };
+                    }
+                    conditions['dig-deep'] = true;
+                    features.push({ index: 'dig-deep-active', name: 'Dig Deep (Active)', level: 4, source: 'Pugilist', desc: ['Resistance to bludgeoning, piercing and slashing.'], effects: [{ type: 'resistance', value: 'Bludgeoning' }, { type: 'resistance', value: 'Piercing' }, { type: 'resistance', value: 'Slashing' }] } as any);
+                    return { ...prev, activeConditions: conditions, classFeatures: features };
+                });
+            }
+            attacks.forEach((attack: any) => {
+                const text = [...(Array.isArray(attack.source?.desc) ? attack.source.desc : [attack.source?.desc]), ...(attack.notes || [])].join(' ');
+                const match = text.match(/spend\s+(\d+)\s+moxie/i);
+                if (match) attack.moxieCost = Number(match[1]);
+            });
+            const crossCounter = attacks.find(attack => /cross counter/i.test(String(attack.name)));
+            if (crossCounter) crossCounter.onUse = () => roll(`1d10+${strMod}+${pugLevel}`, 'Cross Counter Damage Reduction');
         }
 
         const hasFeature = (name: string) => (character.classFeatures || []).some((feature: any) =>
@@ -4661,7 +4791,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                  ? enriched.desc.join(' ').toLowerCase()
                  : (enriched.desc || '').toLowerCase();
 
-             if (descStr.includes('bonus action') && !/^(martial arts|monk's focus|eldritch cannon|fortified position|magic item tinker|steel defender|spell-storing item)$/i.test(String(enriched.name || '')) && !list.some(item => item.name === enriched.name)) {
+             if (!(enriched.effects || []).some((effect: any) => ['action','bonus_action','reaction'].includes(effect.type)) && descStr.includes('bonus action') && !/^(martial arts|monk's focus|eldritch cannon|fortified position|magic item tinker|steel defender|spell-storing item|fisticuffs|one, two, three, floor)$/i.test(String(enriched.name || '')) && !list.some(item => item.name === enriched.name)) {
                  list.push({
                      ...enriched,
                      id: enriched.id || `feature-${enriched.index || enriched.name.toLowerCase().replace(/\s+/g, '-')}`,
@@ -4670,7 +4800,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
              }
 
              (enriched.effects || []).forEach((eff: any) => {
-                 if (eff.type !== 'bonus_action') return;
+                 if (!['bonus_action','action','reaction'].includes(eff.type)) return;
                  const effectName = eff.name || eff.spell_name || feat.name; if (!effectName || list.some(item => item.name === effectName)) return;
                  list.push({
                      id: `effect-${String(eff.name || eff.spell_name || 'effect').toLowerCase().replace(/\s+/g, '-')}`,

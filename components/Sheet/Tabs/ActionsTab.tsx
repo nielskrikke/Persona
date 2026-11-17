@@ -96,6 +96,27 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
     character, roll, triggerRollMenu, setSelectedDetail, getAttacks, bonusActionList, setShowCustomActionModal, setShowHomebrewModal, spellSave, spellMod, setCharacter
 }) => {
     const [actionFilter, setActionFilter] = useState('ALL');
+    const useActionRow = (attack: any) => {
+        const cost = Number(attack.moxieCost || 0);
+        const useKey = attack.useKey ? String(attack.useKey) : '';
+        const moxie = character.featureUsage?.['Moxie'];
+        const costState = character.featureUsage?.[useKey];
+        if ((cost > 0 && (!moxie || Number(moxie.current) < cost)) || (useKey && (!costState || Number(costState.current) < 1))) return;
+        setCharacter(prev => {
+            const featureUsage = { ...(prev.featureUsage || {}) };
+            if (cost > 0 && featureUsage['Moxie']) featureUsage['Moxie'] = { ...featureUsage['Moxie'], current: Math.max(0, Number(featureUsage['Moxie'].current) - cost) };
+            if (useKey && featureUsage[useKey]) featureUsage[useKey] = { ...featureUsage[useKey], current: Math.max(0, Number(featureUsage[useKey].current) - 1) };
+            return { ...prev, featureUsage };
+        });
+        attack.onUse?.();
+    };
+    const canUseActionRow = (attack: any) => {
+        const cost = Number(attack.moxieCost || 0);
+        const useKey = attack.useKey ? String(attack.useKey) : '';
+        const moxie = character.featureUsage?.['Moxie'];
+        const costState = character.featureUsage?.[useKey];
+        return !((cost > 0 && (!moxie || Number(moxie.current) < cost)) || (useKey && (!costState || Number(costState.current) < 1)));
+    };
     const [tacticalMasterSelections, setTacticalMasterSelections] = useState<Record<string, string>>({});
 
     const allAttacks = getAttacks().map((attack: any) => {
@@ -309,7 +330,10 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                             {attack.name}
                                             {attack.attackCount && attack.attackCount > 1 && <span className="text-[10px] text-dnd-gold font-black">x{attack.attackCount}</span>}
                                         </div>
-                                        <div className="text-[10px] text-gray-500 truncate">{attack.type}{attack.notes?.length ? ` • ${attack.notes.join(' • ')}` : ''}</div>
+                                        {(attack.moxieCost || attack.useKey || attack.onUse) && (
+                                     <button disabled={!canUseActionRow(attack)} onClick={(e) => { e.stopPropagation(); useActionRow(attack); }} className="mt-0.5 px-1.5 py-0.5 rounded border border-dnd-gold/40 bg-dnd-gold/10 text-dnd-gold text-[8px] font-black uppercase disabled:opacity-30">Use{attack.moxieCost ? ` · ${attack.moxieCost} Moxie` : ''}{attack.useKey ? ` · ${character.featureUsage?.[attack.useKey]?.current ?? 0}/${character.featureUsage?.[attack.useKey]?.max ?? 1}` : ''}</button>
+                                 )}
+                                 <div className="text-[10px] text-gray-500 truncate">{attack.type}{attack.notes?.length ? ` • ${attack.notes.join(' • ')}` : ''}</div>
                                     </div>
                                     <div className="flex items-center gap-1.5 shrink-0">
                                         <button onClick={(e) => { e.stopPropagation(); if (attack.healing) healAction(attack); else if (attack.damage && attack.damage !== '-') roll(attack.damage, `Damage ${attack.name}`); }} className="order-2 px-2.5 py-2 bg-black/40 border border-gray-600/50 rounded-lg text-xs font-bold text-white min-w-[52px] flex flex-col items-center justify-center leading-none"><span className="text-[8px] text-gray-500 mb-0.5">{attack.healing ? 'Healing' : getEffectLabel(attack) ? 'Effect' : 'Damage'}</span><span className="flex items-center gap-1">{attack.healing ? attack.damage : (getEffectLabel(attack) || attack.damage || '—')}{!attack.healing && !getEffectLabel(attack) && <DamageTypeIcons type={attack.type} damage={attack.damage} />}</span></button>
@@ -370,6 +394,11 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                             <span className="text-[8px] bg-yellow-900/40 text-yellow-500 border border-yellow-800/60 px-1 rounded h-3 flex items-center">R</span>
                                         )}
                                     </div>
+                                    {(attack.moxieCost || attack.useKey || attack.onUse) && (
+                                        <button disabled={!canUseActionRow(attack)} onClick={(e) => { e.stopPropagation(); useActionRow(attack); }} className="mt-1 px-2 py-0.5 rounded border border-dnd-gold/40 bg-dnd-gold/10 text-dnd-gold text-[8px] font-black uppercase disabled:opacity-30">
+                                            Use{attack.moxieCost ? ` · ${attack.moxieCost} Moxie` : ''}{attack.useKey ? ` · ${character.featureUsage?.[attack.useKey]?.current ?? 0}/${character.featureUsage?.[attack.useKey]?.max ?? 1}` : ''}
+                                        </button>
+                                    )}
                                     <div className="text-[10px] text-gray-500 line-clamp-2 leading-tight">
                                         {attack.type}
                                         {attack.notes?.map((note: string, idx: number) => {
@@ -477,6 +506,9 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                          <span className="text-[9px] text-dnd-gold font-bold">{character.featureUsage[attack.name]?.current || attack.source.maxUses}/{attack.source.maxUses}</span>
                                      )}
                                  </div>
+                                 {(attack.moxieCost || attack.useKey || attack.onUse) && (
+                                     <button disabled={!canUseActionRow(attack)} onClick={(e) => { e.stopPropagation(); useActionRow(attack); }} className="mt-0.5 px-1.5 py-0.5 rounded border border-dnd-gold/40 bg-dnd-gold/10 text-dnd-gold text-[8px] font-black uppercase disabled:opacity-30">Use{attack.moxieCost ? ` · ${attack.moxieCost} Moxie` : ''}{attack.useKey ? ` · ${character.featureUsage?.[attack.useKey]?.current ?? 0}/${character.featureUsage?.[attack.useKey]?.max ?? 1}` : ''}</button>
+                                 )}
                                  <div className="text-[10px] text-gray-500 truncate">{attack.type}{attack.notes?.length ? ` • ${attack.notes.join(' • ')}` : ''}</div>
                              </div>
                              <div className="flex items-center gap-1.5 shrink-0">
