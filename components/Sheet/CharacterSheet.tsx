@@ -1763,7 +1763,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         if (artificerLevel >= 6) widgets.push('magicItemTinker');
         if (/cartographer/i.test(subclassName)) widgets.push('mapHolders');
         if (/alchemist/i.test(subclassName)) widgets.push('experimentalElixir');
-        const managed = ['steelDefender', 'eldritchCannon', 'magicItemTinker', 'mapHolders', 'experimentalElixir'];
+        if (character.spellStoringItem?.spell) widgets.push('spellStoringItem');
+        const managed = ['steelDefender', 'eldritchCannon', 'magicItemTinker', 'mapHolders', 'experimentalElixir', 'spellStoringItem'];
         const missing = widgets.filter(widget => !(character.layout.right || []).includes(widget) && !(character.layout.left || []).includes(widget) && !(character.layout.mobile || []).includes(widget));
         const stale = managed.filter(widget => !widgets.includes(widget) && ((character.layout.right || []).includes(widget) || (character.layout.left || []).includes(widget) || (character.layout.mobile || []).includes(widget)));
         if (missing.length === 0 && stale.length === 0) return;
@@ -1998,6 +1999,22 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const renderWidget = (type: string, key?: string) => {
         const widgetKey = key || type;
         switch (type) {
+            case 'spellStoringItem': {
+                if (!character.spellStoringItem?.spell) return null;
+                const key = Object.keys(character.featureUsage || {}).find(name => /^Spell-Storing Item/i.test(name));
+                const usage = key ? character.featureUsage[key] : null;
+                return (
+                    <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
+                        <div className="flex justify-between items-center mb-2">
+                            <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Spell-Storing Item</h3>
+                            <span className="text-[9px] text-gray-500 font-bold uppercase">Artificer</span>
+                        </div>
+                        <div className="text-sm font-bold text-white">{character.spellStoringItem.spell}</div>
+                        <div className="text-[10px] text-gray-500 mb-2">Uses: {usage ? `${usage.current} / ${usage.max}` : '—'}</div>
+                        <button disabled={!usage || usage.current <= 0} onClick={() => { if (!usage || !key) return; setCharacter(prev => ({ ...prev, featureUsage: { ...prev.featureUsage, [key]: { ...prev.featureUsage[key], current: Math.max(0, Number(prev.featureUsage[key].current) - 1) } } })); }} className="w-full py-2 bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold text-[10px] font-black uppercase rounded hover:bg-dnd-gold hover:text-black disabled:opacity-40">Spend Use</button>
+                    </div>
+                );
+            }
             case 'experimentalElixir': {
                 const isAlchemist = /alchemist/i.test(String(character.classes?.[0]?.subclass?.name || ''));
                 if (!isAlchemist) return null;

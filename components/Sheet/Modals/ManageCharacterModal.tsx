@@ -1257,7 +1257,9 @@ const ManageCharacterModal = ({
             if (Number(artificer?.level || 0) >= 6) desired.push('magicItemTinker');
             if (/cartographer/i.test(subclass)) desired.push('mapHolders');
             if (/alchemist/i.test(subclass)) desired.push('experimentalElixir');
-            const managed = ['steelDefender', 'eldritchCannon', 'magicItemTinker', 'mapHolders', 'experimentalElixir'];
+            const storingChoice = localChoices.find((entry: any) => entry.revertData?.isSpellStoringItem);
+            if (storingChoice?.value) desired.push('spellStoringItem');
+            const managed = ['steelDefender', 'eldritchCannon', 'magicItemTinker', 'mapHolders', 'experimentalElixir', 'spellStoringItem'];
             const stale = managed.filter(widget => !desired.includes(widget));
             const add = (entries: string[]) => [...desired.filter(widget => !entries.includes(widget)), ...entries.filter(id => !stale.includes(id))];
             return { ...(character.layout || {}), left: (character.layout?.left || []).filter(id => !stale.includes(id)), right: add(character.layout?.right || []), mobile: add(character.layout?.mobile || []) };
@@ -1465,7 +1467,7 @@ const ManageCharacterModal = ({
                     c.definition.index === classIndex ? { ...c, subclass: undefined } : c
                 );
             }
-        } else if (choice.type === 'spell' && !choice.revertData?.invocationCantrip && !choice.revertData?.isWizardSpellbook && !choice.revertData?.isEvocationSavant) {
+        } else if (choice.type === 'spell' && !choice.revertData?.invocationCantrip && !choice.revertData?.isSpellStoringItem && !choice.revertData?.isWizardSpellbook && !choice.revertData?.isEvocationSavant) {
             const spellsToRemove = Array.isArray(choice.value) ? choice.value : [choice.value];
             temp.spells = temp.spells.filter((s: any) => !spellsToRemove.includes(s.name) && !spellsToRemove.includes(s.index));
         }
@@ -1582,6 +1584,10 @@ const ManageCharacterModal = ({
             const selected = typeof choice.value === 'string' ? choice.value : '';
             const spell = allSpellCatalog.find((entry: any) => entry.index === selected || entry.name.toLowerCase() === String(selected).toLowerCase());
             if (!spell) return;
+            const previousStored = typeof choice.revertData?.previousSpell === 'string' ? choice.revertData.previousSpell : (spellStoringItem || '');
+            if (previousStored && previousStored.toLowerCase() !== spell.name.toLowerCase()) {
+                setLocalSpells(prev => prev.filter((known: any) => String(known.name).toLowerCase() !== previousStored.toLowerCase()));
+            }
             setSpellStoringItem(spell.name);
             const uses = Math.max(1, 2 * calculateModifier(abilities.int));
             setLocalFeatures(prev => {
@@ -4056,7 +4062,7 @@ const ManageCharacterModal = ({
                                                                         });
                                                                         let options = /skilled/i.test(choice.label || '')
                                                                             ? Array.from(new Set([...baseOptions, ...ALL_TOOLS.filter((tool: string) => selectedValues.includes(tool) || !(character.toolProficiencies || []).includes(tool))]))
-                                                                            : (choice.type === 'spell' && !choice.revertData?.invocationCantrip
+                                                                            : (choice.type === 'spell' && !choice.revertData?.invocationCantrip && !choice.revertData?.isSpellStoringItem
                                                                                 ? baseOptions.filter((option: any) => {
                                                                                     const value = typeof option === 'string' ? option : (option.index || option.name || '');
                                                                                     const label = typeof option === 'string' ? option : (option.name || option.index || '');
@@ -4559,7 +4565,7 @@ const ManageCharacterModal = ({
                                                                                                     });
                                                                                                     let options = /skilled/i.test(choice.label || '')
                                                                                                         ? Array.from(new Set([...baseOptions, ...ALL_TOOLS.filter((tool: string) => selectedValues.includes(tool) || !(character.toolProficiencies || []).includes(tool))]))
-                                                                                                        : (choice.type === 'spell' && !choice.revertData?.invocationCantrip
+                                                                                                        : (choice.type === 'spell' && !choice.revertData?.invocationCantrip && !choice.revertData?.isSpellStoringItem
                                                                                                             ? baseOptions.filter((option: any) => {
                                                                                                                 const value = typeof option === 'string' ? option : (option.index || option.name || '');
                                                                                                                 const label = typeof option === 'string' ? option : (option.name || option.index || '');
