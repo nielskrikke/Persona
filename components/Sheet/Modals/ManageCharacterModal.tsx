@@ -1305,6 +1305,10 @@ const ManageCharacterModal = ({
             // weapon/armor shape and keep their local bonuses on the item.
             existing.forEach((item: any, index: number) => {
                 const planName = String(item.sourcePlan || item.name || '');
+                if (/common magic item|uncommon wondrous|rare wondrous/i.test(planName)) {
+                    existing[index] = { ...item, cost: undefined, index: item.id || `replicated-${String(item.name).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, url: undefined } as any;
+                    return;
+                }
                 if (!/weapon|shield|armor/i.test(planName)) return;
                 const plus = Number(planName.match(/\+([123])/)?.[1] || 0);
                 if (/wand of magic missiles/i.test(planName)) existing[index] = { ...item, maxCharges: 7, charges: Number(item.charges ?? 7), rarity: 'Uncommon' } as any;

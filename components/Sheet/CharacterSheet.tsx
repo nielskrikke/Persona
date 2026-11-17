@@ -2148,7 +2148,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     const isArmor = /armor \+[123]/i.test(name);
                     const isOpen = /common magic item|uncommon wondrous|rare wondrous/i.test(name);
                     if (isOpen && baseDetail) {
-                        return { ...baseDetail, id: `replicated-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, sourcePlan: name, quantity: 1, equipped: false, attuned: false, is_magic: true, name: baseDetail.name, rarity: baseDetail.rarity || (/common/i.test(name) ? 'Common' : /rare/i.test(name) ? 'Rare' : 'Uncommon'), desc: baseDetail.desc || ['Replicated magic item.'], description: baseDetail.description || (baseDetail.desc || []).join('\n') } as any;
+                        return { ...baseDetail, id: `replicated-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, index: `replicated-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, url: undefined, cost: undefined, sourcePlan: name, quantity: 1, equipped: false, attuned: false, is_magic: true, name: baseDetail.name, rarity: baseDetail.rarity || (/common/i.test(name) ? 'Common' : /rare/i.test(name) ? 'Rare' : 'Uncommon'), desc: baseDetail.desc || ['Replicated magic item.'], description: baseDetail.description || (baseDetail.desc || []).join('\n') } as any;
                     }
                     return {
                         id: `replicated-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
