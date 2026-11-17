@@ -101,7 +101,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
         const useKey = attack.useKey ? String(attack.useKey) : '';
         const moxie = character.featureUsage?.['Moxie'];
         const costState = character.featureUsage?.[useKey];
-        if ((cost > 0 && (!moxie || Number(moxie.current) < cost)) || (useKey && (!costState || Number(costState.current) < 1)) || (attack.requiresCondition && !character.activeConditions?.[attack.requiresCondition])) return;
+        if ((cost > 0 && (!moxie || Number(moxie.current) < cost)) || (useKey && (!costState || Number(costState.current) < 1)) || (attack.requiresCondition && !character.activeConditions?.[attack.requiresCondition]) || (attack.requiresZeroHp && Number(character.currentHp) > 0)) return;
         setCharacter(prev => {
             const featureUsage = { ...(prev.featureUsage || {}) };
             if (cost > 0 && featureUsage['Moxie']) featureUsage['Moxie'] = { ...featureUsage['Moxie'], current: Math.max(0, Number(featureUsage['Moxie'].current) - cost) };
@@ -115,7 +115,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
         const useKey = attack.useKey ? String(attack.useKey) : '';
         const moxie = character.featureUsage?.['Moxie'];
         const costState = character.featureUsage?.[useKey];
-        return !((cost > 0 && (!moxie || Number(moxie.current) < cost)) || (useKey && (!costState || Number(costState.current) < 1)) || (attack.requiresCondition && !character.activeConditions?.[attack.requiresCondition]));
+        return !((cost > 0 && (!moxie || Number(moxie.current) < cost)) || (useKey && (!costState || Number(costState.current) < 1)) || (attack.requiresCondition && !character.activeConditions?.[attack.requiresCondition]) || (attack.requiresZeroHp && Number(character.currentHp) > 0));
     };
     const [tacticalMasterSelections, setTacticalMasterSelections] = useState<Record<string, string>>({});
 
@@ -148,6 +148,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
         || Boolean(attack.save)
         || (attack.damage && attack.damage !== '-' && attack.damage !== 'See Desc')
         || Boolean(attack.attackCount)
+        || Boolean(attack.onUse)
         || Boolean(attack.source?.weapon_category)
         || Boolean(attack.source?.school)
         || ['action', 'bonus_action', 'reaction'].includes(String(attack.source?.activationType || '').toLowerCase())

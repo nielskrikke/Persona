@@ -901,8 +901,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const [elixirChoice, setElixirChoice] = useState('Healing');
     const innateSorceryActive = character.activeConditions?.['innate-sorcery'] === true;
     const spellAttack = prof + spellMod + extraSpellAttack;
-    const spellAttackStr = formatModifier(spellAttack);
+    const handOfDreadCaster = (character.classes || []).some((cls: any) => cls.definition?.index === 'pugilist' && /hand of dread/i.test(String(cls.subclass?.name || '')));
+    const handSpellMod = calculateModifier(getStat('con'));
+    const effectiveSpellAttack = handOfDreadCaster ? prof + handSpellMod : spellAttack;
+    const effectiveSpellSaveBase = handOfDreadCaster ? 8 + prof + handSpellMod : null;
+    const spellAttackStr = formatModifier(effectiveSpellAttack);
     const spellSave = 8 + prof + spellMod + extraSpellSave + (innateSorceryActive ? 1 : 0);
+    const effectiveSpellSave = effectiveSpellSaveBase ?? spellSave;
 
     const strMod = calculateModifier(getStat('str'));
     const dexMod = calculateModifier(getStat('dex'));
@@ -1830,6 +1835,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             return {
                 ...prev,
                 currentHp: prev.maxHp,
+                tempHp: 0,
                 activeConditions: clearedConditions,
                 activeConcentration: null,
                 spellSlots: newSlots,
@@ -2286,7 +2292,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const dire = pugLevel >= 17;
                 const houndMax = (dire ? 37 : 11) + Math.max(0, pugLevel - (dire ? 17 : 3)) * 5;
                 const houndAc = (dire ? 14 : 13) + prof;
-                const biteHit = prof + (dire ? 5 : 3);
+                const biteHit = prof + (dire ? 5 : 4);
                 const biteDamage = `${dire ? '2d6' : '1d6'}+${(dire ? 3 : 2) + prof}`;
                 return (
                     <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
@@ -2300,7 +2306,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 <div className="flex items-center gap-1.5">
                                     <input type="number" value={houndHpDelta} onChange={e => setHoundHpDelta(Math.max(1, Number(e.target.value) || 1))} className="w-12 bg-black/40 border border-gray-700 rounded px-1 py-0.5 text-[10px] text-white" />
                                     <button onClick={() => setCharacter(prev => ({ ...prev, pugilistHound: prev.pugilistHound ? { ...prev.pugilistHound, hp: Math.max(0, prev.pugilistHound.hp - houndHpDelta) } : null }))} className="px-2 h-6 rounded bg-red-900/30 text-red-400 text-[9px] font-bold uppercase">Damage</button>
-                                    <span className="text-sm font-bold text-white">{hound.hp}/{hound.maxHp}</span>
+                                    <span className="text-sm font-bold text-white">{hound.hp}/{hound.maxHp}{Number((hound as any).tempHp || 0) > 0 ? ` + ${(hound as any).tempHp} temp` : ''}</span>
                                     <button onClick={() => setCharacter(prev => ({ ...prev, pugilistHound: prev.pugilistHound ? { ...prev.pugilistHound, hp: Math.min(prev.pugilistHound.maxHp, prev.pugilistHound.hp + houndHpDelta) } : null }))} className="px-2 h-6 rounded bg-green-900/30 text-green-400 text-[9px] font-bold uppercase">Heal</button>
                                 </div>
                                 <button onClick={() => { roll(`1d20${formatModifier(biteHit)}`, 'Hound Bite Attack'); roll(biteDamage, 'Hound Bite Damage'); }} className="w-full py-1.5 bg-gray-800 border border-gray-700 rounded text-[9px] font-black uppercase text-gray-300">Bite ({formatModifier(biteHit)}, {biteDamage})</button>
@@ -3616,15 +3622,16 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
         attackCount = Math.max(attackCount, maxSetAttacks) + additionalAttackBonus;
 
+        const pugilistHaymaker = String((character.classes || []).find((cls: any) => cls.definition?.index === 'pugilist')?.definition?.index || '') === 'pugilist' && character.activeConditions?.haymaker;
         const unarmedAttack = {
             id: 'action-unarmed',
             name: customUnarmedName,
             range: '5 ft.',
             hit: unarmedHit,
-            damage: unarmedDmg,
+            damage: pugilistHaymaker ? String(unarmedDieVal + totalDmgMod) : unarmedDmg,
             type: unarmedDmgType,
             attackCount,
-            notes: [],
+            notes: pugilistHaymaker ? ['Haymaker: disadvantage, maximum damage'] : [],
             source: { name: customUnarmedName, desc: 'A punch, kick, head-butt, or similar forceful blow.' }
         };
         (unarmedAttack as any).modifiers = getAttackModifiers(unarmedAttack);
@@ -4314,7 +4321,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const unarmed = attacks.find(attack => attack.name === 'Unarmed Strike');
                 if (!unarmed) return;
                 roll(`1d20${formatModifier(unarmed.hit)}`, 'Old One-Two Attack 1');
+                roll(unarmed.damage, 'Old One-Two Damage 1');
                 roll(`1d20${formatModifier(unarmed.hit)}`, 'Old One-Two Attack 2');
+                roll(unarmed.damage, 'Old One-Two Damage 2');
                 if (character.pugilistHound) roll(`1d20${formatModifier(prof + 3)}`, 'Old One-Two: Hound Bite');
             });
             addPug('Stick and Move', 'bonus_action', 1, 'Spend 1 Moxie: take the Dash or Shove action.', () => {
@@ -4322,7 +4331,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 if (character.pugilistHound) roll('1d20', 'Hound: Stick and Move');
             });
             addPug('Haymaker', 'bonus_action', 0, 'Toggle: pugilist weapon attacks have disadvantage and deal maximum damage.', () => {
-                setCharacter(prev => ({ ...prev, activeConditions: { ...(prev.activeConditions || {}), haymaker: !prev.activeConditions?.haymaker } }));
+                setCharacter(prev => {
+                    const active = !prev.activeConditions?.haymaker;
+                    const features = (prev.classFeatures || []).filter((feature: any) => feature.name !== 'Haymaker (Active)');
+                    if (active) features.push({ index: 'haymaker-active', name: 'Haymaker (Active)', level: 5, source: 'Pugilist', desc: ['Pugilist attacks have disadvantage and deal maximum damage.'], effects: [] } as any);
+                    return { ...prev, activeConditions: { ...(prev.activeConditions || {}), haymaker: active }, classFeatures: features };
+                });
             });
             if (/arena royale/i.test(String(pugilistClass.subclass?.name || ''))) {
                 addPug('Adopt/Discard Persona', 'bonus_action', 0, 'Toggle your alternate persona.', () => {
@@ -4360,9 +4374,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             addPug('Detective Work', 'feature', 1, 'Spend 1 Moxie: advantage on an Investigation, Insight or Perception check.', () => {
                 setSelectedDetail({ name: 'Detective Work', desc: ['Gain advantage on one Investigation, Insight or Perception check.'] } as any);
             });
-            addPug('Unbreakable', 'reaction', 1, 'Spend 1 Moxie: when reduced to 0 HP, set your HP to 1.', () => {
+            const unbreakable = addPug('Unbreakable', 'reaction', 1, 'Spend 1 Moxie: when reduced to 0 HP, set your HP to 1.', () => {
                 setCharacter(prev => ({ ...prev, currentHp: 1 }));
             });
+            const unbreakableRow = attacks.find(attack => /unbreakable/i.test(String(attack.name)));
+            if (unbreakableRow) unbreakableRow.requiresZeroHp = true;
             addPug('Bloodied but Unbowed', 'reaction', 0, 'Once per short rest: regain all Moxie and gain temporary HP equal to level + CON.', () => {
                 setCharacter(prev => ({
                     ...prev,
@@ -4378,18 +4394,20 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     setCharacter(prev => ({ ...prev, activeConditions: { ...(prev.activeConditions || {}), 'down-but-not-out': false }, classFeatures: (prev.classFeatures || []).filter((feature: any) => feature.name !== 'Down but Not Out (Active)') }));
                 });
             }
-            addPug('Dread Hand', 'bonus_action', 0, 'Once per short rest: dread hand for 1 minute.', () => {
+            if (/hand of dread/i.test(String(pugilistClass.subclass?.name || ''))) addPug('Dread Hand', 'bonus_action', 0, 'Once per short rest: dread hand for 1 minute.', () => {
                 setCharacter(prev => ({ ...prev, activeConditions: { ...(prev.activeConditions || {}), 'dread-hand': true }, classFeatures: [...(prev.classFeatures || []).filter((feature: any) => feature.name !== 'Dread Hand (Active)'), { index: 'dread-hand-active', name: 'Dread Hand (Active)', level: 3, source: 'Hand of Dread', desc: ['Dread Hand transformation active.'], effects: [] } as any] }));
             }, 'Dread Hand');
-            addPug('Work the Crowd', 'action', 0, 'Once per long rest: WIS save DC 8 + PB + STR.', () => {
+            if (/arena royale/i.test(String(pugilistClass.subclass?.name || ''))) addPug('Work the Crowd', 'action', 0, 'Once per long rest: WIS save DC 8 + PB + STR.', () => {
                 setSelectedDetail({ name: 'Work the Crowd', desc: [`WIS save DC ${8 + prof + strMod}.`] } as any);
             }, 'Work the Crowd');
-            const dirtyTrick = (name: string, description: string) => addPug(name, name === 'Pocket Sand' ? 'bonus_action' : 'feature', 0, description, () => {
-                setCharacter(prev => ({ ...prev, featureUsage: { ...prev.featureUsage, Moxie: { ...prev.featureUsage.Moxie, current: Math.min(prev.featureUsage.Moxie.max, Number(prev.featureUsage.Moxie.current) + 1) } } }));
-            }, name);
-            dirtyTrick('Heelstomper', 'Dirty Trick: DEX save or speed halved. Regain 1 Moxie.');
-            dirtyTrick('Low Blow', 'Dirty Trick: STR save or knocked prone. Regain 1 Moxie.');
-            dirtyTrick('Pocket Sand', 'Dirty Trick: CON save or blinded until end of next turn. Regain 1 Moxie.');
+            if (/piss\s*&\s*vinegar/i.test(String(pugilistClass.subclass?.name || ''))) {
+                const dirtyTrick = (name: string, description: string) => addPug(name, name === 'Pocket Sand' ? 'bonus_action' : 'feature', 0, description, () => {
+                    setCharacter(prev => ({ ...prev, featureUsage: { ...prev.featureUsage, Moxie: { ...prev.featureUsage.Moxie, current: Math.min(prev.featureUsage.Moxie.max, Number(prev.featureUsage.Moxie.current) + 1) } } }));
+                }, name);
+                dirtyTrick('Heelstomper', 'Dirty Trick: DEX save or speed halved. Regain 1 Moxie.');
+                dirtyTrick('Low Blow', 'Dirty Trick: STR save or knocked prone. Regain 1 Moxie.');
+                dirtyTrick('Pocket Sand', 'Dirty Trick: CON save or blinded until end of next turn. Regain 1 Moxie.');
+            }
             const workCrowd = attacks.find(attack => /work the crowd/i.test(String(attack.name)));
             if (workCrowd) workCrowd.requiresCondition = 'arena-persona';
             const digDeep = attacks.find(attack => attack.name === 'Dig Deep');
@@ -4412,6 +4430,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const match = text.match(/spend\s+(\d+)\s+moxie/i);
                 if (match) attack.moxieCost = Number(match[1]);
             });
+            const dreadActivation = attacks.find(attack => String(attack.name) === 'Dread Hand');
+            if (dreadActivation) dreadActivation.moxieCost = 0;
+            attacks.forEach((attack: any) => { if (attack.useKey) { attack.source.maxUses = undefined; } });
             const crossCounter = attacks.find(attack => /cross counter/i.test(String(attack.name)));
             if (crossCounter) crossCounter.onUse = () => roll(`1d10+${strMod}+${pugLevel}`, 'Cross Counter Damage Reduction');
         }
@@ -5282,6 +5303,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     </div>
 
                                     <div className="flex items-center gap-2">
+                                        {character.exhaustion > 0 && (
+                                            <div className="flex items-center gap-2 bg-red-900/30 border border-red-800 rounded px-2 py-0.5 text-[10px] font-bold text-red-300 uppercase">
+                                                Exhaustion {character.exhaustion}
+                                            </div>
+                                        )}
                                         {character.activeConcentration && (
                                             <div className="flex items-center gap-2 bg-blue-900/40 border border-blue-500 rounded px-2 py-0.5 text-[10px] font-bold text-blue-100 uppercase animate-in fade-in duration-500">
                                                 <span className="animate-pulse text-blue-400">●</span>
@@ -5627,7 +5653,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 <ActionsTab character={character} roll={roll} triggerRollMenu={triggerRollMenu} setSelectedDetail={setSelectedDetail} getAttacks={getAttacks} bonusActionList={getBonusActions()} setShowCustomActionModal={setShowCustomActionModal} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} spellSave={spellSave} spellMod={spellMod} setCharacter={setCharacter} />
                             </ErrorBoundary>
                         )}
-                        {activeTab === 'spells' && <SpellsTab character={character} setCharacter={setCharacter} roll={roll} triggerRollMenu={triggerRollMenu} setSelectedDetail={setSelectedDetail} spellSave={spellSave} spellAttackStr={spellAttackStr} spellMod={spellMod} setShowSpellManager={setShowSpellManager} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} onPolymorphCast={() => { setCreatureModalMode('polymorph'); setShowCreatureModal(true); }} />}
+                        {activeTab === 'spells' && <SpellsTab character={character} setCharacter={setCharacter} roll={roll} triggerRollMenu={triggerRollMenu} setSelectedDetail={setSelectedDetail} spellSave={effectiveSpellSave} spellAttackStr={spellAttackStr} spellMod={spellMod} setShowSpellManager={setShowSpellManager} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} onPolymorphCast={() => { setCreatureModalMode('polymorph'); setShowCreatureModal(true); }} />}
                         {activeTab === 'inventory' && <InventoryTab character={character} currentWeight={currentWeight} maxWeight={maxWeight} maxAttunements={maxAttunements} encumbranceEnabled={character.encumbranceEnabled !== false} updateQuantity={updateQuantity} toggleAttunement={toggleAttunement} setSelectedDetail={setSelectedDetail} setShowItemSearchModal={(val, mode) => { setItemSearchMode(mode || 'search'); setShowItemSearchModal(val); }} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} setCharacter={setCharacter} />}
                         {activeTab === 'features' && <FeaturesTab character={character} setCharacter={setCharacter} getAllFeatures={getAllFeaturesSorted} setSelectedDetail={setSelectedDetail} onTabChange={setActiveTab} setShowHomebrewModal={(val, tab) => { setHomebrewInitialTab(tab); setShowHomebrewModal(val); }} setShowCardOptionsModal={setShowCardOptionsModal} onShowFullScreen={() => setShowFullScreenFeatures(true)} />}
                         {activeTab === 'rules' && <RulesTab visibleRules={visibleRules} setSelectedDetail={setSelectedDetail} />}

@@ -308,7 +308,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
           }
           selected.forEach(name => {
               const option = choiceOptionsFor(choice, classIndex).find((item: any) => (typeof item === 'string' ? item : item.name) === name);
-              const category = typeof option === 'object' ? option.category : 'skill';
+              const category = typeof option === 'object' ? option.category : (choice.kind === 'tool' ? 'tool' : 'skill');
               if (category === 'skill' || SKILL_LIST.some(skill => skill.name === name)) selectedSkills.add(name);
               else selectedTools.add(name);
           });
