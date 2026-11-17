@@ -1290,15 +1290,19 @@ const ManageCharacterModal = ({
                         weight: /warhammer/i.test(String(item.name)) ? 5 : Math.max(5, Number(item.weight || 0)),
                         weapon_category: item.weapon_category || 'martial',
                         equipment_category: item.equipment_category || { index: 'weapon', name: 'Weapon' },
-                        range: item.range || 'Melee',
+                        range: undefined,
+                        weapon_range: 'Melee',
                         damage: item.damage || { damage_dice: '1d8', damage_type: { name: 'Bludgeoning' } },
-                        properties: item.properties || ['Versatile'],
+                        properties: (item.properties || ['Versatile']).filter((prop: any) => String(typeof prop === 'string' ? prop : prop?.name || prop).toLowerCase() !== 'thrown'),
                         modifiers: [{ type: 'bonus', target: 'attack', value: plus }, { type: 'bonus', target: 'damage', value: plus }],
+                        desc: [`+${plus} bonus to attack and damage rolls.`],
+                        description: `+${plus} bonus to attack and damage rolls.`,
                     } as any;
                 } else if (/shield \+[123]/i.test(planName)) {
-                    existing[index] = { ...item, armor_category: 'shield', armor_class: { base: 2, dex_bonus: false }, modifiers: [{ type: 'bonus', target: 'ac', value: plus }] } as any;
+                    existing[index] = { ...item, weight: 6, armor_category: 'shield', armor_class: { base: 2, dex_bonus: false }, modifiers: [{ type: 'bonus', target: 'ac', value: plus }], desc: [`+${plus} bonus to Armor Class.`], description: `+${plus} bonus to Armor Class.` } as any;
                 } else if (/armor \+[123]/i.test(planName)) {
-                    existing[index] = { ...item, weight: /studded leather/i.test(String(item.name)) ? 13 : Number(item.weight || 0), armor_category: 'medium', armor_class: { base: 14, dex_bonus: true, max_bonus: 2 }, modifiers: [{ type: 'bonus', target: 'ac', value: plus }] } as any;
+                    const studded = /studded leather/i.test(String(item.name));
+                    existing[index] = { ...item, weight: studded ? 13 : Number(item.weight || 0), armor_category: studded ? 'light' : 'medium', armor_class: studded ? { base: 12, dex_bonus: true, max_bonus: null } : { base: 14, dex_bonus: true, max_bonus: 2 }, rarity: 'Rare', modifiers: [{ type: 'bonus', target: 'ac', value: plus }], desc: [`+${plus} bonus to Armor Class.`], description: `+${plus} bonus to Armor Class.` } as any;
                 }
             });
             return existing;

@@ -2135,7 +2135,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const levelRow = ((artificerClass?.definition as any)?.level_table || []).find((row: any) => row.level === artificerLevel);
                 const maxMade = Number(levelRow?.class_specific?.magic_items || Math.max(made.length, 1));
                 const buildItem = (name: string, baseName = '') => {
-                    const baseDetail: any = baseName ? allEquipment.find((entry: any) => entry.name === baseName) : null;
+                    const baseDetail: any = baseName ? allEquipment.find((entry: any) => entry.name === baseName || entry.index === baseName) : null;
                     const armoryName = baseDetail?.name ? `${baseDetail.name}, +${name.match(/\+([123])/)?.[1] || 1}` : name.replace(/^(Weapon|Shield|Armor)\s+\+([123])$/i, '$1, +$2');
                     const plus = Number(name.match(/\+([123])/)?.[1] || 0);
                     const isWeapon = /weapon \+[123]/i.test(name);
@@ -2143,17 +2143,20 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     const isArmor = /armor \+[123]/i.test(name);
                     return {
                         id: `replicated-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
-                        name: armoryName, sourcePlan: name, quantity: 1, weight: isWeapon ? 3 : 0, equipped: false, attuned: false,
+                        name: armoryName, sourcePlan: name, quantity: 1, weight: isWeapon ? Math.max(5, Number(baseDetail?.weight || 0)) : isShield ? 6 : isArmor ? (/studded leather/i.test(baseDetail?.name || armoryName) ? 13 : Math.max(12, Number(baseDetail?.weight || 0))) : Number(baseDetail?.weight || 0), equipped: false, attuned: false,
                         is_magic: true,
                         requires_attunement: /wand of the war mage|boots of the winding path|eyes of charming|mind sharpener|dazzling weapon/i.test(name),
                         rarity: 'Uncommon',
                         equipment_category: baseDetail?.equipment_category || (isWeapon ? { index: 'weapon', name: 'Weapon' } : undefined),
                         weapon_category: baseDetail?.weapon_category || (isWeapon ? 'martial' : undefined),
-                        range: baseDetail?.range || (isWeapon ? 'Melee' : undefined),
+                        weapon_range: isWeapon ? 'Melee' : undefined,
+                        range: undefined,
                         damage: baseDetail?.damage || (isWeapon ? { damage_dice: '1d8', damage_type: { name: 'Bludgeoning' } } : undefined),
                         properties: baseDetail?.properties || (isWeapon ? ['Versatile'] : undefined),
-                        armor_category: baseDetail?.armor_category || (isShield ? 'shield' : isArmor ? 'medium' : undefined),
-                        armor_class: baseDetail?.armor_class || (isShield ? { base: 2, dex_bonus: false } : isArmor ? { base: 14, dex_bonus: true, max_bonus: 2 } : undefined),
+                        armor_category: isShield ? 'shield' : (baseDetail?.armor_category || (isArmor ? (/studded leather/i.test(baseDetail?.name || armoryName) ? 'light' : 'medium') : undefined)),
+                        armor_class: isShield ? { base: 2, dex_bonus: false } : (baseDetail?.armor_class || (isArmor ? (/studded leather/i.test(baseDetail?.name || armoryName) ? { base: 12, dex_bonus: true, max_bonus: null } : { base: 14, dex_bonus: true, max_bonus: 2 }) : undefined)),
+                        desc: [isWeapon ? `+${plus} bonus to attack and damage rolls.` : isShield || isArmor ? `+${plus} bonus to Armor Class.` : 'Replicated magic item.'],
+                        description: isWeapon ? `+${plus} bonus to attack and damage rolls.` : isShield || isArmor ? `+${plus} bonus to Armor Class.` : 'Replicated magic item.',
                         maxCharges: /wand of magic missiles/i.test(name) ? 7 : /wand of magic detection|wand of secrets/i.test(name) ? 3 : undefined,
                         charges: /wand of magic missiles/i.test(name) ? 7 : /wand of magic detection|wand of secrets/i.test(name) ? 3 : undefined,
                         modifiers: isWeapon ? [{ type: 'bonus', target: 'attack', value: plus }, { type: 'bonus', target: 'damage', value: plus }]
@@ -2195,16 +2198,16 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 const canCharge = Boolean(maxCharges > 0 && charges < maxCharges && character.spellSlots?.[tinkerSlot]?.current > 0);
                                 return (
                                     <div key={name} className="bg-black/20 border border-gray-800 rounded-lg p-2 space-y-1.5">
-                                        <div className="flex items-center justify-between gap-2">
-                                            <div className="min-w-0">
-                                                <div className="text-[10px] font-bold text-white truncate">{item?.name || name}{item?.requires_attunement ? ' (A)' : ''}</div>
-                                                <div className="text-[8px] text-gray-500">{maxCharges > 0 ? `${charges} / ${maxCharges} charges` : 'No charges'}</div>
-                                            </div>
-                                            <select value="" onChange={e => { const target = e.target.value; if (!target) return; if (/^(weapon|armor|shield) \+[123]$/i.test(target)) { setPendingReplicate({ plan: target, oldName: name }); setPendingBase(''); } else { const next = made.map(entry => entry === name ? target : entry); setMade(next, name, target, false); } }} className="w-24 bg-black/40 border border-gray-700 rounded px-1 py-0.5 text-[8px] text-gray-300">
+                                        <div className="min-w-0">
+                                            <div className="text-[10px] font-bold text-white break-words leading-tight">{item?.name || name}{item?.requires_attunement ? ' (A)' : ''}</div>
+                                            <div className="text-[8px] text-gray-500">{maxCharges > 0 ? `${charges} / ${maxCharges} charges` : 'No charges'}</div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-1">
+                                            <select value="" onChange={e => { const target = e.target.value; if (!target) return; if (/^(weapon|armor|shield) \+[123]$/i.test(target)) { setPendingReplicate({ plan: target, oldName: name }); setPendingBase(''); } else { const next = made.map(entry => entry === name ? target : entry); setMade(next, name, target, false); } }} className="w-full bg-black/40 border border-gray-700 rounded px-1 py-1 text-[8px] text-gray-300">
                                                 <option value="">Replace…</option>
                                                 {plans.filter((plan: string) => plan !== name && !made.includes(plan)).map((plan: string) => <option key={plan} value={plan}>{plan}</option>)}
                                             </select>
-                                            <select value="" disabled={!transmute || Number(transmute.current) <= 0} onChange={e => { const target = e.target.value; if (!target) return; const next = made.map(entry => entry === name ? target : entry); setMade(next, name, target, true); }} className="w-24 bg-black/40 border border-gray-700 rounded px-1 py-0.5 text-[8px] text-dnd-gold disabled:opacity-30">
+                                            <select value="" disabled={!transmute || Number(transmute.current) <= 0} onChange={e => { const target = e.target.value; if (!target) return; const next = made.map(entry => entry === name ? target : entry); setMade(next, name, target, true); }} className="w-full bg-black/40 border border-gray-700 rounded px-1 py-1 text-[8px] text-dnd-gold disabled:opacity-30">
                                                 <option value="">Transmute…</option>
                                                 {plans.filter((plan: string) => plan !== name && !made.includes(plan)).map((plan: string) => <option key={plan} value={plan}>{plan}</option>)}
                                             </select>
