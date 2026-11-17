@@ -27,6 +27,7 @@ import ItemSearchModal from '../Builder/ItemSearchModal';
 import ItemCustomizationModal from './Modals/ItemCustomizationModal';
 import ItemCustomizeModal from './Modals/ItemCustomizeModal';
 import { mergeInventoryItem } from '../../utils/itemInstances';
+import { reconcileArtificerLayout } from '../../utils/artificer';
 import { getClassProficiencies, isToolProficiency } from '../../utils/multiclass';
 import { fetchAllSpells } from '../../data/index';
 import { getItemWidgets, storedSpellLevels } from '../../utils/itemWidgets';
@@ -330,23 +331,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             activeEldritchCannon: null,
             eldritchCannonFreebieUsed: false,
             activeSteelDefender: null,
-            layout: (() => {
-                const base = initialCharacter.layout || { left: ['senses', 'proficiencies', 'skills', 'saves'], right: ['actions', 'features', 'inventory', 'movement', 'defenses'], mobile: ['actions', 'spells', 'inventory', 'saves', 'hitDice'] };
-                const artificer = (initialCharacter.classes || []).find((cls: any) => cls.definition?.index === 'artificer');
-                if (!artificer) return base;
-                const subclass = String(artificer.subclass?.name || '');
-                const desired: string[] = [];
-                if (/battle smith/i.test(subclass)) desired.push('steelDefender');
-                if (/artillerist/i.test(subclass)) desired.push('eldritchCannon');
-                if (Number(artificer.level || 0) >= 6) desired.push('magicItemTinker');
-                if (/cartographer/i.test(subclass)) desired.push('mapHolders');
-                if (/alchemist/i.test(subclass)) desired.push('experimentalElixir');
-                if (initialCharacter.spellStoringItem?.spell) desired.push('spellStoringItem');
-                const managed = ['steelDefender', 'eldritchCannon', 'magicItemTinker', 'mapHolders', 'experimentalElixir', 'spellStoringItem'];
-                const stale = managed.filter(widget => !desired.includes(widget));
-                const add = (entries: string[]) => [...desired.filter(widget => !entries.includes(widget)), ...entries.filter(id => !stale.includes(id))];
-                return { ...base, left: (base.left || []).filter(id => !stale.includes(id)), right: add(base.right || []), mobile: add(base.mobile || []) };
-            })(),
+            layout: reconcileArtificerLayout(initialCharacter),
             favorites: initialCharacter.favorites || [],
             backgroundImageUrl: initialCharacter.backgroundImageUrl || '',
             backgroundColor: initialCharacter.backgroundColor || '#151515',
@@ -884,8 +869,16 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const artificerLevel = Number((character.classes || []).find((cls: any) => cls.definition?.index === 'artificer')?.level || 0);
     const maxAttunements = artificerLevel >= 14 ? 5 : artificerLevel >= 10 ? 4 : 3;
     const [tinkerSlot, setTinkerSlot] = useState(1);
+    useEffect(() => {
+        fetchAllSpells().then((spells: any[]) => setStoringSpellOptions(spells.filter((spell: any) => {
+            const casting = String(spell.casting_time || '').toLowerCase().trim();
+            const consumed = Boolean(spell.material?.consumed || spell.materials?.consumed || /consumed/i.test(String(spell.material || '')));
+            return Number(spell.level) >= 1 && Number(spell.level) <= 3 && casting === '1 action' && !consumed && (spell.classes || []).some((entry: any) => /artificer/i.test(String(entry.name || entry.index || '')));
+        }))).catch(() => {});
+    }, []);
     const [tinkerItem, setTinkerItem] = useState('');
     const [defenderHpDelta, setDefenderHpDelta] = useState(5);
+    const [storingSpellOptions, setStoringSpellOptions] = useState<any[]>([]);
     const innateSorceryActive = character.activeConditions?.['innate-sorcery'] === true;
     const spellAttack = prof + spellMod + extraSpellAttack;
     const spellAttackStr = formatModifier(spellAttack);
@@ -1771,29 +1764,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     }, [character.activeEldritchCannon]);
 
     useEffect(() => {
-        const widgets: string[] = [];
-        const artificerClass = (character.classes || []).find((cls: any) => cls.definition?.index === 'artificer');
-        const subclassName = String(artificerClass?.subclass?.name || '');
-        if (/battle smith/i.test(subclassName)) widgets.push('steelDefender');
-        if (/artillerist/i.test(subclassName)) widgets.push('eldritchCannon');
-        if (artificerLevel >= 6) widgets.push('magicItemTinker');
-        if (/cartographer/i.test(subclassName)) widgets.push('mapHolders');
-        if (/alchemist/i.test(subclassName)) widgets.push('experimentalElixir');
-        if (character.spellStoringItem?.spell) widgets.push('spellStoringItem');
-        const managed = ['steelDefender', 'eldritchCannon', 'magicItemTinker', 'mapHolders', 'experimentalElixir', 'spellStoringItem'];
-        const missing = widgets.filter(widget => !(character.layout.right || []).includes(widget) && !(character.layout.left || []).includes(widget) && !(character.layout.mobile || []).includes(widget));
-        const stale = managed.filter(widget => !widgets.includes(widget) && ((character.layout.right || []).includes(widget) || (character.layout.left || []).includes(widget) || (character.layout.mobile || []).includes(widget)));
-        if (missing.length === 0 && stale.length === 0) return;
-        setCharacter(prev => ({
-            ...prev,
-            layout: {
-                ...prev.layout,
-                left: (prev.layout.left || []).filter(id => !stale.includes(id)),
-                right: [...missing, ...(prev.layout.right || []).filter(id => !missing.includes(id) && !stale.includes(id))],
-                mobile: [...missing, ...(prev.layout.mobile || []).filter(id => !missing.includes(id) && !stale.includes(id))],
-            },
-        }));
-    }, [character.classes, character.classFeatures?.map((feature: any) => feature.name).join('|'), character.level, character.armorModel, character.replicatedItems, character.choices.length]);
+        const nextLayout = reconcileArtificerLayout(character);
+        const current = character.layout || { left: [], right: [], mobile: [] };
+        if (JSON.stringify(nextLayout) === JSON.stringify(current)) return;
+        setCharacter(prev => ({ ...prev, layout: nextLayout }));
+    }, [character.classes, character.classFeatures?.map((feature: any) => feature.name).join('|'), character.level, character.armorModel, character.replicatedItems, character.spellStoringItem?.spell, character.choices.length]);
 
     const handleSummonDefender = (defender: SteelDefenderDetail) => {
         setCharacter(prev => ({ ...prev, activeSteelDefender: defender }));
@@ -2027,6 +2002,24 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         </div>
                         <div className="text-sm font-bold text-white">{character.spellStoringItem.spell}</div>
                         <div className="text-[10px] text-gray-500 mb-2">Uses: {usage ? `${usage.current} / ${usage.max}` : '—'}</div>
+                        <select value="" onChange={e => {
+                            const newSpell = e.target.value;
+                            if (!newSpell) return;
+                            const oldSpell = character.spellStoringItem?.spell || '';
+                            const max = Math.max(1, 2 * intMod);
+                            setCharacter(prev => {
+                                const choices = (prev.choices || []).some((choice: any) => choice.revertData?.isSpellStoringItem)
+                                    ? (prev.choices || []).map((choice: any) => choice.revertData?.isSpellStoringItem ? { ...choice, value: newSpell } : choice)
+                                    : [...(prev.choices || []), { id: 'spell-storing-item', level: 11, source: 'Artificer', type: 'spell', label: 'Spell-Storing Item', value: newSpell, count: 1, revertData: { isSpellStoringItem: true } } as any];
+                                const featureUsage = { ...(prev.featureUsage || {}) };
+                                Object.keys(featureUsage).forEach(key => { if (/^Spell-Storing Item/i.test(key)) delete featureUsage[key]; });
+                                featureUsage[`Spell-Storing Item (${newSpell})`] = { max, current: max, reset: 'long', source: 'Artificer' };
+                                return { ...prev, spellStoringItem: { spell: newSpell }, choices, featureUsage, spells: (prev.spells || []).filter((spell: any) => spell.name.toLowerCase() !== oldSpell.toLowerCase()) };
+                            });
+                        }} className="w-full bg-black/40 border border-gray-700 rounded px-2 py-1 text-[9px] text-gray-300 mb-2">
+                            <option value="">Change stored spell…</option>
+                            {storingSpellOptions.map((spell: any) => <option key={spell.index} value={spell.name}>{spell.name}</option>)}
+                        </select>
                         <button disabled={!usage || usage.current <= 0} onClick={() => { if (!usage || !key) return; setCharacter(prev => ({ ...prev, featureUsage: { ...prev.featureUsage, [key]: { ...prev.featureUsage[key], current: Math.max(0, Number(prev.featureUsage[key].current) - 1) } } })); }} className="w-full py-2 bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold text-[10px] font-black uppercase rounded hover:bg-dnd-gold hover:text-black disabled:opacity-40">Spend Use</button>
                     </div>
                 );
@@ -2075,53 +2068,99 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 if (artificerLevel < 6) return null;
                 const drainKey = Object.keys(character.featureUsage || {}).find(key => /drain magic item/i.test(key));
                 const drain = drainKey ? character.featureUsage[drainKey] : null;
-                const replicated = character.replicatedItems || [];
-                const selectedRarity = String((character.inventory || []).find((item: any) => String((item as any).sourcePlan || item.name).toLowerCase() === tinkerItem.toLowerCase())?.rarity || '');
-                const isCommonItem = /^common\b/i.test(selectedRarity.trim()) || /^common\b/i.test(tinkerItem.trim());
-                const selectedItem = (character.inventory || []).find((item: any) => String((item as any).sourcePlan || item.name).toLowerCase() === tinkerItem.toLowerCase());
-                const spendSlot = () => {
-                    if (!tinkerItem || !character.spellSlots?.[tinkerSlot] || character.spellSlots[tinkerSlot].current <= 0) return;
-                    setCharacter(prev => ({
-                        ...prev,
-                        spellSlots: { ...prev.spellSlots, [tinkerSlot]: { ...prev.spellSlots[tinkerSlot], current: Math.max(0, prev.spellSlots[tinkerSlot].current - 1) } },
-                        inventory: (prev.inventory || []).map((item: any) => String((item as any).sourcePlan || item.name).toLowerCase() === tinkerItem.toLowerCase() ? { ...item, charges: item.maxCharges ? Math.min(Number(item.maxCharges), Number(item.charges || 0) + tinkerSlot) : Number(item.charges || 0) + tinkerSlot } : item),
-                    }));
+                const transmuteKey = Object.keys(character.featureUsage || {}).find(key => /transmute magic item/i.test(key));
+                const transmute = transmuteKey ? character.featureUsage[transmuteKey] : null;
+                const made = character.replicatedItems || [];
+                const plans = character.replicatePlans || [];
+                const artificerClass = (character.classes || []).find((cls: any) => cls.definition?.index === 'artificer');
+                const levelRow = ((artificerClass?.definition as any)?.level_table || []).find((row: any) => row.level === artificerLevel);
+                const maxMade = Number(levelRow?.class_specific?.magic_items || Math.max(made.length, 1));
+                const buildItem = (name: string) => {
+                    const armoryName = name.replace(/^(Weapon|Shield|Armor)\s+\+([123])$/i, '$1, +$2');
+                    const plus = Number(name.match(/\+([123])/)?.[1] || 0);
+                    const isWeapon = /weapon \+[123]/i.test(name);
+                    const isShield = /shield \+[123]/i.test(name);
+                    const isArmor = /armor \+[123]/i.test(name);
+                    return {
+                        id: `replicated-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+                        name: armoryName, sourcePlan: name, quantity: 1, weight: isWeapon ? 3 : 0, equipped: false, attuned: false,
+                        is_magic: true,
+                        requires_attunement: /wand of the war mage|cloak of elvenkind|boots of the winding path|eyes of charming|mind sharpener|dazzling weapon|boots of elvenkind/i.test(name),
+                        rarity: /goggles of night|bag of holding|rope of climbing|wand of magic detection|wand of secrets|alchemy jug|cap of water breathing|manifold tool/i.test(name) ? 'Common' : 'Uncommon',
+                        equipment_category: isWeapon ? { index: 'weapon', name: 'Weapon' } : undefined,
+                        weapon_category: isWeapon ? 'martial' : undefined,
+                        range: isWeapon ? 'Melee' : undefined,
+                        damage: isWeapon ? { damage_dice: '1d8', damage_type: { name: 'Bludgeoning' } } : undefined,
+                        properties: isWeapon ? ['Versatile'] : undefined,
+                        armor_category: isShield ? 'shield' : isArmor ? 'medium' : undefined,
+                        armor_class: isShield ? { base: 2, dex_bonus: false } : isArmor ? { base: 14, dex_bonus: true, max_bonus: 2 } : undefined,
+                        maxCharges: /wand of magic missiles/i.test(name) ? 7 : /wand of magic detection|wand of secrets/i.test(name) ? 3 : undefined,
+                        charges: /wand of magic missiles/i.test(name) ? 7 : /wand of magic detection|wand of secrets/i.test(name) ? 3 : undefined,
+                        modifiers: isWeapon ? [{ type: 'bonus', target: 'attack', value: plus }, { type: 'bonus', target: 'damage', value: plus }]
+                            : /wand of the war mage \+[123]/i.test(name) ? [{ type: 'bonus', target: 'spell_attack', value: plus }]
+                            : /cloak of elvenkind|boots of elvenkind/i.test(name) ? [{ type: 'advantage', target: 'stealth', value: 1, name }]
+                            : isShield || isArmor ? [{ type: 'bonus', target: 'ac', value: plus }] : [],
+                    } as any;
                 };
-                const drainFor = (level: number) => {
-                    if (!drain || drain.current <= 0) return;
-                    const slot = character.spellSlots?.[level];
-                    if (!slot || slot.current >= slot.max) return;
-                    setCharacter(prev => ({
+                const setMade = (next: string[], oldName: string | null, newName: string | null, spendTransmute = false) => setCharacter(prev => {
+                    const items = (prev.inventory || []).filter((item: any) => !oldName || String((item as any).sourcePlan || item.name).toLowerCase() !== oldName.toLowerCase());
+                    if (newName) items.push(buildItem(newName));
+                    return {
                         ...prev,
-                        featureUsage: drainKey ? { ...prev.featureUsage, [drainKey]: { ...prev.featureUsage[drainKey], current: Math.max(0, Number(prev.featureUsage[drainKey].current) - 1) } } : prev.featureUsage,
-                        spellSlots: { ...prev.spellSlots, [level]: { ...prev.spellSlots[level], current: Number(prev.spellSlots[level].current) + 1 } },
-                        replicatedItems: (prev.replicatedItems || []).filter(name => name !== tinkerItem),
-                        choices: (prev.choices || []).map((choice: any) => choice.revertData?.isReplicatedItems && Array.isArray(choice.value) ? { ...choice, value: choice.value.filter((name: string) => name !== tinkerItem) } : choice),
-                        inventory: (prev.inventory || []).filter(item => !tinkerItem || String((item as any).sourcePlan || item.name).toLowerCase() !== tinkerItem.toLowerCase()),
-                    }));
-                };
+                        replicatedItems: next,
+                        inventory: items,
+                        choices: (prev.choices || []).map((choice: any) => choice.revertData?.isReplicatedItems ? { ...choice, value: next, revertData: { ...choice.revertData, pendingConfirm: false } } : choice),
+                        featureUsage: spendTransmute && transmuteKey ? { ...prev.featureUsage, [transmuteKey]: { ...prev.featureUsage[transmuteKey], current: Math.max(0, Number(prev.featureUsage[transmuteKey].current) - 1) } } : prev.featureUsage,
+                    };
+                });
                 return (
                     <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3 space-y-3`}>
                         <div className="flex justify-between items-center">
                             <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Magic Item Tinker</h3>
-                            <span className="text-[9px] text-gray-500 font-bold uppercase">Artificer</span>
+                            <span className="text-[9px] text-gray-500 font-bold uppercase">Made {made.length} / {maxMade}</span>
                         </div>
-                        <select value={tinkerItem} onChange={e => setTinkerItem(e.target.value)} className="w-full bg-black/40 border border-gray-700 rounded px-2 py-1 text-[10px] text-white">
-                            <option value="">Select replicated item…</option>
-                            {replicated.map(name => <option key={name} value={name}>{name}</option>)}
-                        </select>
                         <div className="flex items-center gap-2">
-                            <span className="text-[9px] text-gray-500 uppercase font-bold">Slot</span>
+                            <span className="text-[9px] text-gray-500 uppercase font-bold">Charge slot</span>
                             {[1,2,3,4].map(level => (
                                 <button key={level} onClick={() => setTinkerSlot(level)} className={`w-6 h-6 rounded text-[9px] font-black ${tinkerSlot === level ? 'bg-dnd-gold text-black' : 'bg-gray-800 text-gray-400'}`}>{level}</button>
                             ))}
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
-                            <button onClick={spendSlot} className="py-2 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[9px] font-black uppercase hover:border-dnd-gold">Charge (Spend Slot)</button>
-                            {isCommonItem && <button onClick={() => drainFor(1)} disabled={!drain?.current || !tinkerItem} className="py-2 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[9px] font-black uppercase disabled:opacity-40">Drain → 1st</button>}
-                            <button onClick={() => drainFor(2)} disabled={!drain?.current || !tinkerItem} className={`${isCommonItem ? 'col-span-1' : 'col-span-2'} py-2 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[9px] font-black uppercase disabled:opacity-40`}>Drain → 2nd (Uncommon/Rare)</button>
+                        <div className="space-y-2">
+                            {made.map((name: string) => {
+                                const item: any = (character.inventory || []).find((entry: any) => String(entry.sourcePlan || entry.name).toLowerCase() === name.toLowerCase());
+                                const rarity = String(item?.rarity || (/goggles of night|bag of holding|rope of climbing|wand of magic detection|wand of secrets|alchemy jug|cap of water breathing|manifold tool/i.test(name) ? 'Common' : 'Uncommon'));
+                                const common = /^common\b/i.test(rarity);
+                                const charges = Number(item?.charges || 0);
+                                const maxCharges = Number(item?.maxCharges || 0);
+                                const canCharge = Boolean(maxCharges > 0 && charges < maxCharges && character.spellSlots?.[tinkerSlot]?.current > 0);
+                                return (
+                                    <div key={name} className="bg-black/20 border border-gray-800 rounded-lg p-2 space-y-1.5">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <div className="min-w-0">
+                                                <div className="text-[10px] font-bold text-white truncate">{item?.name || name}{item?.requires_attunement ? ' (A)' : ''}</div>
+                                                <div className="text-[8px] text-gray-500">{maxCharges > 0 ? `${charges} / ${maxCharges} charges` : 'No charges'}</div>
+                                            </div>
+                                            <select value="" onChange={e => { const target = e.target.value; if (!target) return; const next = made.map(entry => entry === name ? target : entry); setMade(next, name, target, Boolean(transmute?.current)); }} className="w-24 bg-black/40 border border-gray-700 rounded px-1 py-0.5 text-[8px] text-gray-300">
+                                                <option value="">Replace…</option>
+                                                {plans.filter((plan: string) => plan !== name && !made.includes(plan)).map((plan: string) => <option key={plan} value={plan}>{plan}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-1">
+                                            <button disabled={!canCharge} onClick={() => setCharacter(prev => ({ ...prev, spellSlots: { ...prev.spellSlots, [tinkerSlot]: { ...prev.spellSlots[tinkerSlot], current: Math.max(0, prev.spellSlots[tinkerSlot].current - 1) } }, inventory: (prev.inventory || []).map((entry: any) => (entry.sourcePlan || entry.name) === name ? { ...entry, charges: Math.min(maxCharges, charges + tinkerSlot) } : entry) }))} className="py-1 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[8px] font-black uppercase disabled:opacity-30">Charge</button>
+                                            {common && <button disabled={!drain?.current} onClick={() => setCharacter(prev => ({ ...prev, featureUsage: drainKey ? { ...prev.featureUsage, [drainKey]: { ...prev.featureUsage[drainKey], current: Math.max(0, Number(prev.featureUsage[drainKey].current) - 1) } } : prev.featureUsage, spellSlots: { ...prev.spellSlots, 1: { ...prev.spellSlots[1], current: Math.min(prev.spellSlots[1].max, prev.spellSlots[1].current + 1) } }, replicatedItems: made.filter(entry => entry !== name), choices: (prev.choices || []).map((choice: any) => choice.revertData?.isReplicatedItems ? { ...choice, value: made.filter(entry => entry !== name) } : choice), inventory: (prev.inventory || []).filter((entry: any) => (entry.sourcePlan || entry.name) !== name) }))} className="py-1 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[8px] font-black uppercase disabled:opacity-30">Drain 1</button>}
+                                            <button disabled={!drain?.current} onClick={() => setCharacter(prev => ({ ...prev, featureUsage: drainKey ? { ...prev.featureUsage, [drainKey]: { ...prev.featureUsage[drainKey], current: Math.max(0, Number(prev.featureUsage[drainKey].current) - 1) } } : prev.featureUsage, spellSlots: { ...prev.spellSlots, 2: { ...prev.spellSlots[2], current: Math.min(prev.spellSlots[2].max, prev.spellSlots[2].current + 1) } }, replicatedItems: made.filter(entry => entry !== name), choices: (prev.choices || []).map((choice: any) => choice.revertData?.isReplicatedItems ? { ...choice, value: made.filter(entry => entry !== name) } : choice), inventory: (prev.inventory || []).filter((entry: any) => (entry.sourcePlan || entry.name) !== name) }))} className={`py-1 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[8px] font-black uppercase disabled:opacity-30 ${common ? '' : 'col-span-2'}`}>Drain 2</button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            {made.length < maxMade && plans.length > 0 && (
+                                <select value="" onChange={e => { const target = e.target.value; if (!target) return; setMade([...made, target], null, target); }} className="w-full bg-black/40 border border-dashed border-gray-700 rounded px-2 py-1.5 text-[9px] text-gray-400">
+                                    <option value="">Replicate an item…</option>
+                                    {plans.filter((plan: string) => !made.includes(plan)).map((plan: string) => <option key={plan} value={plan}>{plan}</option>)}
+                                </select>
+                            )}
                         </div>
-                        <div className="text-[9px] text-gray-500">Drain uses: {drain ? `${drain.current} / ${drain.max}` : '0'}{selectedItem ? ((selectedItem as any).maxCharges ? ` · Charges: ${Number((selectedItem as any).charges || 0)} / ${Number((selectedItem as any).maxCharges)}` : ' · No charge track') : ''}</div>
+                        <div className="text-[9px] text-gray-500">Drain {drain ? `${drain.current} / ${drain.max}` : '0'} · Transmute {transmute ? `${transmute.current} / ${transmute.max}` : '0'}</div>
                     </div>
                 );
             }
@@ -2558,7 +2597,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 }))}
                             />
                         )}
-                        {Object.entries(character.featureUsage).filter(([name, usage]) => !(/giant stature/i.test(name) && !/dreadnaught/i.test(String(character.armorModel || ''))) && name !== 'Wild Shape' && name !== 'Lay on Hands' && name !== 'Sorcery Points' && name !== 'Dragon Wings' && name !== 'Magical Cunning' && !usage.hidden).map(([name, usage]: [string, any]) => {
+                        {Object.entries(character.featureUsage).filter(([name, usage]) => !/^spell-storing item|drain magic item|steel defender: repair|eldritch cannon|experimental elixir/i.test(name) && !(/giant stature/i.test(name) && !/dreadnaught/i.test(String(character.armorModel || ''))) && name !== 'Wild Shape' && name !== 'Lay on Hands' && name !== 'Sorcery Points' && name !== 'Dragon Wings' && name !== 'Magical Cunning' && !usage.hidden).map(([name, usage]: [string, any]) => {
                             const usedCount = usage.max - usage.current;
                             const detailTarget = findResourceDetailsTarget(name, usage);
                             return (
@@ -4056,7 +4095,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     hit: null,
                     damage: '-',
                     type: 'Artificer',
-                    notes: [`Cast ${storedName} from the stored item. Uses: ${storage ? `${storage.current} / ${storage.max}` : '2 × INT'}.`],
+                    notes: [`Cast ${storedName} from the stored item. Spend uses in the Spell-Storing widget.`],
                     source: { name: 'Spell-Storing Item', activationType: 'action', desc: ['The stored spell can be cast by the holder without expending a spell slot.'] },
                 });
             }

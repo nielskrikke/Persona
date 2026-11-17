@@ -3,6 +3,7 @@ import Markdown from 'react-markdown';
 import { X, User, GraduationCap, Activity, Shield, Settings, Plus, Trash2, Save, Languages, Palette, Type, Dice5, Eye, EyeOff, Info, Sparkles, AlertTriangle, RotateCcw, AlertCircle } from 'lucide-react';
 import { CharacterState, APIReference, RaceDetail, SubraceDetail, BackgroundDetail, FeatDetail, ABILITY_NAMES, ABILITY_LABELS, AbilityScores, SpellDetail, LevelChoice, AbilityName } from '@/types';
 import { fetchClasses, fetchRaces, fetchSubraces, fetchBackgrounds, fetchFeatsList, fetchRaceDetail, fetchSubraceDetail, fetchBackgroundDetail, fetchSubclasses, fetchSubclassDetail, fetchSubclassLevels, fetchClassLevels, fetchLevelFeatures, fetchClassDetail, fetchAllSpells, RACES, SUBCLASSES } from '@/data/index';
+import { reconcileArtificerLayout } from '../../../utils/artificer';
 import { getSpellSlots, calculateModifier, SKILL_LIST, getSubclassLevel, getSubclassLabel, getResourceDefinitions, calculateMaxHp, mergeSpellSlotCurrents, getEffectiveAbilities, isFeatAvailableForLevel, isFeatAvailableForCharacter, getChoiceCount } from '@/utils/rules';
 import { STANDARD_LANGUAGES, ARTISAN_TOOLS, MUSICAL_INSTRUMENTS, GAMING_SETS, ALL_TOOLS, MASTERY_DESCRIPTIONS } from '../../../data/constants';
 import DiceRoller3D from '../Shared/DiceRoller3D';
@@ -1235,22 +1236,7 @@ const ManageCharacterModal = ({
             const savantSpells = Array.isArray(savantChoice?.value) ? savantChoice.value : [];
             return Array.from(new Set([...baseBook, ...savantSpells]));
         })(),
-        layout: (() => {
-            const artificer = (localClasses || []).find((cls: any) => cls.definition?.index === 'artificer');
-            const subclass = String(artificer?.subclass?.name || '');
-            const desired: string[] = [];
-            if (/battle smith/i.test(subclass)) desired.push('steelDefender');
-            if (/artillerist/i.test(subclass)) desired.push('eldritchCannon');
-            if (Number(artificer?.level || 0) >= 6) desired.push('magicItemTinker');
-            if (/cartographer/i.test(subclass)) desired.push('mapHolders');
-            if (/alchemist/i.test(subclass)) desired.push('experimentalElixir');
-            const storingChoice = localChoices.find((entry: any) => entry.revertData?.isSpellStoringItem);
-            if (storingChoice?.value) desired.push('spellStoringItem');
-            const managed = ['steelDefender', 'eldritchCannon', 'magicItemTinker', 'mapHolders', 'experimentalElixir', 'spellStoringItem'];
-            const stale = managed.filter(widget => !desired.includes(widget));
-            const add = (entries: string[]) => [...desired.filter(widget => !entries.includes(widget)), ...entries.filter(id => !stale.includes(id))];
-            return { ...(character.layout || {}), left: (character.layout?.left || []).filter(id => !stale.includes(id)), right: add(character.layout?.right || []), mobile: add(character.layout?.mobile || []) };
-        })(),
+        layout: reconcileArtificerLayout({ ...character, classes: localClasses, classFeatures: localClassFeatures, choices: localChoices, spellStoringItem: (() => { const choice = localChoices.find((entry: any) => entry.revertData?.isSpellStoringItem); return typeof choice?.value === 'string' && choice.value ? { spell: choice.value } : spellStoringItem ? { spell: spellStoringItem } : undefined; })() } as any),
         classes: overrides.classes || localClasses,
         classFeatures: overrides.classFeatures || localClassFeatures,
         maxHp: overrides.maxHp || calculateMaxHp(projected),

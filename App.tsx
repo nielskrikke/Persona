@@ -12,6 +12,7 @@ import SpellSelectionStep from './components/Builder/SpellSelectionStep';
 import { CharacterSheet } from './components/Sheet/CharacterSheet';
 import ErrorBoundary from './components/ErrorBoundary';
 import { getSpellSlots, SKILL_LIST, getCasterProfileFor, calculateMaxHp, mergeSpellSlotCurrents } from './utils/rules';
+import { reconcileArtificerLayout } from './utils/artificer';
 import { getClassProficiencies, isToolProficiency } from './utils/multiclass';
 import { STANDARD_LANGUAGES, ARTISAN_TOOLS, GAMING_SETS, MUSICAL_INSTRUMENTS, ALL_TOOLS } from './data/constants';
 import { hydrateCharacterClasses, fetchAllSpells, hydrateGrantedSpells, fetchEquipment, fetchEquipmentDetail } from './data/index';
@@ -651,9 +652,9 @@ const App: React.FC = () => {
   const handleEquipmentComplete = async (inventory: InventoryItem[], currency?: { gp: number; sp: number; cp: number }) => {
     const finalInventory = [...character.inventory, ...inventory];
     const { id, user_id, ...charProps } = character;
-    const finalChar = { ...charProps, inventory: finalInventory, ...(currency ? { currency: { ...character.currency, gp: character.currency.gp + currency.gp, sp: character.currency.sp + currency.sp, cp: character.currency.cp + currency.cp } } : {}) };
+    const finalChar = { ...charProps, inventory: finalInventory, layout: reconcileArtificerLayout({ ...character, inventory: finalInventory } as any), ...(currency ? { currency: { ...character.currency, gp: character.currency.gp + currency.gp, sp: character.currency.sp + currency.sp, cp: character.currency.cp + currency.cp } } : {}) };
 
-    updateCharacter({ inventory: finalInventory, ...(currency ? { currency: { ...character.currency, gp: character.currency.gp + currency.gp, sp: character.currency.sp + currency.sp, cp: character.currency.cp + currency.cp } } : {}) });
+    updateCharacter({ inventory: finalInventory, layout: reconcileArtificerLayout({ ...character, inventory: finalInventory } as any), ...(currency ? { currency: { ...character.currency, gp: character.currency.gp + currency.gp, sp: character.currency.sp + currency.sp, cp: character.currency.cp + currency.cp } } : {}) });
 
     if (currentUser) {
         try {
