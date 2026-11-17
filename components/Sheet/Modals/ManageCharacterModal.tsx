@@ -1099,19 +1099,6 @@ const ManageCharacterModal = ({
             });
         }
 
-        // Auto-inject layout from subclass-declared UI widgets.
-        const companionWidget = ((newSubclass as any)?.ui?.widgets || []).find((widget: string) =>
-            widget === 'eldritchCannon' || widget === 'steelDefender'
-        );
-        if (companionWidget && clsDef.level >= 3) {
-            const currentLayout = character.layout || { left: [], right: [], mobile: [] };
-            if (!currentLayout.right.includes(companionWidget) && !currentLayout.left.includes(companionWidget)) {
-                setCombatOverrides(prev => ({
-                    ...prev,
-                    layout: { ...currentLayout, right: [...currentLayout.right, companionWidget] }
-                }));
-            }
-        }
     };
 
     const loadSubclasses = async (classIndex: string) => {

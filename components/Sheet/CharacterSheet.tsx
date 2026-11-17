@@ -330,7 +330,23 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             activeEldritchCannon: null,
             eldritchCannonFreebieUsed: false,
             activeSteelDefender: null,
-            layout: initialCharacter.layout || { left: ['senses', 'proficiencies', 'skills', 'saves'], right: ['actions', 'features', 'inventory', 'movement', 'defenses'], mobile: ['actions', 'spells', 'inventory', 'saves', 'hitDice'] },
+            layout: (() => {
+                const base = initialCharacter.layout || { left: ['senses', 'proficiencies', 'skills', 'saves'], right: ['actions', 'features', 'inventory', 'movement', 'defenses'], mobile: ['actions', 'spells', 'inventory', 'saves', 'hitDice'] };
+                const artificer = (initialCharacter.classes || []).find((cls: any) => cls.definition?.index === 'artificer');
+                if (!artificer) return base;
+                const subclass = String(artificer.subclass?.name || '');
+                const desired: string[] = [];
+                if (/battle smith/i.test(subclass)) desired.push('steelDefender');
+                if (/artillerist/i.test(subclass)) desired.push('eldritchCannon');
+                if (Number(artificer.level || 0) >= 6) desired.push('magicItemTinker');
+                if (/cartographer/i.test(subclass)) desired.push('mapHolders');
+                if (/alchemist/i.test(subclass)) desired.push('experimentalElixir');
+                if (initialCharacter.spellStoringItem?.spell) desired.push('spellStoringItem');
+                const managed = ['steelDefender', 'eldritchCannon', 'magicItemTinker', 'mapHolders', 'experimentalElixir', 'spellStoringItem'];
+                const stale = managed.filter(widget => !desired.includes(widget));
+                const add = (entries: string[]) => [...desired.filter(widget => !entries.includes(widget)), ...entries.filter(id => !stale.includes(id))];
+                return { ...base, left: (base.left || []).filter(id => !stale.includes(id)), right: add(base.right || []), mobile: add(base.mobile || []) };
+            })(),
             favorites: initialCharacter.favorites || [],
             backgroundImageUrl: initialCharacter.backgroundImageUrl || '',
             backgroundColor: initialCharacter.backgroundColor || '#151515',
@@ -2061,7 +2077,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const drain = drainKey ? character.featureUsage[drainKey] : null;
                 const replicated = character.replicatedItems || [];
                 const selectedRarity = String((character.inventory || []).find((item: any) => String((item as any).sourcePlan || item.name).toLowerCase() === tinkerItem.toLowerCase())?.rarity || '');
-                const isCommonItem = /common/i.test(selectedRarity) || /common/i.test(tinkerItem);
+                const isCommonItem = /^common\b/i.test(selectedRarity.trim()) || /^common\b/i.test(tinkerItem.trim());
                 const selectedItem = (character.inventory || []).find((item: any) => String((item as any).sourcePlan || item.name).toLowerCase() === tinkerItem.toLowerCase());
                 const spendSlot = () => {
                     if (!tinkerItem || !character.spellSlots?.[tinkerSlot] || character.spellSlots[tinkerSlot].current <= 0) return;

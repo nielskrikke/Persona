@@ -1282,6 +1282,24 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
             return Array.from(new Set([...baseBook, ...savantSpells]));
         })(),
         choices: filteredSpellChoices,
+        layout: (() => {
+            const base = character.layout || { left: [], right: [], mobile: [] };
+            const artificer = (classes || []).find((cls: any) => cls.definition?.index === 'artificer');
+            if (!artificer) return base;
+            const subclass = String(artificer.subclass?.name || '');
+            const desired: string[] = [];
+            if (/battle smith/i.test(subclass)) desired.push('steelDefender');
+            if (/artillerist/i.test(subclass)) desired.push('eldritchCannon');
+            if (Number(artificer.level || 0) >= 6) desired.push('magicItemTinker');
+            if (/cartographer/i.test(subclass)) desired.push('mapHolders');
+            if (/alchemist/i.test(subclass)) desired.push('experimentalElixir');
+            const storing = (choices || []).find((choice: any) => choice.revertData?.isSpellStoringItem && choice.value);
+            if (storing) desired.push('spellStoringItem');
+            const managed = ['steelDefender', 'eldritchCannon', 'magicItemTinker', 'mapHolders', 'experimentalElixir', 'spellStoringItem'];
+            const stale = managed.filter(widget => !desired.includes(widget));
+            const add = (entries: string[]) => [...desired.filter(widget => !entries.includes(widget)), ...entries.filter(id => !stale.includes(id))];
+            return { ...base, left: (base.left || []).filter(id => !stale.includes(id)), right: add(base.right || []), mobile: add(base.mobile || []) };
+        })(),
         skills: Array.from(derivedSkills),
         toolProficiencies: Array.from(derivedTools),
     });
