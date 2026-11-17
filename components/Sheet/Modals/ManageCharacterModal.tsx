@@ -66,6 +66,7 @@ const ManageCharacterModal = ({
     const [localSpells, setLocalSpells] = useState<SpellDetail[]>(character.spells);
     const [invocationCantrips, setInvocationCantrips] = useState<Record<string, string>>(character.invocationCantrips || {});
     const [spellbookSearch, setSpellbookSearch] = useState('');
+    const [planSearch, setPlanSearch] = useState('');
     const [armorModel, setArmorModel] = useState(character.armorModel || '');
     const [replicatePlans, setReplicatePlans] = useState<string[]>(character.replicatePlans || []);
     const [replicatedItems, setReplicatedItems] = useState<string[]>(character.replicatedItems || []);
@@ -232,7 +233,7 @@ const ManageCharacterModal = ({
             : localSpells.filter((spell: any) => Number(spell.level) >= 1 && String(spell.sourceClassIndex || '').toLowerCase() === 'wizard').map((spell: any) => spell.index);
         setLocalChoices(prev => {
             let changed = false;
-            const next = [...prev];
+            const next = prev.filter((choice: any) => !choice.revertData?.isReplicatedItems && !choice.revertData?.isSpellStoringItem);
             const bookId = 'wizard-spellbook';
             const bookChoice = next.find((choice: any) => choice.id === bookId);
             if (!bookChoice) {
@@ -318,27 +319,6 @@ const ManageCharacterModal = ({
                 changed = true;
             } else if (planChoiceIndex >= 0 && (next[planChoiceIndex].count !== plansKnown || JSON.stringify((next[planChoiceIndex].options || []).length) !== JSON.stringify(Array.from(new Set(planOptions)).length))) {
                 next[planChoiceIndex] = { ...next[planChoiceIndex], count: plansKnown, options: Array.from(new Set(planOptions)) };
-                changed = true;
-            }
-            const known = replicatePlans.length > 0 ? replicatePlans : planOptions;
-            const itemChoiceIndex = next.findIndex((choice: any) => choice.id === 'replicated-items');
-            if (itemsKnown > 0 && itemChoiceIndex === -1) {
-                next.push({ id: 'replicated-items', level: 2, source: 'Artificer', type: 'feature_choice', label: 'Replicated Items (Made)', value: replicatedItems, options: known, count: itemsKnown, optional: true, revertData: { classIndex: 'artificer', isReplicatedItems: true } });
-                changed = true;
-            } else if (itemChoiceIndex >= 0 && (next[itemChoiceIndex].count !== itemsKnown || JSON.stringify(next[itemChoiceIndex].options || []) !== JSON.stringify(known))) {
-                next[itemChoiceIndex] = { ...next[itemChoiceIndex], count: itemsKnown, options: known };
-                changed = true;
-            }
-            if (level >= 11 && !next.some((choice: any) => choice.id === 'spell-storing-item')) {
-                const artSpells = allSpellCatalog.filter((spell: any) => {
-                    const casting = String(spell.casting_time || '').toLowerCase().trim();
-                    const consumed = Boolean(spell.material?.consumed || spell.materials?.consumed || /consumed/i.test(String(spell.material || '')));
-                    return Number(spell.level) >= 1 && Number(spell.level) <= 3
-                        && casting === '1 action'
-                        && !consumed
-                        && (spell.classes || []).some((entry: any) => /artificer/i.test(String(entry.name || entry.index || '')));
-                });
-                next.push({ id: 'spell-storing-item', level: 11, source: 'Artificer', type: 'spell', label: 'Spell-Storing Item', value: spellStoringItem || null, options: artSpells, count: 1, optional: true, revertData: { classIndex: 'artificer', isSpellStoringItem: true } });
                 changed = true;
             }
             return changed ? next : prev;
@@ -1276,7 +1256,7 @@ const ManageCharacterModal = ({
                     name: armoryName, sourcePlan: name, quantity: 1, weight: isWeaponPlan ? 3 : 0, equipped: false, attuned: false,
                     is_magic: true,
                     requires_attunement: plan?.attunement === true || plan?.attunement === 'varies',
-                    rarity: plan?.rarity || (/goggles of night|bag of holding|rope of climbing|wand of magic detection|wand of secrets|alchemy jug|cap of water breathing|manifold tool/i.test(name) ? 'Common' : undefined),
+                    rarity: plan?.rarity || (/bag of holding|rope of climbing|wand of magic detection|wand of secrets|alchemy jug|cap of water breathing|manifold tool/i.test(name) ? 'Common' : undefined),
                     equipment_category: isWeaponPlan ? { index: 'weapon', name: 'Weapon' } : undefined,
                     weapon_category: isWeaponPlan ? 'martial' : undefined,
                     range: isWeaponPlan ? 'Melee' : undefined,
@@ -1558,10 +1538,6 @@ const ManageCharacterModal = ({
             const selected = typeof choice.value === 'string' ? choice.value : '';
             const spell = allSpellCatalog.find((entry: any) => entry.index === selected || entry.name.toLowerCase() === String(selected).toLowerCase());
             if (!spell) return;
-            const previousStored = typeof choice.revertData?.previousSpell === 'string' ? choice.revertData.previousSpell : (spellStoringItem || '');
-            if (previousStored && previousStored.toLowerCase() !== spell.name.toLowerCase()) {
-                setLocalSpells(prev => prev.filter((known: any) => String(known.name).toLowerCase() !== previousStored.toLowerCase()));
-            }
             setSpellStoringItem(spell.name);
             const uses = Math.max(1, 2 * calculateModifier(abilities.int));
             setLocalFeatures(prev => {
@@ -3945,6 +3921,39 @@ const ManageCharacterModal = ({
                                                                     </div>
                                                                 ) : (
                                                                     (() => {
+                                                                        if (choice.revertData?.isReplicatePlans) {
+                                                                            const selected = Array.isArray(choice.value) ? choice.value : [];
+                                                                            const artificer = (localClasses || []).find((cls: any) => cls.definition?.index === 'artificer');
+                                                                            const planGroups = Object.entries((artificer?.definition as any)?.options?.replicate_plans || {})
+                                                                                .map(([level, plans]: any) => ({ level: Number(level), plans: (plans || []).filter((plan: any) => !planSearch || String(plan.name || plan).toLowerCase().includes(planSearch.toLowerCase())) }))
+                                                                                .filter(group => group.level <= Number(artificer?.level || 1) && group.plans.length > 0);
+                                                                            return (
+                                                                                <div className="space-y-4">
+                                                                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                                                                        <p className="text-[10px] text-gray-500">Choose plans known at your Artificer level.</p>
+                                                                                        <span className={`text-[10px] font-black uppercase tracking-widest ${selected.length >= (choice.count || 0) ? 'text-dnd-gold' : 'text-gray-500'}`}>{selected.length} / {choice.count}</span>
+                                                                                    </div>
+                                                                                    <input value={planSearch} onChange={e => setPlanSearch(e.target.value)} placeholder="Search plans..." className="w-full bg-black/40 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-dnd-gold/50" />
+                                                                                    {planGroups.map(group => (
+                                                                                        <div key={group.level} className="space-y-2">
+                                                                                            <div className="text-[9px] font-black uppercase tracking-widest text-gray-500 border-b border-gray-800 pb-1">Level {group.level} Plans</div>
+                                                                                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+                                                                                                {group.plans.map((plan: any) => {
+                                                                                                    const name = typeof plan === 'string' ? plan : plan.name;
+                                                                                                    const picked = selected.includes(name);
+                                                                                                    return (
+                                                                                                        <button key={name} onClick={() => handleChoiceChange(choice.id, name)} className={`px-2 py-2 rounded-lg border text-left transition-all ${picked ? 'bg-dnd-gold/20 border-dnd-gold text-white' : 'bg-black/40 border-gray-800 text-gray-400 hover:border-gray-600'}`}>
+                                                                                                            <div className="text-[10px] font-bold">{name}</div>
+                                                                                                            <div className="text-[8px] uppercase text-gray-500">{plan.rarity || 'Uncommon'}{plan.attunement ? ' · Attunement' : ''}</div>
+                                                                                                        </button>
+                                                                                                    );
+                                                                                                })}
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    ))}
+                                                                                </div>
+                                                                            );
+                                                                        }
                                                                         if (choice.revertData?.isWizardSpellbook) {
                                                                             const selected = Array.isArray(choice.value) ? choice.value : [];
                                                                             const wizard = (localClasses || []).find((cls: any) => cls.definition?.index === 'wizard');

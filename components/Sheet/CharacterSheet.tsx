@@ -246,6 +246,7 @@ interface CharacterSheetProps {
     character: CharacterState;
     currentUser?: any;
     onOpenVault: () => void;
+    onCharacterChange?: (character: CharacterState) => void;
 }
 
 const splitResourceLabel = (name: string): { title: string; subtitle: string } => {
@@ -275,7 +276,7 @@ const splitResourceLabel = (name: string): { title: string; subtitle: string } =
 
 const getEntityId = (entity: any) => entity.id || entity.index;
 
-export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initialCharacter, currentUser, onOpenVault }) => {
+export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initialCharacter, currentUser, onOpenVault, onCharacterChange }) => {
     const [character, setCharacter] = useState<CharacterState>(() => {
         const isImported = !!initialCharacter.spellSlots && Object.keys(initialCharacter.spellSlots).length > 0 && initialCharacter.classFeatures?.length > 0;
         if (isImported) {
@@ -342,6 +343,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             show3DDice: initialCharacter.show3DDice !== false
         };
     });
+
+    useEffect(() => {
+        onCharacterChange?.(character);
+    }, [character, onCharacterChange]);
 
     const [saving, setSaving] = useState(false);
     const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -2000,7 +2005,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         const widgetKey = key || type;
         switch (type) {
             case 'spellStoringItem': {
-                if (!character.spellStoringItem?.spell) return null;
+                const activeStoredSpell = character.spellStoringItem?.spell || '';
                 const key = Object.keys(character.featureUsage || {}).find(name => /^Spell-Storing Item/i.test(name));
                 const usage = key ? character.featureUsage[key] : null;
                 return (
@@ -2009,13 +2014,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Spell-Storing Item</h3>
                             <span className="text-[9px] text-gray-500 font-bold uppercase">Artificer</span>
                         </div>
-                        <div className="text-sm font-bold text-white">{character.spellStoringItem.spell}</div>
-                        <div className="text-[10px] text-gray-500 mb-2">Uses: {usage ? `${usage.current} / ${usage.max}` : '—'}</div>
+                        <div className="text-sm font-bold text-white">{activeStoredSpell || 'No stored spell'}</div>
+                        <div className="text-[10px] text-gray-500 mb-2">Uses: {activeStoredSpell && usage ? `${usage.current} / ${usage.max}` : '—'}</div>
                         <select value="" onChange={e => {
                             const newSpell = e.target.value;
                             if (!newSpell) return;
-                            const oldSpell = character.spellStoringItem?.spell || '';
-                            const max = Math.max(1, 2 * intMod);
+                                                        const max = Math.max(1, 2 * intMod);
                             setCharacter(prev => {
                                 const choices = (prev.choices || []).some((choice: any) => choice.revertData?.isSpellStoringItem)
                                     ? (prev.choices || []).map((choice: any) => choice.revertData?.isSpellStoringItem ? { ...choice, value: newSpell } : choice)
@@ -2023,7 +2027,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 const featureUsage = { ...(prev.featureUsage || {}) };
                                 Object.keys(featureUsage).forEach(key => { if (/^Spell-Storing Item/i.test(key)) delete featureUsage[key]; });
                                 featureUsage[`Spell-Storing Item (${newSpell})`] = { max, current: max, reset: 'long', source: 'Artificer' };
-                                return { ...prev, spellStoringItem: { spell: newSpell }, choices, featureUsage, spells: (prev.spells || []).filter((spell: any) => spell.name.toLowerCase() !== oldSpell.toLowerCase()) };
+                                return { ...prev, spellStoringItem: { spell: newSpell }, choices, featureUsage };
                             });
                         }} className="w-full bg-black/40 border border-gray-700 rounded px-2 py-1 text-[9px] text-gray-300 mb-2">
                             <option value="">Change stored spell…</option>
@@ -2040,6 +2044,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const elixirs = (character.experimentalElixirs && character.experimentalElixirs.length > 0)
                     ? character.experimentalElixirs
                     : (character.experimentalElixir ? [character.experimentalElixir] : []);
+                const elixirUsageKey = Object.keys(character.featureUsage || {}).find(key => /experimental elixir/i.test(key));
+                const elixirFree = elixirUsageKey ? character.featureUsage[elixirUsageKey] : null;
+                const activeElixirFeature = (character.classFeatures || []).find((feature: any) => /^Experimental Elixir:/i.test(feature.name || ''));
                 const effectFor = (result: string) => result === 'Healing' ? 'Restore 2d4 + INT HP.' : result === 'Swiftness' ? '+10 ft. walking speed for 1 hour.' : result === 'Resilience' ? '+1 AC for 1 hour.' : result === 'Boldness' ? 'Add 1d4 to attack rolls and saving throws for 1 hour.' : result === 'Flight' ? 'Fly speed 10 ft. for 1 hour.' : result === 'Transformation' ? 'Alter your appearance for 1 hour.' : '';
                 const applyElixir = (result: string) => setCharacter(prev => {
                     const featureName = `Experimental Elixir: ${result}`;
@@ -2069,12 +2076,22 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             <span className="text-[9px] text-gray-500 font-bold uppercase">Alchemist</span>
                         </div>
                         <div className="flex gap-1 mb-2">
-                            <button onClick={() => setCharacter(prev => ({ ...prev, experimentalElixirs: [...elixirs, table[Math.floor(Math.random() * table.length)]] }))} className="flex-1 py-1.5 bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold text-[9px] font-black uppercase rounded hover:bg-dnd-gold hover:text-black transition-colors">Roll d6</button>
+                            <button disabled={!elixirFree || Number(elixirFree.current) <= 0} onClick={() => setCharacter(prev => {
+                                const featureUsage = { ...(prev.featureUsage || {}) };
+                                if (elixirUsageKey && featureUsage[elixirUsageKey]) featureUsage[elixirUsageKey] = { ...featureUsage[elixirUsageKey], current: Math.max(0, Number(featureUsage[elixirUsageKey].current) - 1) };
+                                return { ...prev, featureUsage, experimentalElixirs: [...elixirs, table[Math.floor(Math.random() * table.length)]] };
+                            })} className="flex-1 py-1.5 bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold text-[9px] font-black uppercase rounded hover:bg-dnd-gold hover:text-black transition-colors disabled:opacity-40">Roll d6 ({elixirFree ? `${elixirFree.current}/${elixirFree.max}` : 0})</button>
                             <select value={elixirChoice} onChange={e => setElixirChoice(e.target.value)} className="bg-black/40 border border-gray-700 rounded px-1 text-[8px] text-gray-300">
                                 {table.map(effect => <option key={effect} value={effect}>{effect}</option>)}
                             </select>
                             <button disabled={!character.spellSlots?.[1]?.current} onClick={() => setCharacter(prev => ({ ...prev, spellSlots: { ...prev.spellSlots, 1: { ...prev.spellSlots[1], current: Math.max(0, prev.spellSlots[1].current - 1) } }, experimentalElixirs: [...elixirs, elixirChoice] }))} className="px-2 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 text-[8px] font-black uppercase rounded disabled:opacity-30">Make (slot)</button>
                         </div>
+                        {activeElixirFeature && (
+                            <div className="flex items-center justify-between bg-blue-900/20 border border-blue-900/50 rounded px-2 py-1 mb-2">
+                                <span className="text-[9px] text-blue-300 font-bold">Active: {String(activeElixirFeature.name).replace(/^Experimental Elixir:\s*/i, '')}</span>
+                                <button onClick={() => setCharacter(prev => ({ ...prev, classFeatures: (prev.classFeatures || []).filter((feature: any) => !/^Experimental Elixir:/i.test(feature.name || '')) }))} className="text-[8px] text-blue-400 uppercase font-bold">End</button>
+                            </div>
+                        )}
                         <div className="space-y-1">
                             {elixirs.length === 0 && <div className="text-[9px] text-gray-600 italic">No elixirs made.</div>}
                             {elixirs.map((result, index) => (
@@ -2112,8 +2129,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         id: `replicated-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
                         name: armoryName, sourcePlan: name, quantity: 1, weight: isWeapon ? 3 : 0, equipped: false, attuned: false,
                         is_magic: true,
-                        requires_attunement: /wand of the war mage|cloak of elvenkind|boots of the winding path|eyes of charming|mind sharpener|dazzling weapon|boots of elvenkind/i.test(name),
-                        rarity: /goggles of night|bag of holding|rope of climbing|wand of magic detection|wand of secrets|alchemy jug|cap of water breathing|manifold tool/i.test(name) ? 'Common' : 'Uncommon',
+                        requires_attunement: /wand of the war mage|boots of the winding path|eyes of charming|mind sharpener|dazzling weapon/i.test(name),
+                        rarity: /bag of holding|rope of climbing|wand of magic detection|wand of secrets|alchemy jug|cap of water breathing|manifold tool/i.test(name) ? 'Common' : 'Uncommon',
                         equipment_category: baseDetail?.equipment_category || (isWeapon ? { index: 'weapon', name: 'Weapon' } : undefined),
                         weapon_category: baseDetail?.weapon_category || (isWeapon ? 'martial' : undefined),
                         range: baseDetail?.range || (isWeapon ? 'Melee' : undefined),
@@ -2155,7 +2172,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         <div className="space-y-2">
                             {made.map((name: string) => {
                                 const item: any = (character.inventory || []).find((entry: any) => String(entry.sourcePlan || entry.name).toLowerCase() === name.toLowerCase());
-                                const rarity = String(item?.rarity || (/goggles of night|bag of holding|rope of climbing|wand of magic detection|wand of secrets|alchemy jug|cap of water breathing|manifold tool/i.test(name) ? 'Common' : 'Uncommon'));
+                                const rarity = String(item?.rarity || (/bag of holding|rope of climbing|wand of magic detection|wand of secrets|alchemy jug|cap of water breathing|manifold tool/i.test(name) ? 'Common' : 'Uncommon'));
                                 const common = /^common\b/i.test(rarity);
                                 const charges = Number(item?.charges || 0);
                                 const maxCharges = Number(item?.maxCharges || 0);
@@ -2167,8 +2184,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                                 <div className="text-[10px] font-bold text-white truncate">{item?.name || name}{item?.requires_attunement ? ' (A)' : ''}</div>
                                                 <div className="text-[8px] text-gray-500">{maxCharges > 0 ? `${charges} / ${maxCharges} charges` : 'No charges'}</div>
                                             </div>
-                                            <select value="" onChange={e => { const target = e.target.value; if (!target) return; if (/^(weapon|armor|shield) \+[123]$/i.test(target)) { setPendingReplicate({ plan: target, oldName: name }); setPendingBase(''); } else { const next = made.map(entry => entry === name ? target : entry); setMade(next, name, target, Boolean(transmute?.current)); } }} className="w-24 bg-black/40 border border-gray-700 rounded px-1 py-0.5 text-[8px] text-gray-300">
+                                            <select value="" onChange={e => { const target = e.target.value; if (!target) return; if (/^(weapon|armor|shield) \+[123]$/i.test(target)) { setPendingReplicate({ plan: target, oldName: name }); setPendingBase(''); } else { const next = made.map(entry => entry === name ? target : entry); setMade(next, name, target, false); } }} className="w-24 bg-black/40 border border-gray-700 rounded px-1 py-0.5 text-[8px] text-gray-300">
                                                 <option value="">Replace…</option>
+                                                {plans.filter((plan: string) => plan !== name && !made.includes(plan)).map((plan: string) => <option key={plan} value={plan}>{plan}</option>)}
+                                            </select>
+                                            <select value="" disabled={!transmute || Number(transmute.current) <= 0} onChange={e => { const target = e.target.value; if (!target) return; const next = made.map(entry => entry === name ? target : entry); setMade(next, name, target, true); }} className="w-24 bg-black/40 border border-gray-700 rounded px-1 py-0.5 text-[8px] text-dnd-gold disabled:opacity-30">
+                                                <option value="">Transmute…</option>
                                                 {plans.filter((plan: string) => plan !== name && !made.includes(plan)).map((plan: string) => <option key={plan} value={plan}>{plan}</option>)}
                                             </select>
                                         </div>

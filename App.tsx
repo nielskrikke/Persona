@@ -846,7 +846,8 @@ const App: React.FC = () => {
                     character={character}
                     currentUser={currentUser}
                     onOpenVault={() => setShowDashboard(true)}
-                    key={character.name + '-' + (character.id || Date.now())}
+                    onCharacterChange={setCharacter}
+                    key={character.id || character.name}
                 />
             </ErrorBoundary>
         )}

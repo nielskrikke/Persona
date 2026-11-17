@@ -57,13 +57,13 @@ const LayoutManagerModal = ({
             setRightCol(dedupe(layout.right));
             setMobileLayout(dedupe(layout.mobile));
             
-            refreshUnused(dedupe(layout.left), dedupe(layout.right), dedupe(layout.mobile));
+            refreshUnused(dedupe(layout.left), dedupe(layout.right));
             setSearch('');
         }
     }, [isOpen, layout]);
 
-    const refreshUnused = (left: string[], right: string[], mobile: string[] = []) => {
-        const used = new Set([...left, ...right, ...mobile]);
+    const refreshUnused = (left: string[], right: string[]) => {
+        const used = new Set([...left, ...right]);
         setUnused(visibleWidgets.filter(w => !used.has(w)));
     };
 

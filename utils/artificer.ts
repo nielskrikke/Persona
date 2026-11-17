@@ -12,9 +12,7 @@ export const artificerWidgetIds = (character: CharacterState): string[] => {
     if (Number(artificer.level || 0) >= 6) desired.push('magicItemTinker');
     if (/cartographer/i.test(subclass)) desired.push('mapHolders');
     if (/alchemist/i.test(subclass)) desired.push('experimentalElixir');
-    const storing = character.spellStoringItem?.spell
-        || (character.choices || []).find((choice: any) => choice.revertData?.isSpellStoringItem && choice.value)?.value;
-    if (storing) desired.push('spellStoringItem');
+    if (Number(artificer.level || 0) >= 11) desired.push('spellStoringItem');
     return desired;
 };
 
