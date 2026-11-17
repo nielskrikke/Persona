@@ -9,7 +9,7 @@ export const artificerWidgetIds = (character: CharacterState): string[] => {
     const desired: string[] = [];
     if (/battle smith/i.test(subclass)) desired.push('steelDefender');
     if (/artillerist/i.test(subclass)) desired.push('eldritchCannon');
-    if (Number(artificer.level || 0) >= 6) desired.push('magicItemTinker');
+    if (Number(artificer.level || 0) >= 2) desired.push('magicItemTinker');
     if (/cartographer/i.test(subclass)) desired.push('mapHolders');
     if (/alchemist/i.test(subclass)) desired.push('experimentalElixir');
     if (Number(artificer.level || 0) >= 11) desired.push('spellStoringItem');

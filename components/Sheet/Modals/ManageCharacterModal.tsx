@@ -761,6 +761,31 @@ const ManageCharacterModal = ({
 
         // 2. Fetch features for this level to identify choices
         const levelFeatures = await fetchLevelFeatures(classIndex, nextLevel);
+        const existingFeatureKeys = new Set((localClassFeatures || []).map((feature: any) => `${feature.index || feature.name}`.toLowerCase()));
+        const addMissingFeature = (feature: any, source: string) => {
+            const key = `${feature.index || feature.name}`.toLowerCase();
+            if (existingFeatureKeys.has(key)) return;
+            if (!levelFeatures.some((entry: any) => `${entry.index || entry.name}`.toLowerCase() === key)) levelFeatures.push({ ...feature, source, level: feature.level });
+            existingFeatureKeys.add(key);
+        };
+        (classDetail.feature_details || []).filter((feature: any) => Number(feature.level || 0) <= nextLevel).forEach((feature: any) => addMissingFeature(feature, classDetail.name));
+        const activeSubclass: any = existingClass?.subclass;
+        if (activeSubclass) {
+            (activeSubclass.feature_details || []).filter((feature: any) => Number(feature.level || 0) <= nextLevel).forEach((feature: any) => addMissingFeature(feature, activeSubclass.name));
+            const granted = (activeSubclass.feature_details || [])
+                .flatMap((feature: any) => (feature.effects || []).filter((effect: any) => effect.type === 'spell_access' && Number(effect.min_level || feature.level || 0) <= nextLevel));
+            if (granted.length > 0) {
+                setLocalSpells(prev => {
+                    const next = [...prev];
+                    granted.forEach((effect: any) => {
+                        const spell = allSpellCatalog.find((entry: any) => entry.index === effect.spell || entry.name.toLowerCase() === String(effect.spell).toLowerCase());
+                        if (!spell || next.some((known: any) => known.index === spell.index)) return;
+                        next.push({ ...spell, sourceClassIndex: 'granted', isPrepared: true, isGranted: true, grantedBy: activeSubclass.name, freeCasts: effect.free_casts, freeCastReset: effect.free_cast_reset } as any);
+                    });
+                    return next;
+                });
+            }
+        }
         
         // 3. Check for Subclass
         const requiredSubclassLevel = getSubclassLevel(classDetail);
@@ -910,6 +935,10 @@ const ManageCharacterModal = ({
         );
         setLocalClasses(updatedClasses);
 
+        if (!/armorer/i.test(newSubclass.name)) {
+            setArmorModel('');
+            setLocalChoices(prev => prev.filter((choice: any) => !choice.revertData?.isArmorModel));
+        }
         const previousReplacement = localChoices.find((choice: any) => choice.revertData?.isToolsOfTradeReplacement);
         if (typeof previousReplacement?.value === 'string' && previousReplacement.value) {
             setToolProficiencies(prev => prev.filter((tool: string) => tool !== previousReplacement.value));
@@ -1174,7 +1203,7 @@ const ManageCharacterModal = ({
         }),
         spells: overrides.spells || localSpells,
         invocationCantrips,
-        armorModel: (() => { const choice = localChoices.find((entry: any) => entry.revertData?.isArmorModel); return typeof choice?.value === 'string' ? choice.value : armorModel; })(),
+        armorModel: (() => { const armorer = (localClasses || []).some((cls: any) => /armorer/i.test(cls.subclass?.name || '')); if (!armorer) return ''; const choice = localChoices.find((entry: any) => entry.revertData?.isArmorModel); return typeof choice?.value === 'string' ? choice.value : armorModel; })(),
         replicatePlans: chosenPlans,
         replicatedItems: chosenItems,
         spellStoringItem: (() => {
@@ -1294,6 +1323,7 @@ const ManageCharacterModal = ({
                         weapon_range: 'Melee',
                         damage: item.damage || { damage_dice: '1d8', damage_type: { name: 'Bludgeoning' } },
                         properties: (item.properties || ['Versatile']).filter((prop: any) => String(typeof prop === 'string' ? prop : prop?.name || prop).toLowerCase() !== 'thrown'),
+                        versatileDamage: item.versatileDamage || (item.damage?.damage_dice === '1d8' ? { damage_dice: '1d10', damage_type: item.damage?.damage_type } : undefined),
                         modifiers: [{ type: 'bonus', target: 'attack', value: plus }, { type: 'bonus', target: 'damage', value: plus }],
                         desc: [`+${plus} bonus to attack and damage rolls.`],
                         description: `+${plus} bonus to attack and damage rolls.`,
@@ -1482,6 +1512,11 @@ const ManageCharacterModal = ({
         const choice = localChoices.find(c => c.id === choiceId);
         if (!choice) return;
 
+        if (choice.revertData?.isArmorModel) {
+            setArmorModel('');
+            setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: null, revertData: { ...c.revertData, pendingConfirm: true } } : c));
+            return;
+        }
         if (choice.revertData?.isReplicatePlans) {
             setReplicatePlans([]);
             setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: null, revertData: { ...c.revertData, pendingConfirm: true } } : c));

@@ -1755,19 +1755,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     };
 
     const dismissEldritchCannon = () => {
-        setCharacter(prev => {
-            const withoutCannon = (entries: string[]) => (entries || []).filter(id => id !== 'eldritchCannon');
-            return {
-                ...prev,
-                activeEldritchCannon: null,
-                layout: {
-                    ...prev.layout,
-                    left: withoutCannon(prev.layout.left),
-                    right: withoutCannon(prev.layout.right),
-                    mobile: withoutCannon(prev.layout.mobile),
-                },
-            };
-        });
+        setCharacter(prev => ({ ...prev, activeEldritchCannon: null }));
     };
 
     useEffect(() => {
@@ -1848,6 +1836,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     return { ...item, charges: Math.min(Number(item.maxCharges), Number(item.charges || 0) + regain) };
                 }),
                 activeSteelDefender: prev.activeSteelDefender ? { ...prev.activeSteelDefender, hp: prev.activeSteelDefender.maxHp } : prev.activeSteelDefender,
+                experimentalElixirs: [],
+                experimentalElixir: undefined,
+                classFeatures: (prev.classFeatures || []).filter((feature: any) => !/^Experimental Elixir:/i.test(feature.name || '')),
                 exhaustion: Math.max(0, Number(prev.exhaustion || 0) - 1),
                 eldritchCannonFreebieUsed: false,
                 inspiration: hasResourceful ? true : prev.inspiration
@@ -2079,10 +2070,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         ...prev,
                         experimentalElixirs: remaining,
                         currentHp: heal > 0 ? Math.min(Number(prev.maxHp || 0), Number(prev.currentHp || 0) + Math.max(0, heal)) : prev.currentHp,
-                        classFeatures: [...(prev.classFeatures || []).filter((feature: any) => !/^Experimental Elixir:/i.test(feature.name || '')), {
-                            index: `experimental-elixir-${result.toLowerCase()}`, name: featureName, level: 3, source: 'Alchemist', type: 'Class',
-                            desc: [result === 'Healing' ? `Restored ${heal} HP.` : `${result} elixir; lasts 1 hour.`], effects,
-                        } as any],
+                        classFeatures: result === 'Healing'
+                            ? (prev.classFeatures || []).filter((feature: any) => !/^Experimental Elixir:/i.test(feature.name || ''))
+                            : [...(prev.classFeatures || []).filter((feature: any) => !/^Experimental Elixir:/i.test(feature.name || '')), {
+                                index: `experimental-elixir-${result.toLowerCase()}`, name: featureName, level: 3, source: 'Alchemist', type: 'Class',
+                                desc: [`${result} elixir; lasts 1 hour.`], effects,
+                            } as any],
                     };
                 });
                 return (
@@ -2100,7 +2093,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             <select value={elixirChoice} onChange={e => setElixirChoice(e.target.value)} className="bg-black/40 border border-gray-700 rounded px-1 text-[8px] text-gray-300">
                                 {table.map(effect => <option key={effect} value={effect}>{effect}</option>)}
                             </select>
-                            <button disabled={!character.spellSlots?.[1]?.current} onClick={() => setCharacter(prev => ({ ...prev, spellSlots: { ...prev.spellSlots, 1: { ...prev.spellSlots[1], current: Math.max(0, prev.spellSlots[1].current - 1) } }, experimentalElixirs: [...elixirs, elixirChoice] }))} className="px-2 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 text-[8px] font-black uppercase rounded disabled:opacity-30">Make (slot)</button>
+                            <button disabled={!Object.values(character.spellSlots || {}).some((slot: any) => Number(slot.current) > 0)} onClick={() => setCharacter(prev => {
+                                const level = Object.keys(prev.spellSlots || {}).find(key => Number(prev.spellSlots[key]?.current) > 0);
+                                if (!level) return prev;
+                                return { ...prev, spellSlots: { ...prev.spellSlots, [level]: { ...prev.spellSlots[level], current: Math.max(0, prev.spellSlots[level].current - 1) } }, experimentalElixirs: [...elixirs, elixirChoice] };
+                            })} className="px-2 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 text-[8px] font-black uppercase rounded disabled:opacity-30">Make (slot)</button>
                         </div>
                         {activeElixirFeature && (
                             <div className="flex items-center justify-between bg-blue-900/20 border border-blue-900/50 rounded px-2 py-1 mb-2">
@@ -2124,7 +2121,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 );
             }
             case 'magicItemTinker': {
-                if (artificerLevel < 6) return null;
+                if (artificerLevel < 2) return null;
+                const canTinker = artificerLevel >= 6;
                 const drainKey = Object.keys(character.featureUsage || {}).find(key => /drain magic item/i.test(key));
                 const drain = drainKey ? character.featureUsage[drainKey] : null;
                 const transmuteKey = Object.keys(character.featureUsage || {}).find(key => /transmute magic item/i.test(key));
@@ -2134,6 +2132,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const artificerClass = (character.classes || []).find((cls: any) => cls.definition?.index === 'artificer');
                 const levelRow = ((artificerClass?.definition as any)?.level_table || []).find((row: any) => row.level === artificerLevel);
                 const maxMade = Number(levelRow?.class_specific?.magic_items || Math.max(made.length, 1));
+                const needsBasePlan = (plan: string) => /^(weapon|armor|shield) \+[123]$/i.test(plan) || /common magic item|uncommon wondrous|rare wondrous/i.test(plan);
                 const buildItem = (name: string, baseName = '') => {
                     const baseDetail: any = baseName ? allEquipment.find((entry: any) => entry.name === baseName || entry.index === baseName) : null;
                     const armoryName = baseDetail?.name ? `${baseDetail.name}, +${name.match(/\+([123])/)?.[1] || 1}` : name.replace(/^(Weapon|Shield|Armor)\s+\+([123])$/i, '$1, +$2');
@@ -2141,6 +2140,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     const isWeapon = /weapon \+[123]/i.test(name);
                     const isShield = /shield \+[123]/i.test(name);
                     const isArmor = /armor \+[123]/i.test(name);
+                    const isOpen = /common magic item|uncommon wondrous|rare wondrous/i.test(name);
+                    if (isOpen && baseDetail) {
+                        return { ...baseDetail, id: `replicated-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, sourcePlan: name, quantity: 1, equipped: false, attuned: false, is_magic: true, name: baseDetail.name, rarity: baseDetail.rarity || (/common/i.test(name) ? 'Common' : /rare/i.test(name) ? 'Rare' : 'Uncommon'), desc: baseDetail.desc || ['Replicated magic item.'], description: baseDetail.description || (baseDetail.desc || []).join('\n') } as any;
+                    }
                     return {
                         id: `replicated-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
                         name: armoryName, sourcePlan: name, quantity: 1, weight: isWeapon ? Math.max(5, Number(baseDetail?.weight || 0)) : isShield ? 6 : isArmor ? (/studded leather/i.test(baseDetail?.name || armoryName) ? 13 : Math.max(12, Number(baseDetail?.weight || 0))) : Number(baseDetail?.weight || 0), equipped: false, attuned: false,
@@ -2153,6 +2156,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         range: undefined,
                         damage: baseDetail?.damage || (isWeapon ? { damage_dice: '1d8', damage_type: { name: 'Bludgeoning' } } : undefined),
                         properties: baseDetail?.properties || (isWeapon ? ['Versatile'] : undefined),
+                        versatileDamage: baseDetail?.versatileDamage,
                         armor_category: isShield ? 'shield' : (baseDetail?.armor_category || (isArmor ? (/studded leather/i.test(baseDetail?.name || armoryName) ? 'light' : 'medium') : undefined)),
                         armor_class: isShield ? { base: 2, dex_bonus: false } : (baseDetail?.armor_class || (isArmor ? (/studded leather/i.test(baseDetail?.name || armoryName) ? { base: 12, dex_bonus: true, max_bonus: null } : { base: 14, dex_bonus: true, max_bonus: 2 }) : undefined)),
                         desc: [isWeapon ? `+${plus} bonus to attack and damage rolls.` : isShield || isArmor ? `+${plus} bonus to Armor Class.` : 'Replicated magic item.'],
@@ -2182,12 +2186,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Magic Item Tinker</h3>
                             <span className="text-[9px] text-gray-500 font-bold uppercase">Made {made.length} / {maxMade}</span>
                         </div>
-                        <div className="flex items-center gap-2">
+                        {canTinker && <div className="flex items-center gap-2">
                             <span className="text-[9px] text-gray-500 uppercase font-bold">Charge slot</span>
-                            {[1,2,3,4].map(level => (
+                            {Object.entries(character.spellSlots || {}).filter(([, slot]: any) => Number(slot.max) > 0).map(([level]) => Number(level)).map(level => (
                                 <button key={level} onClick={() => setTinkerSlot(level)} className={`w-6 h-6 rounded text-[9px] font-black ${tinkerSlot === level ? 'bg-dnd-gold text-black' : 'bg-gray-800 text-gray-400'}`}>{level}</button>
                             ))}
-                        </div>
+                        </div>}
                         <div className="space-y-2">
                             {made.map((name: string) => {
                                 const item: any = (character.inventory || []).find((entry: any) => String(entry.sourcePlan || entry.name).toLowerCase() === name.toLowerCase());
@@ -2203,7 +2207,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                             <div className="text-[8px] text-gray-500">{maxCharges > 0 ? `${charges} / ${maxCharges} charges` : 'No charges'}</div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-1">
-                                            <select value="" onChange={e => { const target = e.target.value; if (!target) return; if (/^(weapon|armor|shield) \+[123]$/i.test(target)) { setPendingReplicate({ plan: target, oldName: name }); setPendingBase(''); } else { const next = made.map(entry => entry === name ? target : entry); setMade(next, name, target, false); } }} className="w-full bg-black/40 border border-gray-700 rounded px-1 py-1 text-[8px] text-gray-300">
+                                            <select value="" onChange={e => { const target = e.target.value; if (!target) return; if (needsBasePlan(target)) { setPendingReplicate({ plan: target, oldName: name }); setPendingBase(''); } else { const next = made.map(entry => entry === name ? target : entry); setMade(next, name, target, false); } }} className="w-full bg-black/40 border border-gray-700 rounded px-1 py-1 text-[8px] text-gray-300">
                                                 <option value="">Replace…</option>
                                                 {plans.filter((plan: string) => plan !== name && !made.includes(plan)).map((plan: string) => <option key={plan} value={plan}>{plan}</option>)}
                                             </select>
@@ -2212,19 +2216,19 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                                 {plans.filter((plan: string) => plan !== name && !made.includes(plan)).map((plan: string) => <option key={plan} value={plan}>{plan}</option>)}
                                             </select>
                                         </div>
-                                        {maxCharges > 0 && (
+                                        {canTinker && maxCharges > 0 && (
                                             <button disabled={charges <= 0} onClick={() => { setCharacter(prev => ({ ...prev, inventory: (prev.inventory || []).map((entry: any) => (entry.sourcePlan || entry.name) === name ? { ...entry, charges: Math.max(0, Number(entry.charges || 0) - 1) } : entry) })); if (/wand of magic missiles/i.test(item?.name || name)) roll('3d4+3', 'Wand of Magic Missiles'); else setSelectedDetail({ name: item?.name || name, desc: ['Spent one charge.'] } as any); }} className="w-full py-1 bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold rounded text-[8px] font-black uppercase disabled:opacity-30">Use Charge</button>
                                         )}
-                                        <div className="grid grid-cols-3 gap-1">
+                                        {canTinker && <div className="grid grid-cols-3 gap-1">
                                             <button disabled={!canCharge} onClick={() => setCharacter(prev => ({ ...prev, spellSlots: { ...prev.spellSlots, [tinkerSlot]: { ...prev.spellSlots[tinkerSlot], current: Math.max(0, prev.spellSlots[tinkerSlot].current - 1) } }, inventory: (prev.inventory || []).map((entry: any) => (entry.sourcePlan || entry.name) === name ? { ...entry, charges: Math.min(maxCharges, charges + tinkerSlot) } : entry) }))} className="py-1 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[8px] font-black uppercase disabled:opacity-30">Charge</button>
                                             {common && <button disabled={!drain?.current} onClick={() => setCharacter(prev => ({ ...prev, featureUsage: drainKey ? { ...prev.featureUsage, [drainKey]: { ...prev.featureUsage[drainKey], current: Math.max(0, Number(prev.featureUsage[drainKey].current) - 1) } } : prev.featureUsage, spellSlots: { ...prev.spellSlots, 1: { ...prev.spellSlots[1], current: Math.min(prev.spellSlots[1].max, prev.spellSlots[1].current + 1) } }, replicatedItems: made.filter(entry => entry !== name), choices: (prev.choices || []).map((choice: any) => choice.revertData?.isReplicatedItems ? { ...choice, value: made.filter(entry => entry !== name) } : choice), inventory: (prev.inventory || []).filter((entry: any) => (entry.sourcePlan || entry.name) !== name) }))} className="py-1 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[8px] font-black uppercase disabled:opacity-30">Drain 1</button>}
                                             <button disabled={!drain?.current} onClick={() => setCharacter(prev => ({ ...prev, featureUsage: drainKey ? { ...prev.featureUsage, [drainKey]: { ...prev.featureUsage[drainKey], current: Math.max(0, Number(prev.featureUsage[drainKey].current) - 1) } } : prev.featureUsage, spellSlots: { ...prev.spellSlots, 2: { ...prev.spellSlots[2], current: Math.min(prev.spellSlots[2].max, prev.spellSlots[2].current + 1) } }, replicatedItems: made.filter(entry => entry !== name), choices: (prev.choices || []).map((choice: any) => choice.revertData?.isReplicatedItems ? { ...choice, value: made.filter(entry => entry !== name) } : choice), inventory: (prev.inventory || []).filter((entry: any) => (entry.sourcePlan || entry.name) !== name) }))} className={`py-1 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[8px] font-black uppercase disabled:opacity-30 ${common ? '' : 'col-span-2'}`}>Drain 2</button>
-                                        </div>
+                                        </div>}
                                     </div>
                                 );
                             })}
                             {made.length < maxMade && plans.length > 0 && (
-                                <select value="" onChange={e => { const target = e.target.value; if (!target) return; if (/^(weapon|armor|shield) \+[123]$/i.test(target)) { setPendingReplicate({ plan: target, oldName: null }); setPendingBase(''); } else { setMade([...made, target], null, target); } }} className="w-full bg-black/40 border border-dashed border-gray-700 rounded px-2 py-1.5 text-[9px] text-gray-400">
+                                <select value="" onChange={e => { const target = e.target.value; if (!target) return; if (needsBasePlan(target)) { setPendingReplicate({ plan: target, oldName: null }); setPendingBase(''); } else { setMade([...made, target], null, target); } }} className="w-full bg-black/40 border border-dashed border-gray-700 rounded px-2 py-1.5 text-[9px] text-gray-400">
                                     <option value="">Replicate an item…</option>
                                     {plans.filter((plan: string) => !made.includes(plan)).map((plan: string) => <option key={plan} value={plan}>{plan}</option>)}
                                 </select>
@@ -2235,7 +2239,14 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 <div className="text-[9px] font-bold text-dnd-gold uppercase">Choose base for {pendingReplicate.plan}</div>
                                 <select value={pendingBase} onChange={e => setPendingBase(e.target.value)} className="w-full bg-black/40 border border-gray-700 rounded px-2 py-1 text-[9px] text-white">
                                     <option value="">Select base item…</option>
-                                    {allEquipment.filter((entry: any) => !entry.is_magic && (pendingReplicate.plan.toLowerCase().startsWith('weapon') ? !!entry.weapon_category : pendingReplicate.plan.toLowerCase().startsWith('shield') ? String(entry.armor_category || '').toLowerCase().includes('shield') : !!entry.armor_category && !String(entry.armor_category || '').toLowerCase().includes('shield'))).map((entry: any) => <option key={entry.index} value={entry.name}>{entry.name}</option>)}
+                                    {allEquipment.filter((entry: any) => {
+                                        const plan = pendingReplicate.plan.toLowerCase();
+                                        if (/common magic item|uncommon wondrous|rare wondrous/.test(plan)) {
+                                            const wanted = /common/.test(plan) ? 'common' : /rare/.test(plan) ? 'rare' : 'uncommon';
+                                            return String(entry.rarity || '').toLowerCase() === wanted && !/potion|scroll|cursed/i.test(String(entry.name || ''));
+                                        }
+                                        return !entry.is_magic && (plan.startsWith('weapon') ? !!entry.weapon_category : plan.startsWith('shield') ? String(entry.armor_category || '').toLowerCase().includes('shield') : !!entry.armor_category && !String(entry.armor_category || '').toLowerCase().includes('shield'));
+                                    }).map((entry: any) => <option key={entry.index} value={entry.name}>{entry.name}</option>)}
                                 </select>
                                 <div className="flex gap-1">
                                     <button disabled={!pendingBase} onClick={() => { const next = pendingReplicate.oldName ? made.map(entry => entry === pendingReplicate.oldName ? pendingReplicate.plan : entry) : [...made, pendingReplicate.plan]; setMade(next, pendingReplicate.oldName, pendingReplicate.plan, false, pendingBase); setPendingReplicate(null); setPendingBase(''); }} className="flex-1 py-1 bg-dnd-gold text-black rounded text-[8px] font-black uppercase disabled:opacity-40">Make Item</button>
@@ -2243,7 +2254,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 </div>
                             </div>
                         )}
-                        <div className="text-[9px] text-gray-500">Drain {drain ? `${drain.current} / ${drain.max}` : '0'} · Transmute {transmute ? `${transmute.current} / ${transmute.max}` : '0'}</div>
+                        {canTinker && <div className="text-[9px] text-gray-500">Drain {drain ? `${drain.current} / ${drain.max}` : '0'} · Transmute {transmute ? `${transmute.current} / ${transmute.max}` : '0'}</div>}
                     </div>
                 );
             }
@@ -2435,7 +2446,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                             e.stopPropagation();
                                             if(cannon.type === 'Flamethrower') roll('3d8', 'Flamethrower Fire Damage');
                                             else if(cannon.type === 'Force Ballista') { roll(`1d20${spellAttackStr}`, 'Force Ballista Attack'); roll('3d8', 'Force Ballista Damage'); }
-                                            else roll('1d8' + formatModifier(spellMod), 'Protector Temp HP Pulse');
+                                            else { const amount = 1 + Math.floor(Math.random() * 8) + intMod; setCharacter(prev => ({ ...prev, tempHp: Math.max(Number(prev.tempHp || 0), amount) })); roll('1d8' + formatModifier(spellMod), 'Protector Temp HP Pulse'); }
                                         }}
                                         className="py-1.5 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[10px] font-bold uppercase hover:border-dnd-gold transition-colors"
                                      >
@@ -3566,7 +3577,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const modelAttack = armorModel === 'dreadnaught'
                 ? { name: 'Force Demolisher', range: '10 ft.', damage: `1d10 + ${intMod}`, type: 'Force' }
                 : armorModel === 'guardian'
-                    ? { name: 'Thunder Pulse', range: '5 ft.', damage: `1d8 + ${intMod}`, type: 'Thunder' }
+                    ? { name: 'Thunder Pulse', range: '5 ft.', damage: `${character.level >= 15 ? '1d10' : '1d8'} + ${intMod}`, type: 'Thunder' }
                     : { name: 'Lightning Launcher', range: '90 ft.', damage: `${character.level >= 15 ? '2d6' : '1d6'} + ${intMod}`, type: 'Lightning' };
             attacks.push({
                 id: `armorer-${armorModel}`,
@@ -3578,6 +3589,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 type: modelAttack.type,
                 notes: [`Armor Model (${character.armorModel}); uses INT.`],
                 source: { name: 'Armor Model', activationType: 'action', desc: ['Armorer model weapon.'] },
+            });
+        }
+        if (armorModelFeature && armorModel === 'guardian') {
+            attacks.push({
+                id: 'armorer-defensive-field', name: 'Defensive Field', range: 'Self', hit: null,
+                damage: `${character.level}`, type: 'Temp HP', notes: ['Bonus action: gain temporary HP equal to your Artificer level.'],
+                source: { name: 'Defensive Field', activationType: 'bonus_action', desc: ['Gain temporary HP equal to your Artificer level.'] },
             });
         }
         const hasRadiantStrikes = (character.classFeatures || []).some((feature: any) => /radiant strikes/i.test(feature.name || ''));
@@ -4130,6 +4148,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 : effect.description;
                 const isDivineSpark = /divine spark/i.test(actionName);
                 const isSecondWind = /^second wind$/i.test(actionName);
+                const secondWindClassLevel = Number((character.classes || []).find((cls: any) => cls.definition?.index === 'fighter')?.level || 0);
                 const divineSparkDice = isDivineSpark ? (character.level >= 13 ? 3 : character.level >= 7 ? 2 : 1) : 0;
                 const usage = character.featureUsage?.[actionName];
                 attacks.push({
@@ -4145,7 +4164,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             : isHandOfHealing
                                 ? `${character.level >= 17 ? '1d12' : character.level >= 11 ? '1d10' : character.level >= 5 ? '1d8' : '1d6'} + ${wisMod}`
                                 : isSecondWind
-                                    ? `1d10 + ${character.level}`
+                                    ? `1d10 + ${secondWindClassLevel}`
                                     : isDivineSpark
                                         ? `${divineSparkDice}d8 + ${wisMod}`
                                         : (scaled || effect.damage || '-'),
