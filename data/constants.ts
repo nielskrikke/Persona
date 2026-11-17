@@ -20,6 +20,10 @@ export const WIDGET_LABELS: Record<string, string> = {
     polymorph: 'Polymorph',
     eldritchCannon: 'Eldritch Cannon',
     steelDefender: 'Steel Defender',
+    magicItemTinker: 'Magic Item Tinker',
+    spellStoringItem: 'Spell-Storing Item',
+    mapHolders: 'Map Holders',
+    experimentalElixir: 'Experimental Elixir',
     activeCards: 'Active Cards'
 };
 
@@ -43,6 +47,10 @@ export const WIDGET_METADATA: Record<string, { icon: string, desc: string, color
     polymorph: { icon: '🧬', desc: 'Transform yourself or others using the Polymorph spell.', color: 'text-purple-400' },
     eldritchCannon: { icon: '⚙️', desc: 'Artillerist Artificer companion with specific weapon modes.', color: 'text-cyan-400' },
     steelDefender: { icon: '🐺', desc: 'Battle Smith companion that protects and attacks.', color: 'text-orange-400' },
+    magicItemTinker: { icon: '⚙️', desc: 'Replicated items, charges, Drain and Transmute.', color: 'text-dnd-gold' },
+    spellStoringItem: { icon: '📦', desc: 'Stored Artificer spell and its remaining uses.', color: 'text-dnd-gold' },
+    mapHolders: { icon: '🗺️', desc: 'Cartographer map holders for Portal Jump.', color: 'text-dnd-gold' },
+    experimentalElixir: { icon: '🧪', desc: 'Elixirs made by the Alchemist and their effects.', color: 'text-dnd-gold' },
     activeCards: { icon: '🃏', desc: 'Track active tarot card effects for Card Masters.', color: 'text-purple-400' }
 };
 

@@ -879,6 +879,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const [tinkerItem, setTinkerItem] = useState('');
     const [defenderHpDelta, setDefenderHpDelta] = useState(5);
     const [storingSpellOptions, setStoringSpellOptions] = useState<any[]>([]);
+    const [pendingReplicate, setPendingReplicate] = useState<{ plan: string; oldName: string | null } | null>(null);
+    const [pendingBase, setPendingBase] = useState('');
+    const [elixirChoice, setElixirChoice] = useState('Healing');
     const innateSorceryActive = character.activeConditions?.['innate-sorcery'] === true;
     const spellAttack = prof + spellMod + extraSpellAttack;
     const spellAttackStr = formatModifier(spellAttack);
@@ -1819,6 +1822,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 featureUsage: newFeatures,
                 freeCastUsage: {},
                 hitDiceUsage: newHitDiceUsage,
+                inventory: (prev.inventory || []).map((item: any) => {
+                    if (!item.maxCharges) return item;
+                    const regain = /wand of magic missiles/i.test(item.name) ? 1 + Math.floor(Math.random() * 6) + 1 : Number(item.maxCharges);
+                    return { ...item, charges: Math.min(Number(item.maxCharges), Number(item.charges || 0) + regain) };
+                }),
+                activeSteelDefender: prev.activeSteelDefender ? { ...prev.activeSteelDefender, hp: prev.activeSteelDefender.maxHp } : prev.activeSteelDefender,
                 eldritchCannonFreebieUsed: false,
                 inspiration: hasResourceful ? true : prev.inspiration
             };
@@ -2028,39 +2037,56 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const isAlchemist = /alchemist/i.test(String(character.classes?.[0]?.subclass?.name || ''));
                 if (!isAlchemist) return null;
                 const table = ['Healing', 'Swiftness', 'Resilience', 'Boldness', 'Flight', 'Transformation'];
+                const elixirs = (character.experimentalElixirs && character.experimentalElixirs.length > 0)
+                    ? character.experimentalElixirs
+                    : (character.experimentalElixir ? [character.experimentalElixir] : []);
+                const effectFor = (result: string) => result === 'Healing' ? 'Restore 2d4 + INT HP.' : result === 'Swiftness' ? '+10 ft. walking speed for 1 hour.' : result === 'Resilience' ? '+1 AC for 1 hour.' : result === 'Boldness' ? 'Add 1d4 to attack rolls and saving throws for 1 hour.' : result === 'Flight' ? 'Fly speed 10 ft. for 1 hour.' : result === 'Transformation' ? 'Alter your appearance for 1 hour.' : '';
+                const applyElixir = (result: string) => setCharacter(prev => {
+                    const featureName = `Experimental Elixir: ${result}`;
+                    const effects = result === 'Swiftness' ? [{ type: 'bonus', target: 'speed', value: 10 }]
+                        : result === 'Resilience' ? [{ type: 'bonus', target: 'ac', value: 1 }]
+                        : result === 'Boldness' ? [{ type: 'bonus', target: 'saves', value: '1d4' }]
+                        : result === 'Flight' ? [{ type: 'bonus', target: 'fly_speed', value: 10 }]
+                        : [];
+                    const heal = result === 'Healing' ? 2 * (1 + Math.floor(Math.random() * 4)) + intMod : 0;
+                    const remaining = [...elixirs];
+                    const index = remaining.indexOf(result);
+                    if (index >= 0) remaining.splice(index, 1);
+                    return {
+                        ...prev,
+                        experimentalElixirs: remaining,
+                        currentHp: heal > 0 ? Math.min(Number(prev.maxHp || 0), Number(prev.currentHp || 0) + Math.max(0, heal)) : prev.currentHp,
+                        classFeatures: [...(prev.classFeatures || []).filter((feature: any) => !/^Experimental Elixir:/i.test(feature.name || '')), {
+                            index: `experimental-elixir-${result.toLowerCase()}`, name: featureName, level: 3, source: 'Alchemist', type: 'Class',
+                            desc: [result === 'Healing' ? `Restored ${heal} HP.` : `${result} elixir; lasts 1 hour.`], effects,
+                        } as any],
+                    };
+                });
                 return (
                     <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
                         <div className="flex justify-between items-center mb-2">
                             <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Experimental Elixir</h3>
                             <span className="text-[9px] text-gray-500 font-bold uppercase">Alchemist</span>
                         </div>
-                        <button onClick={() => setCharacter(prev => {
-                            const result = table[Math.floor(Math.random() * table.length)];
-                            const featureName = `Experimental Elixir: ${result}`;
-                            const effects = result === 'Swiftness' ? [{ type: 'bonus', target: 'speed', value: 10 }]
-                                : result === 'Resilience' ? [{ type: 'bonus', target: 'ac', value: 1 }]
-                                : result === 'Boldness' ? [{ type: 'bonus', target: 'saves', value: '1d4' }]
-                                : result === 'Flight' ? [{ type: 'bonus', target: 'fly_speed', value: 10 }]
-                                : [];
-                            const heal = result === 'Healing' ? 2 * (1 + Math.floor(Math.random() * 4)) + intMod : 0;
-                            return {
-                                ...prev,
-                                experimentalElixir: result,
-                                currentHp: heal > 0 ? Math.min(Number(prev.maxHp || 0), Number(prev.currentHp || 0) + Math.max(0, heal)) : prev.currentHp,
-                                classFeatures: [...(prev.classFeatures || []).filter((feature: any) => !/^Experimental Elixir:/i.test(feature.name || '')), {
-                                    index: `experimental-elixir-${result.toLowerCase()}`, name: featureName, level: 3, source: 'Alchemist', type: 'Class',
-                                    desc: [result === 'Healing' ? `Restored ${heal} HP.` : `${result} elixir; lasts 1 hour.`], effects,
-                                } as any],
-                            };
-                        })} className="w-full py-2 bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold text-[10px] font-black uppercase rounded hover:bg-dnd-gold hover:text-black transition-colors">
-                            Roll d6 Elixir
-                        </button>
-                        <div className="mt-3 text-center">
-                            <div className="text-[9px] uppercase text-gray-500 font-bold">Current Elixir</div>
-                            <div className="text-sm font-bold text-white">{character.experimentalElixir || '—'}</div>
-                            <div className="text-[9px] text-gray-500 mt-1">{character.experimentalElixir === 'Healing' ? 'Restore 2d4 + INT HP.' : character.experimentalElixir === 'Swiftness' ? '+10 ft. walking speed for 1 hour.' : character.experimentalElixir === 'Resilience' ? '+1 AC for 1 hour.' : character.experimentalElixir === 'Boldness' ? 'Add 1d4 to attack rolls and saving throws for 1 hour.' : character.experimentalElixir === 'Flight' ? 'Fly speed 10 ft. for 1 hour.' : character.experimentalElixir === 'Transformation' ? 'Alter your appearance for 1 hour.' : ''}</div>
+                        <div className="flex gap-1 mb-2">
+                            <button onClick={() => setCharacter(prev => ({ ...prev, experimentalElixirs: [...elixirs, table[Math.floor(Math.random() * table.length)]] }))} className="flex-1 py-1.5 bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold text-[9px] font-black uppercase rounded hover:bg-dnd-gold hover:text-black transition-colors">Roll d6</button>
+                            <select value={elixirChoice} onChange={e => setElixirChoice(e.target.value)} className="bg-black/40 border border-gray-700 rounded px-1 text-[8px] text-gray-300">
+                                {table.map(effect => <option key={effect} value={effect}>{effect}</option>)}
+                            </select>
+                            <button disabled={!character.spellSlots?.[1]?.current} onClick={() => setCharacter(prev => ({ ...prev, spellSlots: { ...prev.spellSlots, 1: { ...prev.spellSlots[1], current: Math.max(0, prev.spellSlots[1].current - 1) } }, experimentalElixirs: [...elixirs, elixirChoice] }))} className="px-2 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 text-[8px] font-black uppercase rounded disabled:opacity-30">Make (slot)</button>
                         </div>
-                        <div className="text-[8px] text-gray-600 mt-2">1 Healing · 2 Swiftness · 3 Resilience · 4 Boldness · 5 Flight · 6 Transformation</div>
+                        <div className="space-y-1">
+                            {elixirs.length === 0 && <div className="text-[9px] text-gray-600 italic">No elixirs made.</div>}
+                            {elixirs.map((result, index) => (
+                                <div key={`${result}-${index}`} className="bg-black/20 border border-gray-800 rounded p-1.5 flex items-center gap-2">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-[9px] font-bold text-white">{result}</div>
+                                        <div className="text-[8px] text-gray-500">{effectFor(result)}</div>
+                                    </div>
+                                    <button onClick={() => applyElixir(result)} className="px-2 py-1 bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold rounded text-[8px] font-black uppercase">Drink</button>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 );
             }
@@ -2075,8 +2101,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const artificerClass = (character.classes || []).find((cls: any) => cls.definition?.index === 'artificer');
                 const levelRow = ((artificerClass?.definition as any)?.level_table || []).find((row: any) => row.level === artificerLevel);
                 const maxMade = Number(levelRow?.class_specific?.magic_items || Math.max(made.length, 1));
-                const buildItem = (name: string) => {
-                    const armoryName = name.replace(/^(Weapon|Shield|Armor)\s+\+([123])$/i, '$1, +$2');
+                const buildItem = (name: string, baseName = '') => {
+                    const baseDetail: any = baseName ? allEquipment.find((entry: any) => entry.name === baseName) : null;
+                    const armoryName = baseDetail?.name ? `${baseDetail.name}, +${name.match(/\+([123])/)?.[1] || 1}` : name.replace(/^(Weapon|Shield|Armor)\s+\+([123])$/i, '$1, +$2');
                     const plus = Number(name.match(/\+([123])/)?.[1] || 0);
                     const isWeapon = /weapon \+[123]/i.test(name);
                     const isShield = /shield \+[123]/i.test(name);
@@ -2087,13 +2114,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         is_magic: true,
                         requires_attunement: /wand of the war mage|cloak of elvenkind|boots of the winding path|eyes of charming|mind sharpener|dazzling weapon|boots of elvenkind/i.test(name),
                         rarity: /goggles of night|bag of holding|rope of climbing|wand of magic detection|wand of secrets|alchemy jug|cap of water breathing|manifold tool/i.test(name) ? 'Common' : 'Uncommon',
-                        equipment_category: isWeapon ? { index: 'weapon', name: 'Weapon' } : undefined,
-                        weapon_category: isWeapon ? 'martial' : undefined,
-                        range: isWeapon ? 'Melee' : undefined,
-                        damage: isWeapon ? { damage_dice: '1d8', damage_type: { name: 'Bludgeoning' } } : undefined,
-                        properties: isWeapon ? ['Versatile'] : undefined,
-                        armor_category: isShield ? 'shield' : isArmor ? 'medium' : undefined,
-                        armor_class: isShield ? { base: 2, dex_bonus: false } : isArmor ? { base: 14, dex_bonus: true, max_bonus: 2 } : undefined,
+                        equipment_category: baseDetail?.equipment_category || (isWeapon ? { index: 'weapon', name: 'Weapon' } : undefined),
+                        weapon_category: baseDetail?.weapon_category || (isWeapon ? 'martial' : undefined),
+                        range: baseDetail?.range || (isWeapon ? 'Melee' : undefined),
+                        damage: baseDetail?.damage || (isWeapon ? { damage_dice: '1d8', damage_type: { name: 'Bludgeoning' } } : undefined),
+                        properties: baseDetail?.properties || (isWeapon ? ['Versatile'] : undefined),
+                        armor_category: baseDetail?.armor_category || (isShield ? 'shield' : isArmor ? 'medium' : undefined),
+                        armor_class: baseDetail?.armor_class || (isShield ? { base: 2, dex_bonus: false } : isArmor ? { base: 14, dex_bonus: true, max_bonus: 2 } : undefined),
                         maxCharges: /wand of magic missiles/i.test(name) ? 7 : /wand of magic detection|wand of secrets/i.test(name) ? 3 : undefined,
                         charges: /wand of magic missiles/i.test(name) ? 7 : /wand of magic detection|wand of secrets/i.test(name) ? 3 : undefined,
                         modifiers: isWeapon ? [{ type: 'bonus', target: 'attack', value: plus }, { type: 'bonus', target: 'damage', value: plus }]
@@ -2102,9 +2129,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             : isShield || isArmor ? [{ type: 'bonus', target: 'ac', value: plus }] : [],
                     } as any;
                 };
-                const setMade = (next: string[], oldName: string | null, newName: string | null, spendTransmute = false) => setCharacter(prev => {
+                const setMade = (next: string[], oldName: string | null, newName: string | null, spendTransmute = false, baseName = '') => setCharacter(prev => {
                     const items = (prev.inventory || []).filter((item: any) => !oldName || String((item as any).sourcePlan || item.name).toLowerCase() !== oldName.toLowerCase());
-                    if (newName) items.push(buildItem(newName));
+                    if (newName) items.push(buildItem(newName, baseName));
                     return {
                         ...prev,
                         replicatedItems: next,
@@ -2140,11 +2167,14 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                                 <div className="text-[10px] font-bold text-white truncate">{item?.name || name}{item?.requires_attunement ? ' (A)' : ''}</div>
                                                 <div className="text-[8px] text-gray-500">{maxCharges > 0 ? `${charges} / ${maxCharges} charges` : 'No charges'}</div>
                                             </div>
-                                            <select value="" onChange={e => { const target = e.target.value; if (!target) return; const next = made.map(entry => entry === name ? target : entry); setMade(next, name, target, Boolean(transmute?.current)); }} className="w-24 bg-black/40 border border-gray-700 rounded px-1 py-0.5 text-[8px] text-gray-300">
+                                            <select value="" onChange={e => { const target = e.target.value; if (!target) return; if (/^(weapon|armor|shield) \+[123]$/i.test(target)) { setPendingReplicate({ plan: target, oldName: name }); setPendingBase(''); } else { const next = made.map(entry => entry === name ? target : entry); setMade(next, name, target, Boolean(transmute?.current)); } }} className="w-24 bg-black/40 border border-gray-700 rounded px-1 py-0.5 text-[8px] text-gray-300">
                                                 <option value="">Replace…</option>
                                                 {plans.filter((plan: string) => plan !== name && !made.includes(plan)).map((plan: string) => <option key={plan} value={plan}>{plan}</option>)}
                                             </select>
                                         </div>
+                                        {maxCharges > 0 && (
+                                            <button disabled={charges <= 0} onClick={() => { setCharacter(prev => ({ ...prev, inventory: (prev.inventory || []).map((entry: any) => (entry.sourcePlan || entry.name) === name ? { ...entry, charges: Math.max(0, Number(entry.charges || 0) - 1) } : entry) })); if (/wand of magic missiles/i.test(item?.name || name)) roll('3d4+3', 'Wand of Magic Missiles'); else setSelectedDetail({ name: item?.name || name, desc: ['Spent one charge.'] } as any); }} className="w-full py-1 bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold rounded text-[8px] font-black uppercase disabled:opacity-30">Use Charge</button>
+                                        )}
                                         <div className="grid grid-cols-3 gap-1">
                                             <button disabled={!canCharge} onClick={() => setCharacter(prev => ({ ...prev, spellSlots: { ...prev.spellSlots, [tinkerSlot]: { ...prev.spellSlots[tinkerSlot], current: Math.max(0, prev.spellSlots[tinkerSlot].current - 1) } }, inventory: (prev.inventory || []).map((entry: any) => (entry.sourcePlan || entry.name) === name ? { ...entry, charges: Math.min(maxCharges, charges + tinkerSlot) } : entry) }))} className="py-1 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[8px] font-black uppercase disabled:opacity-30">Charge</button>
                                             {common && <button disabled={!drain?.current} onClick={() => setCharacter(prev => ({ ...prev, featureUsage: drainKey ? { ...prev.featureUsage, [drainKey]: { ...prev.featureUsage[drainKey], current: Math.max(0, Number(prev.featureUsage[drainKey].current) - 1) } } : prev.featureUsage, spellSlots: { ...prev.spellSlots, 1: { ...prev.spellSlots[1], current: Math.min(prev.spellSlots[1].max, prev.spellSlots[1].current + 1) } }, replicatedItems: made.filter(entry => entry !== name), choices: (prev.choices || []).map((choice: any) => choice.revertData?.isReplicatedItems ? { ...choice, value: made.filter(entry => entry !== name) } : choice), inventory: (prev.inventory || []).filter((entry: any) => (entry.sourcePlan || entry.name) !== name) }))} className="py-1 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[8px] font-black uppercase disabled:opacity-30">Drain 1</button>}
@@ -2154,12 +2184,25 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 );
                             })}
                             {made.length < maxMade && plans.length > 0 && (
-                                <select value="" onChange={e => { const target = e.target.value; if (!target) return; setMade([...made, target], null, target); }} className="w-full bg-black/40 border border-dashed border-gray-700 rounded px-2 py-1.5 text-[9px] text-gray-400">
+                                <select value="" onChange={e => { const target = e.target.value; if (!target) return; if (/^(weapon|armor|shield) \+[123]$/i.test(target)) { setPendingReplicate({ plan: target, oldName: null }); setPendingBase(''); } else { setMade([...made, target], null, target); } }} className="w-full bg-black/40 border border-dashed border-gray-700 rounded px-2 py-1.5 text-[9px] text-gray-400">
                                     <option value="">Replicate an item…</option>
                                     {plans.filter((plan: string) => !made.includes(plan)).map((plan: string) => <option key={plan} value={plan}>{plan}</option>)}
                                 </select>
                             )}
                         </div>
+                        {pendingReplicate && (
+                            <div className="bg-dnd-gold/10 border border-dnd-gold/40 rounded-lg p-2 space-y-2">
+                                <div className="text-[9px] font-bold text-dnd-gold uppercase">Choose base for {pendingReplicate.plan}</div>
+                                <select value={pendingBase} onChange={e => setPendingBase(e.target.value)} className="w-full bg-black/40 border border-gray-700 rounded px-2 py-1 text-[9px] text-white">
+                                    <option value="">Select base item…</option>
+                                    {allEquipment.filter((entry: any) => !entry.is_magic && (pendingReplicate.plan.toLowerCase().startsWith('weapon') ? !!entry.weapon_category : pendingReplicate.plan.toLowerCase().startsWith('shield') ? String(entry.armor_category || '').toLowerCase().includes('shield') : !!entry.armor_category && !String(entry.armor_category || '').toLowerCase().includes('shield'))).map((entry: any) => <option key={entry.index} value={entry.name}>{entry.name}</option>)}
+                                </select>
+                                <div className="flex gap-1">
+                                    <button disabled={!pendingBase} onClick={() => { const next = pendingReplicate.oldName ? made.map(entry => entry === pendingReplicate.oldName ? pendingReplicate.plan : entry) : [...made, pendingReplicate.plan]; setMade(next, pendingReplicate.oldName, pendingReplicate.plan, Boolean(transmute?.current), pendingBase); setPendingReplicate(null); setPendingBase(''); }} className="flex-1 py-1 bg-dnd-gold text-black rounded text-[8px] font-black uppercase disabled:opacity-40">Make Item</button>
+                                    <button onClick={() => { setPendingReplicate(null); setPendingBase(''); }} className="px-2 py-1 bg-gray-800 text-gray-400 rounded text-[8px] font-bold uppercase">Cancel</button>
+                                </div>
+                            </div>
+                        )}
                         <div className="text-[9px] text-gray-500">Drain {drain ? `${drain.current} / ${drain.max}` : '0'} · Transmute {transmute ? `${transmute.current} / ${transmute.max}` : '0'}</div>
                     </div>
                 );
@@ -2226,7 +2269,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     >
                          <div className="flex justify-between items-center mb-2">
                              <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest flex items-center gap-2">Steel Defender</h3>
-                             <button onClick={(e) => { e.stopPropagation(); setShowSteelDefenderModal(true); }} className="text-[10px] uppercase font-bold text-gray-500 hover:text-white border border-gray-600 bg-black/40 px-2 py-0.5 rounded transition-colors">Manage</button>
+                             <button onClick={(e) => { e.stopPropagation(); setShowSteelDefenderModal(true); }} className="text-[10px] uppercase font-bold text-gray-500 hover:text-white border border-gray-600 bg-black/40 px-2 py-0.5 rounded transition-colors">{defender ? 'Manage' : 'Summon'}</button>
                          </div>
                          {defender ? (
                              <div className="space-y-3">
@@ -2252,8 +2295,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                          <div className="text-orange-400 font-bold text-sm">{defender.hp}/{defender.maxHp}</div>
                                      </div>
                                  </div>
+                                 <div className="text-[9px] text-gray-500">Speed 40 ft. · Saves +{prof + 2} · Immune to poison, charmed, exhaustion · Deflect Attack reaction</div>
                                  <div className="flex items-center gap-2">
-                                     <input type="number" value={defenderHpDelta} onChange={e => setDefenderHpDelta(Math.max(1, Number(e.target.value) || 1))} className="w-14 bg-black/40 border border-gray-700 rounded px-2 py-1 text-[10px] text-white" />
+                                     <div className="flex flex-col"><span className="text-[8px] text-gray-500 uppercase">Amount</span><input type="number" value={defenderHpDelta} onChange={e => setDefenderHpDelta(Math.max(1, Number(e.target.value) || 1))} className="w-14 bg-black/40 border border-gray-700 rounded px-2 py-1 text-[10px] text-white" /></div>
                                      <button onClick={(e) => { e.stopPropagation(); setCharacter(p => { const d = p.activeSteelDefender; return d ? { ...p, activeSteelDefender: { ...d, hp: Math.max(0, d.hp - defenderHpDelta) } } : p; }); }} className="flex-1 py-1.5 bg-red-900/20 border border-red-900/50 text-red-400 rounded text-[9px] font-bold uppercase">Damage</button>
                                      <button onClick={(e) => { e.stopPropagation(); setCharacter(p => { const d = p.activeSteelDefender; return d ? { ...p, activeSteelDefender: { ...d, hp: Math.min(d.maxHp, d.hp + defenderHpDelta) } } : p; }); }} className="flex-1 py-1.5 bg-green-900/20 border border-green-900/50 text-green-400 rounded text-[9px] font-bold uppercase">Heal</button>
                                  </div>
@@ -2264,7 +2308,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                      Force-Empowered Rend
                                  </button>
                                  <div className="grid grid-cols-2 gap-2">
-                                     <button onClick={(e) => { e.stopPropagation(); const key = Object.keys(character.featureUsage || {}).find(k => /steel defender: repair/i.test(k)); const usage = key ? character.featureUsage[key] : null; if (usage && usage.current > 0) { setCharacter(p => ({ ...p, featureUsage: { ...p.featureUsage, [key!]: { ...usage, current: usage.current - 1 } } })); roll(`2d8+${prof}`, 'Steel Defender Repair', (result) => { setCharacter(p => { const d = p.activeSteelDefender; return d ? { ...p, activeSteelDefender: { ...d, hp: Math.min(d.maxHp, d.hp + result.total) } } : p; }); }); } }} className="py-1.5 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[9px] font-bold uppercase">Repair</button>
+                                     <button onClick={(e) => { e.stopPropagation(); const key = Object.keys(character.featureUsage || {}).find(k => /steel defender: repair/i.test(k)); const usage = key ? character.featureUsage[key] : null; if (usage && usage.current > 0) { setCharacter(p => ({ ...p, featureUsage: { ...p.featureUsage, [key!]: { ...usage, current: usage.current - 1 } } })); roll(`2d8+${prof}`, 'Steel Defender Repair', (result) => { setCharacter(p => { const d = p.activeSteelDefender; return d ? { ...p, activeSteelDefender: { ...d, hp: Math.min(d.maxHp, d.hp + result.total) } } : p; }); }); } }} className="py-1.5 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[9px] font-bold uppercase">Repair ({(() => { const k = Object.keys(character.featureUsage || {}).find(key => /steel defender: repair/i.test(key)); return k ? character.featureUsage[k].current : 0; })()})</button>
                                      <button onClick={(e) => { e.stopPropagation(); setSelectedDetail({ name: 'Deflect Attack', desc: ['Reaction: impose disadvantage on an attack against another creature within 5 ft.'] } as any); roll(`1d4${formatModifier(intMod)}`, 'Deflect Attack'); }} className="py-1.5 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[9px] font-bold uppercase">Deflect</button>
                                  </div>
                              </div>
@@ -2280,9 +2324,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 <h3 className="font-bold text-xs text-dnd-gold uppercase tracking-widest">Eldritch Cannon</h3>
                                 <span className="text-[9px] uppercase text-gray-500 font-bold">Artillerist</span>
                             </div>
-                            <p className="text-[10px] text-gray-500 mb-3">No cannon active. Create one with your free daily use or a spell slot.</p>
+                            <p className="text-[10px] text-gray-500 mb-3">No cannon active.</p>
                             <button onClick={() => setShowEldritchCannonModal(true)} className="w-full py-2 bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold text-[10px] font-black uppercase rounded hover:bg-dnd-gold hover:text-black transition-colors">
-                                Create Eldritch Cannon
+                                {Number(character.featureUsage?.['Eldritch Cannon']?.current || 0) > 0 || !character.eldritchCannonFreebieUsed ? 'Create (free use ready)' : 'Create (spend slot)'}
                             </button>
                         </div>
                     );

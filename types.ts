@@ -615,6 +615,7 @@ export interface CharacterState {
     spellStoringItem?: { spell: string; };
     mapHolders?: number;
     experimentalElixir?: string;
+    experimentalElixirs?: string[];
     diceColor?: string;
     diceEffect?: string;
     diceCustomization?: DiceCustomizationOptions;

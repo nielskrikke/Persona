@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { WIDGET_LABELS, ALL_WIDGETS, WIDGET_METADATA } from '../../../data/constants';
 import { CharacterState } from '@/types';
+import { artificerWidgetIds } from '../../../utils/artificer';
 
 const WidgetCard = ({ id, onRemove }: { id: string, onRemove?: () => void }) => {
     const meta = WIDGET_METADATA[id] || { icon: '?', desc: 'Widget', color: 'text-gray-400' };
@@ -43,7 +44,11 @@ const LayoutManagerModal = ({
     const dragItem = useRef<{col: string, idx: number} | null>(null);
 
     // Filter Widgets based on class/level requirements
-    const visibleWidgets = ALL_WIDGETS.filter(id => id !== 'eldritchCannon');
+    const desiredArtificer = new Set(artificerWidgetIds(character));
+    const visibleWidgets = ALL_WIDGETS.filter(id => {
+        if (['steelDefender', 'eldritchCannon', 'magicItemTinker', 'mapHolders', 'experimentalElixir', 'spellStoringItem'].includes(id)) return desiredArtificer.has(id);
+        return true;
+    });
 
     useEffect(() => {
         if (isOpen) {
@@ -52,13 +57,13 @@ const LayoutManagerModal = ({
             setRightCol(dedupe(layout.right));
             setMobileLayout(dedupe(layout.mobile));
             
-            refreshUnused(dedupe(layout.left), dedupe(layout.right));
+            refreshUnused(dedupe(layout.left), dedupe(layout.right), dedupe(layout.mobile));
             setSearch('');
         }
     }, [isOpen, layout]);
 
-    const refreshUnused = (left: string[], right: string[]) => {
-        const used = new Set([...left, ...right]);
+    const refreshUnused = (left: string[], right: string[], mobile: string[] = []) => {
+        const used = new Set([...left, ...right, ...mobile]);
         setUnused(visibleWidgets.filter(w => !used.has(w)));
     };
 

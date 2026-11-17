@@ -1225,6 +1225,7 @@ const ManageCharacterModal = ({
         })(),
         mapHolders: character.mapHolders,
         experimentalElixir: character.experimentalElixir,
+        experimentalElixirs: character.experimentalElixirs,
         activeEldritchCannon: (localClasses || []).some((cls: any) => /artillerist/i.test(cls.subclass?.name || '')) ? character.activeEldritchCannon : null,
         activeSteelDefender: (localClasses || []).some((cls: any) => /battle smith/i.test(cls.subclass?.name || '')) ? character.activeSteelDefender : null,
         spellbook: (() => {
