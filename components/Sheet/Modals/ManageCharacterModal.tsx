@@ -935,10 +935,8 @@ const ManageCharacterModal = ({
         );
         setLocalClasses(updatedClasses);
 
-        if (!/armorer/i.test(newSubclass.name)) {
-            setArmorModel('');
-            setLocalChoices(prev => prev.filter((choice: any) => !choice.revertData?.isArmorModel));
-        }
+        setArmorModel('');
+        setLocalChoices(prev => prev.filter((choice: any) => !choice.revertData?.isArmorModel));
         const previousReplacement = localChoices.find((choice: any) => choice.revertData?.isToolsOfTradeReplacement);
         if (typeof previousReplacement?.value === 'string' && previousReplacement.value) {
             setToolProficiencies(prev => prev.filter((tool: string) => tool !== previousReplacement.value));

@@ -1312,7 +1312,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         const allTraits = [
             ...(race?.traits || []),
             ...(subrace?.traits || []),
-            ...character.classFeatures,
+            ...character.classFeatures.filter((feature: any) => !/^Experimental Elixir/i.test(String(feature.name || ''))),
             ...(character.feats || [])
         ];
         allTraits.forEach((t: any) => {
@@ -2055,17 +2055,16 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const elixirFree = elixirUsageKey ? character.featureUsage[elixirUsageKey] : null;
                 const activeElixirFeature = (character.classFeatures || []).find((feature: any) => /^Experimental Elixir:/i.test(feature.name || ''));
                 const effectFor = (result: string) => result === 'Healing' ? 'Restore 2d4 + INT HP.' : result === 'Swiftness' ? '+10 ft. walking speed for 1 hour.' : result === 'Resilience' ? '+1 AC for 1 hour.' : result === 'Boldness' ? 'Add 1d4 to attack rolls and saving throws for 1 hour.' : result === 'Flight' ? 'Fly speed 10 ft. for 1 hour.' : result === 'Transformation' ? 'Alter your appearance for 1 hour.' : '';
-                const applyElixir = (result: string) => setCharacter(prev => {
+                const removeElixir = (prev: any, result: string, heal: number) => {
+                    const remaining = [...elixirs];
+                    const index = remaining.indexOf(result);
+                    if (index >= 0) remaining.splice(index, 1);
                     const featureName = `Experimental Elixir: ${result}`;
                     const effects = result === 'Swiftness' ? [{ type: 'bonus', target: 'speed', value: 10 }]
                         : result === 'Resilience' ? [{ type: 'bonus', target: 'ac', value: 1 }]
                         : result === 'Boldness' ? [{ type: 'bonus', target: 'saves', value: '1d4' }]
                         : result === 'Flight' ? [{ type: 'bonus', target: 'fly_speed', value: 10 }]
                         : [];
-                    const heal = result === 'Healing' ? 2 * (1 + Math.floor(Math.random() * 4)) + intMod : 0;
-                    const remaining = [...elixirs];
-                    const index = remaining.indexOf(result);
-                    if (index >= 0) remaining.splice(index, 1);
                     return {
                         ...prev,
                         experimentalElixirs: remaining,
@@ -2077,7 +2076,14 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 desc: [`${result} elixir; lasts 1 hour.`], effects,
                             } as any],
                     };
-                });
+                };
+                const applyElixir = (result: string) => {
+                    if (result === 'Healing') {
+                        roll(`2d4+${intMod}`, 'Experimental Elixir: Healing', (rollResult) => setCharacter(prev => removeElixir(prev, result, rollResult.total)));
+                        return;
+                    }
+                    setCharacter(prev => removeElixir(prev, result, 0));
+                };
                 return (
                     <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3`}>
                         <div className="flex justify-between items-center mb-2">
@@ -2211,10 +2217,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                                 <option value="">Replace…</option>
                                                 {plans.filter((plan: string) => plan !== name && !made.includes(plan)).map((plan: string) => <option key={plan} value={plan}>{plan}</option>)}
                                             </select>
-                                            <select value="" disabled={!transmute || Number(transmute.current) <= 0} onChange={e => { const target = e.target.value; if (!target) return; const next = made.map(entry => entry === name ? target : entry); setMade(next, name, target, true); }} className="w-full bg-black/40 border border-gray-700 rounded px-1 py-1 text-[8px] text-dnd-gold disabled:opacity-30">
+                                            {canTinker && <select value="" disabled={!transmute || Number(transmute.current) <= 0} onChange={e => { const target = e.target.value; if (!target) return; const next = made.map(entry => entry === name ? target : entry); setMade(next, name, target, true); }} className="w-full bg-black/40 border border-gray-700 rounded px-1 py-1 text-[8px] text-dnd-gold disabled:opacity-30">
                                                 <option value="">Transmute…</option>
                                                 {plans.filter((plan: string) => plan !== name && !made.includes(plan)).map((plan: string) => <option key={plan} value={plan}>{plan}</option>)}
-                                            </select>
+                                            </select>}
                                         </div>
                                         {canTinker && maxCharges > 0 && (
                                             <button disabled={charges <= 0} onClick={() => { setCharacter(prev => ({ ...prev, inventory: (prev.inventory || []).map((entry: any) => (entry.sourcePlan || entry.name) === name ? { ...entry, charges: Math.max(0, Number(entry.charges || 0) - 1) } : entry) })); if (/wand of magic missiles/i.test(item?.name || name)) roll('3d4+3', 'Wand of Magic Missiles'); else setSelectedDetail({ name: item?.name || name, desc: ['Spent one charge.'] } as any); }} className="w-full py-1 bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold rounded text-[8px] font-black uppercase disabled:opacity-30">Use Charge</button>
@@ -2243,7 +2249,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                         const plan = pendingReplicate.plan.toLowerCase();
                                         if (/common magic item|uncommon wondrous|rare wondrous/.test(plan)) {
                                             const wanted = /common/.test(plan) ? 'common' : /rare/.test(plan) ? 'rare' : 'uncommon';
-                                            return String(entry.rarity || '').toLowerCase() === wanted && !/potion|scroll|cursed/i.test(String(entry.name || ''));
+                                            return entry.is_magic === true && String(entry.rarity || '').toLowerCase() === wanted && !/potion|scroll|cursed/i.test(String(entry.name || ''));
                                         }
                                         return !entry.is_magic && (plan.startsWith('weapon') ? !!entry.weapon_category : plan.startsWith('shield') ? String(entry.armor_category || '').toLowerCase().includes('shield') : !!entry.armor_category && !String(entry.armor_category || '').toLowerCase().includes('shield'));
                                     }).map((entry: any) => <option key={entry.index} value={entry.name}>{entry.name}</option>)}
@@ -2446,7 +2452,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                             e.stopPropagation();
                                             if(cannon.type === 'Flamethrower') roll('3d8', 'Flamethrower Fire Damage');
                                             else if(cannon.type === 'Force Ballista') { roll(`1d20${spellAttackStr}`, 'Force Ballista Attack'); roll('3d8', 'Force Ballista Damage'); }
-                                            else { const amount = 1 + Math.floor(Math.random() * 8) + intMod; setCharacter(prev => ({ ...prev, tempHp: Math.max(Number(prev.tempHp || 0), amount) })); roll('1d8' + formatModifier(spellMod), 'Protector Temp HP Pulse'); }
+                                            else { roll('1d8' + formatModifier(spellMod), 'Protector Temp HP Pulse', (result) => setCharacter(prev => ({ ...prev, tempHp: Math.max(Number(prev.tempHp || 0), result.total) }))); }
                                         }}
                                         className="py-1.5 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[10px] font-bold uppercase hover:border-dnd-gold transition-colors"
                                      >
@@ -3376,7 +3382,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         const allTraits = [
             ...(raceObj?.traits || []),
             ...(subraceObj?.traits || []),
-            ...character.classFeatures,
+            ...character.classFeatures.filter((feature: any) => !/^Experimental Elixir/i.test(String(feature.name || ''))),
             ...(character.feats || [])
         ];
         allTraits.forEach((t: any) => {
@@ -3575,7 +3581,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         const armorModelFeature = featureNamesLower.includes('armor model');
         if (armorModelFeature && ['dreadnaught','guardian','infiltrator'].includes(armorModel)) {
             const modelAttack = armorModel === 'dreadnaught'
-                ? { name: 'Force Demolisher', range: '10 ft.', damage: `1d10 + ${intMod}`, type: 'Force' }
+                ? { name: 'Force Demolisher', range: '10 ft.', damage: `${character.level >= 15 ? '2d6' : '1d10'} + ${intMod}`, type: 'Force' }
                 : armorModel === 'guardian'
                     ? { name: 'Thunder Pulse', range: '5 ft.', damage: `${character.level >= 15 ? '1d10' : '1d8'} + ${intMod}`, type: 'Thunder' }
                     : { name: 'Lightning Launcher', range: '90 ft.', damage: `${character.level >= 15 ? '2d6' : '1d6'} + ${intMod}`, type: 'Lightning' };
