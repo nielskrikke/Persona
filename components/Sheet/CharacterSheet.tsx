@@ -2152,7 +2152,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     }
                     return {
                         id: `replicated-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
-                        name: armoryName, sourcePlan: name, quantity: 1, weight: isWeapon ? Math.max(5, Number(baseDetail?.weight || 0)) : isShield ? 6 : isArmor ? (/studded leather/i.test(baseDetail?.name || armoryName) ? 13 : Math.max(12, Number(baseDetail?.weight || 0))) : Number(baseDetail?.weight || 0), equipped: false, attuned: false,
+                        name: armoryName, sourcePlan: name, quantity: 1, weight: isWeapon ? (Number(baseDetail?.weight || 0) > 0 ? Number(baseDetail.weight) : 5) : isShield ? 6 : isArmor ? (/studded leather/i.test(baseDetail?.name || armoryName) ? 13 : Math.max(12, Number(baseDetail?.weight || 0))) : Number(baseDetail?.weight || 0), equipped: false, attuned: false,
                         is_magic: true,
                         requires_attunement: /wand of the war mage|boots of the winding path|eyes of charming|mind sharpener|dazzling weapon/i.test(name),
                         rarity: 'Uncommon',
@@ -2243,17 +2243,20 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         {pendingReplicate && (
                             <div className="bg-dnd-gold/10 border border-dnd-gold/40 rounded-lg p-2 space-y-2">
                                 <div className="text-[9px] font-bold text-dnd-gold uppercase">Choose base for {pendingReplicate.plan}</div>
-                                <select value={pendingBase} onChange={e => setPendingBase(e.target.value)} className="w-full bg-black/40 border border-gray-700 rounded px-2 py-1 text-[9px] text-white">
-                                    <option value="">Select base item…</option>
-                                    {allEquipment.filter((entry: any) => {
-                                        const plan = pendingReplicate.plan.toLowerCase();
-                                        if (/common magic item|uncommon wondrous|rare wondrous/.test(plan)) {
-                                            const wanted = /common/.test(plan) ? 'common' : /rare/.test(plan) ? 'rare' : 'uncommon';
-                                            return entry.is_magic === true && String(entry.rarity || '').toLowerCase() === wanted && !/potion|scroll|cursed/i.test(String(entry.name || ''));
-                                        }
+                                {(() => {
+                                    const plan = pendingReplicate.plan.toLowerCase();
+                                    const wantedRarity = /common/.test(plan) ? 'common' : /rare/.test(plan) ? 'rare' : 'uncommon';
+                                    const openPlan = /common magic item|uncommon wondrous|rare wondrous/.test(plan);
+                                    const choices = allEquipment.filter((entry: any) => {
+                                        if (openPlan) return entry.is_magic === true && String(entry.rarity || '').toLowerCase() === wantedRarity && !/potion|scroll|cursed/i.test(String(entry.name || ''));
                                         return !entry.is_magic && (plan.startsWith('weapon') ? !!entry.weapon_category : plan.startsWith('shield') ? String(entry.armor_category || '').toLowerCase().includes('shield') : !!entry.armor_category && !String(entry.armor_category || '').toLowerCase().includes('shield'));
-                                    }).map((entry: any) => <option key={entry.index} value={entry.name}>{entry.name}</option>)}
-                                </select>
+                                    });
+                                    if (choices.length === 0) return <div className="text-[9px] text-orange-400 bg-orange-950/20 border border-orange-900/40 rounded px-2 py-2">No matching {openPlan ? `${wantedRarity} magic items` : 'base items'} in the Armory. Add items to the Content Library first.</div>;
+                                    return <select value={pendingBase} onChange={e => setPendingBase(e.target.value)} className="w-full bg-black/40 border border-gray-700 rounded px-2 py-1 text-[9px] text-white">
+                                        <option value="">Select base item…</option>
+                                        {choices.map((entry: any) => <option key={entry.index} value={entry.name}>{entry.name}</option>)}
+                                    </select>;
+                                })()}
                                 <div className="flex gap-1">
                                     <button disabled={!pendingBase} onClick={() => { const next = pendingReplicate.oldName ? made.map(entry => entry === pendingReplicate.oldName ? pendingReplicate.plan : entry) : [...made, pendingReplicate.plan]; setMade(next, pendingReplicate.oldName, pendingReplicate.plan, false, pendingBase); setPendingReplicate(null); setPendingBase(''); }} className="flex-1 py-1 bg-dnd-gold text-black rounded text-[8px] font-black uppercase disabled:opacity-40">Make Item</button>
                                     <button onClick={() => { setPendingReplicate(null); setPendingBase(''); }} className="px-2 py-1 bg-gray-800 text-gray-400 rounded text-[8px] font-bold uppercase">Cancel</button>

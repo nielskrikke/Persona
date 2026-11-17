@@ -1314,7 +1314,7 @@ const ManageCharacterModal = ({
                 if (/weapon \+[123]/i.test(planName)) {
                     existing[index] = {
                         ...item,
-                        weight: /warhammer/i.test(String(item.name)) ? 5 : Math.max(5, Number(item.weight || 0)),
+                        weight: /warhammer/i.test(String(item.name)) ? 5 : /longsword|rapier|battleaxe|morningstar/i.test(String(item.name)) ? 3 : Math.max(1, Number(item.weight || 0)),
                         weapon_category: item.weapon_category || 'martial',
                         equipment_category: item.equipment_category || { index: 'weapon', name: 'Weapon' },
                         range: undefined,
