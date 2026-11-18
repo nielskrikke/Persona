@@ -2368,13 +2368,28 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             <div className="border-t border-gray-800 pt-2 space-y-1">
                                 <div className="text-[9px] font-bold text-gray-500 uppercase flex justify-between"><span>Mutagens</span><span>{mutagenUses ? `${mutagenUses.current}/${mutagenUses.max}` : '0'}</span></div>
                                 <div className="flex gap-1"><select value={mutagenChoice} onChange={e => setMutagenChoice(e.target.value)} className="flex-1 bg-black/40 border border-gray-700 rounded px-1 text-[8px] text-gray-300"><option value="">Formula…</option>{knownMutagens.map((name: string) => <option key={name} value={name}>{name}</option>)}</select><button disabled={!mutagenChoice || !mutagenUses || mutagenUses.current <= 0} onClick={() => setCharacter(prev => {
+                                    const scoreBoost = Number(bh.level) >= 18 ? 5 : Number(bh.level) >= 11 ? 4 : 3;
                                     const mutagenEffects: any = {
-                                        Potency: [{ type: 'bonus', target: 'str', value: 3 }, { type: 'disadvantage', target: 'dex_save' }],
-                                        Celerity: [{ type: 'bonus', target: 'dex', value: 3 }, { type: 'disadvantage', target: 'wis_save' }],
-                                        Rapidity: [{ type: 'bonus', target: 'speed', value: 10 }],
-                                        Nighteye: [{ type: 'sense', sense: 'darkvision', value: 60 }],
-                                        Aether: [{ type: 'bonus', target: 'fly_speed', value: 20 }],
-                                        Vermillion: [{ type: 'resource_bonus', resource: 'Blood Maledict', value: 1 }],
+                                        Aether: [{ type: 'bonus', target: 'fly_speed', value: 20 }, { type: 'disadvantage', target: 'str_checks' }, { type: 'disadvantage', target: 'dex_checks' }],
+                                        Alluring: [{ type: 'advantage', target: 'cha_checks' }, { type: 'disadvantage', target: 'initiative' }],
+                                        Celerity: [{ type: 'bonus', target: 'dex', value: scoreBoost }, { type: 'disadvantage', target: 'wis_save' }],
+                                        Conversant: [{ type: 'advantage', target: 'int_checks' }, { type: 'disadvantage', target: 'wis_checks' }],
+                                        Cruelty: [{ type: 'feature', name: 'Cruelty', value: 1 }, { type: 'disadvantage', target: 'int_save' }, { type: 'disadvantage', target: 'wis_save' }, { type: 'disadvantage', target: 'cha_save' }],
+                                        Deftness: [{ type: 'advantage', target: 'dex_checks' }, { type: 'disadvantage', target: 'wis_checks' }],
+                                        Embers: [{ type: 'resistance', value: 'Fire' }, { type: 'vulnerability', value: 'Cold' }],
+                                        Gelid: [{ type: 'resistance', value: 'Cold' }, { type: 'vulnerability', value: 'Fire' }],
+                                        Impermeable: [{ type: 'resistance', value: 'Piercing' }, { type: 'vulnerability', value: 'Slashing' }],
+                                        Mobility: [{ type: 'immunity', value: 'Grappled' }, { type: 'immunity', value: 'Restrained' }, { type: 'disadvantage', target: 'str_checks' }],
+                                        Nighteye: [{ type: 'sense', sense: 'darkvision', value: 60 }, { type: 'disadvantage', target: 'sunlight_attacks' }],
+                                        Percipient: [{ type: 'advantage', target: 'wis_checks' }, { type: 'disadvantage', target: 'cha_checks' }],
+                                        Potency: [{ type: 'bonus', target: 'str', value: scoreBoost }, { type: 'disadvantage', target: 'dex_save' }],
+                                        Precision: [{ type: 'crit_range', value: 19 }, { type: 'disadvantage', target: 'str_save' }],
+                                        Rapidity: [{ type: 'bonus', target: 'speed', value: Number(bh.level) >= 15 ? 15 : 10 }, { type: 'disadvantage', target: 'int_checks' }],
+                                        Reconstruction: [{ type: 'bonus', target: 'speed', value: -10 }],
+                                        Sagacity: [{ type: 'bonus', target: 'int', value: scoreBoost }, { type: 'disadvantage', target: 'cha_save' }],
+                                        Shielded: [{ type: 'resistance', value: 'Slashing' }, { type: 'vulnerability', value: 'Bludgeoning' }],
+                                        Unbreakable: [{ type: 'resistance', value: 'Bludgeoning' }, { type: 'vulnerability', value: 'Piercing' }],
+                                        Vermillion: [{ type: 'resource_bonus', resource: 'Blood Maledict', value: 1 }, { type: 'disadvantage', target: 'death_saves' }],
                                     };
                                     const features = (prev.classFeatures || []).filter((feature: any) => feature.name !== `Mutagen: ${mutagenChoice}`);
                                     features.push({ index: `mutagen-${mutagenChoice.toLowerCase()}`, name: `Mutagen: ${mutagenChoice}`, level: 3, source: 'Order of the Mutant', desc: ['Active mutagen.'], effects: mutagenEffects[mutagenChoice] || [] } as any);
