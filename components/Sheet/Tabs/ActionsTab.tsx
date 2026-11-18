@@ -110,13 +110,18 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
         });
         attack.onUse?.();
     };
-    const canUseActionRow = (attack: any) => {
+    const useDisabledReason = (attack: any) => {
         const cost = Number(attack.moxieCost || 0);
         const useKey = attack.useKey ? String(attack.useKey) : '';
         const moxie = character.featureUsage?.['Moxie'];
         const costState = character.featureUsage?.[useKey];
-        return !((cost > 0 && (!moxie || Number(moxie.current) < cost)) || (useKey && (!costState || Number(costState.current) < 1)) || (attack.requiresCondition && !character.activeConditions?.[attack.requiresCondition]) || (attack.requiresZeroHp && Number(character.currentHp) > 0));
+        if (attack.requiresCondition && !character.activeConditions?.[attack.requiresCondition]) return attack.requiresCondition === 'arena-persona' ? 'Requires your Persona' : `Requires ${attack.requiresCondition}`;
+        if (attack.requiresZeroHp && Number(character.currentHp) > 0) return 'Only usable at 0 HP';
+        if (cost > 0 && (!moxie || Number(moxie.current) < cost)) return `Requires ${cost} Moxie`;
+        if (useKey && (!costState || Number(costState.current) < 1)) return `No ${useKey} uses remaining`;
+        return '';
     };
+    const canUseActionRow = (attack: any) => !useDisabledReason(attack);
     const [tacticalMasterSelections, setTacticalMasterSelections] = useState<Record<string, string>>({});
 
     const allAttacks = getAttacks().map((attack: any) => {
@@ -332,7 +337,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                             {attack.attackCount && attack.attackCount > 1 && <span className="text-[10px] text-dnd-gold font-black">x{attack.attackCount}</span>}
                                         </div>
                                         {(attack.moxieCost || attack.useKey || attack.onUse) && (
-                                     <button disabled={!canUseActionRow(attack)} onClick={(e) => { e.stopPropagation(); useActionRow(attack); }} className="mt-0.5 px-1.5 py-0.5 rounded border border-dnd-gold/40 bg-dnd-gold/10 text-dnd-gold text-[8px] font-black uppercase disabled:opacity-30">Use{attack.moxieCost ? ` · ${attack.moxieCost} Moxie` : ''}{attack.useKey ? ` · ${character.featureUsage?.[attack.useKey]?.current ?? 0}/${character.featureUsage?.[attack.useKey]?.max ?? 1}` : ''}</button>
+                                     <button disabled={!canUseActionRow(attack)} title={useDisabledReason(attack)} onClick={(e) => { e.stopPropagation(); useActionRow(attack); }} className={`mt-0.5 px-1.5 py-0.5 rounded border text-[8px] font-black uppercase ${canUseActionRow(attack) ? 'border-dnd-gold/40 bg-dnd-gold/10 text-dnd-gold' : 'border-gray-700 bg-gray-800/60 text-gray-500 cursor-not-allowed'}`}>Use{attack.moxieCost ? ` · ${attack.moxieCost} Moxie` : ''}{attack.useKey ? ` · ${character.featureUsage?.[attack.useKey]?.current ?? 0}/${character.featureUsage?.[attack.useKey]?.max ?? 1}` : ''}</button>
                                  )}
                                  <div className="text-[10px] text-gray-500 truncate">{attack.type}{attack.notes?.length ? ` • ${attack.notes.join(' • ')}` : ''}</div>
                                     </div>
@@ -396,7 +401,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                         )}
                                     </div>
                                     {(attack.moxieCost || attack.useKey || attack.onUse) && (
-                                        <button disabled={!canUseActionRow(attack)} onClick={(e) => { e.stopPropagation(); useActionRow(attack); }} className="mt-1 px-2 py-0.5 rounded border border-dnd-gold/40 bg-dnd-gold/10 text-dnd-gold text-[8px] font-black uppercase disabled:opacity-30">
+                                        <button disabled={!canUseActionRow(attack)} title={useDisabledReason(attack)} onClick={(e) => { e.stopPropagation(); useActionRow(attack); }} className={`mt-1 px-2 py-0.5 rounded border text-[8px] font-black uppercase ${canUseActionRow(attack) ? 'border-dnd-gold/40 bg-dnd-gold/10 text-dnd-gold' : 'border-gray-700 bg-gray-800/60 text-gray-500 cursor-not-allowed'}`}>
                                             Use{attack.moxieCost ? ` · ${attack.moxieCost} Moxie` : ''}{attack.useKey ? ` · ${character.featureUsage?.[attack.useKey]?.current ?? 0}/${character.featureUsage?.[attack.useKey]?.max ?? 1}` : ''}
                                         </button>
                                     )}
@@ -508,7 +513,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                      )}
                                  </div>
                                  {(attack.moxieCost || attack.useKey || attack.onUse) && (
-                                     <button disabled={!canUseActionRow(attack)} onClick={(e) => { e.stopPropagation(); useActionRow(attack); }} className="mt-0.5 px-1.5 py-0.5 rounded border border-dnd-gold/40 bg-dnd-gold/10 text-dnd-gold text-[8px] font-black uppercase disabled:opacity-30">Use{attack.moxieCost ? ` · ${attack.moxieCost} Moxie` : ''}{attack.useKey ? ` · ${character.featureUsage?.[attack.useKey]?.current ?? 0}/${character.featureUsage?.[attack.useKey]?.max ?? 1}` : ''}</button>
+                                     <button disabled={!canUseActionRow(attack)} title={useDisabledReason(attack)} onClick={(e) => { e.stopPropagation(); useActionRow(attack); }} className={`mt-0.5 px-1.5 py-0.5 rounded border text-[8px] font-black uppercase ${canUseActionRow(attack) ? 'border-dnd-gold/40 bg-dnd-gold/10 text-dnd-gold' : 'border-gray-700 bg-gray-800/60 text-gray-500 cursor-not-allowed'}`}>Use{attack.moxieCost ? ` · ${attack.moxieCost} Moxie` : ''}{attack.useKey ? ` · ${character.featureUsage?.[attack.useKey]?.current ?? 0}/${character.featureUsage?.[attack.useKey]?.max ?? 1}` : ''}</button>
                                  )}
                                  <div className="text-[10px] text-gray-500 truncate">{attack.type}{attack.notes?.length ? ` • ${attack.notes.join(' • ')}` : ''}</div>
                              </div>
