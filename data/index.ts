@@ -891,6 +891,7 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         const staleNames = new Set<string>();
         classFeatures = classFeatures.filter((feature: any) => {
             if (/^subclass feature$/i.test(String(feature.name || '').trim()) || String(feature.index || '').toLowerCase() === 'subclass-feature') return false;
+            if (/^blood maledict \(\d+\/rest\)$/i.test(String(feature.name || '').trim())) return false;
             if (feature.revertData?.choiceId || feature.revertData?.parentChoiceId) return true;
             if (feature.source && liveSources.has(feature.source) && !liveFeatureNames.has(String(feature.name || ''))) {
                 staleNames.add(String(feature.name || ''));
@@ -1283,7 +1284,7 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
             (cls.definition?.feature_details || []).forEach((feature: any) => {
                 if (Number(feature.level || 0) > Number(cls.level || 0)) return;
                 const key = String(feature.name || '').toLowerCase();
-                if (!key || /^subclass feature$/.test(key) || String(feature.index || '').toLowerCase() === 'subclass-feature') return;
+                if (!key || /^subclass feature$/.test(key) || /^blood maledict \(\d+\/rest\)$/.test(key) || String(feature.index || '').toLowerCase() === 'subclass-feature') return;
                 if (present.has(key)) return;
                 classFeatures.push({ ...feature, level: feature.level, source: cls.definition.name });
                 present.add(key);
@@ -1291,12 +1292,36 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
             (cls.subclass?.feature_details || []).forEach((feature: any) => {
                 if (Number(feature.level || 0) > Number(cls.level || 0)) return;
                 const key = String(feature.name || '').toLowerCase();
-                if (!key || /^subclass feature$/.test(key) || String(feature.index || '').toLowerCase() === 'subclass-feature') return;
+                if (!key || /^subclass feature$/.test(key) || /^blood maledict \(\d+\/rest\)$/.test(key) || String(feature.index || '').toLowerCase() === 'subclass-feature') return;
                 if (present.has(key)) return;
                 classFeatures.push({ ...feature, level: feature.level, source: cls.subclass.name });
                 present.add(key);
             });
         });
+    }
+
+    let normalizedChoices = filteredSpellChoices;
+    {
+        const bloodHunter = (classes || []).find((cls: any) => cls.definition?.index === 'blood-hunter');
+        if (bloodHunter) {
+            const level = Number(bloodHunter.level || 1);
+            const effects = (bloodHunter.definition?.feature_details || []).flatMap((feature: any) => feature.effects || []);
+            const curseEffect = effects.find((effect: any) => effect.type === 'feature_choice' && (effect.options || []).some((option: any) => /^Blood Curse/i.test(String(option.name || ''))));
+            const riteEffect = effects.find((effect: any) => effect.type === 'feature_choice' && (effect.options || []).some((option: any) => /^Rite of/i.test(String(option.name || ''))));
+            const countFor = (effect: any) => {
+                const keys = Object.keys(effect?.count_by_level || {}).map(Number).filter(key => key <= level).sort((a, b) => b - a);
+                return keys.length > 0 ? Number(effect.count_by_level[keys[0]]) : Number(effect?.count || 1);
+            };
+            const knownCurses = (classFeatures || []).map((feature: any) => String(feature.name || '')).filter(name => /^Blood Maledict: Blood Curse/i.test(name)).map(name => name.replace(/^Blood Maledict:\s*/i, '')).filter(name => !/Exorcist|Corrosion|Howl|Soul Eater/i.test(name));
+            const knownRites = (classFeatures || []).map((feature: any) => String(feature.name || '')).filter(name => /^Crimson Rite:/i.test(name)).map(name => name.replace(/^Crimson Rite:\s*/i, '')).filter(name => !/Rite of the Dawn/i.test(name));
+            const old = normalizedChoices || [];
+            const preserveRites = old.filter((choice: any) => /Crimson Rite/i.test(String(choice.label || ''))).flatMap((choice: any) => Array.isArray(choice.value) ? choice.value : []);
+            const cleaned = old.filter((choice: any) => !/^(Crimson Rite|Crimson Rites|Blood Maledict|Blood Curses)$/i.test(String(choice.label || '')) || ['blood-hunter-curses','blood-hunter-rites'].includes(choice.id));
+            const next = [...cleaned];
+            if (curseEffect) next.push({ id: 'blood-hunter-curses', level: 1, source: 'Blood Hunter', type: 'feature_choice', label: 'Blood Curses', value: Array.from(new Set(knownCurses)).slice(0, countFor(curseEffect)), options: (curseEffect.options || []).filter((option: any) => Number(option.min_level || 0) <= level), count: countFor(curseEffect), revertData: { classIndex: 'blood-hunter' } } as any);
+            if (riteEffect) next.push({ id: 'blood-hunter-rites', level: 2, source: 'Blood Hunter', type: 'feature_choice', label: 'Crimson Rites', value: Array.from(new Set([...knownRites, ...preserveRites])).slice(0, countFor(riteEffect)), options: (riteEffect.options || []).filter((option: any) => Number(option.min_level || 0) <= level), count: countFor(riteEffect), revertData: { classIndex: 'blood-hunter' } } as any);
+            normalizedChoices = next;
+        }
     }
 
     return hydrateGrantedSpells({
@@ -1317,7 +1342,7 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
             const savantSpells = Array.isArray(savantChoice?.value) ? savantChoice.value : [];
             return Array.from(new Set([...baseBook, ...savantSpells]));
         })(),
-        choices: filteredSpellChoices,
+        choices: normalizedChoices,
         layout: reconcileArtificerLayout(character),
         skills: Array.from(derivedSkills),
         toolProficiencies: Array.from(derivedTools),
