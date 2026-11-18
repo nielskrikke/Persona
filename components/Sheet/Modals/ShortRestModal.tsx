@@ -122,6 +122,8 @@ const ShortRestModal = ({
                 newSlots[l].current = newSlots[l].max;
             });
         }
+        // Crimson Rite ends on a short rest.
+        const restState = character.activeRite ? { activeRite: null } : {};
 
         const shortRestSpells = new Set(
             character.spells
@@ -169,7 +171,7 @@ const ShortRestModal = ({
             newFeatures['Sorcerous Restoration'] = { ...newFeatures['Sorcerous Restoration'], current: 0 };
         }
 
-        onUpdate({ featureUsage: newFeatures, spellSlots: newSlots, freeCastUsage: newFreeCastUsage, spells: newSpells });
+        onUpdate({ featureUsage: newFeatures, spellSlots: newSlots, freeCastUsage: newFreeCastUsage, spells: newSpells, ...restState });
         onClose();
     };
 

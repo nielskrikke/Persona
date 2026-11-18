@@ -2085,7 +2085,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     if (index >= 0) remaining.splice(index, 1);
                     const featureName = `Experimental Elixir: ${result}`;
                     const effects = result === 'Swiftness' ? [{ type: 'bonus', target: 'speed', value: 10 }]
-                        : result === 'Resilience' ? [{ type: 'bonus', target: 'ac', value: 1 }]
+                        : result === 'Resilience' ? [{ type: 'bonus', target: 'ac', value: 1, condition: 'not:heavy_armor', conditions: ['not:heavy_armor'] }]
                         : result === 'Boldness' ? [{ type: 'bonus', target: 'saves', value: '1d4' }]
                         : result === 'Flight' ? [{ type: 'bonus', target: 'fly_speed', value: 10 }]
                         : [];
@@ -2352,7 +2352,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     const next = !prev.hybridForm;
                                     const bonus = Number(bh.level) >= 18 ? 3 : Number(bh.level) >= 11 ? 2 : 1;
                                     const features = (prev.classFeatures || []).filter((feature: any) => feature.name !== 'Hybrid Form (Active)');
-                                    if (next) features.push({ index: 'hybrid-form-active', name: 'Hybrid Form (Active)', level: 3, source: 'Order of the Lycan', desc: ['Hybrid form benefits active.'], effects: [{ type: 'advantage', target: 'str_save' }, { type: 'advantage', target: 'str_checks' }, { type: 'bonus', target: 'melee_damage', value: bonus }, { type: 'bonus', target: 'ac', value: 1 }, { type: 'resistance', value: 'Bludgeoning' }, { type: 'resistance', value: 'Piercing' }, { type: 'resistance', value: 'Slashing' }] } as any);
+                                    if (next) features.push({ index: 'hybrid-form-active', name: 'Hybrid Form (Active)', level: 3, source: 'Order of the Lycan', desc: ['Hybrid form benefits active.'], effects: [{ type: 'advantage', target: 'str_save' }, { type: 'advantage', target: 'str_checks' }, { type: 'bonus', target: 'melee_damage', value: bonus }, { type: 'bonus', target: 'ac', value: 1, condition: 'not:heavy_armor', conditions: ['not:heavy_armor'] }, { type: 'resistance', value: 'Bludgeoning' }, { type: 'resistance', value: 'Piercing' }, { type: 'resistance', value: 'Slashing' }] } as any);
                                     return { ...prev, hybridForm: next, classFeatures: features };
                                 })} className={`px-2 py-1 rounded text-[8px] font-black uppercase border ${character.hybridForm ? 'bg-red-900/30 border-red-800 text-red-300' : 'bg-gray-800 border-gray-700 text-gray-400'}`}>{character.hybridForm ? 'End' : 'Transform'}</button>
                             </div>
@@ -2372,7 +2372,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     const mutagenEffects: any = {
                                         Aether: [{ type: 'bonus', target: 'fly_speed', value: 20 }, { type: 'disadvantage', target: 'str_checks' }, { type: 'disadvantage', target: 'dex_checks' }],
                                         Alluring: [{ type: 'advantage', target: 'cha_checks' }, { type: 'disadvantage', target: 'initiative' }],
-                                        Celerity: [{ type: 'bonus', target: 'dex', value: scoreBoost }, { type: 'disadvantage', target: 'wis_save' }],
+                                        Celerity: [{ type: 'bonus', target: 'dex', value: scoreBoost, max: 20 + scoreBoost }, { type: 'disadvantage', target: 'wis_save' }],
                                         Conversant: [{ type: 'advantage', target: 'int_checks' }, { type: 'disadvantage', target: 'wis_checks' }],
                                         Cruelty: [{ type: 'feature', name: 'Cruelty', value: 1 }, { type: 'disadvantage', target: 'int_save' }, { type: 'disadvantage', target: 'wis_save' }, { type: 'disadvantage', target: 'cha_save' }],
                                         Deftness: [{ type: 'advantage', target: 'dex_checks' }, { type: 'disadvantage', target: 'wis_checks' }],
@@ -2382,11 +2382,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                         Mobility: [{ type: 'immunity', value: 'Grappled' }, { type: 'immunity', value: 'Restrained' }, { type: 'disadvantage', target: 'str_checks' }],
                                         Nighteye: [{ type: 'sense', sense: 'darkvision', value: 60 }, { type: 'disadvantage', target: 'sunlight_attacks' }],
                                         Percipient: [{ type: 'advantage', target: 'wis_checks' }, { type: 'disadvantage', target: 'cha_checks' }],
-                                        Potency: [{ type: 'bonus', target: 'str', value: scoreBoost }, { type: 'disadvantage', target: 'dex_save' }],
+                                        Potency: [{ type: 'bonus', target: 'str', value: scoreBoost, max: 20 + scoreBoost }, { type: 'disadvantage', target: 'dex_save' }],
                                         Precision: [{ type: 'crit_range', value: 19 }, { type: 'disadvantage', target: 'str_save' }],
                                         Rapidity: [{ type: 'bonus', target: 'speed', value: Number(bh.level) >= 15 ? 15 : 10 }, { type: 'disadvantage', target: 'int_checks' }],
                                         Reconstruction: [{ type: 'bonus', target: 'speed', value: -10 }],
-                                        Sagacity: [{ type: 'bonus', target: 'int', value: scoreBoost }, { type: 'disadvantage', target: 'cha_save' }],
+                                        Sagacity: [{ type: 'bonus', target: 'int', value: scoreBoost, max: 20 + scoreBoost }, { type: 'disadvantage', target: 'cha_save' }],
                                         Shielded: [{ type: 'resistance', value: 'Slashing' }, { type: 'vulnerability', value: 'Bludgeoning' }],
                                         Unbreakable: [{ type: 'resistance', value: 'Bludgeoning' }, { type: 'vulnerability', value: 'Piercing' }],
                                         Vermillion: [{ type: 'resource_bonus', resource: 'Blood Maledict', value: 1 }, { type: 'disadvantage', target: 'death_saves' }],

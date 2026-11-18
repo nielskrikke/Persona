@@ -4223,6 +4223,7 @@ const ManageCharacterModal = ({
                                                                             const value = typeof opt === 'string' ? opt : (opt.name || opt.index || '');
                                                                             return selectedValues.includes(value) || !knownSkillNames.has(String(value).toLowerCase());
                                                                         });
+                                                                        const choiceClassLevel = Number((localClasses || []).find((cls: any) => cls.definition?.index === (choice.revertData?.classIndex || 'blood-hunter'))?.level || character.level || 1);
                                                                         let options = /skilled/i.test(choice.label || '')
                                                                             ? Array.from(new Set([...baseOptions, ...ALL_TOOLS.filter((tool: string) => selectedValues.includes(tool) || !(character.toolProficiencies || []).includes(tool))]))
                                                                             : (choice.type === 'spell' && !choice.revertData?.invocationCantrip && !choice.revertData?.isSpellStoringItem
@@ -4237,6 +4238,9 @@ const ManageCharacterModal = ({
                                                                                         return selectedValues.includes(value) || !knownSkillNames.has(String(value).toLowerCase());
                                                                                     })
                                                                                     : baseOptions));
+                                                                        if (choice.type === 'feature_choice') {
+                                                                            options = options.filter((option: any) => typeof option === 'string' || !option.min_level || Number(option.min_level) <= choiceClassLevel || (Array.isArray(choice.value) && choice.value.includes(option.name)));
+                                                                        }
                                                                         if (/resilient/i.test(choice.label || '')) {
                                                                             const saveProfs = new Set((savingThrowProficiencies || []).map((save: string) => save.toLowerCase()));
                                                                             options = options.filter((option: any) => {
@@ -4726,7 +4730,8 @@ const ManageCharacterModal = ({
                                                                                                         const value = typeof opt === 'string' ? opt : (opt.name || opt.index || '');
                                                                                                         return selectedValues.includes(value) || !knownSkillNames.has(String(value).toLowerCase());
                                                                                                     });
-                                                                                                    let options = /skilled/i.test(choice.label || '')
+                                                                                                    const choiceClassLevel = Number((localClasses || []).find((cls: any) => cls.definition?.index === (choice.revertData?.classIndex || 'blood-hunter'))?.level || character.level || 1);
+                                                                        let options = /skilled/i.test(choice.label || '')
                                                                                                         ? Array.from(new Set([...baseOptions, ...ALL_TOOLS.filter((tool: string) => selectedValues.includes(tool) || !(character.toolProficiencies || []).includes(tool))]))
                                                                                                         : (choice.type === 'spell' && !choice.revertData?.invocationCantrip && !choice.revertData?.isSpellStoringItem
                                                                                                             ? baseOptions.filter((option: any) => {
@@ -4740,7 +4745,10 @@ const ManageCharacterModal = ({
                                                                                                                     return selectedValues.includes(value) || !knownSkillNames.has(String(value).toLowerCase());
                                                                                                                 })
                                                                                                                 : baseOptions));
-                                                                                                    if (/resilient/i.test(choice.label || '')) {
+                                                                                                    if (choice.type === 'feature_choice') {
+                                                                            options = options.filter((option: any) => typeof option === 'string' || !option.min_level || Number(option.min_level) <= choiceClassLevel || (Array.isArray(choice.value) && choice.value.includes(option.name)));
+                                                                        }
+                                                                        if (/resilient/i.test(choice.label || '')) {
                                                                                                         const saveProfs = new Set((savingThrowProficiencies || []).map((save: string) => save.toLowerCase()));
                                                                                                         options = options.filter((option: any) => {
                                                                                                             const value = typeof option === 'string' ? option : (option.index || option.name || '');
