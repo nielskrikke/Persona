@@ -101,11 +101,13 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
         const useKey = attack.useKey ? String(attack.useKey) : '';
         const moxie = character.featureUsage?.['Moxie'];
         const costState = character.featureUsage?.[useKey];
-        if ((cost > 0 && (!moxie || Number(moxie.current) < cost)) || (useKey && (!costState || Number(costState.current) < 1)) || (attack.requiresCondition && !character.activeConditions?.[attack.requiresCondition]) || (attack.requiresZeroHp && Number(character.currentHp) > 0)) return;
+        const resource = attack.resourceCost?.resource ? character.featureUsage?.[attack.resourceCost.resource] : null;
+        if ((cost > 0 && (!moxie || Number(moxie.current) < cost)) || (useKey && (!costState || Number(costState.current) < 1)) || (attack.requiresCondition && !character.activeConditions?.[attack.requiresCondition]) || (attack.requiresZeroHp && Number(character.currentHp) > 0) || (attack.resourceCost && (!resource || Number(resource.current) < Number(attack.resourceCost.amount || 1)))) return;
         setCharacter(prev => {
             const featureUsage = { ...(prev.featureUsage || {}) };
             if (cost > 0 && featureUsage['Moxie']) featureUsage['Moxie'] = { ...featureUsage['Moxie'], current: Math.max(0, Number(featureUsage['Moxie'].current) - cost) };
             if (useKey && featureUsage[useKey]) featureUsage[useKey] = { ...featureUsage[useKey], current: Math.max(0, Number(featureUsage[useKey].current) - 1) };
+            if (attack.resourceCost?.resource && featureUsage[attack.resourceCost.resource]) featureUsage[attack.resourceCost.resource] = { ...featureUsage[attack.resourceCost.resource], current: Math.max(0, Number(featureUsage[attack.resourceCost.resource].current) - Number(attack.resourceCost.amount || 1)) };
             return { ...prev, featureUsage };
         });
         attack.onUse?.();
@@ -115,10 +117,12 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
         const useKey = attack.useKey ? String(attack.useKey) : '';
         const moxie = character.featureUsage?.['Moxie'];
         const costState = character.featureUsage?.[useKey];
+        const resource = attack.resourceCost?.resource ? character.featureUsage?.[attack.resourceCost.resource] : null;
         if (attack.requiresCondition && !character.activeConditions?.[attack.requiresCondition]) return attack.requiresCondition === 'arena-persona' ? 'Requires your Persona' : `Requires ${attack.requiresCondition}`;
         if (attack.requiresZeroHp && Number(character.currentHp) > 0) return 'Only usable at 0 HP';
         if (cost > 0 && (!moxie || Number(moxie.current) < cost)) return `Requires ${cost} Moxie`;
         if (useKey && (!costState || Number(costState.current) < 1)) return `No ${useKey} uses remaining`;
+        if (attack.resourceCost && (!resource || Number(resource.current) < Number(attack.resourceCost.amount || 1))) return `No ${attack.resourceCost.resource} uses remaining`;
         return '';
     };
     const canUseActionRow = (attack: any) => !useDisabledReason(attack);
@@ -337,7 +341,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                             {attack.attackCount && attack.attackCount > 1 && <span className="text-[10px] text-dnd-gold font-black">x{attack.attackCount}</span>}
                                         </div>
                                         {(attack.moxieCost || attack.useKey || attack.onUse) && (
-                                     <button disabled={!canUseActionRow(attack)} title={useDisabledReason(attack)} onClick={(e) => { e.stopPropagation(); useActionRow(attack); }} className={`mt-0.5 px-1.5 py-0.5 rounded border text-[8px] font-black uppercase ${canUseActionRow(attack) ? 'border-dnd-gold/40 bg-dnd-gold/10 text-dnd-gold' : 'border-gray-700 bg-gray-800/60 text-gray-500 cursor-not-allowed'}`}>Use{attack.moxieCost ? ` · ${attack.moxieCost} Moxie` : ''}{attack.useKey ? ` · ${character.featureUsage?.[attack.useKey]?.current ?? 0}/${character.featureUsage?.[attack.useKey]?.max ?? 1}` : ''}</button>
+                                     <button disabled={!canUseActionRow(attack)} title={useDisabledReason(attack)} onClick={(e) => { e.stopPropagation(); useActionRow(attack); }} className={`mt-0.5 px-1.5 py-0.5 rounded border text-[8px] font-black uppercase ${canUseActionRow(attack) ? 'border-dnd-gold/40 bg-dnd-gold/10 text-dnd-gold' : 'border-gray-700 bg-gray-800/60 text-gray-500 cursor-not-allowed'}`}>Use{attack.moxieCost ? ` · ${attack.moxieCost} Moxie` : ''}{attack.useKey ? ` · ${character.featureUsage?.[attack.useKey]?.current ?? 0}/${character.featureUsage?.[attack.useKey]?.max ?? 1}` : ''}{attack.resourceCost ? ` · ${attack.resourceCost.amount} ${attack.resourceCost.resource}` : ''}</button>
                                  )}
                                  <div className="text-[10px] text-gray-500 truncate">{attack.type}{attack.notes?.length ? ` • ${attack.notes.join(' • ')}` : ''}</div>
                                     </div>
@@ -402,7 +406,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                     </div>
                                     {(attack.moxieCost || attack.useKey || attack.onUse) && (
                                         <button disabled={!canUseActionRow(attack)} title={useDisabledReason(attack)} onClick={(e) => { e.stopPropagation(); useActionRow(attack); }} className={`mt-1 px-2 py-0.5 rounded border text-[8px] font-black uppercase ${canUseActionRow(attack) ? 'border-dnd-gold/40 bg-dnd-gold/10 text-dnd-gold' : 'border-gray-700 bg-gray-800/60 text-gray-500 cursor-not-allowed'}`}>
-                                            Use{attack.moxieCost ? ` · ${attack.moxieCost} Moxie` : ''}{attack.useKey ? ` · ${character.featureUsage?.[attack.useKey]?.current ?? 0}/${character.featureUsage?.[attack.useKey]?.max ?? 1}` : ''}
+                                            Use{attack.moxieCost ? ` · ${attack.moxieCost} Moxie` : ''}{attack.useKey ? ` · ${character.featureUsage?.[attack.useKey]?.current ?? 0}/${character.featureUsage?.[attack.useKey]?.max ?? 1}` : ''}{attack.resourceCost ? ` · ${attack.resourceCost.amount} ${attack.resourceCost.resource}` : ''}
                                         </button>
                                     )}
                                     <div className="text-[10px] text-gray-500 line-clamp-2 leading-tight">
@@ -513,7 +517,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                      )}
                                  </div>
                                  {(attack.moxieCost || attack.useKey || attack.onUse) && (
-                                     <button disabled={!canUseActionRow(attack)} title={useDisabledReason(attack)} onClick={(e) => { e.stopPropagation(); useActionRow(attack); }} className={`mt-0.5 px-1.5 py-0.5 rounded border text-[8px] font-black uppercase ${canUseActionRow(attack) ? 'border-dnd-gold/40 bg-dnd-gold/10 text-dnd-gold' : 'border-gray-700 bg-gray-800/60 text-gray-500 cursor-not-allowed'}`}>Use{attack.moxieCost ? ` · ${attack.moxieCost} Moxie` : ''}{attack.useKey ? ` · ${character.featureUsage?.[attack.useKey]?.current ?? 0}/${character.featureUsage?.[attack.useKey]?.max ?? 1}` : ''}</button>
+                                     <button disabled={!canUseActionRow(attack)} title={useDisabledReason(attack)} onClick={(e) => { e.stopPropagation(); useActionRow(attack); }} className={`mt-0.5 px-1.5 py-0.5 rounded border text-[8px] font-black uppercase ${canUseActionRow(attack) ? 'border-dnd-gold/40 bg-dnd-gold/10 text-dnd-gold' : 'border-gray-700 bg-gray-800/60 text-gray-500 cursor-not-allowed'}`}>Use{attack.moxieCost ? ` · ${attack.moxieCost} Moxie` : ''}{attack.useKey ? ` · ${character.featureUsage?.[attack.useKey]?.current ?? 0}/${character.featureUsage?.[attack.useKey]?.max ?? 1}` : ''}{attack.resourceCost ? ` · ${attack.resourceCost.amount} ${attack.resourceCost.resource}` : ''}</button>
                                  )}
                                  <div className="text-[10px] text-gray-500 truncate">{attack.type}{attack.notes?.length ? ` • ${attack.notes.join(' • ')}` : ''}</div>
                              </div>

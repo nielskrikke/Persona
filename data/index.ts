@@ -550,6 +550,16 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
         if (ability) featAbilityByIndex[choice.revertData.featIndex] = ability;
     });
 
+    (character.choices || []).forEach((choice: any) => {
+        const values = Array.isArray(choice.value) ? choice.value : (choice.value ? [choice.value] : []);
+        values.forEach((value: any) => {
+            const option = (choice.options || []).find((candidate: any) => String(typeof candidate === 'string' ? candidate : candidate.name || candidate.index) === String(value));
+            if (!option || typeof option === 'string') return;
+            const owner = (character.classes || []).find((cls: any) => cls.definition?.name === choice.source || cls.subclass?.name === choice.source);
+            const ability = (owner?.subclass as any)?.caster?.ability || (owner?.definition as any)?.caster?.ability;
+            collectFeature(option, choice.source, Number(choice.level || 0), ability);
+        });
+    });
     (character.race as any)?.traits?.forEach((trait: any) => collectFeature(trait, character.race.name, 1));
     (character.subrace as any)?.traits?.forEach((trait: any) => collectFeature(trait, character.subrace.name, 1));
 

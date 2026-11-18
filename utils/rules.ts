@@ -460,6 +460,11 @@ export const getSpellSlots = (classes: CharacterClass[]): Record<number, { max: 
             if (pact) slots[pact.level] = { max: pact.count, current: pact.count };
             return slots;
         }
+        if (profile.type === 'custom' && (characterClass.subclass as any)?.spellcasting_table) {
+            const row = (characterClass.subclass as any).spellcasting_table.find((entry: any) => Number(entry.level) === Number(characterClass.level));
+            if (row?.pact_slots && row?.slot_level) slots[Number(row.slot_level)] = { max: Number(row.pact_slots), current: Number(row.pact_slots) };
+            return slots;
+        }
 
         return tableToSlots(getClassSlotTable(characterClass));
     }
@@ -722,6 +727,7 @@ export const getResourceDefinitions = (character: CharacterState): CharacterReso
         ];
         definitions.forEach(resource => {
             if (/^mystic arcanum/i.test(String(resource.name || resource.key || ''))) return;
+            if (/^exalted mutation$/i.test(resource.name) && characterClass.level < 18) return;
             if (resource.level && characterClass.level < resource.level) return;
             const max = getResourceMax(resource, characterClass.level, abilities, character.level);
             if (max <= 0) return;
@@ -733,6 +739,14 @@ export const getResourceDefinitions = (character: CharacterState): CharacterReso
                 max,
                 source: resource.source,
             });
+        });
+    });
+
+    (character.classFeatures || []).forEach((feature: any) => {
+        (feature.effects || []).filter((effect: any) => effect.type === 'resource_bonus' && effect.resource).forEach((effect: any) => {
+            const resource = resources.get(String(effect.resource));
+            if (!resource) return;
+            resource.max = Math.max(0, Number(resource.max) + Number(effect.value || 0));
         });
     });
 

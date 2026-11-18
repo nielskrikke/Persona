@@ -931,7 +931,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const initAdv = activeModifiers.some(m => m.type === 'advantage' && (m.target === 'initiative' || m.stat === 'initiative'));
     const conMod = calculateModifier(getStat('con'));
     const chaMod = calculateModifier(getStat('cha'));
-    const conSaveBonus = conMod + ((character.classes[0]?.definition.saving_throws || []).some(s => s.index === 'con' || s.name === 'CON') ? prof : 0);
+    const darkAugmentationSaveBonus = (character.classFeatures || []).some((feature: any) => /dark augmentation/i.test(feature.name || '')) ? Math.max(1, intMod) : 0;
+    const conSaveBonus = conMod + ((character.classes[0]?.definition.saving_throws || []).some(s => s.index === 'con' || s.name === 'CON') ? prof : 0) + darkAugmentationSaveBonus;
 
     const checkModifierRule = (
         m: any,
@@ -2956,7 +2957,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     return acc + v;
                                 }, 0);
 
-                             const mod = calculateModifier(getStat(stat)) + (isProf ? prof : 0) + saveBonus;
+                             const darkAugmentation = (character.classFeatures || []).some((feature: any) => /dark augmentation/i.test(feature.name || '')) && ['str','dex','con'].includes(stat) ? Math.max(1, intMod) : 0;
+                             const mod = calculateModifier(getStat(stat)) + (isProf ? prof : 0) + saveBonus + darkAugmentation;
                              const hasFullAdv = activeModifiers.some(m => m.type === 'advantage' && (!m.condition || /^unless\b/i.test(String(m.condition))) && (m.target === `${stat}_save` || (m.target === 'saves' && (!m.filter || m.filter.toLowerCase() === ABILITY_LABELS[stat].toLowerCase()))));
 
                              return <SavingThrowRow key={stat} label={ABILITY_LABELS[stat]} stat={stat} isProf={isProf} mod={mod} advantage={hasFullAdv} onRoll={roll} onContextMenu={triggerRollMenu} />;
@@ -3026,6 +3028,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 const skillSnake = skillKey.replace(/\s+/g, '_');
                                 const hasFullAdv = activeModifiers.some(m => {
                                     const target = String(m.target || '').toLowerCase();
+                                    if (m.condition && !character.activeConditions?.[String(m.condition).toLowerCase()]) return false;
                                     return m.type === 'advantage' && (
                                         target === skillKey
                                         || target === skillSnake
@@ -3419,7 +3422,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             unarmedHitMod = bestMod;
                             unarmedDmgMod = bestMod;
                         } else if (['str', 'dex', 'con', 'int', 'wis', 'cha'].includes(ab)) {
-                            const modVal = getStat(ab);
+                            const modVal = calculateModifier(getStat(ab));
                             unarmedHitMod = modVal;
                             unarmedDmgMod = modVal;
                         }
@@ -3643,6 +3646,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             source: { name: customUnarmedName, desc: 'A punch, kick, head-butt, or similar forceful blow.' }
         };
         (unarmedAttack as any).modifiers = getAttackModifiers(unarmedAttack);
+        if (customUnarmedName !== 'Unarmed Strike') {
+            const baseUnarmed = { ...unarmedAttack, name: 'Unarmed Strike', hit: prof + strMod, damage: `${Math.max(1, 1 + strMod)}`, notes: [], source: { name: 'Unarmed Strike', desc: 'A punch, kick, head-butt, or similar forceful blow.' } };
+            (baseUnarmed as any).modifiers = getAttackModifiers(baseUnarmed);
+            attacks.push(baseUnarmed);
+        }
         attacks.push(unarmedAttack);
         const armorModel = String(character.armorModel || '').toLowerCase();
         const armorModelFeature = featureNamesLower.includes('armor model');
@@ -4231,6 +4239,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const secondWindClassLevel = Number((character.classes || []).find((cls: any) => cls.definition?.index === 'fighter')?.level || 0);
                 const divineSparkDice = isDivineSpark ? (character.level >= 13 ? 3 : character.level >= 7 ? 2 : 1) : 0;
                 const usage = character.featureUsage?.[actionName];
+                const resourceCost = effect.cost?.resource ? { resource: String(effect.cost.resource), amount: Number(effect.cost.amount || 1) } : undefined;
                 attacks.push({
                     id: `feature-action-${feature.index || feature.name}-${idx}`,
                     name: actionName,
@@ -5322,6 +5331,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     </div>
 
                                     <div className="flex items-center gap-2">
+                                        {(character.classes || []).some((cls: any) => cls.definition?.index === 'blood-hunter') && (() => {
+                                            const bh = (character.classes || []).find((cls: any) => cls.definition?.index === 'blood-hunter');
+                                            const row = (bh?.definition as any)?.level_table?.find((entry: any) => entry.level === bh.level);
+                                            const die = row?.class_specific?.hemocraft_die || '1d4';
+                                            return <div className="flex items-center gap-2 bg-red-900/30 border border-red-800 rounded px-2 py-0.5 text-[10px] font-bold text-red-300 uppercase">Hemocraft {die} · DC {8 + prof + intMod}</div>;
+                                        })()}
                                         {character.activeConditions?.['dig-deep'] && (
                                             <div className="flex items-center gap-2 bg-emerald-900/30 border border-emerald-800 rounded px-2 py-0.5 text-[10px] font-bold text-emerald-300 uppercase">Dig Deep Active</div>
                                         )}

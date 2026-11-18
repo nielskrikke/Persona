@@ -113,7 +113,8 @@ const ShortRestModal = ({
         const casterProfiles = character.classes
             .map(c => getCasterProfileFor(c))
             .filter((profile): profile is NonNullable<typeof profile> => !!profile && profile.type !== 'none');
-        const hasPact = casterProfiles.some(profile => profile.type === 'pact');
+        const hasPact = casterProfiles.some(profile => profile.type === 'pact')
+            || character.classes.some(c => (c.subclass as any)?.caster?.type === 'custom' && Array.isArray((c.subclass as any)?.spellcasting_table));
         const hasNonPactCaster = casterProfiles.some(profile => profile.type !== 'pact');
         if (hasPact && !hasNonPactCaster) {
             Object.keys(newSlots).forEach(lvl => {

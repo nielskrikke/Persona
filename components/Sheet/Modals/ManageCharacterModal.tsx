@@ -325,6 +325,67 @@ const ManageCharacterModal = ({
         });
     }, [isOpen, allSpellCatalog, localClasses, replicatePlans, replicatedItems, spellStoringItem]);
 
+    useEffect(() => {
+        if (!isOpen) return;
+        const bh = (localClasses || []).find((cls: any) => cls.definition?.index === 'blood-hunter');
+        if (!bh) return;
+        const level = Number(bh.level || 1);
+        const curseEffect = (bh.definition?.feature_details || []).flatMap((f: any) => f.effects || []).find((e: any) => e.type === 'feature_choice' && (e.options || []).some((o: any) => /^Blood Curse/i.test(String(o.name || ''))));
+        const riteEffect = (bh.definition?.feature_details || []).flatMap((f: any) => f.effects || []).find((e: any) => e.type === 'feature_choice' && (e.options || []).some((o: any) => /^Rite of/i.test(String(o.name || ''))));
+        if (!curseEffect && !riteEffect) return;
+        setLocalChoices(prev => {
+            const oldValues = (labels: RegExp) => prev.filter((c: any) => labels.test(String(c.label || ''))).flatMap((c: any) => Array.isArray(c.value) ? c.value : []);
+            const cleaned = prev.filter((c: any) => !/^(Crimson Rite|Crimson Rites|Blood Maledict|Blood Curses)$/i.test(String(c.label || '')) || ['blood-hunter-curses','blood-hunter-rites'].includes(c.id));
+            let changed = cleaned.length !== prev.length;
+            const next = [...cleaned];
+            const ensure = (id: string, label: string, effect: any, defaultLevel: number, value: any[]) => {
+                if (!effect) return;
+                const options = (effect.options || []).filter((o: any) => Number(o.min_level || 0) <= level);
+                const count = getChoiceCount(effect, level);
+                const existing = next.find((c: any) => c.id === id);
+                const valid = value.filter((v: any) => options.some((o: any) => String(o.name || o) === String(v)));
+                if (!existing) {
+                    next.push({ id, level: defaultLevel, source: 'Blood Hunter', type: 'feature_choice', label, value: valid, options, count, revertData: { classIndex: 'blood-hunter' } } as any);
+                    changed = true;
+                } else if (existing.count !== count || JSON.stringify((existing.options || []).map((o: any) => o.name || o)) !== JSON.stringify(options.map((o: any) => o.name || o))) {
+                    const idx = next.indexOf(existing);
+                    next[idx] = { ...existing, options, count };
+                    changed = true;
+                }
+            };
+            ensure('blood-hunter-curses', 'Blood Curses', curseEffect, 1, oldValues(/Blood Curse|Blood Maledict/i));
+            ensure('blood-hunter-rites', 'Crimson Rites', riteEffect, 2, oldValues(/Crimson Rite/i));
+            return changed ? next : prev;
+        });
+    }, [isOpen, localClasses]);
+
+    useEffect(() => {
+        if (!isOpen || allSpellCatalog.length === 0) return;
+        const bh = (localClasses || []).find((cls: any) => cls.definition?.index === 'blood-hunter');
+        if (!bh || !/profane soul/i.test(String(bh.subclass?.name || ''))) return;
+        const row = ((bh.subclass as any)?.spellcasting_table || []).find((entry: any) => Number(entry.level) === Number(bh.level));
+        if (!row) return;
+        const warlockSpells = allSpellCatalog.filter((spell: any) => (spell.classes || []).some((entry: any) => /warlock/i.test(String(entry.name || entry.index || ''))));
+        setLocalChoices(prev => {
+            let changed = false;
+            const next = [...prev];
+            const ensure = (id: string, label: string, count: number, options: any[]) => {
+                const existing = next.find((choice: any) => choice.id === id);
+                if (!existing) {
+                    next.push({ id, level: 3, source: 'Order of the Profane Soul', type: 'spell', label, value: [], options, count, revertData: { classIndex: 'blood-hunter', isProfaneSpellChoice: true } } as any);
+                    changed = true;
+                } else if (existing.count !== count || (existing.options || []).length !== options.length) {
+                    const index = next.indexOf(existing);
+                    next[index] = { ...existing, options, count };
+                    changed = true;
+                }
+            };
+            ensure('profane-soul-cantrips', 'Profane Soul Cantrips', Number(row.cantrips_known || 0), warlockSpells.filter((spell: any) => Number(spell.level) === 0));
+            ensure('profane-soul-spells', 'Profane Soul Spells', Number(row.spells_known || 0), warlockSpells.filter((spell: any) => Number(spell.level) >= 1 && Number(spell.level) <= Number(row.slot_level || 1)));
+            return changed ? next : prev;
+        });
+    }, [isOpen, allSpellCatalog, localClasses]);
+
     // Initialization
     useEffect(() => {
         if (isOpen) {
@@ -1562,6 +1623,18 @@ const ManageCharacterModal = ({
             const selected = typeof choice.value === 'string' ? choice.value : '';
             if (selected) setSkills(prev => Array.from(new Set([...prev, selected])));
             setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: selected, revertData: { ...c.revertData, pendingConfirm: false } } : c));
+            return;
+        }
+        if (choice.revertData?.isProfaneSpellChoice) {
+            const selected = Array.isArray(choice.value) ? choice.value : (choice.value ? [choice.value] : []);
+            const old = Array.isArray(choice.revertData?.previousValues) ? choice.revertData.previousValues : [];
+            const chosen = allSpellCatalog.filter((spell: any) => selected.some((value: any) => String(value) === spell.index || String(value) === spell.name));
+            setLocalSpells(prev => {
+                const retained = prev.filter((spell: any) => !old.includes(spell.name) && !old.includes(spell.index));
+                const additions = chosen.filter((spell: any) => !retained.some((known: any) => known.index === spell.index)).map((spell: any) => ({ ...spell, sourceClassIndex: 'profane-soul', isPrepared: true, spellcastingAbility: 'int' }));
+                return [...retained, ...additions];
+            });
+            setLocalChoices(prev => prev.map((c: any) => c.id === choiceId ? { ...c, value: selected, revertData: { ...c.revertData, pendingConfirm: false, previousValues: chosen.map((spell: any) => spell.name) } } : c));
             return;
         }
         if (choice.revertData?.isDogHoundReplacement) {
