@@ -2343,7 +2343,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         </div>
                         <div className="border-t border-gray-800 pt-2 space-y-1">
                             <div className="text-[9px] font-bold text-gray-500 uppercase flex justify-between"><span>Brand of Castigation</span><span>{brandUses ? `${brandUses.current}/${brandUses.max}` : '0'}</span></div>
-                            {character.brandTarget ? <div className="flex justify-between bg-purple-900/20 border border-purple-900/40 rounded px-2 py-1"><span className="text-[10px] text-purple-300">{character.brandTarget} · {Math.max(1, intMod) * (Number(bh.level) >= 13 ? 2 : 1)} psychic</span><button onClick={() => setCharacter(prev => ({ ...prev, brandTarget: '' }))} className="text-[8px] uppercase text-purple-400">End</button></div> : <div className="flex gap-1"><input value={brandName} onChange={e => setBrandName(e.target.value)} placeholder="Target name" className="flex-1 bg-black/40 border border-gray-700 rounded px-1 text-[9px] text-white" /><button disabled={!brandUses || brandUses.current <= 0} onClick={() => setCharacter(prev => ({ ...prev, brandTarget: brandName || 'Branded target', featureUsage: { ...prev.featureUsage, 'Brand of Castigation': { ...(prev.featureUsage['Brand of Castigation'] || { max: 1 }), current: Math.max(0, Number(prev.featureUsage['Brand of Castigation']?.current || 0) - 1) } } }))} className="px-2 py-1 bg-purple-900/30 border border-purple-800 text-purple-300 rounded text-[8px] font-black uppercase disabled:opacity-30">Brand</button></div>}
+                            {character.brandTarget ? <div className="flex justify-between bg-purple-900/20 border border-purple-900/40 rounded px-2 py-1"><span className="text-[10px] text-purple-300">{character.brandTarget} · {Math.max(1, intMod) * (Number(bh.level) >= 13 ? 2 : 1)} psychic<br /><span className="text-[8px] text-purple-400">Order upgrade effects apply while branded.</span></span><button onClick={() => setCharacter(prev => ({ ...prev, brandTarget: '' }))} className="text-[8px] uppercase text-purple-400">End</button></div> : <div className="flex gap-1"><input value={brandName} onChange={e => setBrandName(e.target.value)} placeholder="Target name" className="flex-1 bg-black/40 border border-gray-700 rounded px-1 text-[9px] text-white" /><button disabled={!brandUses || brandUses.current <= 0} onClick={() => setCharacter(prev => ({ ...prev, brandTarget: brandName || 'Branded target', featureUsage: { ...prev.featureUsage, 'Brand of Castigation': { ...(prev.featureUsage['Brand of Castigation'] || { max: 1 }), current: Math.max(0, Number(prev.featureUsage['Brand of Castigation']?.current || 0) - 1) } } }))} className="px-2 py-1 bg-purple-900/30 border border-purple-800 text-purple-300 rounded text-[8px] font-black uppercase disabled:opacity-30">Brand</button></div>}
                         </div>
                         {/lycan/i.test(String(bh.subclass?.name || '')) && (
                             <div className="border-t border-gray-800 pt-2 flex items-center justify-between">
@@ -4181,8 +4181,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const activeRite = character.activeRite && character.activeRite.weaponId === item.id ? character.activeRite : null;
             let riteDamage = displayDamage;
             if (activeRite) {
-                riteDamage = `${displayDamage} + ${activeRite.die} ${activeRite.damageType}`;
-                finalNotes.push(`${activeRite.name}: +${activeRite.die} ${activeRite.damageType} (magical)${activeRite.name === 'Rite of the Dawn' ? '; +1 die vs undead' : ''}`);
+                const bhClass = (character.classes || []).find((cls: any) => cls.definition?.index === 'blood-hunter');
+                const sundering = /ghostslayer/i.test(String(bhClass?.subclass?.name || '')) && Number(bhClass?.level || 0) >= 11;
+                riteDamage = `${displayDamage} + ${activeRite.die}${sundering ? ` + ${activeRite.die}` : ''} ${activeRite.damageType}`;
+                finalNotes.push(`${activeRite.name}: +${activeRite.die}${sundering ? ` + ${activeRite.die} (Brand of Sundering)` : ''} ${activeRite.damageType} (magical)${activeRite.name === 'Rite of the Dawn' ? '; +1 die vs undead' : ''}`);
             }
             const weaponAttack = {
                 id: item.id,
@@ -4196,6 +4198,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 source: item
             };
             (weaponAttack as any).modifiers = getAttackModifiers(weaponAttack);
+            if (activeRite) (weaponAttack as any).modifiers.push({ name: 'Magical (Crimson Rite)', desc: "This weapon's rite damage is magical." });
             if (featureNamesLower.includes('arcane jolt') && (item.is_magic || item.requires_attunement || item.isPactWeapon || (item.modifiers && item.modifiers.length > 0))) {
                 (weaponAttack as any).modifiers.push({ name: 'Arcane Jolt', desc: `On a magic-weapon hit: add ${character.level >= 15 ? '4d6' : '2d6'} Force damage or heal that amount; INT uses per Long Rest.` });
             }
@@ -4346,7 +4349,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     if (computed > 0) saveDC = computed;
                 }
                 const hasSave = Boolean(effect.save_ability || effect.save?.ability || rawDC);
-                const actionName = effect.name || feature.name;
+                const actionName = String(effect.name || feature.name).replace(/^(Blood Curses|Crimson Rites|Mutagen Formulas):\s*/i, '');
                 if (/breath weapon|dragon wings/i.test(actionName)) return;
                 const actionKey = `${String(actionName).toLowerCase()}|${String(effect.type || '').toLowerCase()}`;
                 if (seenFeatureActions.has(actionKey)) return;
@@ -4454,10 +4457,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     name: `${attack.name} (Amplify)`,
                     notes: [...(attack.notes || []), `Amplify: take ${hemocraftDie} necrotic (ignores resistance and temp HP).`],
                     onUse: () => {
-                        const dieMax = parseInt(hemocraftDie.match(/d(\d+)/)?.[1] || '4');
-                        const damage = 1 + Math.floor(Math.random() * dieMax);
-                        setCharacter(prev => ({ ...prev, currentHp: Math.max(0, Number(prev.currentHp) - damage) }));
-                        roll(hemocraftDie, 'Blood Maledict Amplify');
+                        roll(hemocraftDie, 'Blood Maledict Amplify', (result) => {
+                            setCharacter(prev => ({ ...prev, currentHp: Math.max(0, Number(prev.currentHp) - result.total) }));
+                        });
                     },
                 });
             });
