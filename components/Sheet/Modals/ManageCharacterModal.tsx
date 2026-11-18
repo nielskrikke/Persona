@@ -1069,6 +1069,7 @@ const ManageCharacterModal = ({
             setLocalFeatures(prev => {
                 const next = { ...prev };
                 newSubclassResources.forEach((resource: any) => {
+                    if (resource.level && Number(clsDef.level || 0) < Number(resource.level)) return;
                     if (!next[resource.name]) {
                         const values = resource.max?.values || [];
                         const max = resource.max?.type === 'fixed' ? Number(resource.max.value || 0) : resource.max?.type === 'table' ? Number(values[Math.max(0, Number(clsDef.level || 1) - 1)] || 0) : Number(resource.max?.value || 1);

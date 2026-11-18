@@ -564,6 +564,16 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
             collectFeature(option, choice.source, Number(choice.level || 0), ability);
         });
     });
+    (character.classes || []).forEach((cls: any) => {
+        (cls.subclass?.feature_details || []).forEach((feature: any) => {
+            (feature.effects || []).filter((effect: any) => effect.type === 'feature_choice').forEach((effect: any) => {
+                (effect.options || []).forEach((option: any) => {
+                    if (!option?.name || !(character.classFeatures || []).some((known: any) => String(known.name || '').includes(option.name))) return;
+                    collectFeature(option, cls.subclass?.name || cls.definition.name, Number(feature.level || 0), (cls.subclass as any)?.caster?.ability);
+                });
+            });
+        });
+    });
     (character.race as any)?.traits?.forEach((trait: any) => collectFeature(trait, character.race.name, 1));
     (character.subrace as any)?.traits?.forEach((trait: any) => collectFeature(trait, character.subrace.name, 1));
 
@@ -1342,7 +1352,7 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
                 const keys = Object.keys(effect?.count_by_level || {}).map(Number).filter(key => key <= level).sort((a, b) => b - a);
                 return keys.length > 0 ? Number(effect.count_by_level[keys[0]]) : Number(effect?.count || 1);
             };
-            const knownCurses = (classFeatures || []).map((feature: any) => String(feature.name || '')).filter(name => /^Blood (?:Maledict|Curses):\s*Blood Curse/i.test(name)).map(name => name.replace(/^Blood (?:Maledict|Curses):\s*/i, '')).filter(name => !/Exorcist|Corrosion|Howl|Soul Eater/i.test(name));
+            const knownCurses = (classFeatures || []).map((feature: any) => String(feature.name || '')).filter(name => /^Blood (?:Maledict|Curses):/i.test(name)).map(name => name.replace(/^Blood (?:Maledict|Curses):\s*/i, '')).map(name => /^Blood Curse/i.test(name) ? name : `Blood Curse of the ${name}`).filter(name => !/Exorcist|Corrosion|Howl|Soul Eater/i.test(name));
             const knownRites = (classFeatures || []).map((feature: any) => String(feature.name || '')).filter(name => /^Crimson Rite:/i.test(name)).map(name => name.replace(/^Crimson Rite:\s*/i, '')).filter(name => !/Rite of the Dawn/i.test(name));
             const old = normalizedChoices || [];
             const preserveRites = old.filter((choice: any) => /Crimson Rite/i.test(String(choice.label || ''))).flatMap((choice: any) => Array.isArray(choice.value) ? choice.value : []);

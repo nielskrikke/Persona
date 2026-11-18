@@ -839,6 +839,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         });
 
         const mutagenMods: Record<string, any[]> = {
+            Potency: [{ type: 'disadvantage', target: 'dex_save' }],
+            Celerity: [{ type: 'disadvantage', target: 'wis_save' }],
+            Sagacity: [{ type: 'disadvantage', target: 'cha_save' }],
             Embers: [{ type: 'resistance', value: 'Fire' }, { type: 'vulnerability', value: 'Cold' }],
             Gelid: [{ type: 'resistance', value: 'Cold' }, { type: 'vulnerability', value: 'Fire' }],
             Impermeable: [{ type: 'resistance', value: 'Piercing' }, { type: 'vulnerability', value: 'Slashing' }],
@@ -2398,7 +2401,6 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                         Conversant: [{ type: 'advantage', target: 'int_checks' }, { type: 'disadvantage', target: 'wis_checks' }],
                                         Cruelty: [{ type: 'feature', name: 'Cruelty', value: 1 }, { type: 'disadvantage', target: 'int_save' }, { type: 'disadvantage', target: 'wis_save' }, { type: 'disadvantage', target: 'cha_save' }],
                                         Deftness: [{ type: 'advantage', target: 'dex_checks' }, { type: 'disadvantage', target: 'wis_checks' }],
-                                        Embers: [{ type: 'resistance', value: 'Fire' }, { type: 'vulnerability', value: 'Cold' }],
                                         Gelid: [{ type: 'resistance', value: 'Cold' }, { type: 'vulnerability', value: 'Fire' }],
                                         Impermeable: [{ type: 'resistance', value: 'Piercing' }, { type: 'vulnerability', value: 'Slashing' }],
                                         Mobility: [{ type: 'immunity', value: 'Grappled' }, { type: 'immunity', value: 'Restrained' }, { type: 'disadvantage', target: 'str_checks' }],
@@ -3367,6 +3369,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const fiendishDamage = hasFiendishResilience ? String(character.fiendishResilience || '') : '';
                 const res = Array.from(new Set(activeModifiers.filter(m => m.type === 'resistance').map(m => String(m.value))));
                 const imm = Array.from(new Set(activeModifiers.filter(m => m.type === 'immunity').map(m => String(m.value))));
+                const vuln = Array.from(new Set(activeModifiers.filter(m => m.type === 'vulnerability').map(m => String(m.value))));
                 const advDef: string[] = [];
 
                 const defensiveFeatureNames = new Set([
@@ -3396,6 +3399,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         <div className="flex flex-wrap gap-1">
                             {res.map(r => (<span key={`res-${r}`} className="bg-blue-900/30 border border-blue-800/50 px-1.5 py-0.5 rounded text-[9px] text-blue-200 font-bold uppercase">Resist: {r}</span>))}
                             {imm.map(i => (<span key={`imm-${i}`} className="bg-purple-900/30 border border-purple-800/50 px-1.5 py-0.5 rounded text-[9px] text-purple-200 font-bold uppercase">Immune: {i}</span>))}
+                            {vuln.map(v => (<span key={`vuln-${v}`} className="bg-red-900/30 border border-red-800/50 px-1.5 py-0.5 rounded text-[9px] text-red-200 font-bold uppercase">Vulnerable: {v}</span>))}
                             {hasFiendishResilience && (
                                 <label className="flex items-center gap-1.5 text-[9px] text-gray-500 font-bold uppercase tracking-wide">
                                     Fiendish Resilience
@@ -3418,7 +3422,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     </div>
                                 </div>
                             ))}
-                            {res.length === 0 && imm.length === 0 && advDef.length === 0 && defensiveFeatures.length === 0 && !hasFiendishResilience && <span className="text-gray-600 text-xs italic">No special defenses.</span>}
+                            {res.length === 0 && imm.length === 0 && vuln.length === 0 && advDef.length === 0 && defensiveFeatures.length === 0 && !hasFiendishResilience && <span className="text-gray-600 text-xs italic">No special defenses.</span>}
                         </div>
                     </div>
                 );

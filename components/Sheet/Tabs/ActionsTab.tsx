@@ -340,7 +340,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                             {attack.name}
                                             {attack.attackCount && attack.attackCount > 1 && <span className="text-[10px] text-dnd-gold font-black">x{attack.attackCount}</span>}
                                         </div>
-                                        {(attack.moxieCost || attack.useKey || attack.onUse) && (
+                                        {(attack.moxieCost || attack.useKey || attack.onUse || attack.resourceCost) && (
                                      <button disabled={!canUseActionRow(attack)} title={useDisabledReason(attack)} onClick={(e) => { e.stopPropagation(); useActionRow(attack); }} className={`mt-0.5 px-1.5 py-0.5 rounded border text-[8px] font-black uppercase ${canUseActionRow(attack) ? 'border-dnd-gold/40 bg-dnd-gold/10 text-dnd-gold' : 'border-gray-700 bg-gray-800/60 text-gray-500 cursor-not-allowed'}`}>Use{attack.moxieCost ? ` · ${attack.moxieCost} Moxie` : ''}{attack.useKey ? ` · ${character.featureUsage?.[attack.useKey]?.current ?? 0}/${character.featureUsage?.[attack.useKey]?.max ?? 1}` : ''}{attack.resourceCost ? ` · ${attack.resourceCost.amount} ${attack.resourceCost.resource}` : ''}</button>
                                  )}
                                  <div className="text-[10px] text-gray-500 truncate">{attack.type}{attack.notes?.length ? ` • ${attack.notes.join(' • ')}` : ''}</div>
@@ -404,7 +404,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                             <span className="text-[8px] bg-yellow-900/40 text-yellow-500 border border-yellow-800/60 px-1 rounded h-3 flex items-center">R</span>
                                         )}
                                     </div>
-                                    {(attack.moxieCost || attack.useKey || attack.onUse) && (
+                                    {(attack.moxieCost || attack.useKey || attack.onUse || attack.resourceCost) && (
                                         <button disabled={!canUseActionRow(attack)} title={useDisabledReason(attack)} onClick={(e) => { e.stopPropagation(); useActionRow(attack); }} className={`mt-1 px-2 py-0.5 rounded border text-[8px] font-black uppercase ${canUseActionRow(attack) ? 'border-dnd-gold/40 bg-dnd-gold/10 text-dnd-gold' : 'border-gray-700 bg-gray-800/60 text-gray-500 cursor-not-allowed'}`}>
                                             Use{attack.moxieCost ? ` · ${attack.moxieCost} Moxie` : ''}{attack.useKey ? ` · ${character.featureUsage?.[attack.useKey]?.current ?? 0}/${character.featureUsage?.[attack.useKey]?.max ?? 1}` : ''}{attack.resourceCost ? ` · ${attack.resourceCost.amount} ${attack.resourceCost.resource}` : ''}
                                         </button>
@@ -516,7 +516,7 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                                          <span className="text-[9px] text-dnd-gold font-bold">{character.featureUsage[attack.name]?.current || attack.source.maxUses}/{attack.source.maxUses}</span>
                                      )}
                                  </div>
-                                 {(attack.moxieCost || attack.useKey || attack.onUse) && (
+                                 {(attack.moxieCost || attack.useKey || attack.onUse || attack.resourceCost) && (
                                      <button disabled={!canUseActionRow(attack)} title={useDisabledReason(attack)} onClick={(e) => { e.stopPropagation(); useActionRow(attack); }} className={`mt-0.5 px-1.5 py-0.5 rounded border text-[8px] font-black uppercase ${canUseActionRow(attack) ? 'border-dnd-gold/40 bg-dnd-gold/10 text-dnd-gold' : 'border-gray-700 bg-gray-800/60 text-gray-500 cursor-not-allowed'}`}>Use{attack.moxieCost ? ` · ${attack.moxieCost} Moxie` : ''}{attack.useKey ? ` · ${character.featureUsage?.[attack.useKey]?.current ?? 0}/${character.featureUsage?.[attack.useKey]?.max ?? 1}` : ''}{attack.resourceCost ? ` · ${attack.resourceCost.amount} ${attack.resourceCost.resource}` : ''}</button>
                                  )}
                                  <div className="text-[10px] text-gray-500 truncate">{attack.type}{attack.notes?.length ? ` • ${attack.notes.join(' • ')}` : ''}</div>
