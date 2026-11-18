@@ -1805,6 +1805,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const clearedConditions = { ...(prev.activeConditions || {}) };
             delete clearedConditions['dragon-wings'];
             delete clearedConditions['innate-sorcery'];
+            ['down-but-not-out','haymaker','dread-hand','arena-persona','scrap-like-a-sleuth','dig-deep'].forEach(key => delete clearedConditions[key]);
             const resourceDefinitions = new Map(getResourceDefinitions(prev).map(resource => [resource.name, resource]));
             Object.keys(newFeatures).forEach(key => {
                 const resetRule = (newFeatures[key] as any).reset || 'long';
@@ -1851,7 +1852,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 pugilistHound: prev.pugilistHound ? { ...prev.pugilistHound, hp: prev.pugilistHound.maxHp, tempHp: 0 } : prev.pugilistHound,
                 experimentalElixirs: [],
                 experimentalElixir: undefined,
-                classFeatures: (prev.classFeatures || []).filter((feature: any) => !/^Experimental Elixir:/i.test(feature.name || '')),
+                classFeatures: (prev.classFeatures || []).filter((feature: any) => !/^Experimental Elixir:/i.test(feature.name || '') && !/^(Down but Not Out|Dread Hand|Haymaker|Scrap Like a Sleuth|Dig Deep|Persona Adopted)\b/i.test(feature.name || '')),
                 exhaustion: Math.max(0, Number(prev.exhaustion || 0) - 1),
                 eldritchCannonFreebieUsed: false,
                 inspiration: hasResourceful ? true : prev.inspiration
@@ -2305,7 +2306,14 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 <div className="flex justify-between text-[10px] text-gray-400"><span>Wolf · Medium</span><span>AC {houndAc}</span></div>
                                 <div className="flex items-center gap-1.5">
                                     <input type="number" value={houndHpDelta} onChange={e => setHoundHpDelta(Math.max(1, Number(e.target.value) || 1))} className="w-12 bg-black/40 border border-gray-700 rounded px-1 py-0.5 text-[10px] text-white" />
-                                    <button onClick={() => setCharacter(prev => ({ ...prev, pugilistHound: prev.pugilistHound ? { ...prev.pugilistHound, hp: Math.max(0, prev.pugilistHound.hp - houndHpDelta) } : null }))} className="px-2 h-6 rounded bg-red-900/30 text-red-400 text-[9px] font-bold uppercase">Damage</button>
+                                    <button onClick={() => setCharacter(prev => {
+                                        const h = prev.pugilistHound;
+                                        if (!h) return prev;
+                                        const temp = Number((h as any).tempHp || 0);
+                                        const absorbed = Math.min(temp, houndHpDelta);
+                                        const remaining = houndHpDelta - absorbed;
+                                        return { ...prev, pugilistHound: { ...h, tempHp: temp - absorbed, hp: Math.max(0, h.hp - remaining) } };
+                                    })} className="px-2 h-6 rounded bg-red-900/30 text-red-400 text-[9px] font-bold uppercase">Damage</button>
                                     <span className="text-sm font-bold text-white">{hound.hp}/{hound.maxHp}{Number((hound as any).tempHp || 0) > 0 ? ` + ${(hound as any).tempHp} temp` : ''}</span>
                                     <button onClick={() => setCharacter(prev => ({ ...prev, pugilistHound: prev.pugilistHound ? { ...prev.pugilistHound, hp: Math.min(prev.pugilistHound.maxHp, prev.pugilistHound.hp + houndHpDelta) } : null }))} className="px-2 h-6 rounded bg-green-900/30 text-green-400 text-[9px] font-bold uppercase">Heal</button>
                                 </div>
@@ -4371,7 +4379,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             if (scrap) scrap.onUse = () => setCharacter(prev => ({ ...prev, activeConditions: { ...(prev.activeConditions || {}), 'scrap-like-a-sleuth': true }, classFeatures: [...(prev.classFeatures || []).filter((feature: any) => feature.name !== 'Scrap Like a Sleuth (Active)'), { index: 'scrap-like-a-sleuth-active', name: 'Scrap Like a Sleuth (Active)', level: 6, source: 'Bloodhound Bruisers', desc: ['Advantage against the chosen creature; +PB AC against its attacks.'], effects: [] } as any] }));
             const salty = attacks.find(attack => /salty salute/i.test(String(attack.name)));
             if (salty) salty.onUse = () => roll(`${unarmedDie}+${chaMod}`, 'Salty Salute Psychic Damage');
-            addPug('Detective Work', 'feature', 1, 'Spend 1 Moxie: advantage on an Investigation, Insight or Perception check.', () => {
+            if (/bloodhound bruisers/i.test(String(pugilistClass.subclass?.name || ''))) addPug('Detective Work', 'feature', 1, 'Spend 1 Moxie: advantage on an Investigation, Insight or Perception check.', () => {
                 setSelectedDetail({ name: 'Detective Work', desc: ['Gain advantage on one Investigation, Insight or Perception check.'] } as any);
             });
             const unbreakable = addPug('Unbreakable', 'reaction', 1, 'Spend 1 Moxie: when reduced to 0 HP, set your HP to 1.', () => {
@@ -5303,6 +5311,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     </div>
 
                                     <div className="flex items-center gap-2">
+                                        {character.activeConditions?.haymaker && (
+                                            <div className="flex items-center gap-2 bg-orange-900/30 border border-orange-800 rounded px-2 py-0.5 text-[10px] font-bold text-orange-300 uppercase">
+                                                Haymaker Active
+                                            </div>
+                                        )}
                                         {character.exhaustion > 0 && (
                                             <div className="flex items-center gap-2 bg-red-900/30 border border-red-800 rounded px-2 py-0.5 text-[10px] font-bold text-red-300 uppercase">
                                                 Exhaustion {character.exhaustion}
