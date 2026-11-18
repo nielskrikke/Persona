@@ -1326,6 +1326,13 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
     let normalizedChoices = filteredSpellChoices;
     {
         const bloodHunter = (classes || []).find((cls: any) => cls.definition?.index === 'blood-hunter');
+        if (bloodHunter && !/profane soul/i.test(String(bloodHunter.subclass?.name || ''))) {
+            character.spells = (character.spells || []).filter((spell: any) => {
+                const profane = String(spell.sourceClassIndex || '').toLowerCase() === 'profane-soul' || /profane soul/i.test(String(spell.grantedBy || ''));
+                const unmarkedWarlock = !spell.sourceClassIndex && (spell.classes || []).some((entry: any) => /warlock/i.test(String(entry.name || entry.index || '')));
+                return !(profane || unmarkedWarlock);
+            });
+        }
         if (bloodHunter) {
             const level = Number(bloodHunter.level || 1);
             const effects = (bloodHunter.definition?.feature_details || []).flatMap((feature: any) => feature.effects || []);
@@ -1339,9 +1346,10 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
             const knownRites = (classFeatures || []).map((feature: any) => String(feature.name || '')).filter(name => /^Crimson Rite:/i.test(name)).map(name => name.replace(/^Crimson Rite:\s*/i, '')).filter(name => !/Rite of the Dawn/i.test(name));
             const old = normalizedChoices || [];
             const preserveRites = old.filter((choice: any) => /Crimson Rite/i.test(String(choice.label || ''))).flatMap((choice: any) => Array.isArray(choice.value) ? choice.value : []);
+            const preserveCurses = old.filter((choice: any) => /Blood Curse|Blood Maledict/i.test(String(choice.label || ''))).flatMap((choice: any) => Array.isArray(choice.value) ? choice.value : []);
             const cleaned = old.filter((choice: any) => !/^(Crimson Rite|Crimson Rites|Blood Maledict|Blood Curses)$/i.test(String(choice.label || '')));
             const next = [...cleaned];
-            if (curseEffect) next.push({ id: 'blood-hunter-curses', level: 1, source: 'Blood Hunter', type: 'feature_choice', label: 'Blood Curses', value: Array.from(new Set(knownCurses)).slice(0, countFor(curseEffect)), options: (curseEffect.options || []).filter((option: any) => Number(option.min_level || 0) <= level), count: countFor(curseEffect), revertData: { classIndex: 'blood-hunter' } } as any);
+            if (curseEffect) next.push({ id: 'blood-hunter-curses', level: 1, source: 'Blood Hunter', type: 'feature_choice', label: 'Blood Curses', value: Array.from(new Set([...knownCurses, ...preserveCurses])).slice(0, countFor(curseEffect)), options: (curseEffect.options || []).filter((option: any) => Number(option.min_level || 0) <= level), count: countFor(curseEffect), revertData: { classIndex: 'blood-hunter' } } as any);
             if (riteEffect) next.push({ id: 'blood-hunter-rites', level: 2, source: 'Blood Hunter', type: 'feature_choice', label: 'Crimson Rites', value: Array.from(new Set([...knownRites, ...preserveRites])).slice(0, countFor(riteEffect)), options: (riteEffect.options || []).filter((option: any) => Number(option.min_level || 0) <= level), count: countFor(riteEffect), revertData: { classIndex: 'blood-hunter' } } as any);
             normalizedChoices = next;
         }

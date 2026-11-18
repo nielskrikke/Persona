@@ -299,6 +299,16 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                  activeEldritchCannon: initialCharacter.activeEldritchCannon || null,
                  eldritchCannonFreebieUsed: initialCharacter.eldritchCannonFreebieUsed || false,
                  activeSteelDefender: initialCharacter.activeSteelDefender || null,
+                 featureUsage: (() => {
+                     const definitions = getResourceDefinitions(initialCharacter);
+                     const next: any = { ...(initialCharacter.featureUsage || {}) };
+                     definitions.forEach(resource => {
+                         const existing = next[resource.name];
+                         if (existing) next[resource.name] = { ...existing, max: resource.max, current: Math.min(resource.max, Number(existing.current ?? resource.max)) };
+                         else next[resource.name] = { max: resource.max, current: resource.max, reset: resource.reset, source: resource.source };
+                     });
+                     return next;
+                 })(),
                  show3DDice: initialCharacter.show3DDice !== false,
                  diceEffect: initialCharacter.diceEffect || 'standard',
                  backgroundColor: initialCharacter.backgroundColor || '#151515'
@@ -828,6 +838,15 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             else if (feat.modifiers) feat.modifiers.forEach((m: any) => mods.push(m));
         });
 
+        const mutagenMods: Record<string, any[]> = {
+            Embers: [{ type: 'resistance', value: 'Fire' }, { type: 'vulnerability', value: 'Cold' }],
+            Gelid: [{ type: 'resistance', value: 'Cold' }, { type: 'vulnerability', value: 'Fire' }],
+            Impermeable: [{ type: 'resistance', value: 'Piercing' }, { type: 'vulnerability', value: 'Slashing' }],
+            Shielded: [{ type: 'resistance', value: 'Slashing' }, { type: 'vulnerability', value: 'Bludgeoning' }],
+            Unbreakable: [{ type: 'resistance', value: 'Bludgeoning' }, { type: 'vulnerability', value: 'Piercing' }],
+            Vermillion: [{ type: 'disadvantage', target: 'death_saves' }],
+        };
+        (character.activeMutagens || []).forEach((name: string) => { (mutagenMods[name] || []).forEach((effect: any) => mods.push(effect)); });
         return mods;
     }, [character]);
 
@@ -3078,9 +3097,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
                              const darkAugmentation = (character.classFeatures || []).some((feature: any) => /dark augmentation/i.test(feature.name || '')) && ['str','dex','con'].includes(stat) ? Math.max(1, intMod) : 0;
                              const mod = calculateModifier(getStat(stat)) + (isProf ? prof : 0) + saveBonus + darkAugmentation;
+                             const hasFullDisadv = activeModifiers.some(m => m.type === 'disadvantage' && (m.target === `${stat}_save` || (m.target === 'saves' && (!m.filter || m.filter.toLowerCase() === ABILITY_LABELS[stat].toLowerCase()))));
                              const hasFullAdv = activeModifiers.some(m => m.type === 'advantage' && (!m.condition || /^unless\b/i.test(String(m.condition))) && (m.target === `${stat}_save` || (m.target === 'saves' && (!m.filter || m.filter.toLowerCase() === ABILITY_LABELS[stat].toLowerCase()))));
 
-                             return <SavingThrowRow key={stat} label={ABILITY_LABELS[stat]} stat={stat} isProf={isProf} mod={mod} advantage={hasFullAdv} onRoll={roll} onContextMenu={triggerRollMenu} />;
+                             return <SavingThrowRow key={stat} label={ABILITY_LABELS[stat]} stat={stat} isProf={isProf} mod={mod} advantage={hasFullAdv} disadvantage={hasFullDisadv} onRoll={roll} onContextMenu={triggerRollMenu} />;
                          })}</div>
                          {(situationalSaves.length > 0 || initAdv) && (() => {
                              const abilityFilters = situationalSaves.map(m => String(m.filter || '')).filter(f => /^(intelligence|wisdom|charisma)$/i.test(f));
