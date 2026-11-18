@@ -307,7 +307,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         const slots = getSpellSlots(initialCharacter.classes);
         const initialFeatures: any = {};
         getResourceDefinitions(initialCharacter).forEach(resource => {
-            initialFeatures[resource.name] = { max: resource.max, current: resource.max, reset: resource.reset, source: resource.source, itemId: resource.itemId, sourceType: resource.sourceType };
+            initialFeatures[resource.name] = { max: resource.max, current: Math.min(resource.max, Number(initialCharacter.featureUsage?.[resource.name]?.current ?? resource.max)), reset: resource.reset, source: resource.source, itemId: resource.itemId, sourceType: resource.sourceType };
         });
         const inventory = initialCharacter.inventory && initialCharacter.inventory.length > 0 ? initialCharacter.inventory : initialCharacter.equipment.map((item, i) => ({ id: `init-${i}`, name: item, quantity: 1, weight: 5, equipped: true, attuned: false }));
         return {
@@ -1327,7 +1327,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         const allTraits = [
             ...(race?.traits || []),
             ...(subrace?.traits || []),
-            ...character.classFeatures.filter((feature: any) => !/^Experimental Elixir/i.test(String(feature.name || ''))),
+            ...character.classFeatures.filter((feature: any) => !/^Experimental Elixir/i.test(String(feature.name || '')) && !/Hybrid Form|Predatory Strikes/i.test(String(feature.name || ''))),
             ...(character.feats || [])
         ];
         allTraits.forEach((t: any) => {
@@ -2307,6 +2307,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const mutagenChoiceCard = (character.choices || []).find((choice: any) => /Mutagen/i.test(choice.label || ''));
                 const knownMutagens = Array.isArray(mutagenChoiceCard?.value) ? mutagenChoiceCard.value : [];
                 const weapons = (character.inventory || []).filter((item: any) => item.equipped && (item.weapon_category || item.damage));
+                const riteWeapons = character.hybridForm ? [{ id: 'unarmed', name: 'Unarmed / Predatory Strikes' }, ...weapons] : weapons;
                 const riteTypes: Record<string, string> = { 'Rite of the Flame': 'Fire', 'Rite of the Frozen': 'Cold', 'Rite of the Storm': 'Lightning', 'Rite of the Dead': 'Necrotic', 'Rite of the Oracle': 'Psychic', 'Rite of the Roar': 'Thunder', 'Rite of the Dawn': 'Radiant' };
                 const mutagenUses = character.featureUsage?.['Mutagens'];
                 const aetherUses = character.featureUsage?.['Aether Walk'];
@@ -2327,7 +2328,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             ) : (
                                 <div className="grid grid-cols-[1fr_1fr_auto] gap-1">
                                     <select value={bloodRiteChoice} onChange={e => setBloodRiteChoice(e.target.value)} className="bg-black/40 border border-gray-700 rounded px-1 text-[8px] text-gray-300"><option value="">Rite…</option>{knownRites.map((rite: string) => <option key={rite} value={rite}>{rite}</option>)}</select>
-                                    <select value={bloodRiteWeapon} onChange={e => setBloodRiteWeapon(e.target.value)} className="bg-black/40 border border-gray-700 rounded px-1 text-[8px] text-gray-300"><option value="">Weapon…</option>{weapons.map((item: any) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
+                                    <select value={bloodRiteWeapon} onChange={e => setBloodRiteWeapon(e.target.value)} className="bg-black/40 border border-gray-700 rounded px-1 text-[8px] text-gray-300"><option value="">Weapon…</option>{riteWeapons.map((item: any) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
                                     <button disabled={!bloodRiteChoice || !bloodRiteWeapon} onClick={() => {
                                         const damageType = riteTypes[bloodRiteChoice] || 'Fire';
                                         const dieMax = parseInt(hemocraftDie.match(/d(\d+)/)?.[1] || '4');
@@ -2347,17 +2348,19 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         </div>
                         {/lycan/i.test(String(bh.subclass?.name || '')) && (
                             <div className="border-t border-gray-800 pt-2 flex items-center justify-between">
-                                <span className="text-[9px] font-bold text-gray-500 uppercase">Hybrid Form</span>
+                                <span className="text-[9px] font-bold text-gray-500 uppercase">Hybrid Form {character.featureUsage?.['Hybrid Transformation'] ? `${character.featureUsage['Hybrid Transformation'].current}/${character.featureUsage['Hybrid Transformation'].max}` : ''}</span>
                                 <button onClick={() => setCharacter(prev => {
                                     const next = !prev.hybridForm;
+                                    const hybridUse = prev.featureUsage?.['Hybrid Transformation'];
+                                    if (next && hybridUse && Number(hybridUse.current) <= 0) return prev;
                                     const bonus = Number(bh.level) >= 18 ? 3 : Number(bh.level) >= 11 ? 2 : 1;
                                     const features = (prev.classFeatures || []).filter((feature: any) => feature.name !== 'Hybrid Form (Active)');
                                     if (next) features.push({ index: 'hybrid-form-active', name: 'Hybrid Form (Active)', level: 3, source: 'Order of the Lycan', desc: ['Hybrid form benefits active.'], effects: [{ type: 'advantage', target: 'str_save' }, { type: 'advantage', target: 'str_checks' }, { type: 'bonus', target: 'melee_damage', value: bonus }, { type: 'bonus', target: 'ac', value: 1, condition: 'not:heavy_armor', conditions: ['not:heavy_armor'] }, { type: 'resistance', value: 'Bludgeoning' }, { type: 'resistance', value: 'Piercing' }, { type: 'resistance', value: 'Slashing' }] } as any);
-                                    return { ...prev, hybridForm: next, classFeatures: features };
+                                    return { ...prev, hybridForm: next, classFeatures: features, featureUsage: next && hybridUse && Number(hybridUse.max) < 99 ? { ...prev.featureUsage, 'Hybrid Transformation': { ...hybridUse, current: Math.max(0, Number(hybridUse.current) - 1) } } : prev.featureUsage };
                                 })} className={`px-2 py-1 rounded text-[8px] font-black uppercase border ${character.hybridForm ? 'bg-red-900/30 border-red-800 text-red-300' : 'bg-gray-800 border-gray-700 text-gray-400'}`}>{character.hybridForm ? 'End' : 'Transform'}</button>
                             </div>
                         )}
-                        {character.hybridForm && <div className="text-[8px] text-orange-400">Bloodlust: start of turn below half HP — DC 8 + PB + CON or attack nearest creature.</div>}
+                        {character.hybridForm && <div className="text-[8px] text-orange-400">Bloodlust: start of turn below half HP — DC 8 or attack nearest creature.</div>}
                         {/ghostslayer/i.test(String(bh.subclass?.name || '')) && (
                             <div className="border-t border-gray-800 pt-2 flex items-center justify-between">
                                 <span className="text-[9px] font-bold text-gray-500 uppercase">Aether Walk {aetherUses ? `${aetherUses.current}/${aetherUses.max}` : ''}</span>
@@ -2878,7 +2881,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 }))}
                             />
                         )}
-                        {Object.entries(character.featureUsage).filter(([name, usage]) => !/^spell-storing item|drain magic item|steel defender: repair|eldritch cannon|experimental elixir|^bloodied but unbowed$|^down but not out$|^dread hand$|^work the crowd$|^heelstomper$|^low blow$|^pocket sand$/i.test(name) && !(/giant stature/i.test(name) && !/dreadnaught/i.test(String(character.armorModel || ''))) && name !== 'Wild Shape' && name !== 'Lay on Hands' && name !== 'Sorcery Points' && name !== 'Dragon Wings' && name !== 'Magical Cunning' && !usage.hidden).map(([name, usage]: [string, any]) => {
+                        {Object.entries(character.featureUsage).filter(([name, usage]) => !(/^exalted mutation$/i.test(name) && character.level < 18) && !/^spell-storing item|drain magic item|steel defender: repair|eldritch cannon|experimental elixir|^bloodied but unbowed$|^down but not out$|^dread hand$|^work the crowd$|^heelstomper$|^low blow$|^pocket sand$/i.test(name) && !(/giant stature/i.test(name) && !/dreadnaught/i.test(String(character.armorModel || ''))) && name !== 'Wild Shape' && name !== 'Lay on Hands' && name !== 'Sorcery Points' && name !== 'Dragon Wings' && name !== 'Magical Cunning' && !usage.hidden).map(([name, usage]: [string, any]) => {
                             const usedCount = usage.max - usage.current;
                             const detailTarget = findResourceDetailsTarget(name, usage);
                             return (
@@ -3567,7 +3570,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         const allTraits = [
             ...(raceObj?.traits || []),
             ...(subraceObj?.traits || []),
-            ...character.classFeatures.filter((feature: any) => !/^Experimental Elixir/i.test(String(feature.name || ''))),
+            ...character.classFeatures.filter((feature: any) => !/^Experimental Elixir/i.test(String(feature.name || '')) && !/Hybrid Form|Predatory Strikes/i.test(String(feature.name || ''))),
             ...(character.feats || [])
         ];
         allTraits.forEach((t: any) => {
@@ -3763,7 +3766,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         };
         (unarmedAttack as any).modifiers = getAttackModifiers(unarmedAttack);
         if (customUnarmedName !== 'Unarmed Strike') {
-            const baseUnarmed = { ...unarmedAttack, name: 'Unarmed Strike', hit: prof + strMod, damage: `${Math.max(1, 1 + strMod)}`, notes: [], source: { name: 'Unarmed Strike', desc: 'A punch, kick, head-butt, or similar forceful blow.' } };
+            const baseUnarmed = { ...unarmedAttack, name: 'Unarmed Strike', hit: prof + strMod, damage: `${Math.max(1, 1 + strMod)}`, type: 'Bludgeoning', notes: [], source: { name: 'Unarmed Strike', desc: 'A punch, kick, head-butt, or similar forceful blow.' } };
             (baseUnarmed as any).modifiers = getAttackModifiers(baseUnarmed);
             attacks.push(baseUnarmed);
         }
@@ -3774,13 +3777,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const predatoryHit = prof + Math.max(strMod, dexMod) + (hybridLevel >= 18 ? 3 : hybridLevel >= 11 ? 2 : hybridLevel >= 7 ? 1 : 0);
             attacks.push({
                 id: 'predatory-strikes', name: 'Predatory Strikes', range: '5 ft.', hit: predatoryHit,
-                damage: `${predatoryDie}${formatModifier(Math.max(strMod, dexMod))}`, type: 'Slashing',
-                notes: ['Hybrid Form: bonus-action extra strike.', ...(character.activeRite ? [`Rite: +${character.activeRite.die} ${character.activeRite.damageType}`] : [])],
+                damage: `${predatoryDie}${formatModifier(Math.max(strMod, dexMod) + (hybridLevel >= 18 ? 3 : hybridLevel >= 11 ? 2 : 1))}`, type: 'Slashing',
+                notes: ['Hybrid Form: bonus-action extra strike.', ...(character.activeRite && character.activeRite.weaponId === 'unarmed' ? [`Rite: +${character.activeRite.die} ${character.activeRite.damageType}`] : [])],
                 source: { name: 'Predatory Strikes', activationType: 'action', desc: ['Hybrid form unarmed strikes.'] },
             });
             attacks.push({
                 id: 'predatory-strikes-bonus', name: 'Predatory Strikes (Bonus Action)', range: '5 ft.', hit: predatoryHit,
-                damage: `${predatoryDie}${formatModifier(Math.max(strMod, dexMod))}`, type: 'Slashing',
+                damage: `${predatoryDie}${formatModifier(Math.max(strMod, dexMod) + (hybridLevel >= 18 ? 3 : hybridLevel >= 11 ? 2 : 1))}`, type: 'Slashing',
                 notes: ['Hybrid Form extra unarmed strike.'], source: { name: 'Predatory Strikes', activationType: 'bonus_action', desc: ['Bonus-action hybrid strike.'] },
             });
         }
@@ -4198,7 +4201,6 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 source: item
             };
             (weaponAttack as any).modifiers = getAttackModifiers(weaponAttack);
-            if (activeRite) (weaponAttack as any).modifiers.push({ name: 'Magical (Crimson Rite)', desc: "This weapon's rite damage is magical." });
             if (featureNamesLower.includes('arcane jolt') && (item.is_magic || item.requires_attunement || item.isPactWeapon || (item.modifiers && item.modifiers.length > 0))) {
                 (weaponAttack as any).modifiers.push({ name: 'Arcane Jolt', desc: `On a magic-weapon hit: add ${character.level >= 15 ? '4d6' : '2d6'} Force damage or heal that amount; INT uses per Long Rest.` });
             }
@@ -4411,6 +4413,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         desc: [isDivineSpark ? 'Channel Divinity: 1d8 + WIS at level 2, 2d8 at level 7, 3d8 at level 13; CON save for half.' : (monkActionDescription || '')],
                         activationType: effect.type,
                         maxUses: usage?.max,
+                        resourceCost,
                     },
                 });
             });
@@ -5508,6 +5511,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                             const die = row?.class_specific?.hemocraft_die || '1d4';
                                             return <div className="flex items-center gap-2 bg-red-900/30 border border-red-800 rounded px-2 py-0.5 text-[10px] font-bold text-red-300 uppercase">Hemocraft {die} · DC {8 + prof + intMod}</div>;
                                         })()}
+                                        {(character.activeMutagens || []).map((mutagen: string) => (
+                                            <div key={mutagen} className="flex items-center gap-2 bg-lime-900/30 border border-lime-800 rounded px-2 py-0.5 text-[10px] font-bold text-lime-300 uppercase">Mutagen: {mutagen}</div>
+                                        ))}
                                         {character.activeConditions?.['dig-deep'] && (
                                             <div className="flex items-center gap-2 bg-emerald-900/30 border border-emerald-800 rounded px-2 py-0.5 text-[10px] font-bold text-emerald-300 uppercase">Dig Deep Active</div>
                                         )}

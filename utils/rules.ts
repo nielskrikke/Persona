@@ -748,7 +748,7 @@ export const getResourceDefinitions = (character: CharacterState): CharacterReso
             if (!resource) return;
             resource.max = Math.max(0, Number(resource.max) + Number(effect.value || 0));
         });
-        if (/^curse specialist$/i.test(String(feature.name || ''))) {
+        if (/^curse specialist$/i.test(String(feature.name || '')) && !(feature.effects || []).some((effect: any) => effect.type === 'resource_bonus' && effect.resource === 'Blood Maledict')) {
             const resource = resources.get('Blood Maledict');
             if (resource) resource.max = Math.max(0, Number(resource.max) + 1);
         }

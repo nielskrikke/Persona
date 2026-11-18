@@ -552,8 +552,12 @@ export const hydrateGrantedSpells = async (character: CharacterState): Promise<C
 
     (character.choices || []).forEach((choice: any) => {
         const values = Array.isArray(choice.value) ? choice.value : (choice.value ? [choice.value] : []);
+        const liveOptions = [
+            ...((character.classes || []).flatMap((cls: any) => (cls.definition?.feature_details || []).flatMap((feature: any) => feature.effects || []))),
+            ...((character.classes || []).flatMap((cls: any) => (cls.subclass?.feature_details || []).flatMap((feature: any) => feature.effects || []))),
+        ].filter((effect: any) => effect.type === 'feature_choice').flatMap((effect: any) => effect.options || []);
         values.forEach((value: any) => {
-            const option = (choice.options || []).find((candidate: any) => String(typeof candidate === 'string' ? candidate : candidate.name || candidate.index) === String(value));
+            const option = [...(choice.options || []), ...liveOptions].find((candidate: any) => String(typeof candidate === 'string' ? candidate : candidate.name || candidate.index) === String(value));
             if (!option || typeof option === 'string') return;
             const owner = (character.classes || []).find((cls: any) => cls.definition?.name === choice.source || cls.subclass?.name === choice.source);
             const ability = (owner?.subclass as any)?.caster?.ability || (owner?.definition as any)?.caster?.ability;
@@ -890,6 +894,7 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         });
         const staleNames = new Set<string>();
         classFeatures = classFeatures.filter((feature: any) => {
+            if (/^Mutagen:/i.test(String(feature.name || ''))) return true;
             if (/^subclass feature$/i.test(String(feature.name || '').trim()) || String(feature.index || '').toLowerCase() === 'subclass-feature') return false;
             if (/^blood maledict \(\d+\/rest\)$/i.test(String(feature.name || '').trim())) return false;
             if (feature.revertData?.choiceId || feature.revertData?.parentChoiceId) return true;
@@ -1276,6 +1281,18 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         });
     } catch (e) {}
 
+    {
+        const seen = new Set<string>();
+        classFeatures = classFeatures.filter((feature: any) => {
+            const name = String(feature.name || '');
+            const curse = name.match(/^Blood (?:Maledict|Curses):\s*(.+)$/i);
+            const key = curse ? `curse:${curse[1].toLowerCase()}` : `name:${name.toLowerCase()}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+    }
+
     // Restore missing live class/subclass feature snapshots (for example after
     // a state-cleanup bug) without touching choice-generated features.
     {
@@ -1316,7 +1333,7 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
             const knownRites = (classFeatures || []).map((feature: any) => String(feature.name || '')).filter(name => /^Crimson Rite:/i.test(name)).map(name => name.replace(/^Crimson Rite:\s*/i, '')).filter(name => !/Rite of the Dawn/i.test(name));
             const old = normalizedChoices || [];
             const preserveRites = old.filter((choice: any) => /Crimson Rite/i.test(String(choice.label || ''))).flatMap((choice: any) => Array.isArray(choice.value) ? choice.value : []);
-            const cleaned = old.filter((choice: any) => !/^(Crimson Rite|Crimson Rites|Blood Maledict|Blood Curses)$/i.test(String(choice.label || '')) || ['blood-hunter-curses','blood-hunter-rites'].includes(choice.id));
+            const cleaned = old.filter((choice: any) => !/^(Crimson Rite|Crimson Rites|Blood Maledict|Blood Curses)$/i.test(String(choice.label || '')));
             const next = [...cleaned];
             if (curseEffect) next.push({ id: 'blood-hunter-curses', level: 1, source: 'Blood Hunter', type: 'feature_choice', label: 'Blood Curses', value: Array.from(new Set(knownCurses)).slice(0, countFor(curseEffect)), options: (curseEffect.options || []).filter((option: any) => Number(option.min_level || 0) <= level), count: countFor(curseEffect), revertData: { classIndex: 'blood-hunter' } } as any);
             if (riteEffect) next.push({ id: 'blood-hunter-rites', level: 2, source: 'Blood Hunter', type: 'feature_choice', label: 'Crimson Rites', value: Array.from(new Set([...knownRites, ...preserveRites])).slice(0, countFor(riteEffect)), options: (riteEffect.options || []).filter((option: any) => Number(option.min_level || 0) <= level), count: countFor(riteEffect), revertData: { classIndex: 'blood-hunter' } } as any);
