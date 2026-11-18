@@ -2338,7 +2338,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         </div>
                         <div className="border-t border-gray-800 pt-2 space-y-1">
                             <div className="text-[9px] font-bold text-gray-500 uppercase flex justify-between"><span>Brand of Castigation</span><span>{brandUses ? `${brandUses.current}/${brandUses.max}` : '0'}</span></div>
-                            {character.brandTarget ? <div className="flex justify-between bg-purple-900/20 border border-purple-900/40 rounded px-2 py-1"><span className="text-[10px] text-purple-300">{character.brandTarget}</span><button onClick={() => setCharacter(prev => ({ ...prev, brandTarget: '' }))} className="text-[8px] uppercase text-purple-400">End</button></div> : <div className="flex gap-1"><input value={brandName} onChange={e => setBrandName(e.target.value)} placeholder="Target name" className="flex-1 bg-black/40 border border-gray-700 rounded px-1 text-[9px] text-white" /><button disabled={!brandUses || brandUses.current <= 0} onClick={() => setCharacter(prev => ({ ...prev, brandTarget: brandName || 'Branded target', featureUsage: { ...prev.featureUsage, 'Brand of Castigation': { ...(prev.featureUsage['Brand of Castigation'] || { max: 1 }), current: Math.max(0, Number(prev.featureUsage['Brand of Castigation']?.current || 0) - 1) } } }))} className="px-2 py-1 bg-purple-900/30 border border-purple-800 text-purple-300 rounded text-[8px] font-black uppercase disabled:opacity-30">Brand</button></div>}
+                            {character.brandTarget ? <div className="flex justify-between bg-purple-900/20 border border-purple-900/40 rounded px-2 py-1"><span className="text-[10px] text-purple-300">{character.brandTarget} · {Math.max(1, intMod) * (Number(bh.level) >= 13 ? 2 : 1)} psychic</span><button onClick={() => setCharacter(prev => ({ ...prev, brandTarget: '' }))} className="text-[8px] uppercase text-purple-400">End</button></div> : <div className="flex gap-1"><input value={brandName} onChange={e => setBrandName(e.target.value)} placeholder="Target name" className="flex-1 bg-black/40 border border-gray-700 rounded px-1 text-[9px] text-white" /><button disabled={!brandUses || brandUses.current <= 0} onClick={() => setCharacter(prev => ({ ...prev, brandTarget: brandName || 'Branded target', featureUsage: { ...prev.featureUsage, 'Brand of Castigation': { ...(prev.featureUsage['Brand of Castigation'] || { max: 1 }), current: Math.max(0, Number(prev.featureUsage['Brand of Castigation']?.current || 0) - 1) } } }))} className="px-2 py-1 bg-purple-900/30 border border-purple-800 text-purple-300 rounded text-[8px] font-black uppercase disabled:opacity-30">Brand</button></div>}
                         </div>
                         {/lycan/i.test(String(bh.subclass?.name || '')) && (
                             <div className="border-t border-gray-800 pt-2 flex items-center justify-between">
@@ -2352,6 +2352,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 })} className={`px-2 py-1 rounded text-[8px] font-black uppercase border ${character.hybridForm ? 'bg-red-900/30 border-red-800 text-red-300' : 'bg-gray-800 border-gray-700 text-gray-400'}`}>{character.hybridForm ? 'End' : 'Transform'}</button>
                             </div>
                         )}
+                        {character.hybridForm && <div className="text-[8px] text-orange-400">Bloodlust: start of turn below half HP — DC 8 + PB + CON or attack nearest creature.</div>}
                         {/ghostslayer/i.test(String(bh.subclass?.name || '')) && (
                             <div className="border-t border-gray-800 pt-2 flex items-center justify-between">
                                 <span className="text-[9px] font-bold text-gray-500 uppercase">Aether Walk {aetherUses ? `${aetherUses.current}/${aetherUses.max}` : ''}</span>
@@ -2361,9 +2362,20 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         {/mutant/i.test(String(bh.subclass?.name || '')) && (
                             <div className="border-t border-gray-800 pt-2 space-y-1">
                                 <div className="text-[9px] font-bold text-gray-500 uppercase flex justify-between"><span>Mutagens</span><span>{mutagenUses ? `${mutagenUses.current}/${mutagenUses.max}` : '0'}</span></div>
-                                <div className="flex gap-1"><select value={mutagenChoice} onChange={e => setMutagenChoice(e.target.value)} className="flex-1 bg-black/40 border border-gray-700 rounded px-1 text-[8px] text-gray-300"><option value="">Formula…</option>{knownMutagens.map((name: string) => <option key={name} value={name}>{name}</option>)}</select><button disabled={!mutagenChoice || !mutagenUses || mutagenUses.current <= 0} onClick={() => setCharacter(prev => ({ ...prev, activeMutagens: [...(prev.activeMutagens || []), mutagenChoice], featureUsage: { ...prev.featureUsage, 'Mutagens': { ...prev.featureUsage['Mutagens'], current: Math.max(0, Number(prev.featureUsage['Mutagens'].current) - 1) } } }))} className="px-2 py-1 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[8px] font-black uppercase disabled:opacity-30">Consume</button></div>
+                                <div className="flex gap-1"><select value={mutagenChoice} onChange={e => setMutagenChoice(e.target.value)} className="flex-1 bg-black/40 border border-gray-700 rounded px-1 text-[8px] text-gray-300"><option value="">Formula…</option>{knownMutagens.map((name: string) => <option key={name} value={name}>{name}</option>)}</select><button disabled={!mutagenChoice || !mutagenUses || mutagenUses.current <= 0} onClick={() => setCharacter(prev => {
+                                    const mutagenEffects: any = {
+                                        Potency: [{ type: 'bonus', target: 'str', value: 3 }],
+                                        Celerity: [{ type: 'bonus', target: 'dex', value: 3 }],
+                                        Rapidity: [{ type: 'bonus', target: 'speed', value: 10 }],
+                                        Nighteye: [{ type: 'sense', sense: 'darkvision', value: 60 }],
+                                        Aether: [{ type: 'bonus', target: 'fly_speed', value: 20 }],
+                                    };
+                                    const features = (prev.classFeatures || []).filter((feature: any) => feature.name !== `Mutagen: ${mutagenChoice}`);
+                                    features.push({ index: `mutagen-${mutagenChoice.toLowerCase()}`, name: `Mutagen: ${mutagenChoice}`, level: 3, source: 'Order of the Mutant', desc: ['Active mutagen.'], effects: mutagenEffects[mutagenChoice] || [] } as any);
+                                    return { ...prev, activeMutagens: [...(prev.activeMutagens || []), mutagenChoice], classFeatures: features, featureUsage: { ...prev.featureUsage, 'Mutagens': { ...prev.featureUsage['Mutagens'], current: Math.max(0, Number(prev.featureUsage['Mutagens'].current) - 1) } } };
+                                })} className="px-2 py-1 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[8px] font-black uppercase disabled:opacity-30">Consume</button></div>
                                 {(character.activeMutagens || []).map(name => <div key={name} className="flex justify-between bg-gray-800/40 rounded px-2 py-0.5"><span className="text-[8px] text-gray-300">{name}</span><span className="text-[8px] text-gray-500">active</span></div>)}
-                                {(character.activeMutagens || []).length > 0 && <button onClick={() => setCharacter(prev => ({ ...prev, activeMutagens: [] }))} className="w-full py-1 bg-gray-800 border border-gray-700 rounded text-[8px] font-black uppercase text-gray-400">Flush Mutagens</button>}
+                                {(character.activeMutagens || []).length > 0 && <button onClick={() => setCharacter(prev => ({ ...prev, activeMutagens: [], classFeatures: (prev.classFeatures || []).filter((feature: any) => !/^Mutagen:/.test(String(feature.name || ''))) }))} className="w-full py-1 bg-gray-800 border border-gray-700 rounded text-[8px] font-black uppercase text-gray-400">Flush Mutagens</button>}
                             </div>
                         )}
                     </div>
@@ -4405,6 +4417,25 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             });
         }
 
+        const bloodHunterClass = (character.classes || []).find((cls: any) => cls.definition?.index === 'blood-hunter');
+        if (bloodHunterClass) {
+            const bhRow = ((bloodHunterClass.definition as any)?.level_table || []).find((row: any) => row.level === bloodHunterClass.level);
+            const hemocraftDie = bhRow?.class_specific?.hemocraft_die || '1d4';
+            attacks.filter((attack: any) => attack.resourceCost?.resource === 'Blood Maledict' && !/amplify/i.test(String(attack.name))).forEach((attack: any) => {
+                attacks.push({
+                    ...attack,
+                    id: `${attack.id}-amplify`,
+                    name: `${attack.name} (Amplify)`,
+                    notes: [...(attack.notes || []), `Amplify: take ${hemocraftDie} necrotic (ignores resistance and temp HP).`],
+                    onUse: () => {
+                        const dieMax = parseInt(hemocraftDie.match(/d(\d+)/)?.[1] || '4');
+                        const damage = 1 + Math.floor(Math.random() * dieMax);
+                        setCharacter(prev => ({ ...prev, currentHp: Math.max(0, Number(prev.currentHp) - damage) }));
+                        roll(hemocraftDie, 'Blood Maledict Amplify');
+                    },
+                });
+            });
+        }
         const pugilistClass = (character.classes || []).find((cls: any) => cls.definition?.index === 'pugilist');
         if (pugilistClass) {
             const pugLevel = Number(pugilistClass.level || 0);

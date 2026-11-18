@@ -166,6 +166,11 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
 
   const getClassChoices = (definition: ClassDetail | undefined, isStarting: boolean) => {
       const choices = [...(definition?.choices || [])];
+      choices.forEach((choice: any) => {
+          if (choice.kind === 'weapon_mastery' && Array.isArray(choice.options)) {
+              choice.options = [...choice.options].sort((a: any, b: any) => String(typeof a === 'string' ? a : a.name).localeCompare(String(typeof b === 'string' ? b : b.name)));
+          }
+      });
       if (isStarting && definition?.index === 'artificer' && !choices.some((choice: any) => choice.kind === 'tool')) {
           choices.push({
               id: 'artificer-artisan-tool',
