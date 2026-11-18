@@ -1852,7 +1852,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 pugilistHound: prev.pugilistHound ? { ...prev.pugilistHound, hp: prev.pugilistHound.maxHp, tempHp: 0 } : prev.pugilistHound,
                 experimentalElixirs: [],
                 experimentalElixir: undefined,
-                classFeatures: (prev.classFeatures || []).filter((feature: any) => !/^Experimental Elixir:/i.test(feature.name || '') && !/^(Down but Not Out|Dread Hand|Haymaker|Scrap Like a Sleuth|Dig Deep|Persona Adopted)\b/i.test(feature.name || '')),
+                classFeatures: (prev.classFeatures || []).filter((feature: any) => !/^Experimental Elixir:/i.test(feature.name || '') && !(/^Persona Adopted$/i.test(String(feature.name || '')) || /^(.+)\s+\(Active\)$/i.test(String(feature.name || '')))),
                 exhaustion: Math.max(0, Number(prev.exhaustion || 0) - 1),
                 eldritchCannonFreebieUsed: false,
                 inspiration: hasResourceful ? true : prev.inspiration
@@ -4357,6 +4357,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     setSelectedDetail({ name: 'Persona Point', desc: [`Add +${strMod} to a Charisma check.`] } as any);
                 }, 'Persona Points');
             }
+            if (Boolean(character.activeConditions?.['scrap-like-a-sleuth']) && /bloodhound bruisers/i.test(String(pugilistClass.subclass?.name || ''))) {
+                addPug('End Scrap Like a Sleuth', 'bonus_action', 0, 'End the Scrap Like a Sleuth benefit.', () => {
+                    setCharacter(prev => ({ ...prev, activeConditions: { ...(prev.activeConditions || {}), 'scrap-like-a-sleuth': false }, classFeatures: (prev.classFeatures || []).filter((feature: any) => feature.name !== 'Scrap Like a Sleuth (Active)') }));
+                });
+            }
             if (Boolean(character.activeConditions?.['dread-hand']) && /hand of dread/i.test(String(pugilistClass.subclass?.name || ''))) {
                 addPug('End Dread Hand', 'bonus_action', 0, 'End the Dread Hand transformation.', () => {
                     setCharacter(prev => ({ ...prev, activeConditions: { ...(prev.activeConditions || {}), 'dread-hand': false }, classFeatures: (prev.classFeatures || []).filter((feature: any) => feature.name !== 'Dread Hand (Active)') }));
@@ -5311,6 +5316,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     </div>
 
                                     <div className="flex items-center gap-2">
+                                        {character.activeConditions?.['dread-hand'] && (
+                                            <div className="flex items-center gap-2 bg-purple-900/30 border border-purple-800 rounded px-2 py-0.5 text-[10px] font-bold text-purple-300 uppercase">Dread Hand Active</div>
+                                        )}
+                                        {character.activeConditions?.['scrap-like-a-sleuth'] && (
+                                            <div className="flex items-center gap-2 bg-blue-900/30 border border-blue-800 rounded px-2 py-0.5 text-[10px] font-bold text-blue-300 uppercase">Scrap Like a Sleuth Active</div>
+                                        )}
                                         {character.activeConditions?.haymaker && (
                                             <div className="flex items-center gap-2 bg-orange-900/30 border border-orange-800 rounded px-2 py-0.5 text-[10px] font-bold text-orange-300 uppercase">
                                                 Haymaker Active

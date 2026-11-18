@@ -1264,6 +1264,28 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         });
     } catch (e) {}
 
+    // Restore missing live class/subclass feature snapshots (for example after
+    // a state-cleanup bug) without touching choice-generated features.
+    {
+        const present = new Set((classFeatures || []).map((feature: any) => String(feature.name || '').toLowerCase()));
+        (classes || []).forEach((cls: any) => {
+            (cls.definition?.feature_details || []).forEach((feature: any) => {
+                if (Number(feature.level || 0) > Number(cls.level || 0)) return;
+                const key = String(feature.name || '').toLowerCase();
+                if (present.has(key)) return;
+                classFeatures.push({ ...feature, level: feature.level, source: cls.definition.name });
+                present.add(key);
+            });
+            (cls.subclass?.feature_details || []).forEach((feature: any) => {
+                if (Number(feature.level || 0) > Number(cls.level || 0)) return;
+                const key = String(feature.name || '').toLowerCase();
+                if (present.has(key)) return;
+                classFeatures.push({ ...feature, level: feature.level, source: cls.subclass.name });
+                present.add(key);
+            });
+        });
+    }
+
     return hydrateGrantedSpells({
         ...character,
         race,
