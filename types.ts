@@ -614,6 +614,11 @@ export interface CharacterState {
     replicatedItems?: string[];
     spellStoringItem?: { spell: string; };
     mapHolders?: number;
+    activeRite?: { name: string; damageType: string; die: string; weaponId?: string } | null;
+    hybridForm?: boolean;
+    brandTarget?: string;
+    activeMutagens?: string[];
+    aetherWalkActive?: boolean;
     pugilistHound?: { hp: number; maxHp: number; tempHp?: number; } | null;
     experimentalElixir?: string;
     experimentalElixirs?: string[];

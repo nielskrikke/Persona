@@ -650,7 +650,9 @@ const App: React.FC = () => {
   };
 
   const handleEquipmentComplete = async (inventory: InventoryItem[], currency?: { gp: number; sp: number; cp: number }) => {
-    const finalInventory = [...character.inventory, ...inventory];
+    const combinedInventory = [...character.inventory, ...inventory];
+    const hasEquippedWeapon = combinedInventory.some((item: any) => item.equipped && (item.weapon_category || item.damage));
+    const finalInventory = combinedInventory.map((item: any, index: number) => (!hasEquippedWeapon && index === combinedInventory.findIndex((entry: any) => entry.weapon_category || entry.damage) ? { ...item, equipped: true } : item));
     const { id, user_id, ...charProps } = character;
     const finalChar = { ...charProps, inventory: finalInventory, layout: reconcileArtificerLayout({ ...character, inventory: finalInventory } as any), ...(currency ? { currency: { ...character.currency, gp: character.currency.gp + currency.gp, sp: character.currency.sp + currency.sp, cp: character.currency.cp + currency.cp } } : {}) };
 

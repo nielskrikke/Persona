@@ -25,6 +25,7 @@ export const WIDGET_LABELS: Record<string, string> = {
     mapHolders: 'Map Holders',
     experimentalElixir: 'Experimental Elixir',
     pugilistHound: 'Pugilist Hound',
+    bloodHunter: 'Blood Hunter',
     activeCards: 'Active Cards'
 };
 
@@ -53,6 +54,7 @@ export const WIDGET_METADATA: Record<string, { icon: string, desc: string, color
     mapHolders: { icon: '🗺️', desc: 'Cartographer map holders for Portal Jump.', color: 'text-dnd-gold' },
     experimentalElixir: { icon: '🧪', desc: 'Elixirs made by the Alchemist and their effects.', color: 'text-dnd-gold' },
     pugilistHound: { icon: '🐕', desc: 'Dog & Hound companion, commands and bite.', color: 'text-orange-400' },
+    bloodHunter: { icon: '🩸', desc: 'Crimson Rite, Blood Maledict, brand, hybrid form and mutagens.', color: 'text-red-400' },
     activeCards: { icon: '🃏', desc: 'Track active tarot card effects for Card Masters.', color: 'text-purple-400' }
 };
 

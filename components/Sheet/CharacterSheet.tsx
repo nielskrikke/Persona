@@ -895,6 +895,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const [tinkerItem, setTinkerItem] = useState('');
     const [defenderHpDelta, setDefenderHpDelta] = useState(5);
     const [houndHpDelta, setHoundHpDelta] = useState(5);
+    const [bloodRiteChoice, setBloodRiteChoice] = useState('');
+    const [bloodRiteWeapon, setBloodRiteWeapon] = useState('');
+    const [brandName, setBrandName] = useState('');
+    const [mutagenChoice, setMutagenChoice] = useState('');
     const [storingSpellOptions, setStoringSpellOptions] = useState<any[]>([]);
     const [pendingReplicate, setPendingReplicate] = useState<{ plan: string; oldName: string | null } | null>(null);
     const [pendingBase, setPendingBase] = useState('');
@@ -1852,6 +1856,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 activeSteelDefender: prev.activeSteelDefender ? { ...prev.activeSteelDefender, hp: prev.activeSteelDefender.maxHp } : prev.activeSteelDefender,
                 pugilistHound: prev.pugilistHound ? { ...prev.pugilistHound, hp: prev.pugilistHound.maxHp, tempHp: 0 } : prev.pugilistHound,
                 experimentalElixirs: [],
+                activeRite: null,
+                hybridForm: false,
+                brandTarget: '',
+                activeMutagens: [],
+                aetherWalkActive: false,
                 experimentalElixir: undefined,
                 classFeatures: (prev.classFeatures || []).filter((feature: any) => !/^Experimental Elixir:/i.test(feature.name || '') && !(/^Persona Adopted$/i.test(String(feature.name || '')) || /^(.+)\s+\(Active\)$/i.test(String(feature.name || '')))),
                 exhaustion: Math.max(0, Number(prev.exhaustion || 0) - 1),
@@ -2283,6 +2292,80 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             </div>
                         )}
                         {canTinker && <div className="text-[9px] text-gray-500">Drain {drain ? `${drain.current} / ${drain.max}` : '0'} · Transmute {transmute ? `${transmute.current} / ${transmute.max}` : '0'}</div>}
+                    </div>
+                );
+            }
+            case 'bloodHunter': {
+                const bh = (character.classes || []).find((cls: any) => cls.definition?.index === 'blood-hunter');
+                if (!bh) return null;
+                const bhRow = ((bh.definition as any)?.level_table || []).find((row: any) => row.level === bh.level);
+                const hemocraftDie = bhRow?.class_specific?.hemocraft_die || '1d4';
+                const hemocraftDC = 8 + prof + intMod;
+                const riteChoice = (character.choices || []).find((choice: any) => /Crimson Rite/i.test(choice.label || ''));
+                const knownRites = (Array.isArray(riteChoice?.value) ? riteChoice.value : []).length > 0 ? riteChoice.value : ['Rite of the Flame', 'Rite of the Frozen', 'Rite of the Storm'];
+                const mutagenChoiceCard = (character.choices || []).find((choice: any) => /Mutagen/i.test(choice.label || ''));
+                const knownMutagens = Array.isArray(mutagenChoiceCard?.value) ? mutagenChoiceCard.value : [];
+                const weapons = (character.inventory || []).filter((item: any) => item.equipped && (item.weapon_category || item.damage));
+                const riteTypes: Record<string, string> = { 'Rite of the Flame': 'Fire', 'Rite of the Frozen': 'Cold', 'Rite of the Storm': 'Lightning', 'Rite of the Dead': 'Necrotic', 'Rite of the Oracle': 'Psychic', 'Rite of the Roar': 'Thunder', 'Rite of the Dawn': 'Radiant' };
+                const mutagenUses = character.featureUsage?.['Mutagens'];
+                const aetherUses = character.featureUsage?.['Aether Walk'];
+                const brandUses = character.featureUsage?.['Brand of Castigation'];
+                return (
+                    <div key={widgetKey} className={`${WIDGET_BG} border border-[#3e4149]/50 rounded-lg p-3 space-y-2`}>
+                        <div className="flex justify-between items-center">
+                            <h3 className="font-bold text-xs text-red-400 uppercase tracking-widest">Blood Hunter</h3>
+                            <span className="text-[9px] text-gray-500 font-bold uppercase">Hemocraft {hemocraftDie} · DC {hemocraftDC}</span>
+                        </div>
+                        <div className="border-t border-gray-800 pt-2 space-y-1">
+                            <div className="text-[9px] font-bold text-gray-500 uppercase">Crimson Rite</div>
+                            {character.activeRite ? (
+                                <div className="flex items-center justify-between bg-red-900/20 border border-red-900/40 rounded px-2 py-1">
+                                    <span className="text-[10px] text-red-300 font-bold">{character.activeRite.name} · +{character.activeRite.die} {character.activeRite.damageType}</span>
+                                    <button onClick={() => setCharacter(prev => ({ ...prev, activeRite: null }))} className="text-[8px] uppercase font-black text-red-400">End</button>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-[1fr_1fr_auto] gap-1">
+                                    <select value={bloodRiteChoice} onChange={e => setBloodRiteChoice(e.target.value)} className="bg-black/40 border border-gray-700 rounded px-1 text-[8px] text-gray-300"><option value="">Rite…</option>{knownRites.map((rite: string) => <option key={rite} value={rite}>{rite}</option>)}</select>
+                                    <select value={bloodRiteWeapon} onChange={e => setBloodRiteWeapon(e.target.value)} className="bg-black/40 border border-gray-700 rounded px-1 text-[8px] text-gray-300"><option value="">Weapon…</option>{weapons.map((item: any) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
+                                    <button disabled={!bloodRiteChoice || !bloodRiteWeapon} onClick={() => {
+                                        const damageType = riteTypes[bloodRiteChoice] || 'Fire';
+                                        const dieMax = parseInt(hemocraftDie.match(/d(\d+)/)?.[1] || '4');
+                                        const selfDamage = 1 + Math.floor(Math.random() * dieMax);
+                                        setCharacter(prev => ({ ...prev, currentHp: Math.max(0, Number(prev.currentHp) - selfDamage), activeRite: { name: bloodRiteChoice, damageType, die: hemocraftDie, weaponId: bloodRiteWeapon } }));
+                                    }} className="px-2 py-1 bg-red-900/30 border border-red-800 text-red-300 rounded text-[8px] font-black uppercase disabled:opacity-30">Activate</button>
+                                </div>
+                            )}
+                        </div>
+                        <div className="border-t border-gray-800 pt-2 space-y-1">
+                            <div className="text-[9px] font-bold text-gray-500 uppercase flex justify-between"><span>Brand of Castigation</span><span>{brandUses ? `${brandUses.current}/${brandUses.max}` : '0'}</span></div>
+                            {character.brandTarget ? <div className="flex justify-between bg-purple-900/20 border border-purple-900/40 rounded px-2 py-1"><span className="text-[10px] text-purple-300">{character.brandTarget}</span><button onClick={() => setCharacter(prev => ({ ...prev, brandTarget: '' }))} className="text-[8px] uppercase text-purple-400">End</button></div> : <div className="flex gap-1"><input value={brandName} onChange={e => setBrandName(e.target.value)} placeholder="Target name" className="flex-1 bg-black/40 border border-gray-700 rounded px-1 text-[9px] text-white" /><button disabled={!brandUses || brandUses.current <= 0} onClick={() => setCharacter(prev => ({ ...prev, brandTarget: brandName || 'Branded target', featureUsage: { ...prev.featureUsage, 'Brand of Castigation': { ...(prev.featureUsage['Brand of Castigation'] || { max: 1 }), current: Math.max(0, Number(prev.featureUsage['Brand of Castigation']?.current || 0) - 1) } } }))} className="px-2 py-1 bg-purple-900/30 border border-purple-800 text-purple-300 rounded text-[8px] font-black uppercase disabled:opacity-30">Brand</button></div>}
+                        </div>
+                        {/lycan/i.test(String(bh.subclass?.name || '')) && (
+                            <div className="border-t border-gray-800 pt-2 flex items-center justify-between">
+                                <span className="text-[9px] font-bold text-gray-500 uppercase">Hybrid Form</span>
+                                <button onClick={() => setCharacter(prev => {
+                                    const next = !prev.hybridForm;
+                                    const bonus = Number(bh.level) >= 18 ? 3 : Number(bh.level) >= 11 ? 2 : 1;
+                                    const features = (prev.classFeatures || []).filter((feature: any) => feature.name !== 'Hybrid Form (Active)');
+                                    if (next) features.push({ index: 'hybrid-form-active', name: 'Hybrid Form (Active)', level: 3, source: 'Order of the Lycan', desc: ['Hybrid form benefits active.'], effects: [{ type: 'advantage', target: 'str_save' }, { type: 'advantage', target: 'str_checks' }, { type: 'bonus', target: 'melee_damage', value: bonus }, { type: 'bonus', target: 'ac', value: 1 }, { type: 'resistance', value: 'Bludgeoning' }, { type: 'resistance', value: 'Piercing' }, { type: 'resistance', value: 'Slashing' }] } as any);
+                                    return { ...prev, hybridForm: next, classFeatures: features };
+                                })} className={`px-2 py-1 rounded text-[8px] font-black uppercase border ${character.hybridForm ? 'bg-red-900/30 border-red-800 text-red-300' : 'bg-gray-800 border-gray-700 text-gray-400'}`}>{character.hybridForm ? 'End' : 'Transform'}</button>
+                            </div>
+                        )}
+                        {/ghostslayer/i.test(String(bh.subclass?.name || '')) && (
+                            <div className="border-t border-gray-800 pt-2 flex items-center justify-between">
+                                <span className="text-[9px] font-bold text-gray-500 uppercase">Aether Walk {aetherUses ? `${aetherUses.current}/${aetherUses.max}` : ''}</span>
+                                <button disabled={!aetherUses || aetherUses.current <= 0} onClick={() => setCharacter(prev => ({ ...prev, aetherWalkActive: !prev.aetherWalkActive, featureUsage: prev.aetherWalkActive ? prev.featureUsage : { ...prev.featureUsage, 'Aether Walk': { ...prev.featureUsage['Aether Walk'], current: Math.max(0, Number(prev.featureUsage['Aether Walk'].current) - 1) } } }))} className={`px-2 py-1 rounded text-[8px] font-black uppercase border disabled:opacity-30 ${character.aetherWalkActive ? 'bg-blue-900/30 border-blue-800 text-blue-300' : 'bg-gray-800 border-gray-700 text-gray-400'}`}>{character.aetherWalkActive ? 'End' : 'Walk'}</button>
+                            </div>
+                        )}
+                        {/mutant/i.test(String(bh.subclass?.name || '')) && (
+                            <div className="border-t border-gray-800 pt-2 space-y-1">
+                                <div className="text-[9px] font-bold text-gray-500 uppercase flex justify-between"><span>Mutagens</span><span>{mutagenUses ? `${mutagenUses.current}/${mutagenUses.max}` : '0'}</span></div>
+                                <div className="flex gap-1"><select value={mutagenChoice} onChange={e => setMutagenChoice(e.target.value)} className="flex-1 bg-black/40 border border-gray-700 rounded px-1 text-[8px] text-gray-300"><option value="">Formula…</option>{knownMutagens.map((name: string) => <option key={name} value={name}>{name}</option>)}</select><button disabled={!mutagenChoice || !mutagenUses || mutagenUses.current <= 0} onClick={() => setCharacter(prev => ({ ...prev, activeMutagens: [...(prev.activeMutagens || []), mutagenChoice], featureUsage: { ...prev.featureUsage, 'Mutagens': { ...prev.featureUsage['Mutagens'], current: Math.max(0, Number(prev.featureUsage['Mutagens'].current) - 1) } } }))} className="px-2 py-1 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[8px] font-black uppercase disabled:opacity-30">Consume</button></div>
+                                {(character.activeMutagens || []).map(name => <div key={name} className="flex justify-between bg-gray-800/40 rounded px-2 py-0.5"><span className="text-[8px] text-gray-300">{name}</span><span className="text-[8px] text-gray-500">active</span></div>)}
+                                {(character.activeMutagens || []).length > 0 && <button onClick={() => setCharacter(prev => ({ ...prev, activeMutagens: [] }))} className="w-full py-1 bg-gray-800 border border-gray-700 rounded text-[8px] font-black uppercase text-gray-400">Flush Mutagens</button>}
+                            </div>
+                        )}
                     </div>
                 );
             }
@@ -3652,6 +3735,17 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             attacks.push(baseUnarmed);
         }
         attacks.push(unarmedAttack);
+        if (character.hybridForm && /lycan/i.test(String((character.classes || []).find((cls: any) => cls.definition?.index === 'blood-hunter')?.subclass?.name || ''))) {
+            const hybridLevel = Number((character.classes || []).find((cls: any) => cls.definition?.index === 'blood-hunter')?.level || 0);
+            const predatoryDie = hybridLevel >= 11 ? '1d8' : '1d6';
+            const predatoryHit = prof + Math.max(strMod, dexMod) + (hybridLevel >= 18 ? 3 : hybridLevel >= 11 ? 2 : hybridLevel >= 7 ? 1 : 0);
+            attacks.push({
+                id: 'predatory-strikes', name: 'Predatory Strikes', range: '5 ft.', hit: predatoryHit,
+                damage: `${predatoryDie}${formatModifier(Math.max(strMod, dexMod))}`, type: 'Slashing',
+                notes: ['Hybrid Form: bonus-action extra strike.', ...(character.activeRite ? [`Rite: +${character.activeRite.die} ${character.activeRite.damageType}`] : [])],
+                source: { name: 'Predatory Strikes', activationType: 'action', desc: ['Hybrid form unarmed strikes.'] },
+            });
+        }
         const armorModel = String(character.armorModel || '').toLowerCase();
         const armorModelFeature = featureNamesLower.includes('armor model');
         if (armorModelFeature && ['dreadnaught','guardian','infiltrator'].includes(armorModel)) {
@@ -4046,12 +4140,18 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 attackName = `${item.name} (Two-Handed)`;
             }
 
+            const activeRite = character.activeRite && character.activeRite.weaponId === item.id ? character.activeRite : null;
+            let riteDamage = displayDamage;
+            if (activeRite) {
+                riteDamage = `${displayDamage} + ${activeRite.die} ${activeRite.damageType}`;
+                finalNotes.push(`${activeRite.name}: +${activeRite.die} ${activeRite.damageType} (magical)`);
+            }
             const weaponAttack = {
                 id: item.id,
                 name: attackName,
                 range: rangeStr,
                 hit: finalHit,
-                damage: displayDamage,
+                damage: riteDamage,
                 type: [damageType, ...Array.from(riderDamageTypes)].join(' + '),
                 attackCount: item.isPactWeapon ? Math.max(attackCount, pactAttackCount) : attackCount,
                 notes: finalNotes,
@@ -4071,7 +4171,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 (weaponAttack as any).mastery = {
                     ...getWeaponMasteryData(masteryName, prof, strMod, dexMod),
                     hit: finalHit,
-                    damage: displayDamage,
+                    damage: riteDamage,
                 };
                 (weaponAttack as any).tacticalMaster = (character.classFeatures || []).some((feature: any) => /tactical master/i.test(feature.name || ''));
             }
@@ -5331,6 +5431,18 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     </div>
 
                                     <div className="flex items-center gap-2">
+                                        {character.activeRite && (
+                                            <div className="flex items-center gap-2 bg-red-900/30 border border-red-800 rounded px-2 py-0.5 text-[10px] font-bold text-red-300 uppercase">Rite: {character.activeRite.name} ({character.activeRite.damageType})</div>
+                                        )}
+                                        {character.hybridForm && (
+                                            <div className="flex items-center gap-2 bg-orange-900/30 border border-orange-800 rounded px-2 py-0.5 text-[10px] font-bold text-orange-300 uppercase">Hybrid Form</div>
+                                        )}
+                                        {character.brandTarget && (
+                                            <div className="flex items-center gap-2 bg-purple-900/30 border border-purple-800 rounded px-2 py-0.5 text-[10px] font-bold text-purple-300 uppercase">Branded: {character.brandTarget}</div>
+                                        )}
+                                        {character.aetherWalkActive && (
+                                            <div className="flex items-center gap-2 bg-blue-900/30 border border-blue-800 rounded px-2 py-0.5 text-[10px] font-bold text-blue-300 uppercase">Aether Walk</div>
+                                        )}
                                         {(character.classes || []).some((cls: any) => cls.definition?.index === 'blood-hunter') && (() => {
                                             const bh = (character.classes || []).find((cls: any) => cls.definition?.index === 'blood-hunter');
                                             const row = (bh?.definition as any)?.level_table?.find((entry: any) => entry.level === bh.level);
