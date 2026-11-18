@@ -997,7 +997,10 @@ const ManageCharacterModal = ({
         setLocalClasses(updatedClasses);
 
         setArmorModel('');
-        setLocalChoices(prev => prev.filter((choice: any) => !choice.revertData?.isArmorModel));
+        setLocalChoices(prev => prev.filter((choice: any) => !choice.revertData?.isArmorModel && (!/profane soul/i.test(String(newSubclass.name || '')) ? !choice.revertData?.isProfaneSpellChoice : true)));
+        if (!/profane soul/i.test(String(newSubclass.name || ''))) {
+            setLocalSpells(prev => prev.filter((spell: any) => String(spell.sourceClassIndex || '').toLowerCase() !== 'profane-soul' && !/profane soul/i.test(String(spell.grantedBy || ''))));
+        }
         const previousReplacement = localChoices.find((choice: any) => choice.revertData?.isToolsOfTradeReplacement);
         if (typeof previousReplacement?.value === 'string' && previousReplacement.value) {
             setToolProficiencies(prev => prev.filter((tool: string) => tool !== previousReplacement.value));

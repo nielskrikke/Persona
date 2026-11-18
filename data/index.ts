@@ -1317,6 +1317,12 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         });
     }
 
+    if (character.featureUsage && /exalted mutation/i.test(Object.keys(character.featureUsage).join('|'))) {
+        const bh = (classes || []).find((cls: any) => cls.definition?.index === 'blood-hunter');
+        if (Number(bh?.level || 0) < 18) {
+            Object.keys(character.featureUsage).forEach(key => { if (/^exalted mutation$/i.test(key)) delete (character.featureUsage as any)[key]; });
+        }
+    }
     let normalizedChoices = filteredSpellChoices;
     {
         const bloodHunter = (classes || []).find((cls: any) => cls.definition?.index === 'blood-hunter');
@@ -1329,7 +1335,7 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
                 const keys = Object.keys(effect?.count_by_level || {}).map(Number).filter(key => key <= level).sort((a, b) => b - a);
                 return keys.length > 0 ? Number(effect.count_by_level[keys[0]]) : Number(effect?.count || 1);
             };
-            const knownCurses = (classFeatures || []).map((feature: any) => String(feature.name || '')).filter(name => /^Blood Maledict: Blood Curse/i.test(name)).map(name => name.replace(/^Blood Maledict:\s*/i, '')).filter(name => !/Exorcist|Corrosion|Howl|Soul Eater/i.test(name));
+            const knownCurses = (classFeatures || []).map((feature: any) => String(feature.name || '')).filter(name => /^Blood (?:Maledict|Curses):\s*Blood Curse/i.test(name)).map(name => name.replace(/^Blood (?:Maledict|Curses):\s*/i, '')).filter(name => !/Exorcist|Corrosion|Howl|Soul Eater/i.test(name));
             const knownRites = (classFeatures || []).map((feature: any) => String(feature.name || '')).filter(name => /^Crimson Rite:/i.test(name)).map(name => name.replace(/^Crimson Rite:\s*/i, '')).filter(name => !/Rite of the Dawn/i.test(name));
             const old = normalizedChoices || [];
             const preserveRites = old.filter((choice: any) => /Crimson Rite/i.test(String(choice.label || ''))).flatMap((choice: any) => Array.isArray(choice.value) ? choice.value : []);

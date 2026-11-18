@@ -1327,7 +1327,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         const allTraits = [
             ...(race?.traits || []),
             ...(subrace?.traits || []),
-            ...character.classFeatures.filter((feature: any) => !/^Experimental Elixir/i.test(String(feature.name || '')) && !/Hybrid Form|Predatory Strikes/i.test(String(feature.name || ''))),
+            ...character.classFeatures.filter((feature: any) => !/^Experimental Elixir/i.test(String(feature.name || '')) && !/Hybrid|Predatory Strikes/i.test(String(feature.name || ''))),
             ...(character.feats || [])
         ];
         allTraits.forEach((t: any) => {
@@ -3570,7 +3570,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         const allTraits = [
             ...(raceObj?.traits || []),
             ...(subraceObj?.traits || []),
-            ...character.classFeatures.filter((feature: any) => !/^Experimental Elixir/i.test(String(feature.name || '')) && !/Hybrid Form|Predatory Strikes/i.test(String(feature.name || ''))),
+            ...character.classFeatures.filter((feature: any) => !/^Experimental Elixir/i.test(String(feature.name || '')) && !/Hybrid|Predatory Strikes/i.test(String(feature.name || ''))),
             ...(character.feats || [])
         ];
         allTraits.forEach((t: any) => {
@@ -4413,8 +4413,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         desc: [isDivineSpark ? 'Channel Divinity: 1d8 + WIS at level 2, 2d8 at level 7, 3d8 at level 13; CON save for half.' : (monkActionDescription || '')],
                         activationType: effect.type,
                         maxUses: usage?.max,
-                        resourceCost,
                     },
+                    resourceCost,
                 });
             });
         });

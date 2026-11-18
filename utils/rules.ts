@@ -742,6 +742,10 @@ export const getResourceDefinitions = (character: CharacterState): CharacterReso
         });
     });
 
+    if ((character.activeMutagens || []).some((name: string) => /vermillion/i.test(name))) {
+        const resource = resources.get('Blood Maledict');
+        if (resource) resource.max = Math.max(0, Number(resource.max) + 1);
+    }
     (character.classFeatures || []).forEach((feature: any) => {
         (feature.effects || []).filter((effect: any) => effect.type === 'resource_bonus' && effect.resource).forEach((effect: any) => {
             const resource = resources.get(String(effect.resource));
