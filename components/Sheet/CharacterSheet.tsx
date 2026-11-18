@@ -4347,7 +4347,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 });
             });
             if (/arena royale/i.test(String(pugilistClass.subclass?.name || ''))) {
-                addPug('Adopt/Discard Persona', 'bonus_action', 0, 'Toggle your alternate persona.', () => {
+                const personaAdopted = Boolean(character.activeConditions?.['arena-persona']);
+                addPug(personaAdopted ? 'Discard Persona' : 'Adopt Persona', 'bonus_action', 0, personaAdopted ? 'Discard your alternate persona.' : 'Adopt your alternate persona.', () => {
                     setCharacter(prev => {
                         const adopted = !prev.activeConditions?.['arena-persona'];
                         return { ...prev, activeConditions: { ...(prev.activeConditions || {}), 'arena-persona': adopted }, classFeatures: adopted ? [...(prev.classFeatures || []).filter((feature: any) => feature.name !== 'Persona Adopted'), { index: 'persona-adopted', name: 'Persona Adopted', level: 3, source: 'Arena Royale', desc: ['Alternate persona active.'], effects: [] } as any] : (prev.classFeatures || []).filter((feature: any) => feature.name !== 'Persona Adopted') };
@@ -4356,6 +4357,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 addPug('Persona Point: Add STR to Charisma Check', 'feature', 0, 'Spend 1 Persona Point: add STR to a Charisma check while in persona.', () => {
                     setSelectedDetail({ name: 'Persona Point', desc: [`Add +${strMod} to a Charisma check.`] } as any);
                 }, 'Persona Points');
+                const personaPointRow = attacks.find(attack => /Persona Point: Add STR/i.test(String(attack.name)));
+                if (personaPointRow) personaPointRow.requiresCondition = 'arena-persona';
             }
             if (Boolean(character.activeConditions?.['scrap-like-a-sleuth']) && /bloodhound bruisers/i.test(String(pugilistClass.subclass?.name || ''))) {
                 addPug('End Scrap Like a Sleuth', 'bonus_action', 0, 'End the Scrap Like a Sleuth benefit.', () => {
@@ -4426,16 +4429,19 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const digDeep = attacks.find(attack => attack.name === 'Dig Deep');
             if (digDeep) {
                 digDeep.onUse = () => setCharacter(prev => {
-                    const active = Boolean(prev.activeConditions?.['dig-deep']);
-                    const conditions = { ...(prev.activeConditions || {}) };
-                    const features = (prev.classFeatures || []).filter((feature: any) => feature.name !== 'Dig Deep (Active)');
-                    if (active) {
-                        delete conditions['dig-deep'];
-                        return { ...prev, activeConditions: conditions, classFeatures: features, exhaustion: Number(prev.exhaustion || 0) + 1 };
-                    }
-                    conditions['dig-deep'] = true;
-                    features.push({ index: 'dig-deep-active', name: 'Dig Deep (Active)', level: 4, source: 'Pugilist', desc: ['Resistance to bludgeoning, piercing and slashing.'], effects: [{ type: 'resistance', value: 'Bludgeoning' }, { type: 'resistance', value: 'Piercing' }, { type: 'resistance', value: 'Slashing' }] } as any);
+                    if (prev.activeConditions?.['dig-deep']) return prev;
+                    const conditions = { ...(prev.activeConditions || {}), 'dig-deep': true };
+                    const features = [...(prev.classFeatures || []).filter((feature: any) => feature.name !== 'Dig Deep (Active)'), { index: 'dig-deep-active', name: 'Dig Deep (Active)', level: 4, source: 'Pugilist', desc: ['Resistance to bludgeoning, piercing and slashing.'], effects: [{ type: 'resistance', value: 'Bludgeoning' }, { type: 'resistance', value: 'Piercing' }, { type: 'resistance', value: 'Slashing' }] } as any];
                     return { ...prev, activeConditions: conditions, classFeatures: features };
+                });
+            }
+            if (Boolean(character.activeConditions?.['dig-deep'])) {
+                addPug('End Dig Deep', 'bonus_action', 0, 'End Dig Deep and gain 1 exhaustion.', () => {
+                    setCharacter(prev => {
+                        const conditions = { ...(prev.activeConditions || {}) };
+                        delete conditions['dig-deep'];
+                        return { ...prev, activeConditions: conditions, classFeatures: (prev.classFeatures || []).filter((feature: any) => feature.name !== 'Dig Deep (Active)'), exhaustion: Number(prev.exhaustion || 0) + 1 };
+                    });
                 });
             }
             attacks.forEach((attack: any) => {
@@ -5316,6 +5322,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     </div>
 
                                     <div className="flex items-center gap-2">
+                                        {character.activeConditions?.['dig-deep'] && (
+                                            <div className="flex items-center gap-2 bg-emerald-900/30 border border-emerald-800 rounded px-2 py-0.5 text-[10px] font-bold text-emerald-300 uppercase">Dig Deep Active</div>
+                                        )}
+                                        {character.activeConditions?.['arena-persona'] && (
+                                            <div className="flex items-center gap-2 bg-fuchsia-900/30 border border-fuchsia-800 rounded px-2 py-0.5 text-[10px] font-bold text-fuchsia-300 uppercase">Persona Active</div>
+                                        )}
                                         {character.activeConditions?.['dread-hand'] && (
                                             <div className="flex items-center gap-2 bg-purple-900/30 border border-purple-800 rounded px-2 py-0.5 text-[10px] font-bold text-purple-300 uppercase">Dread Hand Active</div>
                                         )}

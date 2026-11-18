@@ -880,6 +880,7 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
         });
         const staleNames = new Set<string>();
         classFeatures = classFeatures.filter((feature: any) => {
+            if (/^subclass feature$/i.test(String(feature.name || '').trim()) || String(feature.index || '').toLowerCase() === 'subclass-feature') return false;
             if (feature.revertData?.choiceId || feature.revertData?.parentChoiceId) return true;
             if (feature.source && liveSources.has(feature.source) && !liveFeatureNames.has(String(feature.name || ''))) {
                 staleNames.add(String(feature.name || ''));
@@ -1272,6 +1273,7 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
             (cls.definition?.feature_details || []).forEach((feature: any) => {
                 if (Number(feature.level || 0) > Number(cls.level || 0)) return;
                 const key = String(feature.name || '').toLowerCase();
+                if (!key || /^subclass feature$/.test(key) || String(feature.index || '').toLowerCase() === 'subclass-feature') return;
                 if (present.has(key)) return;
                 classFeatures.push({ ...feature, level: feature.level, source: cls.definition.name });
                 present.add(key);
@@ -1279,6 +1281,7 @@ export const hydrateCharacterClasses = async (character: CharacterState): Promis
             (cls.subclass?.feature_details || []).forEach((feature: any) => {
                 if (Number(feature.level || 0) > Number(cls.level || 0)) return;
                 const key = String(feature.name || '').toLowerCase();
+                if (!key || /^subclass feature$/.test(key) || String(feature.index || '').toLowerCase() === 'subclass-feature') return;
                 if (present.has(key)) return;
                 classFeatures.push({ ...feature, level: feature.level, source: cls.subclass.name });
                 present.add(key);
