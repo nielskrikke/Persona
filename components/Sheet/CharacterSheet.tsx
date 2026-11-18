@@ -2302,7 +2302,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const hemocraftDie = bhRow?.class_specific?.hemocraft_die || '1d4';
                 const hemocraftDC = 8 + prof + intMod;
                 const riteChoice = (character.choices || []).find((choice: any) => /Crimson Rite/i.test(choice.label || ''));
-                const knownRites = (Array.isArray(riteChoice?.value) ? riteChoice.value : []).length > 0 ? riteChoice.value : ['Rite of the Flame', 'Rite of the Frozen', 'Rite of the Storm'];
+                const knownRites = [...((Array.isArray(riteChoice?.value) ? riteChoice.value : []).length > 0 ? riteChoice.value : ['Rite of the Flame', 'Rite of the Frozen', 'Rite of the Storm'])];
+                if (/ghostslayer/i.test(String(bh.subclass?.name || '')) && !knownRites.includes('Rite of the Dawn')) knownRites.push('Rite of the Dawn');
                 const mutagenChoiceCard = (character.choices || []).find((choice: any) => /Mutagen/i.test(choice.label || ''));
                 const knownMutagens = Array.isArray(mutagenChoiceCard?.value) ? mutagenChoiceCard.value : [];
                 const weapons = (character.inventory || []).filter((item: any) => item.equipped && (item.weapon_category || item.damage));
@@ -2321,7 +2322,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             {character.activeRite ? (
                                 <div className="flex items-center justify-between bg-red-900/20 border border-red-900/40 rounded px-2 py-1">
                                     <span className="text-[10px] text-red-300 font-bold">{character.activeRite.name} · +{character.activeRite.die} {character.activeRite.damageType}</span>
-                                    <button onClick={() => setCharacter(prev => ({ ...prev, activeRite: null }))} className="text-[8px] uppercase font-black text-red-400">End</button>
+                                    <button onClick={() => setCharacter(prev => ({ ...prev, activeRite: null, classFeatures: (prev.classFeatures || []).filter((feature: any) => feature.name !== 'Rite of the Dawn (Active)') }))} className="text-[8px] uppercase font-black text-red-400">End</button>
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-[1fr_1fr_auto] gap-1">
@@ -2331,7 +2332,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                         const damageType = riteTypes[bloodRiteChoice] || 'Fire';
                                         const dieMax = parseInt(hemocraftDie.match(/d(\d+)/)?.[1] || '4');
                                         const selfDamage = 1 + Math.floor(Math.random() * dieMax);
-                                        setCharacter(prev => ({ ...prev, currentHp: Math.max(0, Number(prev.currentHp) - selfDamage), activeRite: { name: bloodRiteChoice, damageType, die: hemocraftDie, weaponId: bloodRiteWeapon } }));
+                                        setCharacter(prev => {
+                                            const features = (prev.classFeatures || []).filter((feature: any) => feature.name !== 'Rite of the Dawn (Active)');
+                                            if (bloodRiteChoice === 'Rite of the Dawn') features.push({ index: 'rite-dawn-active', name: 'Rite of the Dawn (Active)', level: 3, source: 'Order of the Ghostslayer', desc: ['Resistance to necrotic while the rite is active.'], effects: [{ type: 'resistance', value: 'Necrotic' }] } as any);
+                                            return { ...prev, currentHp: Math.max(0, Number(prev.currentHp) - selfDamage), activeRite: { name: bloodRiteChoice, damageType, die: hemocraftDie, weaponId: bloodRiteWeapon }, classFeatures: features };
+                                        });
                                     }} className="px-2 py-1 bg-red-900/30 border border-red-800 text-red-300 rounded text-[8px] font-black uppercase disabled:opacity-30">Activate</button>
                                 </div>
                             )}
@@ -2364,11 +2369,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 <div className="text-[9px] font-bold text-gray-500 uppercase flex justify-between"><span>Mutagens</span><span>{mutagenUses ? `${mutagenUses.current}/${mutagenUses.max}` : '0'}</span></div>
                                 <div className="flex gap-1"><select value={mutagenChoice} onChange={e => setMutagenChoice(e.target.value)} className="flex-1 bg-black/40 border border-gray-700 rounded px-1 text-[8px] text-gray-300"><option value="">Formula…</option>{knownMutagens.map((name: string) => <option key={name} value={name}>{name}</option>)}</select><button disabled={!mutagenChoice || !mutagenUses || mutagenUses.current <= 0} onClick={() => setCharacter(prev => {
                                     const mutagenEffects: any = {
-                                        Potency: [{ type: 'bonus', target: 'str', value: 3 }],
-                                        Celerity: [{ type: 'bonus', target: 'dex', value: 3 }],
+                                        Potency: [{ type: 'bonus', target: 'str', value: 3 }, { type: 'disadvantage', target: 'dex_save' }],
+                                        Celerity: [{ type: 'bonus', target: 'dex', value: 3 }, { type: 'disadvantage', target: 'wis_save' }],
                                         Rapidity: [{ type: 'bonus', target: 'speed', value: 10 }],
                                         Nighteye: [{ type: 'sense', sense: 'darkvision', value: 60 }],
                                         Aether: [{ type: 'bonus', target: 'fly_speed', value: 20 }],
+                                        Vermillion: [{ type: 'resource_bonus', resource: 'Blood Maledict', value: 1 }],
                                     };
                                     const features = (prev.classFeatures || []).filter((feature: any) => feature.name !== `Mutagen: ${mutagenChoice}`);
                                     features.push({ index: `mutagen-${mutagenChoice.toLowerCase()}`, name: `Mutagen: ${mutagenChoice}`, level: 3, source: 'Order of the Mutant', desc: ['Active mutagen.'], effects: mutagenEffects[mutagenChoice] || [] } as any);
@@ -3757,6 +3763,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 notes: ['Hybrid Form: bonus-action extra strike.', ...(character.activeRite ? [`Rite: +${character.activeRite.die} ${character.activeRite.damageType}`] : [])],
                 source: { name: 'Predatory Strikes', activationType: 'action', desc: ['Hybrid form unarmed strikes.'] },
             });
+            attacks.push({
+                id: 'predatory-strikes-bonus', name: 'Predatory Strikes (Bonus Action)', range: '5 ft.', hit: predatoryHit,
+                damage: `${predatoryDie}${formatModifier(Math.max(strMod, dexMod))}`, type: 'Slashing',
+                notes: ['Hybrid Form extra unarmed strike.'], source: { name: 'Predatory Strikes', activationType: 'bonus_action', desc: ['Bonus-action hybrid strike.'] },
+            });
         }
         const armorModel = String(character.armorModel || '').toLowerCase();
         const armorModelFeature = featureNamesLower.includes('armor model');
@@ -4156,7 +4167,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             let riteDamage = displayDamage;
             if (activeRite) {
                 riteDamage = `${displayDamage} + ${activeRite.die} ${activeRite.damageType}`;
-                finalNotes.push(`${activeRite.name}: +${activeRite.die} ${activeRite.damageType} (magical)`);
+                finalNotes.push(`${activeRite.name}: +${activeRite.die} ${activeRite.damageType} (magical)${activeRite.name === 'Rite of the Dawn' ? '; +1 die vs undead' : ''}`);
             }
             const weaponAttack = {
                 id: item.id,

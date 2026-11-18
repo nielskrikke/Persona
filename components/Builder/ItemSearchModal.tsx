@@ -107,7 +107,9 @@ const ItemSearchModal: React.FC<ItemSearchModalProps> = ({ isOpen, onClose, item
 
     const filteredItems = useMemo(() => {
         return items.filter(item => {
-            const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+            const query = searchQuery.toLowerCase().trim();
+            const boltAlias = /^bolts?$|crossbow bolts?/.test(query) && /bolt/i.test(item.name);
+            const matchesSearch = item.name.toLowerCase().includes(query) || boltAlias;
             
             // Category matching
             const catIndex = item.equipment_category?.index || '';
