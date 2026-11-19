@@ -747,6 +747,11 @@ export const getResourceDefinitions = (character: CharacterState): CharacterReso
         });
     });
 
+    const supportCards = (character.classes || []).find((cls: any) => cls.definition?.index === 'card-master' && /support cards/i.test(String(cls.subclass?.name || '')));
+    if (supportCards && Number(supportCards.level || 0) >= 8) {
+        const resource = resources.get('Choice Points');
+        if (resource) resource.max = Math.max(0, Number(resource.max) + Math.max(0, calculateModifier(abilities.cha)));
+    }
     if ((character.activeMutagens || []).some((name: string) => /vermillion/i.test(name))) {
         const resource = resources.get('Blood Maledict');
         if (resource) resource.max = Math.max(0, Number(resource.max) + 1);

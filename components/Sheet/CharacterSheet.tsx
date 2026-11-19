@@ -1581,104 +1581,59 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     };
 
     const handlePickACard = (isFree = false, specificCardName?: string, cost = 1) => {
-        const isWorldActive = character.activeCards?.some(c => c.name === 'The World');
-        const effectiveIsFree = isFree || isWorldActive;
-
-        if (!effectiveIsFree) {
-            const choicePoints = character.featureUsage['Choice Points'];
-            if (!choicePoints || choicePoints.current < cost) {
-                alert(`Need ${cost} Choice Points!`);
-                return;
-            }
-        }
-
-        let card;
-        let rollVal;
-        let rollResult;
-
         const cardTable = character.classes
             .map(c => (c.definition as any).options?.pickACardTable)
             .find((table: any) => Array.isArray(table) && table.length > 0) || [];
         const cmClass = character.classes.find(c => (c.definition as any).options?.pickACardTable);
         const lvl = cmClass ? cmClass.level : 1;
         const dieSize = lvl >= 10 ? 21 : 20;
-
-        if (specificCardName) {
-            card = cardTable.find((c: any) => c.name === specificCardName);
-            rollVal = card?.roll || 21;
-            // Create a fake roll result for the specific card so dice match
-            rollResult = {
-                formula: `1d${dieSize}`,
-                label: `Pick a Card: ${card?.name || 'Unknown'}`,
-                total: rollVal,
-                rolls: [rollVal],
-                timestamp: Date.now()
-            };
-        } else {
-            rollResult = rollDice(`1d${dieSize}`, 'Pick a Card');
-            rollVal = rollResult.total;
-            card = cardTable.find((c: any) => c.roll === rollVal);
+        const drawCount = specificCardName ? 1 : lvl >= 20 ? 3 : lvl >= 14 ? 2 : 1;
+        const isWorldActive = character.activeCards?.some(c => c.name === 'The World');
+        const effectiveIsFree = isFree || isWorldActive;
+        const totalCost = effectiveIsFree ? 0 : cost * drawCount;
+        const choicePoints = character.featureUsage['Choice Points'];
+        if (!effectiveIsFree && (!choicePoints || choicePoints.current < totalCost)) {
+            alert(`Need ${totalCost} Choice Points!`);
+            return;
         }
-
-        if (card) {
-            roll(`1d${dieSize}`, `Pick a Card: ${card.name} (${rollVal})`, rollResult);
-
-            const newCard = {
-                roll: rollVal,
-                name: card.name,
-                duration: card.duration,
-                timestamp: Date.now()
+        const drawn: any[] = [];
+        for (let draw = 0; draw < drawCount; draw += 1) {
+            let rollVal: number;
+            let card: any;
+            if (specificCardName && draw === 0) {
+                card = cardTable.find((c: any) => c.name === specificCardName);
+                rollVal = card?.roll || 21;
+            } else {
+                const first = rollDice(`1d${dieSize}`, 'Pick a Card').total;
+                const guided = lvl >= 14 && Number(character.featureUsage?.['Choice Points']?.current || 0) > 0;
+                const second = guided ? rollDice(`1d${dieSize}`, 'Pick a Card (Guided Pull)').total : first;
+                rollVal = guided ? Math.max(first, second) : first;
+                card = cardTable.find((c: any) => c.roll === rollVal);
+            }
+            if (card) drawn.push({ ...card, rollVal });
+        }
+        if (drawn.length === 0) return;
+        drawn.forEach((card: any) => roll(`1d${dieSize}`, `Pick a Card: ${card.name} (${card.rollVal})`));
+        setCharacter(prev => {
+            const activeCards = prev.activeCards || [];
+            const newCards = drawn.map((card: any) => ({ roll: card.rollVal, name: card.name, duration: card.duration, timestamp: Date.now() + Math.random() }));
+            const updatedCards = [...activeCards, ...newCards];
+            const countExhaustion = (cards: any[]) => {
+                const counts: Record<string, number> = {};
+                cards.forEach(card => { counts[card.duration] = (counts[card.duration] || 0) + 1; });
+                return Object.values(counts).reduce((sum, count) => sum + Math.max(0, count - 2), 0);
             };
-
-            setCharacter(prev => {
-                const activeCards = prev.activeCards || [];
-                const updatedCards = [...activeCards, newCard];
-
-                const durationCounts: Record<string, number> = {};
-                updatedCards.forEach(c => {
-                    durationCounts[c.duration] = (durationCounts[c.duration] || 0) + 1;
-                });
-
-                let totalExhaustion = 0;
-                Object.values(durationCounts).forEach(count => {
-                    if (count > 2) {
-                        totalExhaustion += (count - 2);
-                    }
-                });
-
-                const oldDurationCounts: Record<string, number> = {};
-                activeCards.forEach(c => {
-                    oldDurationCounts[c.duration] = (oldDurationCounts[c.duration] || 0) + 1;
-                });
-                let oldExhaustion = 0;
-                Object.values(oldDurationCounts).forEach(count => {
-                    if (count > 2) oldExhaustion += (count - 2);
-                });
-
-                const diff = totalExhaustion - oldExhaustion;
-
-                const newFeatureUsage = { ...prev.featureUsage };
-                if (!isFree && newFeatureUsage['Choice Points']) {
-                    newFeatureUsage['Choice Points'] = {
-                        ...newFeatureUsage['Choice Points'],
-                        current: newFeatureUsage['Choice Points'].current - cost
-                    };
-                }
-
-                let currentHp = prev.currentHp;
-                let tempHp = prev.tempHp || 0;
+            const diff = countExhaustion(updatedCards) - countExhaustion(activeCards);
+            const featureUsage = { ...prev.featureUsage };
+            if (!effectiveIsFree && featureUsage['Choice Points']) featureUsage['Choice Points'] = { ...featureUsage['Choice Points'], current: Math.max(0, Number(featureUsage['Choice Points'].current) - totalCost) };
+            let currentHp = prev.currentHp;
+            let tempHp = prev.tempHp || 0;
+            drawn.forEach((card: any) => {
                 if (card.name === 'The Empress') tempHp = Math.max(tempHp, 2 * lvl);
-                if (card.name === 'The Sun') currentHp = Math.min(prev.maxHp, Number(prev.currentHp || 0) + 8 * (1 + Math.floor(Math.random() * 10)) + calculateModifier(getStat('cha')));
-                return {
-                    ...prev,
-                    activeCards: updatedCards,
-                    currentHp,
-                    tempHp,
-                    exhaustion: Math.min(6, (prev.exhaustion || 0) + (diff > 0 ? diff : 0)),
-                    featureUsage: newFeatureUsage
-                };
+                if (card.name === 'The Sun') currentHp = Math.min(prev.maxHp, Number(currentHp || 0) + 8 * (1 + Math.floor(Math.random() * 10)) + calculateModifier(getStat('cha')));
             });
-        }
+            return { ...prev, activeCards: updatedCards, currentHp, tempHp, exhaustion: Math.min(6, (prev.exhaustion || 0) + Math.max(0, diff)), featureUsage };
+        });
     };
 
     const removeActiveCard = (timestamp: number) => {
