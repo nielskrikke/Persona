@@ -870,6 +870,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             Strength: [{ type: 'advantage', target: 'str_save' }, { type: 'advantage', target: 'str_checks' }],
             'The Hanged Man': [{ type: 'resistance', value: 'All' }],
             'The Star': [{ type: 'advantage', target: 'saves' }],
+            Death: [{ type: 'attack_rider', name: 'Death', damage: '4d10', damage_type: 'Necrotic' }],
+            'The Sun': [{ type: 'attack_rider', name: 'The Sun', damage: '1d10', damage_type: 'Radiant' }],
         };
         (character.activeCards || []).forEach((card: any) => { (cardMods[card.name] || []).forEach((effect: any) => mods.push(effect)); });
         return mods;
@@ -1663,9 +1665,15 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     };
                 }
 
+                let currentHp = prev.currentHp;
+                let tempHp = prev.tempHp || 0;
+                if (card.name === 'The Empress') tempHp = Math.max(tempHp, 2 * lvl);
+                if (card.name === 'The Sun') currentHp = Math.min(prev.maxHp, Number(prev.currentHp || 0) + 8 * (1 + Math.floor(Math.random() * 10)) + calculateModifier(getStat('cha')));
                 return {
                     ...prev,
                     activeCards: updatedCards,
+                    currentHp,
+                    tempHp,
                     exhaustion: Math.min(6, (prev.exhaustion || 0) + (diff > 0 ? diff : 0)),
                     featureUsage: newFeatureUsage
                 };
@@ -4676,6 +4684,18 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             attacks.forEach((attack: any) => { if (attack.useKey) { attack.source.maxUses = undefined; } });
             const crossCounter = attacks.find(attack => /cross counter/i.test(String(attack.name)));
             if (crossCounter) crossCounter.onUse = () => roll(`1d10+${strMod}+${pugLevel}`, 'Cross Counter Damage Reduction');
+        }
+
+        const cardMasterClass = (character.classes || []).find((cls: any) => cls.definition?.index === 'card-master');
+        if (cardMasterClass) {
+            const subclass = String(cardMasterClass.subclass?.name || '');
+            if (/destiny caster/i.test(subclass)) {
+                attacks.push({ id: 'spell-cards', name: 'Spell Cards Boost', range: 'Self', hit: null, damage: '-', type: 'Card Master', notes: ['Spend 10 ft. of movement: +PB to spell DC, +6 damage dice, no attack roll (CHA save for half), enlarged area.'], source: { name: 'Spell Cards', activationType: 'bonus_action', desc: ['Boost one spell.'] } });
+            }
+            if (/support cards/i.test(subclass)) {
+                attacks.push({ id: 'pick-two', name: 'Pick a Card (More Cards)', range: 'Self', hit: null, damage: '-', type: 'Card Master', notes: ['Use Pick a Card twice with one bonus action.'], onUse: () => { handlePickACard(); }, source: { name: 'More Cards', activationType: 'bonus_action', desc: ['Draw two cards.'] } });
+            }
+            if (Number(cardMasterClass.level) >= 8) attacks.push({ id: 'secure-vision', name: 'Secure the Vision', range: '30 ft.', hit: null, damage: '-', type: 'Card Master', notes: ['Force an enemy reroll or protect an ally; improved use costs 3 Choice Points.'], source: { name: 'Secure the Vision', activationType: 'reaction', desc: ['Manipulate a nearby roll.'] } });
         }
 
         const hasFeature = (name: string) => (character.classFeatures || []).some((feature: any) =>
