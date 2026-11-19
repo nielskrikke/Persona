@@ -460,7 +460,7 @@ const ClassStep: React.FC<ClassStepProps> = ({ onSelect, initialClasses, totalLe
                                                 </span>
                                             </div>
                                             <div className="flex flex-wrap gap-2">
-                                                {choiceOptionsFor(choice, draft.index).map((option: any, optionIndex: number) => {
+                                                {(choice.kind === 'weapon_mastery' ? [...choiceOptionsFor(choice, draft.index)].sort((a: any, b: any) => String(typeof a === 'string' ? a : a.name).localeCompare(String(typeof b === 'string' ? b : b.name))) : choiceOptionsFor(choice, draft.index)).map((option: any, optionIndex: number) => {
                                                     const name = typeof option === 'string' ? option : option.name;
                                                     const isSelected = selected.includes(name);
                                                     return (

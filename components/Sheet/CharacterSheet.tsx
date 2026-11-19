@@ -180,20 +180,21 @@ const SavingThrowRow: React.FC<{
     disadvantage?: boolean,
     onRoll: (formula: string, label: string) => void,
     onContextMenu: (e: React.MouseEvent, formula: string, label: string) => void
-}> = ({ label, stat, isProf, mod, advantage, onRoll, onContextMenu }) => (
+}> = ({ label, stat, isProf, mod, advantage, disadvantage, onRoll, onContextMenu }) => (
     <div
         className="flex items-center justify-between text-xs p-1 hover:bg-[#2e3036]/50 rounded group"
-        onContextMenu={(e) => onContextMenu(e, advantage ? `2d20kh1${formatModifier(mod)}` : `1d20${formatModifier(mod)}`, `${label} Save`)}
+        onContextMenu={(e) => onContextMenu(e, disadvantage ? `2d20kl1${formatModifier(mod)}` : advantage ? `2d20kh1${formatModifier(mod)}` : `1d20${formatModifier(mod)}`, `${label} Save`)}
     >
         <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full border ${isProf ? 'bg-dnd-gold border-dnd-gold' : 'border-gray-600'}`}></div>
             <span className="text-gray-300 font-bold flex items-center gap-1 flex-wrap">
                 {label}
                 {advantage && <span className="text-[8px] bg-gray-800/60 text-gray-500 px-1 rounded border border-gray-700/50">ADV</span>}
+                {disadvantage && <span className="text-[8px] bg-red-900/30 text-red-300 px-1 rounded border border-red-900/50">DISADV</span>}
             </span>
         </div>
         <button
-            onClick={() => onRoll(advantage ? `2d20kh1${formatModifier(mod)}` : `1d20${formatModifier(mod)}`, `${label} Save`)}
+            onClick={() => onRoll(disadvantage ? `2d20kl1${formatModifier(mod)}` : advantage ? `2d20kh1${formatModifier(mod)}` : `1d20${formatModifier(mod)}`, `${label} Save`)}
             className="font-mono text-gray-400 hover:text-white hover:underline"
         >
             {formatModifier(mod)}
@@ -230,6 +231,7 @@ const SkillRow: React.FC<{
             <span className={`text-gray-300 flex items-center gap-1 flex-wrap ${isExpertise ? 'text-dnd-gold font-bold' : ''}`}>
                 {skill} <span className="text-[9px] text-gray-600 ml-1">({stat.toUpperCase()})</span>
                 {advantage && <span className="text-[8px] bg-gray-800/60 text-gray-500 px-1 rounded border border-gray-700/50">ADV</span>}
+                {disadvantage && <span className="text-[8px] bg-red-900/30 text-red-300 px-1 rounded border border-red-900/50">DISADV</span>}
                 {disadvantage && <span className="text-[8px] bg-red-900/30 text-red-300 px-1 rounded border border-red-900/50">DISADV</span>}
             </span>
         </div>
@@ -353,6 +355,17 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             show3DDice: initialCharacter.show3DDice !== false
         };
     });
+
+    useEffect(() => {
+        let cancelled = false;
+        hydrateGrantedSpells(character).then(next => {
+            if (cancelled) return;
+            if (JSON.stringify((next.spells || []).map((s: any) => s.index).sort()) !== JSON.stringify((character.spells || []).map((s: any) => s.index).sort())) {
+                setCharacter(prev => ({ ...prev, spells: next.spells }));
+            }
+        }).catch(() => {});
+        return () => { cancelled = true; };
+    }, [character.choices, character.classes]);
 
     useEffect(() => {
         onCharacterChange?.(character);
@@ -2417,10 +2430,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     };
                                     const features = (prev.classFeatures || []).filter((feature: any) => feature.name !== `Mutagen: ${mutagenChoice}`);
                                     features.push({ index: `mutagen-${mutagenChoice.toLowerCase()}`, name: `Mutagen: ${mutagenChoice}`, level: 3, source: 'Order of the Mutant', desc: ['Active mutagen.'], effects: mutagenEffects[mutagenChoice] || [] } as any);
-                                    return { ...prev, activeMutagens: [...(prev.activeMutagens || []), mutagenChoice], classFeatures: features, featureUsage: { ...prev.featureUsage, 'Mutagens': { ...prev.featureUsage['Mutagens'], current: Math.max(0, Number(prev.featureUsage['Mutagens'].current) - 1) } } };
+                                    const featureUsage: any = { ...prev.featureUsage, 'Mutagens': { ...prev.featureUsage['Mutagens'], current: Math.max(0, Number(prev.featureUsage['Mutagens'].current) - 1) } };
+                                    if (/vermillion/i.test(mutagenChoice) && featureUsage['Blood Maledict']) featureUsage['Blood Maledict'] = { ...featureUsage['Blood Maledict'], max: Number(featureUsage['Blood Maledict'].max) + 1, current: Number(featureUsage['Blood Maledict'].current) + 1 };
+                                    return { ...prev, activeMutagens: [...(prev.activeMutagens || []), mutagenChoice], classFeatures: features, featureUsage };
                                 })} className="px-2 py-1 bg-gray-800 border border-gray-700 text-gray-300 rounded text-[8px] font-black uppercase disabled:opacity-30">Consume</button></div>
                                 {(character.activeMutagens || []).map(name => <div key={name} className="flex justify-between bg-gray-800/40 rounded px-2 py-0.5"><span className="text-[8px] text-gray-300">{name}</span><span className="text-[8px] text-gray-500">active</span></div>)}
-                                {(character.activeMutagens || []).length > 0 && <button onClick={() => setCharacter(prev => ({ ...prev, activeMutagens: [], classFeatures: (prev.classFeatures || []).filter((feature: any) => !/^Mutagen:/.test(String(feature.name || ''))) }))} className="w-full py-1 bg-gray-800 border border-gray-700 rounded text-[8px] font-black uppercase text-gray-400">Flush Mutagens</button>}
+                                {(character.activeMutagens || []).length > 0 && <button onClick={() => setCharacter(prev => { const hadVermillion = (prev.activeMutagens || []).some(name => /vermillion/i.test(name)); const featureUsage = hadVermillion && prev.featureUsage['Blood Maledict'] ? { ...prev.featureUsage, 'Blood Maledict': { ...prev.featureUsage['Blood Maledict'], max: Math.max(1, Number(prev.featureUsage['Blood Maledict'].max) - 1), current: Math.max(0, Math.min(Number(prev.featureUsage['Blood Maledict'].max) - 1, Number(prev.featureUsage['Blood Maledict'].current))) } } : prev.featureUsage; return { ...prev, activeMutagens: [], classFeatures: (prev.classFeatures || []).filter((feature: any) => !/^Mutagen:/.test(String(feature.name || ''))), featureUsage }; })} className="w-full py-1 bg-gray-800 border border-gray-700 rounded text-[8px] font-black uppercase text-gray-400">Flush Mutagens</button>}
                             </div>
                         )}
                     </div>
