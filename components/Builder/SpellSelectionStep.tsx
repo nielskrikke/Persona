@@ -62,7 +62,7 @@ const SpellSelectionStep: React.FC<SpellSelectionStepProps> = ({ character, onCo
                 const cls = casterClasses.find(c => c.definition.index === activeClassIndex);
                 if (cls) {
                     try {
-                        const allSpells = await fetchSpellsByClass(cls.definition.index, character.user_id);
+                        const allSpells = await fetchSpellsByClass(cls.definition.index, character.user_id, (cls.definition as any).spell_list || []);
                         setAvailableSpellsCache(prev => ({...prev, [activeClassIndex]: allSpells}));
                     } catch (error) {
                         console.error("Error loading spells:", error);

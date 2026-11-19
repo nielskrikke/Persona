@@ -102,7 +102,7 @@ const SpellManagerModal: React.FC<SpellManagerModalProps> = ({
             const isArcaneTrickster = /arcane trickster/i.test(activeClass?.subclass?.name || '');
             const isEldritchKnight = /eldritch knight/i.test(activeClass?.subclass?.name || '');
             const spellListClass = isArcaneTrickster || isEldritchKnight ? 'wizard' : activeClassIndex;
-            const spells = hasExpandedSpellList ? await fetchAllSpells(character.user_id) : await fetchSpellsByClass(spellListClass, character.user_id);
+            const spells = hasExpandedSpellList ? await fetchAllSpells(character.user_id) : await fetchSpellsByClass(spellListClass, character.user_id, (character.classes.find(c => c.definition.index === activeClassIndex)?.definition as any)?.spell_list || []);
             const allowedSecretsLists = new Set(hasMagicalDiscoveries && !hasMagicalSecrets ? ['cleric', 'druid', 'wizard'] : ['bard', 'cleric', 'druid', 'wizard']);
             const filtered = hasExpandedSpellList
                 ? spells.filter(spell => (spell as any).classes?.some((entry: any) => allowedSecretsLists.has(String(entry.index).toLowerCase())))

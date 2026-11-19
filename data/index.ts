@@ -248,13 +248,14 @@ export const fetchBackgroundDetail = async (index: string, userId?: string): Pro
     return null;
 };
 
-export const fetchSpellsByClass = async (classIndex: string, userId?: string): Promise<SpellDetail[]> => {
+export const fetchSpellsByClass = async (classIndex: string, userId?: string, spellLists: string[] = []): Promise<SpellDetail[]> => {
     const spells = await loadHomebrew('custom_spells', userId).catch(() => []);
     const classKey = String(classIndex || '').toLowerCase();
+    const allowed = new Set([classKey, ...spellLists.map(list => String(list).toLowerCase())]);
     return spells
         .filter((spell: any) => Array.isArray(spell.classes) && spell.classes.some((entry: any) => {
             const key = typeof entry === 'string' ? entry : (entry?.index || entry?.name || '');
-            return String(key).toLowerCase() === classKey;
+            return allowed.has(String(key).toLowerCase());
         }))
         .map((spell: any) => ({ ...spell, sourceClassIndex: classIndex }));
 };
