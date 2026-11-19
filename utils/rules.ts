@@ -398,12 +398,17 @@ export const calculateMaxHp = (character: CharacterState): number => {
         levelTotal += level;
         const hitDie = Number((characterClass.definition as any)?.hit_die || 8);
         const average = Math.floor(hitDie / 2) + 1;
+        const isCardMaster = characterClass.definition?.index === 'card-master';
+        const hpLevels = isCardMaster ? Math.min(level, 10) : level;
         if (index === 0) {
-            hp += hitDie + Math.max(0, level - 1) * average;
+            hp += hitDie + Math.max(0, hpLevels - 1) * average;
         } else {
-            hp += level * average;
+            hp += hpLevels * average;
         }
-        hp += level * conModifier;
+        hp += (isCardMaster ? hpLevels : level) * conModifier;
+        if (isCardMaster && level >= 17) {
+            hp -= Math.max(0, level - 17) * Math.max(0, calculateModifier(getEffectiveAbilities(character).cha));
+        }
     });
 
     const totalLevel = levelTotal || character.level || 1;
