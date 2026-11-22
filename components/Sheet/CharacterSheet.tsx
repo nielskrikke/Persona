@@ -1464,6 +1464,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         setTimeout(() => { setLogs(current => current.filter(l => l.timestamp !== result.timestamp)); }, 5000);
     }, [character.campaign_id, character.id, character.name]);
 
+    useEffect(() => {
+        const interval = window.setInterval(() => {
+            setLogs(prev => prev.filter(log => Number(log.timestamp) > 0 && Date.now() - Number(log.timestamp) < 5000));
+        }, 1000);
+        return () => window.clearInterval(interval);
+    }, []);
+
     const handle3DRollComplete = useCallback((id: string, groupResults: any[]) => {
         if (activeRollItemRef.current && activeRollItemRef.current.id === id) {
             const currentItem = activeRollItemRef.current;

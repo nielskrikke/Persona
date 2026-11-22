@@ -79,7 +79,7 @@ export const DiceTray = ({
             {/* Logs Area */}
             <div className="fixed top-24 right-4 z-[200] flex flex-col gap-2 pointer-events-none">
                 {logs.map((log) => (
-                    <div key={log.timestamp} className={`bg-[#1b1c20] border-l-4 p-3 rounded shadow-lg text-sm w-64 animate-in slide-in-from-right fade-in duration-300 pointer-events-auto ${log.isCrit ? 'border-green-500' : log.isFail ? 'border-red-500' : 'border-dnd-gold'}`}>
+                    <div key={`${log.timestamp}-${log.label}-${log.total}`} className={`bg-[#1b1c20] border-l-4 p-3 rounded shadow-lg text-sm w-64 animate-in slide-in-from-right fade-in duration-300 pointer-events-auto ${log.isCrit ? 'border-green-500' : log.isFail ? 'border-red-500' : 'border-dnd-gold'}`}>
                          <div className="flex justify-between text-gray-400 text-xs uppercase font-bold mb-1">
                             <span>{log.label}</span>
                             <span>{log.die}</span>
