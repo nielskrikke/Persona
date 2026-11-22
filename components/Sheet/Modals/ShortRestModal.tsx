@@ -123,7 +123,7 @@ const ShortRestModal = ({
             });
         }
         // Crimson Rite ends on a short rest.
-        const restState = character.activeRite ? { activeRite: null, classFeatures: (character.classFeatures || []).filter((feature: any) => feature.name !== 'Rite of the Dawn (Active)') } : {};
+        const restState = { activeCards: [], foolStacks: 0, ...(character.activeRite ? { activeRite: null, classFeatures: (character.classFeatures || []).filter((feature: any) => feature.name !== 'Rite of the Dawn (Active)') } : {}) };
 
         const shortRestSpells = new Set(
             character.spells

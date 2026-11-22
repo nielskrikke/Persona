@@ -465,6 +465,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const [showSteelDefenderModal, setShowSteelDefenderModal] = useState(false);
     const [showCardOptionsModal, setShowCardOptionsModal] = useState(false);
     const [cardPickChoice, setCardPickChoice] = useState('');
+    const [showDrawDialog, setShowDrawDialog] = useState(false);
+    const [drawMode, setDrawMode] = useState<'random'|'choose'>('random');
+    const [drawGuided, setDrawGuided] = useState(false);
     const [showHomebrewModal, setShowHomebrewModal] = useState(false);
     const [showFullScreenFeatures, setShowFullScreenFeatures] = useState(false);
     const [fullScreenFeaturesSearch, setFullScreenFeaturesSearch] = useState('');
@@ -1582,7 +1585,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         };
     };
 
-    const handlePickACard = (isFree = false, specificCardName?: string, cost = 1, extraMultiplier = 1) => {
+    const handlePickACard = (isFree = false, specificCardName?: string, cost = 1, extraMultiplier = 1, useGuided = false) => {
         const cardTable = character.classes
             .map(c => (c.definition as any).options?.pickACardTable)
             .find((table: any) => Array.isArray(table) && table.length > 0) || [];
@@ -1607,29 +1610,35 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 rollVal = card?.roll || 21;
             } else {
                 const first = rollDice(`1d${dieSize}`, 'Pick a Card').total;
-                const guided = lvl >= 14;
-                const second = guided ? rollDice(`1d${dieSize}`, 'Pick a Card (Guided Pull)').total : first;
+                const guided = useGuided && lvl >= 14;
+                const second = guided ? rollDice(`1d${dieSize}`, 'Guided Pull').total : first;
+                if (guided) {
+                    roll('1d20', `Guided Pull: ${first} / ${second} (kept ${Math.max(first, second)})`, { formula: '1d20', label: 'Guided Pull', total: Math.max(first, second), rolls: [first, second], timestamp: Date.now() } as any);
+                }
                 rollVal = guided ? Math.max(first, second) : first;
                 card = cardTable.find((c: any) => c.roll === rollVal);
             }
             if (card) drawn.push({ ...card, rollVal });
         }
         if (drawn.length === 0) return;
-        drawn.forEach((card: any) => roll(`1d${dieSize}`, `Pick a Card: ${card.name} (${card.rollVal})`));
+        drawn.forEach((card: any) => roll(`1d${dieSize}`, `Pick a Card: ${card.name} (${card.rollVal})`, { formula: `1d${dieSize}`, label: `Pick a Card: ${card.name}`, total: card.rollVal, rolls: [card.rollVal], timestamp: Date.now() } as any));
         setCharacter(prev => {
             const activeCards = prev.activeCards || [];
             const chaMod = calculateModifier(getStat('cha'));
             const newCards = drawn.filter((card: any) => card.duration !== 'Instantaneous').map((card: any) => ({ roll: card.rollVal, name: card.name, duration: card.duration, timestamp: Date.now() + Math.random(), roundsRemaining: card.duration === 'Long' ? Math.max(1, rollDice('2d4', 'Long duration').total + chaMod) : card.duration === 'Medium' ? Math.max(1, rollDice('1d4', 'Medium duration').total + chaMod) : undefined }));
             const updatedCards = [...activeCards, ...newCards];
             drawn.filter((card: any) => card.duration === 'Instantaneous').forEach((card: any) => { if (card.name === 'The Tower') roll('8d10', 'The Tower damage'); });
+            const support = (character.classes || []).find((cls: any) => cls.definition?.index === 'card-master' && /support cards/i.test(String(cls.subclass?.name || '')));
+            const durationLimit = support ? (Number(support.level) >= 20 ? 7 : Number(support.level) >= 16 ? 5 : 3) : 2;
             const countExhaustion = (cards: any[]) => {
                 const counts: Record<string, number> = {};
                 cards.forEach(card => { counts[card.duration] = (counts[card.duration] || 0) + 1; });
-                return Object.values(counts).reduce((sum, count) => sum + Math.max(0, count - 2), 0);
+                return Object.values(counts).reduce((sum, count) => sum + Math.max(0, count - durationLimit), 0);
             };
             const diff = countExhaustion(updatedCards) - countExhaustion(activeCards);
             const featureUsage = { ...prev.featureUsage };
             if (!effectiveIsFree && featureUsage['Choice Points']) featureUsage['Choice Points'] = { ...featureUsage['Choice Points'], current: Math.max(0, Number(featureUsage['Choice Points'].current) - totalCost) };
+            if (useGuided && featureUsage['Guided Pull']) featureUsage['Guided Pull'] = { ...featureUsage['Guided Pull'], current: Math.max(0, Number(featureUsage['Guided Pull'].current) - 1) };
             let currentHp = prev.currentHp;
             let tempHp = prev.tempHp || 0;
             drawn.forEach((card: any) => {
@@ -2953,8 +2962,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             </h3>
                             <div className="flex items-center gap-2 flex-wrap justify-end">
                                 <span className="text-[9px] text-gray-500 font-bold uppercase">CP {character.featureUsage?.['Choice Points']?.current ?? 0}/{character.featureUsage?.['Choice Points']?.max ?? 0}</span>
-                                <select value={cardPickChoice} onChange={e => setCardPickChoice(e.target.value)} className="bg-black/40 border border-gray-700 rounded px-1 py-0.5 text-[8px] text-gray-300 max-w-[105px]"><option value="">Specific…</option>{(cmClass.definition as any)?.options?.pickACardTable?.filter((card: any) => card.name !== 'The World' || cmLevel >= 10).map((card: any) => <option key={card.roll} value={card.name}>{card.name}</option>)}</select>
-                                <button onClick={() => handlePickACard(false, cardPickChoice || undefined)} className="px-2 py-1 bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold text-[9px] font-black uppercase rounded">Pick a Card</button>
+                                <button onClick={() => setShowDrawDialog(true)} className="px-2 py-1 bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold text-[9px] font-black uppercase rounded">Pick a Card</button>
+                                <button onClick={() => setShowCardOptionsModal(true)} className="px-2 py-1 bg-gray-800 border border-gray-700 text-gray-300 text-[9px] font-black uppercase rounded">Reference</button>
                             </div>
                         </div>
 
@@ -2967,6 +2976,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                             <div className="text-[9px] text-gray-500 uppercase">{card.duration}{card.roundsRemaining !== undefined ? ` · ${card.roundsRemaining} rd` : ''}</div>
                                         </div>
                                         <div className="flex items-center gap-2">
+                                            {cmLevel >= 12 && card.roundsRemaining !== undefined && (
+                                                <button onClick={() => setCharacter(prev => { const cp = prev.featureUsage?.['Choice Points']; if (!cp || Number(cp.current) < 1) return prev; return { ...prev, featureUsage: { ...prev.featureUsage, 'Choice Points': { ...cp, current: Number(cp.current) - 1 } }, activeCards: (prev.activeCards || []).map((entry: any, i: number) => i === idx ? { ...entry, roundsRemaining: Number(entry.roundsRemaining) + 2 } : entry) }; })} className="text-[9px] bg-purple-900/30 text-purple-300 border border-purple-800 px-1.5 py-0.5 rounded uppercase font-bold">+2 rd</button>
+                                            )}
                                             {card.roundsRemaining !== undefined && (
                                                 <button onClick={() => setCharacter(prev => ({ ...prev, activeCards: (prev.activeCards || []).map((entry: any, i: number) => i === idx ? { ...entry, roundsRemaining: Math.max(0, Number(entry.roundsRemaining) - 1) } : entry).filter((entry: any) => entry.roundsRemaining === undefined || entry.roundsRemaining > 0) }))} className="text-[9px] bg-gray-800/40 text-gray-400 border border-gray-700 px-1.5 py-0.5 rounded uppercase font-bold">-1 rd</button>
                                             )}
@@ -3009,6 +3021,11 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             )}
                         </div>
 
+                        <div className="mt-3 flex gap-2 flex-wrap">
+                            <button onClick={() => setCharacter(prev => ({ ...prev, activeCards: (prev.activeCards || []).map((card: any) => card.roundsRemaining !== undefined ? { ...card, roundsRemaining: Number(card.roundsRemaining) - 1 } : card).filter((card: any) => card.roundsRemaining === undefined || card.roundsRemaining > 0) }))} className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-[8px] font-black uppercase text-gray-300">Next Round</button>
+                            <button onClick={() => setCharacter(prev => ({ ...prev, activeCards: (prev.activeCards || []).filter((card: any) => card.duration !== 'Scene') }))} className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-[8px] font-black uppercase text-gray-300">End Scene</button>
+                            <span className="text-[8px] text-gray-500 font-bold uppercase self-center">Medium {(character.activeCards || []).filter((c: any) => c.duration === 'Medium').length}/{/(support cards)/i.test(String((character.classes || []).find((c: any) => c.definition?.index === 'card-master')?.subclass?.name || '')) ? (cmLevel >= 16 ? 5 : 3) : 2} · Long {(character.activeCards || []).filter((c: any) => c.duration === 'Long').length}/{/(support cards)/i.test(String((character.classes || []).find((c: any) => c.definition?.index === 'card-master')?.subclass?.name || '')) ? (cmLevel >= 16 ? 5 : 3) : 2}</span>
+                        </div>
                         {cmLevel >= 4 && (
                             <div className="mt-4 pt-3 border-t border-gray-800/50">
                                 <div className="flex justify-between items-center mb-2">
@@ -5468,6 +5485,36 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             <CompanionStatBlockModal companion={viewingCompanion} onClose={() => setViewingCompanion(null)} />
             <EldritchCannonModal isOpen={showEldritchCannonModal} onClose={() => setShowEldritchCannonModal(false)} character={character} onSummon={handleSummonCannon} />
             <SteelDefenderModal isOpen={showSteelDefenderModal} onClose={() => setShowSteelDefenderModal(false)} character={character} onSummon={handleSummonDefender} />
+            {showDrawDialog && (() => {
+                const cm = (character.classes || []).find((cls: any) => cls.definition?.index === 'card-master');
+                const level = Number(cm?.level || 1);
+                const table = ((cm?.definition as any)?.options?.pickACardTable || []).filter((card: any) => card.name !== 'The World');
+                const count = level >= 20 ? 3 : level >= 14 ? 2 : 1;
+                const guided = character.featureUsage?.['Guided Pull'];
+                return (
+                    <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/80 p-4">
+                        <div className="w-full max-w-md rounded-xl border border-dnd-gold/50 bg-[#1b1c20] p-4 space-y-3">
+                            <div className="flex justify-between items-center"><h3 className="text-dnd-gold font-black uppercase text-sm">Pick a Card</h3><button onClick={() => setShowDrawDialog(false)} className="text-gray-500 text-xl">&times;</button></div>
+                            <p className="text-[10px] text-gray-400">Draws {count} card{count === 1 ? '' : 's'}. Random draws are free; choosing costs 1 Choice Point per card. The World costs 3.</p>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button onClick={() => { setDrawMode('random'); setCardPickChoice(''); }} className={`py-1.5 rounded border text-[10px] font-black uppercase ${drawMode === 'random' ? 'bg-dnd-gold text-black border-dnd-gold' : 'bg-gray-800 text-gray-300 border-gray-700'}`}>Random (Free)</button>
+                                <button onClick={() => setDrawMode('choose')} className={`py-1.5 rounded border text-[10px] font-black uppercase ${drawMode === 'choose' ? 'bg-dnd-gold text-black border-dnd-gold' : 'bg-gray-800 text-gray-300 border-gray-700'}`}>Choose (1 CP)</button>
+                            </div>
+                            {drawMode === 'choose' && (
+                                <select value={cardPickChoice} onChange={e => setCardPickChoice(e.target.value)} className="w-full bg-black/40 border border-gray-700 rounded px-2 py-1.5 text-[10px] text-gray-200">
+                                    <option value="">Choose a card…</option>
+                                    {table.map((card: any) => <option key={card.roll} value={card.name}>{card.roll}. {card.name}</option>)}
+                                    {level >= 10 && <option value="The World">21. The World (3 CP)</option>}
+                                </select>
+                            )}
+                            {drawMode === 'random' && level >= 14 && (
+                                <label className="flex items-center gap-2 text-[10px] text-gray-300"><input type="checkbox" checked={drawGuided} onChange={e => setDrawGuided(e.target.checked)} disabled={!guided || Number(guided.current) <= 0} /> Guided Pull ({guided ? `${guided.current}/${guided.max}` : '0'}) — roll twice, keep either.</label>
+                            )}
+                            <button disabled={drawMode === 'choose' && !cardPickChoice} onClick={() => { const name = drawMode === 'choose' ? cardPickChoice : undefined; const useGuided = drawMode === 'random' && drawGuided; setShowDrawDialog(false); setCardPickChoice(''); setDrawGuided(false); handlePickACard(false, name, 1, 1, useGuided); }} className="w-full py-2 rounded bg-dnd-gold text-black text-[10px] font-black uppercase disabled:opacity-40">Confirm Draw</button>
+                        </div>
+                    </div>
+                );
+            })()}
             <CardOptionsModal isOpen={showCardOptionsModal} onClose={() => setShowCardOptionsModal(false)} isWorldUnlocked={cmLevel >= 10} cards={character.classes.map(c => (c.definition as any).options?.pickACardTable).find((table: any) => Array.isArray(table) && table.length > 0) || []} />
 
             <HomebrewManagerModal
@@ -5552,6 +5599,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                             const die = row?.class_specific?.hemocraft_die || '1d4';
                                             return <div className="flex items-center gap-2 bg-red-900/30 border border-red-800 rounded px-2 py-0.5 text-[10px] font-bold text-red-300 uppercase">Hemocraft {die} · DC {8 + prof + intMod}</div>;
                                         })()}
+                                        {(character.activeCards || []).length > 0 && (
+                                            <div className="flex items-center gap-2 bg-dnd-gold/20 border border-dnd-gold/50 rounded px-2 py-0.5 text-[10px] font-bold text-dnd-gold uppercase">Cards: {(character.activeCards || []).length}{character.activeCards?.some((card: any) => card.name === 'The World') ? ' · The World' : ''}</div>
+                                        )}
                                         {(character.activeMutagens || []).map((mutagen: string) => (
                                             <div key={mutagen} className="flex items-center gap-2 bg-lime-900/30 border border-lime-800 rounded px-2 py-0.5 text-[10px] font-bold text-lime-300 uppercase">Mutagen: {mutagen}</div>
                                         ))}
