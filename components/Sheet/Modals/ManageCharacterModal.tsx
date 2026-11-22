@@ -3998,7 +3998,7 @@ const ManageCharacterModal = ({
 
                                                                         {choice.revertData?.mode !== 'feat' && (
                                                                             <div className="grid grid-cols-3 gap-2 max-w-md animate-in fade-in slide-in-from-top-1 duration-300">
-                                                                                {ABILITY_NAMES.filter(s => !choice.options || choice.options.length === 0 || choice.options.includes(s)).map(stat => {
+                                                                                {ABILITY_NAMES.filter(s => !(/card master/i.test(String(choice.source || '')) && Number(choice.level || 0) >= 10 && s === 'con') && (!choice.options || choice.options.length === 0 || choice.options.includes(s))).map(stat => {
                                                                                     const currentVal = choice.revertData?.abilities?.[stat] || 0;
                                                                                     return (
                                                                                         <div key={stat} className="flex flex-col items-center bg-black/40 border border-gray-800 rounded-xl p-2">

@@ -755,7 +755,6 @@ export const getResourceDefinitions = (character: CharacterState): CharacterReso
         addCardResource('Guided Pull', Math.max(0, calculateModifier(getEffectiveAbilities(character).cha)), 'long');
         addCardResource('Ask the Cards', Math.max(0, calculateModifier(getEffectiveAbilities(character).cha)), 'long');
         addCardResource('Share Destiny', 1, 'long');
-        addCardResource('Eternal Cards', 1, 'long');
         addCardResource('Emergency Reserve', 1 + Math.ceil(Number(cardMaster.level) / 4), 'short');
         if (/destiny caster/i.test(String(cardMaster.subclass?.name || '')) && Number(cardMaster.level) >= 8) addCardResource('Free Devil', 1, 'long');
     }
