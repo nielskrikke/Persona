@@ -471,6 +471,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const [drawGiveAlly, setDrawGiveAlly] = useState(false);
     const [reserveChoice, setReserveChoice] = useState('');
     const [drawOne, setDrawOne] = useState(false);
+    const [guidedRolls, setGuidedRolls] = useState<{a:number;b:number;keep:number}[]>([]);
     const [showHomebrewModal, setShowHomebrewModal] = useState(false);
     const [showFullScreenFeatures, setShowFullScreenFeatures] = useState(false);
     const [fullScreenFeaturesSearch, setFullScreenFeaturesSearch] = useState('');
@@ -1588,7 +1589,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         };
     };
 
-    const handlePickACard = (isFree = false, specificCardName?: string, cost = 1, extraMultiplier = 1, useGuided = false, giveAlly = false, forceOne = false) => {
+    const handlePickACard = (isFree = false, specificCardName?: string, cost = 1, extraMultiplier = 1, useGuided = false, giveAlly = false, forceOne = false, guidedPicks: number[] = []) => {
         const cardTable = character.classes
             .map(c => (c.definition as any).options?.pickACardTable)
             .find((table: any) => Array.isArray(table) && table.length > 0) || [];
@@ -1614,11 +1615,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             } else {
                 const first = rollDice(`1d${dieSize}`, 'Pick a Card').total;
                 const guided = useGuided && lvl >= 14;
-                const second = guided ? rollDice(`1d${dieSize}`, 'Guided Pull').total : first;
+                const second = guided ? rollDice(`1d20`, 'Guided Pull').total : first;
                 if (guided) {
-                    roll('1d20', `Guided Pull: ${first} / ${second} (kept ${Math.max(first, second)})`, { formula: '1d20', label: 'Guided Pull', total: Math.max(first, second), rolls: [first, second], timestamp: Date.now() } as any);
-                }
-                rollVal = guided ? Math.max(first, second) : first;
+                    const chosen = Number.isFinite(guidedPicks[draw]) ? guidedPicks[draw] : Math.max(first, second);
+                    roll('1d20', `Guided Pull: ${first} / ${second} (kept ${chosen})`, { formula: '1d20', label: 'Guided Pull', total: chosen, rolls: [first, second], timestamp: Date.now() } as any);
+                    rollVal = chosen;
+                } else rollVal = first;
                 card = cardTable.find((c: any) => c.roll === rollVal);
             }
             if (card) drawn.push({ ...card, rollVal });
@@ -2969,7 +2971,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             </h3>
                             <div className="flex items-center gap-2 flex-wrap justify-end">
                                 <span className="text-[9px] text-gray-500 font-bold uppercase">CP {character.featureUsage?.['Choice Points']?.current ?? 0}/{character.featureUsage?.['Choice Points']?.max ?? 0}</span>
-                                <button onClick={() => { setDrawMode('random'); setDrawOne(false); setDrawGiveAlly(false); setShowDrawDialog(true); }} className="px-2 py-1 bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold text-[9px] font-black uppercase rounded">Pick a Card</button>
+                                <button onClick={() => { setDrawMode('random'); setDrawOne(false); setDrawGiveAlly(false); setDrawGuided(false); setGuidedRolls([]); setShowDrawDialog(true); }} className="px-2 py-1 bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold text-[9px] font-black uppercase rounded">Pick a Card</button>
                                 <button onClick={() => setShowCardOptionsModal(true)} className="px-2 py-1 bg-gray-800 border border-gray-700 text-gray-300 text-[9px] font-black uppercase rounded">Reference</button>
                             </div>
                         </div>
@@ -4703,7 +4705,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         if (cardMasterClass) {
             const subclass = String(cardMasterClass.subclass?.name || '');
             if (/destiny caster/i.test(subclass)) {
-                attacks.push({ id: 'spell-cards', name: 'Spell Cards Boost', range: 'Self', hit: null, damage: '-', type: 'Card Master', notes: ['Spend 10 ft. of movement: +PB to spell DC, +6 damage dice, no attack roll (CHA save for half), enlarged area.'], source: { name: 'Spell Cards', activationType: 'bonus_action', desc: ['Boost one spell.'] } });
+                attacks.push({ id: 'spell-cards', name: 'Spell Cards Boost', range: 'Self', hit: null, save: { dc: spellSave + prof, type: 'CHA' }, damage: '6d8', type: 'Spell', notes: [`Spend 10 ft. of movement: spell DC ${spellSave + prof}, +6 damage dice, no attack roll (CHA save for half), enlarged area.`], source: { name: 'Spell Cards', activationType: 'bonus_action', desc: ['Boost one spell.'] } });
             }
             if (/support cards/i.test(subclass)) {
                 attacks.push({ id: 'pick-two', name: 'Pick a Card (More Cards)', range: 'Self', hit: null, damage: '-', type: 'Card Master', notes: ['Use Pick a Card twice with one bonus action.'], onUse: () => { handlePickACard(false, undefined, 1, 2); }, source: { name: 'More Cards', activationType: 'bonus_action', desc: ['Draw two cards.'] } });
@@ -5542,7 +5544,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 return (
                     <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/80 p-4">
                         <div className="w-full max-w-md rounded-xl border border-dnd-gold/50 bg-[#1b1c20] p-4 space-y-3">
-                            <div className="flex justify-between items-center"><h3 className="text-dnd-gold font-black uppercase text-sm">Pick a Card</h3><button onClick={() => setShowDrawDialog(false)} className="text-gray-500 text-xl">&times;</button></div>
+                            <div className="flex justify-between items-center"><h3 className="text-dnd-gold font-black uppercase text-sm">Pick a Card</h3><button onClick={() => { setShowDrawDialog(false); setDrawGuided(false); setGuidedRolls([]); }} className="text-gray-500 text-xl">&times;</button></div>
                             <p className="text-[10px] text-gray-400">Draws {drawMode === 'choose' || drawOne ? 1 : count} card{(drawMode === 'choose' || drawOne || count === 1) ? '' : 's'}. Random draws are free; choosing costs 1 Choice Point. The World costs 3.</p>
                             <div className="grid grid-cols-2 gap-2">
                                 <button onClick={() => { setDrawMode('random'); setCardPickChoice(''); }} className={`py-1.5 rounded border text-[10px] font-black uppercase ${drawMode === 'random' ? 'bg-dnd-gold text-black border-dnd-gold' : 'bg-gray-800 text-gray-300 border-gray-700'}`}>Random (Free)</button>
@@ -5556,12 +5558,21 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                 </select>
                             )}
                             {drawMode === 'random' && level >= 14 && (
-                                <label className="flex items-center gap-2 text-[10px] text-gray-300"><input type="checkbox" checked={drawGuided} onChange={e => setDrawGuided(e.target.checked)} disabled={!guided || Number(guided.current) <= 0} /> Guided Pull ({guided ? `${guided.current}/${guided.max}` : '0'}) — roll twice, keep either.</label>
+                                <div className="space-y-1">
+                                    <label className="flex items-center gap-2 text-[10px] text-gray-300"><input type="checkbox" checked={drawGuided} onChange={e => { const on = e.target.checked; setDrawGuided(on); setGuidedRolls(on ? Array.from({ length: drawOne ? 1 : count }, () => ({ a: 1 + Math.floor(Math.random() * 20), b: 1 + Math.floor(Math.random() * 20), keep: 0 })) : []); }} disabled={!guided || Number(guided.current) <= 0} /> Guided Pull ({guided ? `${guided.current}/${guided.max}` : '0'}) — roll twice, keep either.</label>
+                                    {drawGuided && guidedRolls.map((roll, index) => (
+                                        <div key={index} className="flex items-center gap-2 text-[9px] text-gray-300">
+                                            <span>Card {index + 1}:</span>
+                                            <button onClick={() => setGuidedRolls(prev => prev.map((r, i) => i === index ? { ...r, keep: r.a } : r))} className={`px-2 py-0.5 rounded border ${roll.keep === roll.a ? 'bg-dnd-gold text-black border-dnd-gold' : 'bg-gray-800 border-gray-700'}`}>{roll.a}</button>
+                                            <button onClick={() => setGuidedRolls(prev => prev.map((r, i) => i === index ? { ...r, keep: r.b } : r))} className={`px-2 py-0.5 rounded border ${roll.keep === roll.b ? 'bg-dnd-gold text-black border-dnd-gold' : 'bg-gray-800 border-gray-700'}`}>{roll.b}</button>
+                                        </div>
+                                    ))}
+                                </div>
                             )}
                             {/support cards/i.test(String(cm?.subclass?.name || '')) && level >= 12 && (
                                 <label className="flex items-center gap-2 text-[10px] text-gray-300"><input type="checkbox" checked={drawGiveAlly} onChange={e => setDrawGiveAlly(e.target.checked)} /> Give the drawn card to an ally</label>
                             )}
-                            <button disabled={drawMode === 'choose' && !cardPickChoice} onClick={() => { const name = drawMode === 'choose' ? cardPickChoice : undefined; const useGuided = drawMode === 'random' && drawGuided; setShowDrawDialog(false); setCardPickChoice(''); setDrawGuided(false); const give = drawGiveAlly; const one = drawOne; setDrawGiveAlly(false); setDrawOne(false); handlePickACard(false, name, 1, 1, useGuided, give, drawOne); }} className="w-full py-2 rounded bg-dnd-gold text-black text-[10px] font-black uppercase disabled:opacity-40">Confirm Draw</button>
+                            <button disabled={drawMode === 'choose' && !cardPickChoice} onClick={() => { const name = drawMode === 'choose' ? cardPickChoice : undefined; const useGuided = drawMode === 'random' && drawGuided; setShowDrawDialog(false); setCardPickChoice(''); setDrawGuided(false); const give = drawGiveAlly; const one = drawOne; setDrawGiveAlly(false); setDrawOne(false); const picks = guidedRolls.map(r => r.keep || r.a); setGuidedRolls([]); handlePickACard(false, name, 1, 1, useGuided, give, drawOne, picks); }} className="w-full py-2 rounded bg-dnd-gold text-black text-[10px] font-black uppercase disabled:opacity-40">Confirm Draw</button>
                         </div>
                     </div>
                 );
