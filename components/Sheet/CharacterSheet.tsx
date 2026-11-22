@@ -464,6 +464,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const [showEldritchCannonModal, setShowEldritchCannonModal] = useState(false);
     const [showSteelDefenderModal, setShowSteelDefenderModal] = useState(false);
     const [showCardOptionsModal, setShowCardOptionsModal] = useState(false);
+    const [cardPickChoice, setCardPickChoice] = useState('');
     const [showHomebrewModal, setShowHomebrewModal] = useState(false);
     const [showFullScreenFeatures, setShowFullScreenFeatures] = useState(false);
     const [fullScreenFeaturesSearch, setFullScreenFeaturesSearch] = useState('');
@@ -870,6 +871,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             Strength: [{ type: 'advantage', target: 'str_save' }, { type: 'advantage', target: 'str_checks' }],
             'The Hanged Man': [{ type: 'resistance', value: 'All' }],
             'The Star': [{ type: 'advantage', target: 'saves' }],
+            'The Moon': [{ type: 'sense', sense: 'truesight', value: 60 }],
             Death: [{ type: 'attack_rider', name: 'Death', damage: '4d10', damage_type: 'Necrotic' }],
             'The Sun': [{ type: 'attack_rider', name: 'The Sun', damage: '1d10', damage_type: 'Radiant' }],
         };
@@ -1580,17 +1582,17 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         };
     };
 
-    const handlePickACard = (isFree = false, specificCardName?: string, cost = 1) => {
+    const handlePickACard = (isFree = false, specificCardName?: string, cost = 1, extraMultiplier = 1) => {
         const cardTable = character.classes
             .map(c => (c.definition as any).options?.pickACardTable)
             .find((table: any) => Array.isArray(table) && table.length > 0) || [];
         const cmClass = character.classes.find(c => (c.definition as any).options?.pickACardTable);
         const lvl = cmClass ? cmClass.level : 1;
-        const dieSize = lvl >= 10 ? 21 : 20;
-        const drawCount = specificCardName ? 1 : lvl >= 20 ? 3 : lvl >= 14 ? 2 : 1;
+        const dieSize = 20;
+        const drawCount = specificCardName ? 1 : (lvl >= 20 ? 3 : lvl >= 14 ? 2 : 1) * extraMultiplier;
         const isWorldActive = character.activeCards?.some(c => c.name === 'The World');
         const effectiveIsFree = isFree || isWorldActive;
-        const totalCost = effectiveIsFree ? 0 : cost * drawCount;
+        const totalCost = effectiveIsFree ? 0 : (specificCardName ? (specificCardName === 'The World' ? 3 : cost) : 0);
         const choicePoints = character.featureUsage['Choice Points'];
         if (!effectiveIsFree && (!choicePoints || choicePoints.current < totalCost)) {
             alert(`Need ${totalCost} Choice Points!`);
@@ -1605,7 +1607,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 rollVal = card?.roll || 21;
             } else {
                 const first = rollDice(`1d${dieSize}`, 'Pick a Card').total;
-                const guided = lvl >= 14 && Number(character.featureUsage?.['Choice Points']?.current || 0) > 0;
+                const guided = lvl >= 14;
                 const second = guided ? rollDice(`1d${dieSize}`, 'Pick a Card (Guided Pull)').total : first;
                 rollVal = guided ? Math.max(first, second) : first;
                 card = cardTable.find((c: any) => c.roll === rollVal);
@@ -1616,8 +1618,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         drawn.forEach((card: any) => roll(`1d${dieSize}`, `Pick a Card: ${card.name} (${card.rollVal})`));
         setCharacter(prev => {
             const activeCards = prev.activeCards || [];
-            const newCards = drawn.map((card: any) => ({ roll: card.rollVal, name: card.name, duration: card.duration, timestamp: Date.now() + Math.random() }));
+            const chaMod = calculateModifier(getStat('cha'));
+            const newCards = drawn.filter((card: any) => card.duration !== 'Instantaneous').map((card: any) => ({ roll: card.rollVal, name: card.name, duration: card.duration, timestamp: Date.now() + Math.random(), roundsRemaining: card.duration === 'Long' ? Math.max(1, rollDice('2d4', 'Long duration').total + chaMod) : card.duration === 'Medium' ? Math.max(1, rollDice('1d4', 'Medium duration').total + chaMod) : undefined }));
             const updatedCards = [...activeCards, ...newCards];
+            drawn.filter((card: any) => card.duration === 'Instantaneous').forEach((card: any) => { if (card.name === 'The Tower') roll('8d10', 'The Tower damage'); });
             const countExhaustion = (cards: any[]) => {
                 const counts: Record<string, number> = {};
                 cards.forEach(card => { counts[card.duration] = (counts[card.duration] || 0) + 1; });
@@ -1863,6 +1867,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 activeSteelDefender: prev.activeSteelDefender ? { ...prev.activeSteelDefender, hp: prev.activeSteelDefender.maxHp } : prev.activeSteelDefender,
                 pugilistHound: prev.pugilistHound ? { ...prev.pugilistHound, hp: prev.pugilistHound.maxHp, tempHp: 0 } : prev.pugilistHound,
                 experimentalElixirs: [],
+                activeCards: [],
+                foolStacks: 0,
                 activeRite: null,
                 hybridForm: false,
                 brandTarget: '',
@@ -2945,9 +2951,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
                                 </button>
                             </h3>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap justify-end">
                                 <span className="text-[9px] text-gray-500 font-bold uppercase">CP {character.featureUsage?.['Choice Points']?.current ?? 0}/{character.featureUsage?.['Choice Points']?.max ?? 0}</span>
-                                <button onClick={() => handlePickACard()} className="px-2 py-1 bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold text-[9px] font-black uppercase rounded">Pick a Card</button>
+                                <select value={cardPickChoice} onChange={e => setCardPickChoice(e.target.value)} className="bg-black/40 border border-gray-700 rounded px-1 py-0.5 text-[8px] text-gray-300 max-w-[105px]"><option value="">Specific…</option>{(cmClass.definition as any)?.options?.pickACardTable?.filter((card: any) => card.name !== 'The World' || cmLevel >= 10).map((card: any) => <option key={card.roll} value={card.name}>{card.name}</option>)}</select>
+                                <button onClick={() => handlePickACard(false, cardPickChoice || undefined)} className="px-2 py-1 bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold text-[9px] font-black uppercase rounded">Pick a Card</button>
                             </div>
                         </div>
 
@@ -2957,9 +2964,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                     <div key={`${card.name}-${idx}`} className="bg-gray-800/30 border border-gray-700/50 rounded p-2 flex justify-between items-center">
                                         <div>
                                             <div className="text-xs font-bold text-white">{card.name}</div>
-                                            <div className="text-[9px] text-gray-500 uppercase">{card.duration}</div>
+                                            <div className="text-[9px] text-gray-500 uppercase">{card.duration}{card.roundsRemaining !== undefined ? ` · ${card.roundsRemaining} rd` : ''}</div>
                                         </div>
                                         <div className="flex items-center gap-2">
+                                            {card.roundsRemaining !== undefined && (
+                                                <button onClick={() => setCharacter(prev => ({ ...prev, activeCards: (prev.activeCards || []).map((entry: any, i: number) => i === idx ? { ...entry, roundsRemaining: Math.max(0, Number(entry.roundsRemaining) - 1) } : entry).filter((entry: any) => entry.roundsRemaining === undefined || entry.roundsRemaining > 0) }))} className="text-[9px] bg-gray-800/40 text-gray-400 border border-gray-700 px-1.5 py-0.5 rounded uppercase font-bold">-1 rd</button>
+                                            )}
                                             {cmLevel >= 4 && (
                                                 <button
                                                     onClick={() => {
@@ -3028,10 +3038,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                             onClick={() => {
                                                 const isWorldActive = character.activeCards?.some(c => c.name === 'The World');
                                                 const isLevel20 = cmLevel >= 20;
-                                                let diceCount = 3 + (isLevel20 ? foolStacks * 2 : foolStacks);
+                                                let diceCount = 4 + foolStacks * Math.max(1, intMod);
                                                 if (isWorldActive) diceCount *= 2;
 
-                                                roll(`${diceCount}d8`, 'The Fool Spell Damage');
+                                                roll(`${diceCount}d12 + ${intMod + prof}`, 'The Fool Spell Damage');
                                                 setCharacter(prev => ({ ...prev, foolStacks: 0 }));
                                             }}
                                             className="text-[9px] bg-purple-900/40 text-purple-300 border border-purple-700 hover:bg-purple-700 hover:text-white px-2 py-1 rounded uppercase font-black tracking-widest transition-colors"
@@ -3849,25 +3859,24 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const isWorldActive = character.activeCards?.some(c => c.name === 'The World');
             const isLevel20 = cmClass.level >= 20;
 
-            let diceCount = 3 + (isLevel20 ? foolStacks * 2 : foolStacks);
+            let diceCount = 4 + foolStacks * Math.max(1, calculateModifier(getStat('cha')));
             if (isWorldActive) diceCount *= 2;
-
-            const damageDice = `${diceCount}d8`;
+            const damageDice = `${diceCount}d12 + ${calculateModifier(getStat('cha')) + prof}`;
             const { hit: foolHit, damage: foolDmg } = applyOverrides(null, damageDice);
             attacks.push({
                 id: 'action-fool-spell',
                 name: 'The Fool Spell',
-                range: '20 ft radius',
+                range: '60 ft radius',
                 hit: foolHit,
-                save: { dc: spellSave, type: 'WIS' },
+                save: null,
                 damage: foolDmg,
                 type: 'Necrotic',
-                notes: [`Consumes all ${foolStacks} Fool Stacks on use.`, 'Half damage on save.'],
+                notes: [`Consumes all ${foolStacks} Fool Stacks on use.`],
                 source: {
                     name: 'The Fool Spell',
                     desc: [
                         `As an action, you expend all ${foolStacks} Fool Stacks to cast this spell.`,
-                        `The spell deals ${damageDice} necrotic damage in a 20-foot radius. Targets that pass a Wisdom Saving Throw take half damage.`
+                        `The spell deals ${damageDice} necrotic damage in a 60-foot radius. No saving throw.`
                     ],
                     level: 0,
                     school: { index: 'necromancy', name: 'Necromancy' },
@@ -4197,6 +4206,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
             const activeRite = character.activeRite && character.activeRite.weaponId === item.id ? character.activeRite : null;
             let riteDamage = displayDamage;
+            const cardRiders = (character.activeCards || []).filter((card: any) => ['Death', 'The Sun'].includes(card.name));
+            cardRiders.forEach((card: any) => {
+                const rider = card.name === 'Death' ? { damage: '4d10', type: 'Necrotic' } : { damage: '1d10', type: 'Radiant' };
+                riteDamage = `${riteDamage} + ${rider.damage} ${rider.type}`;
+                finalNotes.push(`${card.name}: +${rider.damage} ${rider.type}`);
+            });
             if (activeRite) {
                 const bhClass = (character.classes || []).find((cls: any) => cls.definition?.index === 'blood-hunter');
                 const sundering = /ghostslayer/i.test(String(bhClass?.subclass?.name || '')) && Number(bhClass?.level || 0) >= 11;
@@ -4648,7 +4663,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 attacks.push({ id: 'spell-cards', name: 'Spell Cards Boost', range: 'Self', hit: null, damage: '-', type: 'Card Master', notes: ['Spend 10 ft. of movement: +PB to spell DC, +6 damage dice, no attack roll (CHA save for half), enlarged area.'], source: { name: 'Spell Cards', activationType: 'bonus_action', desc: ['Boost one spell.'] } });
             }
             if (/support cards/i.test(subclass)) {
-                attacks.push({ id: 'pick-two', name: 'Pick a Card (More Cards)', range: 'Self', hit: null, damage: '-', type: 'Card Master', notes: ['Use Pick a Card twice with one bonus action.'], onUse: () => { handlePickACard(); }, source: { name: 'More Cards', activationType: 'bonus_action', desc: ['Draw two cards.'] } });
+                attacks.push({ id: 'pick-two', name: 'Pick a Card (More Cards)', range: 'Self', hit: null, damage: '-', type: 'Card Master', notes: ['Use Pick a Card twice with one bonus action.'], onUse: () => { handlePickACard(false, undefined, 1, 2); }, source: { name: 'More Cards', activationType: 'bonus_action', desc: ['Draw two cards.'] } });
             }
             if (Number(cardMasterClass.level) >= 8) attacks.push({ id: 'secure-vision', name: 'Secure the Vision', range: '30 ft.', hit: null, damage: '-', type: 'Card Master', notes: ['Force an enemy reroll or protect an ally; improved use costs 3 Choice Points.'], source: { name: 'Secure the Vision', activationType: 'reaction', desc: ['Manipulate a nearby roll.'] } });
         }
@@ -4937,7 +4952,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const isWorldActive = character.activeCards?.some(c => c.name === 'The World');
             const isLevel20 = (cmClass?.level || 0) >= 20;
 
-            let diceCount = 3 + (isLevel20 ? foolStacks * 2 : foolStacks);
+            let diceCount = 4 + foolStacks * Math.max(1, intMod);
             if (isWorldActive) diceCount *= 2;
 
             const damageDice = `${diceCount}d8`;

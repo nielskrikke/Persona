@@ -640,7 +640,7 @@ export interface CharacterState {
     eldritchCannonFreebieUsed?: boolean;
     activeSteelDefender?: SteelDefenderDetail | null;
     choices: LevelChoice[];
-    activeCards?: { roll: number, name: string, duration: string, timestamp: number }[];
+    activeCards?: { roll: number, name: string, duration: string, timestamp: number, roundsRemaining?: number }[];
     exhaustion?: number;
     foolStacks?: number;
     combatOverrides?: {
