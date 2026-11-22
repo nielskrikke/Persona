@@ -747,6 +747,18 @@ export const getResourceDefinitions = (character: CharacterState): CharacterReso
         });
     });
 
+    const cardMaster = (character.classes || []).find((cls: any) => cls.definition?.index === 'card-master');
+    if (cardMaster) {
+        const addCardResource = (name: string, max: number, reset: string) => {
+            if (!resources.has(name)) resources.set(name, { name, max, current: max, reset, source: 'Card Master' } as any);
+        };
+        addCardResource('Guided Pull', Math.max(0, calculateModifier(getEffectiveAbilities(character).cha)), 'long');
+        addCardResource('Ask the Cards', Math.max(0, calculateModifier(getEffectiveAbilities(character).cha)), 'long');
+        addCardResource('Share Destiny', 1, 'long');
+        addCardResource('Eternal Cards', 1, 'long');
+        addCardResource('Emergency Reserve', 1 + Math.ceil(Number(cardMaster.level) / 4), 'short');
+        if (/destiny caster/i.test(String(cardMaster.subclass?.name || '')) && Number(cardMaster.level) >= 8) addCardResource('Free Devil', 1, 'long');
+    }
     const supportCards = (character.classes || []).find((cls: any) => cls.definition?.index === 'card-master' && /support cards/i.test(String(cls.subclass?.name || '')));
     if (supportCards && Number(supportCards.level || 0) >= 8) {
         const resource = resources.get('Choice Points');

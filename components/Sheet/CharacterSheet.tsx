@@ -470,6 +470,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const [drawGuided, setDrawGuided] = useState(false);
     const [drawGiveAlly, setDrawGiveAlly] = useState(false);
     const [reserveChoice, setReserveChoice] = useState('');
+    const [drawOne, setDrawOne] = useState(false);
     const [showHomebrewModal, setShowHomebrewModal] = useState(false);
     const [showFullScreenFeatures, setShowFullScreenFeatures] = useState(false);
     const [fullScreenFeaturesSearch, setFullScreenFeaturesSearch] = useState('');
@@ -1587,14 +1588,14 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         };
     };
 
-    const handlePickACard = (isFree = false, specificCardName?: string, cost = 1, extraMultiplier = 1, useGuided = false, giveAlly = false) => {
+    const handlePickACard = (isFree = false, specificCardName?: string, cost = 1, extraMultiplier = 1, useGuided = false, giveAlly = false, forceOne = false) => {
         const cardTable = character.classes
             .map(c => (c.definition as any).options?.pickACardTable)
             .find((table: any) => Array.isArray(table) && table.length > 0) || [];
         const cmClass = character.classes.find(c => (c.definition as any).options?.pickACardTable);
         const lvl = cmClass ? cmClass.level : 1;
         const dieSize = 20;
-        const drawCount = specificCardName ? 1 : (lvl >= 20 ? 3 : lvl >= 14 ? 2 : 1) * extraMultiplier;
+        const drawCount = (specificCardName || forceOne) ? 1 : (lvl >= 20 ? 3 : lvl >= 14 ? 2 : 1) * extraMultiplier;
         const isWorldActive = character.activeCards?.some(c => c.name === 'The World');
         const effectiveIsFree = isFree || isWorldActive;
         const totalCost = effectiveIsFree ? 0 : (specificCardName ? (specificCardName === 'The World' ? 3 : cost) : 0);
@@ -1883,6 +1884,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 activeCards: [],
                 foolStacks: 0,
                 cardFreeSpells: [],
+                emergencyReserve: (prev.emergencyReserve || []).map((entry: any) => ({ ...entry, used: false })),
                 activeRite: null,
                 hybridForm: false,
                 brandTarget: '',
@@ -2967,7 +2969,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             </h3>
                             <div className="flex items-center gap-2 flex-wrap justify-end">
                                 <span className="text-[9px] text-gray-500 font-bold uppercase">CP {character.featureUsage?.['Choice Points']?.current ?? 0}/{character.featureUsage?.['Choice Points']?.max ?? 0}</span>
-                                <button onClick={() => setShowDrawDialog(true)} className="px-2 py-1 bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold text-[9px] font-black uppercase rounded">Pick a Card</button>
+                                <button onClick={() => { setDrawMode('random'); setDrawOne(false); setDrawGiveAlly(false); setShowDrawDialog(true); }} className="px-2 py-1 bg-dnd-gold/15 border border-dnd-gold/40 text-dnd-gold text-[9px] font-black uppercase rounded">Pick a Card</button>
                                 <button onClick={() => setShowCardOptionsModal(true)} className="px-2 py-1 bg-gray-800 border border-gray-700 text-gray-300 text-[9px] font-black uppercase rounded">Reference</button>
                             </div>
                         </div>
@@ -2981,6 +2983,9 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                                             <div className="text-[9px] text-gray-500 uppercase">{card.duration}{card.roundsRemaining !== undefined ? ` · ${card.roundsRemaining} rd` : ''}</div>
                                         </div>
                                         <div className="flex items-center gap-2">
+                                            {cmLevel >= 7 && (
+                                                <button onClick={() => { setCharacter(prev => ({ ...prev, activeCards: (prev.activeCards || []).filter((_: any, i: number) => i !== idx) })); setDrawOne(true); setDrawMode('random'); setShowDrawDialog(true); }} className="text-[9px] bg-gray-800/40 text-gray-400 border border-gray-700 px-1.5 py-0.5 rounded uppercase font-bold">Shuffle</button>
+                                            )}
                                             {cmLevel >= 12 && card.roundsRemaining !== undefined && (
                                                 <button onClick={() => setCharacter(prev => { const cp = prev.featureUsage?.['Choice Points']; if (!cp || Number(cp.current) < 1) return prev; return { ...prev, featureUsage: { ...prev.featureUsage, 'Choice Points': { ...cp, current: Number(cp.current) - 1 } }, activeCards: (prev.activeCards || []).map((entry: any, i: number) => i === idx ? { ...entry, roundsRemaining: Number(entry.roundsRemaining) + 2 } : entry) }; })} className="text-[9px] bg-purple-900/30 text-purple-300 border border-purple-800 px-1.5 py-0.5 rounded uppercase font-bold">+2 rd</button>
                                             )}
@@ -3030,9 +3035,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             {/destiny caster/i.test(String(cmClass.subclass?.name || '')) && Number(cmClass.level) >= 8 && (character.featureUsage?.['Free Devil']?.current || 0) > 0 && (
                                 <button onClick={() => { setCharacter(prev => ({ ...prev, featureUsage: { ...prev.featureUsage, 'Free Devil': { ...prev.featureUsage['Free Devil'], current: Number(prev.featureUsage['Free Devil'].current) - 1 } } })); handlePickACard(true, 'The Devil'); }} className="px-2 py-1 bg-red-900/30 border border-red-800 rounded text-[8px] font-black uppercase text-red-300">Free Devil ({character.featureUsage['Free Devil'].current}/{character.featureUsage['Free Devil'].max})</button>
                             )}
-                            {cmLevel >= 7 && (
-                                <button onClick={() => { if ((character.activeCards || []).length > 0) setCharacter(prev => ({ ...prev, activeCards: (prev.activeCards || []).slice(1) })); setShowDrawDialog(true); }} className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-[8px] font-black uppercase text-gray-300">Mystic Shuffle</button>
-                            )}
+
                         </div>
                         <div className="mt-3 flex gap-2 flex-wrap">
                             <button onClick={() => setCharacter(prev => ({ ...prev, activeCards: (prev.activeCards || []).map((card: any) => card.roundsRemaining !== undefined ? { ...card, roundsRemaining: Number(card.roundsRemaining) - 1 } : card).filter((card: any) => card.roundsRemaining === undefined || card.roundsRemaining > 0) }))} className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-[8px] font-black uppercase text-gray-300">Next Round</button>
@@ -3042,7 +3045,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         {cmLevel >= 6 && (
                             <div className="mt-3 pt-2 border-t border-gray-800/50 space-y-1">
                                 <div className="flex justify-between text-[9px] font-bold text-gray-500 uppercase"><span>Emergency Reserve</span><span>{character.featureUsage?.['Emergency Reserve']?.current ?? 0}/{character.featureUsage?.['Emergency Reserve']?.max ?? 0}</span></div>
-                                <div className="flex gap-1"><select value={reserveChoice} onChange={e => setReserveChoice(e.target.value)} className="flex-1 bg-black/40 border border-gray-700 rounded px-1 text-[8px] text-gray-300"><option value="">Bind a spell…</option>{(character.spells || []).filter((spell: any) => Number(spell.level) > 0).map((spell: any) => <option key={spell.index} value={spell.name}>{spell.name}</option>)}</select><button disabled={!reserveChoice || (character.emergencyReserve || []).length >= 5} onClick={() => { setCharacter(prev => ({ ...prev, emergencyReserve: [...(prev.emergencyReserve || []), { spell: reserveChoice, used: false }] })); setReserveChoice(''); }} className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-[8px] font-black uppercase text-gray-300 disabled:opacity-30">Bind</button></div>
+                                <div className="flex gap-1"><select value={reserveChoice} onChange={e => setReserveChoice(e.target.value)} className="flex-1 bg-black/40 border border-gray-700 rounded px-1 text-[8px] text-gray-300"><option value="">Bind a spell…</option>{(character.spells || []).filter((spell: any) => Number(spell.level) > 0 && /shield|mage armor|absorb elements|misty step|dimension door|fly|invisibility|haste|feather fall|blur|mirror image|freedom of movement|greater invisibility|teleport|expeditious retreat|jump|levitate|gaseous form|etherealness|word of recall|plane shift|far step|thunder step/i.test(String(spell.name || ''))).map((spell: any) => <option key={spell.index} value={spell.name}>{spell.name}</option>)}</select><button disabled={!reserveChoice || (character.emergencyReserve || []).length >= 5} onClick={() => { setCharacter(prev => ({ ...prev, emergencyReserve: [...(prev.emergencyReserve || []), { spell: reserveChoice, used: false }] })); setReserveChoice(''); }} className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-[8px] font-black uppercase text-gray-300 disabled:opacity-30">Bind</button></div>
                                 {(character.emergencyReserve || []).map((entry: any, index: number) => <div key={`${entry.spell}-${index}`} className="flex justify-between bg-gray-800/40 rounded px-2 py-0.5"><span className="text-[8px] text-gray-300">{entry.spell}</span><button disabled={entry.used} onClick={() => setCharacter(prev => ({ ...prev, emergencyReserve: (prev.emergencyReserve || []).map((item: any, i: number) => i === index ? { ...item, used: true } : item), featureUsage: { ...prev.featureUsage, 'Emergency Reserve': { ...prev.featureUsage['Emergency Reserve'], current: Math.max(0, Number(prev.featureUsage['Emergency Reserve']?.current || 0) - 1) } } }))} className="text-[8px] font-black uppercase text-dnd-gold disabled:opacity-30">{entry.used ? 'Spent' : 'Cast'}</button></div>)}
                             </div>
                         )}
@@ -3337,7 +3340,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const passIns = 10 + calculateModifier(getStat('wis')) + (hasSkillProficiency('Insight') ? prof : 0) + (character.expertise?.includes('Insight') ? prof : 0);
                 const senseValue = (sense: string) => {
                     const base = activeModifiers
-                        .filter((m: any) => m.type === 'set' && (m.target === sense || m.stat === sense))
+                        .filter((m: any) => (m.type === 'set' || m.type === 'sense') && (m.target === sense || m.stat === sense || m.sense === sense))
                         .reduce((max: number, m: any) => Math.max(max, Number(m.value || 0)), 0);
                     const bonus = activeModifiers
                         .filter((m: any) => (m.type === 'bonus' || m.type === 'stat_bonus') && (m.target === sense || m.stat === sense))
@@ -4249,7 +4252,6 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             cardRiders.forEach((card: any) => {
                 const rider = card.name === 'Death' ? { damage: '4d10', type: 'Necrotic' } : { damage: '1d10', type: 'Radiant' };
                 riteDamage = `${riteDamage} + ${rider.damage} ${rider.type}`;
-                finalNotes.push(`${card.name}: +${rider.damage} ${rider.type}`);
             });
             if (activeRite) {
                 const bhClass = (character.classes || []).find((cls: any) => cls.definition?.index === 'blood-hunter');
@@ -4450,6 +4452,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 const secondWindClassLevel = Number((character.classes || []).find((cls: any) => cls.definition?.index === 'fighter')?.level || 0);
                 const divineSparkDice = isDivineSpark ? (character.level >= 13 ? 3 : character.level >= 7 ? 2 : 1) : 0;
                 const usage = character.featureUsage?.[actionName];
+                const featureUseKey = /^(Share Destiny|Ask the Cards)$/i.test(actionName) && usage ? actionName : undefined;
                 const resourceCost = effect.cost?.resource ? { resource: String(effect.cost.resource), amount: Number(effect.cost.amount || 1) } : undefined;
                 attacks.push({
                     id: `feature-action-${feature.index || feature.name}-${idx}`,
@@ -4482,6 +4485,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         activationType: effect.type,
                         maxUses: usage?.max,
                     },
+                    useKey: featureUseKey,
                     resourceCost,
                 });
             });
@@ -4704,7 +4708,29 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             if (/support cards/i.test(subclass)) {
                 attacks.push({ id: 'pick-two', name: 'Pick a Card (More Cards)', range: 'Self', hit: null, damage: '-', type: 'Card Master', notes: ['Use Pick a Card twice with one bonus action.'], onUse: () => { handlePickACard(false, undefined, 1, 2); }, source: { name: 'More Cards', activationType: 'bonus_action', desc: ['Draw two cards.'] } });
             }
-            if (Number(cardMasterClass.level) >= 8) attacks.push({ id: 'secure-vision', name: 'Secure the Vision', range: '30 ft.', hit: null, damage: '-', type: 'Card Master', notes: ['Force an enemy reroll or protect an ally; improved use costs 3 Choice Points.'], source: { name: 'Secure the Vision', activationType: 'reaction', desc: ['Manipulate a nearby roll.'] } });
+            const cmLevel = Number(cardMasterClass.level);
+            (character.cardFreeSpells || []).forEach((spell: string, index: number) => {
+                attacks.push({ id: `card-free-spell-${index}`, name: `Free Cast: ${spell}`, range: '-', hit: null, damage: '-', type: 'Card Master', notes: ['Cast without expending a spell slot.'], onUse: () => setCharacter(prev => ({ ...prev, cardFreeSpells: (prev.cardFreeSpells || []).filter((_: any, i: number) => i !== index) })), source: { name: 'Card Master', activationType: 'action', desc: ['Granted by an instantaneous card.'] } });
+            });
+            attacks.push({ id: 'card-secure-vision', name: 'Secure the Vision (3 CP)', range: '30 ft.', hit: null, damage: '-', type: 'Card Master', notes: ['Spend 3 Choice Points to force a reroll, reduce AC, or protect an ally.'], resourceCost: { resource: 'Choice Points', amount: 3 }, source: { name: 'Secure the Vision', activationType: 'reaction', desc: ['Spend 3 Choice Points.'] } });
+            if (cmLevel >= 10) attacks.push({ id: 'card-world', name: 'The World (3 CP)', range: 'Self', hit: null, damage: '-', type: 'Card Master', notes: ['Spend 3 Choice Points: choosing cards is free, duration limit lifted, Fool damage/stacks doubled while active.'], resourceCost: { resource: 'Choice Points', amount: 3 }, onUse: () => setCharacter(prev => ({ ...prev, activeCards: [...(prev.activeCards || []), { roll: 21, name: 'The World', duration: 'Scene', timestamp: Date.now() }] })), source: { name: 'The World', activationType: 'bonus_action', desc: ['Activate The World.'] } });
+            if (/destiny caster/i.test(subclass) && cmLevel >= 8 && (character.featureUsage?.['Free Devil']?.current || 0) >= 0) {
+                attacks.push({ id: 'card-free-devil', name: 'Free Devil', range: 'Self', hit: null, damage: '-', type: 'Card Master', notes: ['Draw The Devil for free once per long rest.'], useKey: 'Free Devil', onUse: () => handlePickACard(true, 'The Devil'), source: { name: 'More Powerful Card', activationType: 'bonus_action', desc: ['Free Devil draw.'] } });
+            }
+            ['Share Destiny', 'Ask the Cards', 'Guided Pull'].forEach(name => {
+                const usage = character.featureUsage?.[name];
+                if (!usage || attacks.some((attack: any) => attack.name === name)) return;
+                attacks.push({ id: `card-resource-${name.toLowerCase().replace(/\s+/g, '-')}`, name, range: 'Self', hit: null, damage: '-', type: 'Card Master', notes: [name === 'Guided Pull' ? 'Spend a use to roll twice on Pick a Card and keep the better result.' : name === 'Ask the Cards' ? 'Ask the deck a question and interpret the answer.' : 'Share a card with an ally.'], useKey: name, maxUses: usage.max, source: { name, activationType: 'action', desc: [name] } });
+            });
+            const activeCardNames = new Set((character.activeCards || []).map((card: any) => card.name));
+            if (activeCardNames.has('Wheel of Fortune')) attacks.push({ id: 'card-wheel', name: 'Wheel of Fortune (Reaction)', range: '60 ft.', hit: null, damage: '-', type: 'Card Master', notes: ['Roll a d20 and choose which d20 is used for a nearby attack, check or save.'], onUse: () => roll('1d20', 'Wheel of Fortune'), source: { name: 'Wheel of Fortune', activationType: 'reaction', desc: ['Reaction while active.'] } });
+            if (activeCardNames.has('Justice')) attacks.push({ id: 'card-justice', name: 'Justice: Zone of Truth', range: '60 ft.', hit: null, damage: '2d10', type: 'Radiant', notes: ['At will while active; attackers take 2d10 radiant. ADV on Insight.'], source: { name: 'Justice', activationType: 'action', desc: ['Zone of Truth at will.'] } });
+            if (activeCardNames.has('The Hanged Man')) attacks.push({ id: 'card-hanged', name: 'The Hanged Man (Reaction)', range: '30 ft.', hit: null, damage: '-', type: 'Card Master', notes: ['Halve damage another creature takes while resistance is active.'], source: { name: 'The Hanged Man', activationType: 'reaction', desc: ['Protect an ally.'] } });
+            if (activeCardNames.has('Death')) attacks.push({ id: 'card-death-heal', name: 'Death: Kill Heal', range: 'Self', hit: null, damage: '2d10', type: 'Healing', notes: ['Regain 2d10 HP when a kill is scored with the Death rider.'], onUse: () => roll('2d10', 'Death: Regain HP'), source: { name: 'Death', activationType: 'feature', desc: ['Heal on kill.'] } });
+            if (activeCardNames.has('Temperance')) attacks.push({ id: 'card-temperance', name: 'Temperance: Heal', range: 'Self', hit: null, damage: '2d10', type: 'Healing', notes: ['Regain 2d10 at the start of each turn; Lesser Restoration as a bonus action.'], onUse: () => roll('2d10', 'Temperance: Heal'), source: { name: 'Temperance', activationType: 'bonus_action', desc: ['Heal and restore.'] } });
+            if (activeCardNames.has('The Star')) attacks.push({ id: 'card-star', name: 'The Star: Temp HP', range: '30 ft.', hit: null, damage: '-', type: 'Card Master', notes: ['Allies gain 10 temporary HP at the start of their turns.'], onUse: () => setCharacter(prev => ({ ...prev, tempHp: Math.max(Number(prev.tempHp || 0), 10) })), source: { name: 'The Star', activationType: 'feature', desc: ['Grant 10 temp HP.'] } });
+            if (activeCardNames.has('The Devil')) attacks.push({ id: 'card-devil', name: 'The Devil: Hex', range: '90 ft.', hit: null, damage: '-', type: 'Card Master', notes: ['Cast Hex at 3rd level without a slot while active.'], source: { name: 'The Devil', activationType: 'bonus_action', desc: ['Free Hex.'] } });
+            if (activeCardNames.has('The Moon')) attacks.push({ id: 'card-moon', name: 'The Moon: Mirror Image', range: 'Self', hit: null, damage: '-', type: 'Card Master', notes: ['Mirror Image at will; truesight 60 ft. while active.'], source: { name: 'The Moon', activationType: 'action', desc: ['Mirror Image at will.'] } });
         }
 
         const hasFeature = (name: string) => (character.classFeatures || []).some((feature: any) =>
@@ -5517,7 +5543,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                     <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/80 p-4">
                         <div className="w-full max-w-md rounded-xl border border-dnd-gold/50 bg-[#1b1c20] p-4 space-y-3">
                             <div className="flex justify-between items-center"><h3 className="text-dnd-gold font-black uppercase text-sm">Pick a Card</h3><button onClick={() => setShowDrawDialog(false)} className="text-gray-500 text-xl">&times;</button></div>
-                            <p className="text-[10px] text-gray-400">Draws {count} card{count === 1 ? '' : 's'}. Random draws are free; choosing costs 1 Choice Point per card. The World costs 3.</p>
+                            <p className="text-[10px] text-gray-400">Draws {drawMode === 'choose' || drawOne ? 1 : count} card{(drawMode === 'choose' || drawOne || count === 1) ? '' : 's'}. Random draws are free; choosing costs 1 Choice Point. The World costs 3.</p>
                             <div className="grid grid-cols-2 gap-2">
                                 <button onClick={() => { setDrawMode('random'); setCardPickChoice(''); }} className={`py-1.5 rounded border text-[10px] font-black uppercase ${drawMode === 'random' ? 'bg-dnd-gold text-black border-dnd-gold' : 'bg-gray-800 text-gray-300 border-gray-700'}`}>Random (Free)</button>
                                 <button onClick={() => setDrawMode('choose')} className={`py-1.5 rounded border text-[10px] font-black uppercase ${drawMode === 'choose' ? 'bg-dnd-gold text-black border-dnd-gold' : 'bg-gray-800 text-gray-300 border-gray-700'}`}>Choose (1 CP)</button>
@@ -5535,7 +5561,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             {/support cards/i.test(String(cm?.subclass?.name || '')) && level >= 12 && (
                                 <label className="flex items-center gap-2 text-[10px] text-gray-300"><input type="checkbox" checked={drawGiveAlly} onChange={e => setDrawGiveAlly(e.target.checked)} /> Give the drawn card to an ally</label>
                             )}
-                            <button disabled={drawMode === 'choose' && !cardPickChoice} onClick={() => { const name = drawMode === 'choose' ? cardPickChoice : undefined; const useGuided = drawMode === 'random' && drawGuided; setShowDrawDialog(false); setCardPickChoice(''); setDrawGuided(false); const give = drawGiveAlly; setDrawGiveAlly(false); handlePickACard(false, name, 1, 1, useGuided, give); }} className="w-full py-2 rounded bg-dnd-gold text-black text-[10px] font-black uppercase disabled:opacity-40">Confirm Draw</button>
+                            <button disabled={drawMode === 'choose' && !cardPickChoice} onClick={() => { const name = drawMode === 'choose' ? cardPickChoice : undefined; const useGuided = drawMode === 'random' && drawGuided; setShowDrawDialog(false); setCardPickChoice(''); setDrawGuided(false); const give = drawGiveAlly; const one = drawOne; setDrawGiveAlly(false); setDrawOne(false); handlePickACard(false, name, 1, 1, useGuided, give, drawOne); }} className="w-full py-2 rounded bg-dnd-gold text-black text-[10px] font-black uppercase disabled:opacity-40">Confirm Draw</button>
                         </div>
                     </div>
                 );
