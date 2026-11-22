@@ -643,6 +643,8 @@ export interface CharacterState {
     activeCards?: { roll: number, name: string, duration: string, timestamp: number, roundsRemaining?: number }[];
     exhaustion?: number;
     foolStacks?: number;
+    cardFreeSpells?: string[];
+    emergencyReserve?: { spell: string; used: boolean }[];
     combatOverrides?: {
         hitBonus?: number;
         damageBonus?: number;

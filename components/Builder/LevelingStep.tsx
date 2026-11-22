@@ -228,7 +228,7 @@ const LevelingStep: React.FC<LevelingStepProps> = ({ character, onComplete, onBa
                             type: 'asi-feat',
                             label: 'Ability Score Improvement',
                             value: null,
-                            options: ABILITY_NAMES
+                            options: /card master/i.test(item.className) && item.level >= 10 ? ABILITY_NAMES.filter((ability: string) => ability.toLowerCase() !== 'constitution') : ABILITY_NAMES
                         });
                     }
                 }

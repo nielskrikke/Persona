@@ -469,6 +469,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const [drawMode, setDrawMode] = useState<'random'|'choose'>('random');
     const [drawGuided, setDrawGuided] = useState(false);
     const [drawGiveAlly, setDrawGiveAlly] = useState(false);
+    const [reserveChoice, setReserveChoice] = useState('');
     const [showHomebrewModal, setShowHomebrewModal] = useState(false);
     const [showFullScreenFeatures, setShowFullScreenFeatures] = useState(false);
     const [fullScreenFeaturesSearch, setFullScreenFeaturesSearch] = useState('');
@@ -1629,6 +1630,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const newCards = drawn.filter((card: any) => card.duration !== 'Instantaneous').map((card: any) => ({ roll: card.rollVal, name: card.name, duration: card.duration, timestamp: Date.now() + Math.random(), roundsRemaining: card.duration === 'Long' ? Math.max(1, rollDice('2d4', 'Long duration').total + chaMod) : card.duration === 'Medium' ? Math.max(1, rollDice('1d4', 'Medium duration').total + chaMod) : undefined }));
             const updatedCards = giveAlly ? activeCards : [...activeCards, ...newCards];
             drawn.filter((card: any) => card.duration === 'Instantaneous').forEach((card: any) => { if (card.name === 'The Tower') roll('8d10', 'The Tower damage'); });
+            const freeSpellMap: Record<string, string> = { 'The High Priestess': 'Free 1st-level spell', 'The Hierophant': 'Bless', 'The Lovers': 'Charm Person', 'The Hermit': 'Invisibility' };
+            const newFreeSpells = drawn.map((card: any) => freeSpellMap[card.name]).filter(Boolean);
             const support = (character.classes || []).find((cls: any) => cls.definition?.index === 'card-master' && /support cards/i.test(String(cls.subclass?.name || '')));
             const durationLimit = support ? (Number(support.level) >= 20 ? 7 : Number(support.level) >= 16 ? 5 : 3) : 2;
             const countExhaustion = (cards: any[]) => {
@@ -1646,7 +1649,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 if (card.name === 'The Empress') tempHp = Math.max(tempHp, 2 * lvl);
                 if (card.name === 'The Sun') currentHp = Math.min(prev.maxHp, Number(currentHp || 0) + 8 * (1 + Math.floor(Math.random() * 10)) + calculateModifier(getStat('cha')));
             });
-            return { ...prev, activeCards: updatedCards, currentHp, tempHp, exhaustion: Math.min(6, (prev.exhaustion || 0) + Math.max(0, diff)), featureUsage };
+            return { ...prev, activeCards: updatedCards, currentHp, tempHp, cardFreeSpells: [...(prev.cardFreeSpells || []), ...newFreeSpells], exhaustion: Math.min(6, (prev.exhaustion || 0) + Math.max(0, diff)), featureUsage };
         });
     };
 
@@ -1879,6 +1882,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                 experimentalElixirs: [],
                 activeCards: [],
                 foolStacks: 0,
+                cardFreeSpells: [],
                 activeRite: null,
                 hybridForm: false,
                 brandTarget: '',
@@ -3035,6 +3039,13 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             <button onClick={() => setCharacter(prev => ({ ...prev, activeCards: (prev.activeCards || []).filter((card: any) => card.duration !== 'Scene') }))} className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-[8px] font-black uppercase text-gray-300">End Scene</button>
                             <span className="text-[8px] text-gray-500 font-bold uppercase self-center">Medium {(character.activeCards || []).filter((c: any) => c.duration === 'Medium').length}/{/(support cards)/i.test(String((character.classes || []).find((c: any) => c.definition?.index === 'card-master')?.subclass?.name || '')) ? (cmLevel >= 16 ? 5 : 3) : 2} · Long {(character.activeCards || []).filter((c: any) => c.duration === 'Long').length}/{/(support cards)/i.test(String((character.classes || []).find((c: any) => c.definition?.index === 'card-master')?.subclass?.name || '')) ? (cmLevel >= 16 ? 5 : 3) : 2}</span>
                         </div>
+                        {cmLevel >= 6 && (
+                            <div className="mt-3 pt-2 border-t border-gray-800/50 space-y-1">
+                                <div className="flex justify-between text-[9px] font-bold text-gray-500 uppercase"><span>Emergency Reserve</span><span>{character.featureUsage?.['Emergency Reserve']?.current ?? 0}/{character.featureUsage?.['Emergency Reserve']?.max ?? 0}</span></div>
+                                <div className="flex gap-1"><select value={reserveChoice} onChange={e => setReserveChoice(e.target.value)} className="flex-1 bg-black/40 border border-gray-700 rounded px-1 text-[8px] text-gray-300"><option value="">Bind a spell…</option>{(character.spells || []).filter((spell: any) => Number(spell.level) > 0).map((spell: any) => <option key={spell.index} value={spell.name}>{spell.name}</option>)}</select><button disabled={!reserveChoice || (character.emergencyReserve || []).length >= 5} onClick={() => { setCharacter(prev => ({ ...prev, emergencyReserve: [...(prev.emergencyReserve || []), { spell: reserveChoice, used: false }] })); setReserveChoice(''); }} className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-[8px] font-black uppercase text-gray-300 disabled:opacity-30">Bind</button></div>
+                                {(character.emergencyReserve || []).map((entry: any, index: number) => <div key={`${entry.spell}-${index}`} className="flex justify-between bg-gray-800/40 rounded px-2 py-0.5"><span className="text-[8px] text-gray-300">{entry.spell}</span><button disabled={entry.used} onClick={() => setCharacter(prev => ({ ...prev, emergencyReserve: (prev.emergencyReserve || []).map((item: any, i: number) => i === index ? { ...item, used: true } : item), featureUsage: { ...prev.featureUsage, 'Emergency Reserve': { ...prev.featureUsage['Emergency Reserve'], current: Math.max(0, Number(prev.featureUsage['Emergency Reserve']?.current || 0) - 1) } } }))} className="text-[8px] font-black uppercase text-dnd-gold disabled:opacity-30">{entry.used ? 'Spent' : 'Cast'}</button></div>)}
+                            </div>
+                        )}
                         {cmLevel >= 4 && (
                             <div className="mt-4 pt-3 border-t border-gray-800/50">
                                 <div className="flex justify-between items-center mb-2">
