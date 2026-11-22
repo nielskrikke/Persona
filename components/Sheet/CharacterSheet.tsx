@@ -468,6 +468,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
     const [showDrawDialog, setShowDrawDialog] = useState(false);
     const [drawMode, setDrawMode] = useState<'random'|'choose'>('random');
     const [drawGuided, setDrawGuided] = useState(false);
+    const [drawGiveAlly, setDrawGiveAlly] = useState(false);
     const [showHomebrewModal, setShowHomebrewModal] = useState(false);
     const [showFullScreenFeatures, setShowFullScreenFeatures] = useState(false);
     const [fullScreenFeaturesSearch, setFullScreenFeaturesSearch] = useState('');
@@ -1585,7 +1586,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
         };
     };
 
-    const handlePickACard = (isFree = false, specificCardName?: string, cost = 1, extraMultiplier = 1, useGuided = false) => {
+    const handlePickACard = (isFree = false, specificCardName?: string, cost = 1, extraMultiplier = 1, useGuided = false, giveAlly = false) => {
         const cardTable = character.classes
             .map(c => (c.definition as any).options?.pickACardTable)
             .find((table: any) => Array.isArray(table) && table.length > 0) || [];
@@ -1626,7 +1627,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const activeCards = prev.activeCards || [];
             const chaMod = calculateModifier(getStat('cha'));
             const newCards = drawn.filter((card: any) => card.duration !== 'Instantaneous').map((card: any) => ({ roll: card.rollVal, name: card.name, duration: card.duration, timestamp: Date.now() + Math.random(), roundsRemaining: card.duration === 'Long' ? Math.max(1, rollDice('2d4', 'Long duration').total + chaMod) : card.duration === 'Medium' ? Math.max(1, rollDice('1d4', 'Medium duration').total + chaMod) : undefined }));
-            const updatedCards = [...activeCards, ...newCards];
+            const updatedCards = giveAlly ? activeCards : [...activeCards, ...newCards];
             drawn.filter((card: any) => card.duration === 'Instantaneous').forEach((card: any) => { if (card.name === 'The Tower') roll('8d10', 'The Tower damage'); });
             const support = (character.classes || []).find((cls: any) => cls.definition?.index === 'card-master' && /support cards/i.test(String(cls.subclass?.name || '')));
             const durationLimit = support ? (Number(support.level) >= 20 ? 7 : Number(support.level) >= 16 ? 5 : 3) : 2;
@@ -3021,6 +3022,14 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             )}
                         </div>
 
+                        <div className="mt-2 flex gap-2 flex-wrap">
+                            {/destiny caster/i.test(String(cmClass.subclass?.name || '')) && Number(cmClass.level) >= 8 && (character.featureUsage?.['Free Devil']?.current || 0) > 0 && (
+                                <button onClick={() => { setCharacter(prev => ({ ...prev, featureUsage: { ...prev.featureUsage, 'Free Devil': { ...prev.featureUsage['Free Devil'], current: Number(prev.featureUsage['Free Devil'].current) - 1 } } })); handlePickACard(true, 'The Devil'); }} className="px-2 py-1 bg-red-900/30 border border-red-800 rounded text-[8px] font-black uppercase text-red-300">Free Devil ({character.featureUsage['Free Devil'].current}/{character.featureUsage['Free Devil'].max})</button>
+                            )}
+                            {cmLevel >= 7 && (
+                                <button onClick={() => { if ((character.activeCards || []).length > 0) setCharacter(prev => ({ ...prev, activeCards: (prev.activeCards || []).slice(1) })); setShowDrawDialog(true); }} className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-[8px] font-black uppercase text-gray-300">Mystic Shuffle</button>
+                            )}
+                        </div>
                         <div className="mt-3 flex gap-2 flex-wrap">
                             <button onClick={() => setCharacter(prev => ({ ...prev, activeCards: (prev.activeCards || []).map((card: any) => card.roundsRemaining !== undefined ? { ...card, roundsRemaining: Number(card.roundsRemaining) - 1 } : card).filter((card: any) => card.roundsRemaining === undefined || card.roundsRemaining > 0) }))} className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-[8px] font-black uppercase text-gray-300">Next Round</button>
                             <button onClick={() => setCharacter(prev => ({ ...prev, activeCards: (prev.activeCards || []).filter((card: any) => card.duration !== 'Scene') }))} className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-[8px] font-black uppercase text-gray-300">End Scene</button>
@@ -3875,10 +3884,12 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const foolStacks = character.foolStacks || 0;
             const isWorldActive = character.activeCards?.some(c => c.name === 'The World');
             const isLevel20 = cmClass.level >= 20;
+            const isPowerfool = /destiny caster/i.test(String(cmClass.subclass?.name || '')) && cmClass.level >= 12;
 
             let diceCount = 4 + foolStacks * Math.max(1, calculateModifier(getStat('cha')));
             if (isWorldActive) diceCount *= 2;
-            const damageDice = `${diceCount}d12 + ${calculateModifier(getStat('cha')) + prof}`;
+            const foolMod = calculateModifier(getStat('cha')) + prof;
+            const damageDice = isPowerfool ? `${diceCount * 12 + foolMod}` : `${diceCount}d12 + ${foolMod}`;
             const { hit: foolHit, damage: foolDmg } = applyOverrides(null, damageDice);
             attacks.push({
                 id: 'action-fool-spell',
@@ -5510,7 +5521,10 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                             {drawMode === 'random' && level >= 14 && (
                                 <label className="flex items-center gap-2 text-[10px] text-gray-300"><input type="checkbox" checked={drawGuided} onChange={e => setDrawGuided(e.target.checked)} disabled={!guided || Number(guided.current) <= 0} /> Guided Pull ({guided ? `${guided.current}/${guided.max}` : '0'}) — roll twice, keep either.</label>
                             )}
-                            <button disabled={drawMode === 'choose' && !cardPickChoice} onClick={() => { const name = drawMode === 'choose' ? cardPickChoice : undefined; const useGuided = drawMode === 'random' && drawGuided; setShowDrawDialog(false); setCardPickChoice(''); setDrawGuided(false); handlePickACard(false, name, 1, 1, useGuided); }} className="w-full py-2 rounded bg-dnd-gold text-black text-[10px] font-black uppercase disabled:opacity-40">Confirm Draw</button>
+                            {/support cards/i.test(String(cm?.subclass?.name || '')) && level >= 12 && (
+                                <label className="flex items-center gap-2 text-[10px] text-gray-300"><input type="checkbox" checked={drawGiveAlly} onChange={e => setDrawGiveAlly(e.target.checked)} /> Give the drawn card to an ally</label>
+                            )}
+                            <button disabled={drawMode === 'choose' && !cardPickChoice} onClick={() => { const name = drawMode === 'choose' ? cardPickChoice : undefined; const useGuided = drawMode === 'random' && drawGuided; setShowDrawDialog(false); setCardPickChoice(''); setDrawGuided(false); const give = drawGiveAlly; setDrawGiveAlly(false); handlePickACard(false, name, 1, 1, useGuided, give); }} className="w-full py-2 rounded bg-dnd-gold text-black text-[10px] font-black uppercase disabled:opacity-40">Confirm Draw</button>
                         </div>
                     </div>
                 );
