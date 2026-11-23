@@ -3954,23 +3954,27 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
             const lvl = arrowsmithCls.level;
             const asDC = 8 + prof + intMod;
             const bow = character.inventory.find(i => i.equipped && (i.name.toLowerCase().includes('bow') || i.name.toLowerCase().includes('crossbow')));
-            const rangeStr = bow?.range || '80/320 ft.';
+            const rangeStr = typeof bow?.range === 'string' ? bow.range : bow?.range ? `${bow.range.normal}${bow.range.long ? `/${bow.range.long}` : ''} ft.` : '80/320 ft.';
 
             // Made to Kill Bonus: +1 at 10, +2 at 15, +3 at 20
             const mtkBonus = lvl >= 20 ? 3 : lvl >= 15 ? 2 : lvl >= 10 ? 1 : 0;
             // Trained Archer Bonus (Lvl 17): Add Int to hit/dmg
             const taBonus = lvl >= 17 ? intMod : 0;
 
-            const bowHit = prof + dexMod + mtkBonus + taBonus;
+            const featureText = (character.classFeatures || []).map((feature: any) => `${feature.name || ''} ${(feature.desc || []).join?.(' ') || ''}`).join(' | ');
+            const archery = /archery/i.test(featureText) ? 2 : 0;
+            const closeQuarters = /close quarters shooter/i.test(featureText) ? 1 : 0;
+            const bowHit = prof + dexMod + archery + closeQuarters + mtkBonus + taBonus;
             const bowDmg = bow?.damage?.damage_dice || '1d8';
-            const baseDmgBonus = dexMod + mtkBonus + taBonus;
+            const bracers = (character.inventory || []).some((item: any) => item.equipped && /bracers of archery/i.test(String(item.name || ''))) ? 2 : 0;
+            const baseDmgBonus = dexMod + mtkBonus + taBonus + bracers;
             const finalBowDmg = `${bowDmg}${formatModifier(baseDmgBonus)}`;
 
             // Arrowsmith definitions come from the class document.
             const allArrowDefinitions = (arrowsmithCls.definition as any).options?.arrows || [];
 
             // Only show arrows that are actually in the inventory (quantity > 0)
-            const arrowInventory = character.inventory.filter(i => i.id.startsWith('as-arrow-') && i.quantity > 0);
+            const arrowInventory = bow ? character.inventory.filter(i => i.id.startsWith('as-arrow-') && i.quantity > 0) : [];
 
             arrowInventory.forEach(invItem => {
                 // Extract base name from ID as-arrow-silent -> silent
@@ -3979,13 +3983,22 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
                 if (def && def.level <= lvl) {
                     const desc = String(def.desc || '').replace(/\{dc\}/g, String(asDC));
-                    const damageFormula = def.calc === 'halfBow'
+                    let damageFormula = def.calc === 'halfBow'
                         ? `(${bowDmg}/2)${formatModifier(Math.floor(baseDmgBonus / 2))}`
                         : def.dmg
                             ? `${def.dmg}${def.addBaseDamage ? formatModifier(baseDmgBonus) : ''}`
                             : def.dmgPlus
                                 ? `${bowDmg}${def.dmgPlus}${formatModifier(baseDmgBonus)}`
                                 : finalBowDmg;
+                    const arrowSpec = String(arrowsmithCls.subclass?.name || '');
+                    const extraNotes: string[] = ['Arrowsmith', `Qty: ${invItem.quantity}`];
+                    if (/toxins/i.test(arrowSpec)) {
+                        if (Number(lvl) >= 8) { damageFormula += ' + 1d10 Poison'; extraNotes.push('Sickly Arrows: +1d10 poison'); }
+                        if (Number(lvl) >= 11) { damageFormula += ' + 1d10 Cold'; extraNotes.push('Icy Arrows: +1d10 cold'); }
+                        extraNotes.push('Effects are guaranteed on a crit.');
+                    }
+                    if (/magic/i.test(arrowSpec) && Number(lvl) >= 8) extraNotes.push('Arcane Shot: this arrow is magical.');
+                    if (/support/i.test(arrowSpec) && Number(lvl) >= 8) extraNotes.push('Effects are doubled on a crit.');
                     const { hit: arrowHit, damage: arrowDmg } = applyOverrides(def.autoHit ? null : bowHit, damageFormula);
                     const arrowAttack = {
                         id: invItem.id,
@@ -3995,7 +4008,8 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
                         damage: arrowDmg,
                         type: def.type || 'Piercing',
                         save: def.saveType ? { type: def.saveType, dc: asDC } : null,
-                        notes: ['Arrowsmith', `Qty: ${invItem.quantity}`, ...(def.notes || [])],
+                        notes: [...extraNotes, ...(def.notes || [])],
+                        onUse: () => setCharacter(prev => ({ ...prev, inventory: prev.inventory.map((entry: any) => entry.id === invItem.id ? { ...entry, quantity: Math.max(0, Number(entry.quantity) - 1) } : entry).filter((entry: any) => entry.id !== invItem.id || Number(entry.quantity) > 0) })),
                         source: { name: `${def.name} Arrow`, desc }
                     };
                     (arrowAttack as any).modifiers = getAttackModifiers(arrowAttack);
@@ -4047,7 +4061,7 @@ export const CharacterSheet: React.FC<CharacterSheetProps> = ({ character: initi
 
             fightingStyles.forEach(fs => {
                 const desc = fs.desc?.join(' ') || '';
-                if (desc.includes('Archery') && (properties.includes('Ammunition') || (isRanged && item.range))) archeryBonus += 2;
+                if (desc.includes('Archery') && (properties.includes('Ammunition') || (isRanged && item.range))) archeryBonus = 2;
                 if (desc.includes('Dueling')) hasDueling = true;
                 if (/great weapon fighting/i.test(`${fs.name || ''} ${desc}`)) hasGWF = true;
                 if (desc.includes('Two-Weapon Fighting')) hasTWF = true;
